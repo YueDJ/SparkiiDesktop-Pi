@@ -5,6 +5,7 @@
   "main": "src/index.ts",
   "scripts": { "test": "vitest run" },
   "dependencies": {
+    "docx": "^9.7.1",
     "mammoth": "^1.8.0",
     "pdfjs-dist": "^4.10.38",
     "xlsx": "^0.18.5"
