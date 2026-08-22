@@ -2212,7 +2212,10 @@ export class PiProcessSupervisor {
     if (this.client) return this.client;
     const bin = this.opts.bin ?? process.env.PI_BIN ?? 'pi';
     const args = this.opts.args ?? ['--mode', 'rpc'];
-    this.child = spawn(bin, args, { stdio: ['pipe', 'pipe', 'inherit'] });
+    // Windows：Node 的 spawn 直接启动 .cmd/.bat 会 EINVAL，经 cmd.exe 启动
+    this.child = /\.(cmd|bat)$/i.test(bin)
+      ? spawn('cmd.exe', ['/d', '/s', '/c', [bin, ...args].map((a) => (/\s/.test(a) ? `"${a}"` : a)).join(' ')], { stdio: ['pipe', 'pipe', 'inherit'] })
+      : spawn(bin, args, { stdio: ['pipe', 'pipe', 'inherit'] });
     this.client = new PiRpcClient(this.child.stdin, this.child.stdout);
     this.child.on('exit', (code) => {
       this.client = undefined;
@@ -2661,6 +2664,39 @@ function resolveToolArgs(step: WorkflowDef['steps'][number], state: Record<strin
 ```bash
 git add packages/agent-host/src/workflow packages/agent-host/test/workflow.test.ts
 git commit -m "feat(agent-host): WorkflowRunner interface and LinearRunner"
+```
+
+### Task 21a: agent-host 包入口导出（index.ts）
+
+**Files:**
+- Create: `packages/agent-host/src/index.ts`
+
+**Interfaces:**
+- Produces: `@sparkii/agent-host` 导出 `rpc-client`、`process`、`control-server`、`bridge/typebox`、`workflow/types`、`workflow/linear`（不导出 `bridge/extension`）。后续 Main 装配（Task 25）从这里 import `PiProcessSupervisor`、`ControlServer`、`LinearRunner` 等。
+
+- [ ] **Step 1: 实现**
+
+`packages/agent-host/src/index.ts`：
+
+```ts
+export * from './rpc-client.js';
+export * from './process.js';
+export * from './control-server.js';
+export * from './bridge/typebox.js';
+export * from './workflow/types.js';
+export * from './workflow/linear.js';
+```
+
+- [ ] **Step 2: 验证**
+
+Run: `pnpm --filter @sparkii/agent-host test`
+Expected: PASS。
+
+- [ ] **Step 3: 提交**
+
+```bash
+git add packages/agent-host/src/index.ts
+git commit -m "feat(agent-host): export public API from package entry"
 ```
 
 ---
