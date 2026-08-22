@@ -1,0 +1,11 @@
+{
+  "page": "contract-review/home",
+  "layout": { "type": "grid", "columns": 2 },
+  "widgets": [
+    { "id": "upload", "type": "file-upload", "bind": "documents" },
+    { "id": "review", "type": "action-button", "action": "run-workflow:contract-review" },
+    { "id": "risk", "type": "table", "bind": "workflow.result.compare" },
+    { "id": "report", "type": "doc-preview", "bind": "workflow.result.report" },
+    { "id": "export", "type": "action-button", "action": "export-report" }
+  ]
+}

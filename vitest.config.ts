@@ -7,8 +7,16 @@ const root = dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   test: {
     root,
-    include: ['packages/**/test/**/*.test.ts', 'apps/**/test/**/*.test.{ts,tsx}'],
-    environmentMatchGlobs: [['apps/**', 'jsdom']],
-    pool: 'forks',
+    projects: [
+      { test: { include: ['packages/**/test/**/*.test.ts'], pool: 'forks' } },
+      {
+        esbuild: { jsx: 'automatic' },
+        test: {
+          include: ['apps/**/test/**/*.test.{ts,tsx}'],
+          environment: 'jsdom',
+          pool: 'forks',
+        },
+      },
+    ],
   },
 });

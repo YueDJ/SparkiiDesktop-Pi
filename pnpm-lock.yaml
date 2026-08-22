@@ -82,6 +82,9 @@ importers:
         specifier: workspace:*
         version: link:../connectors
     devDependencies:
+      '@sparkii/config':
+        specifier: workspace:*
+        version: link:../config
       '@sparkii/identity':
         specifier: workspace:*
         version: link:../identity

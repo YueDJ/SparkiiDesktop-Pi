@@ -1,0 +1,9 @@
+name: contract-review
+version: 1.0.0
+modelRouting:
+  tasks:
+    default:
+      - { provider: local, modelId: qwen2.5:7b }
+    report:
+      - { provider: local, modelId: qwen2.5:14b }
+      - { provider: local, modelId: qwen2.5:7b }
