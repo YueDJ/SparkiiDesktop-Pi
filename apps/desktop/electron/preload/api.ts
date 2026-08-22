@@ -1,4 +1,4 @@
-import type { SparkiiApi } from '../../src/types/sparkii-api.js';
+import type { SparkiiApi } from './api-types.js';
 
 export type IpcLike = {
   invoke(channel: string, ...args: unknown[]): Promise<unknown>;
@@ -15,9 +15,9 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
     runWorkflow: (id, input) => invoke('runWorkflow', id, input) as Promise<{ ok: boolean }>,
     exportReport: (input) => invoke('exportReport', input),
     prompt: (text) => invoke('prompt', text) as Promise<{ ok: boolean }>,
-    listPendingApprovals: () => invoke('listPendingApprovals'),
+    listPendingApprovals: () => invoke('listPendingApprovals') as Promise<unknown[]>,
     decideApproval: (id, approved, note) => invoke('decideApproval', id, approved, note),
-    queryAudit: (filter) => invoke('queryAudit', filter),
+    queryAudit: (filter) => invoke('queryAudit', filter) as Promise<unknown[]>,
     on: (channel, cb) => {
       const listener = (_e: unknown, payload: unknown) => cb(payload);
       ipc.on(`sparkii:event:${channel}`, listener);

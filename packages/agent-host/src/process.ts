@@ -1,8 +1,9 @@
-import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { spawn, type ChildProcessByStdio } from 'node:child_process';
+import type { Writable, Readable } from 'node:stream';
 import { PiRpcClient } from './rpc-client.js';
 
 export class PiProcessSupervisor {
-  private child?: ChildProcessWithoutNullStreams;
+  private child?: ChildProcessByStdio<Writable, Readable, null>;
   private client?: PiRpcClient;
   private exitCbs = new Set<(code: number | null) => void>();
   constructor(private opts: { bin?: string; args?: string[] } = {}) {}

@@ -4,7 +4,7 @@ directories:
   output: out
 files:
   - dist/**
-  - electron/**
+  - dist-electron/**
   - package.json
 asar: true
 win:
@@ -15,4 +15,4 @@ nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
 extraMetadata:
-  main: electron/main/index.js
+  main: dist-electron/main/index.js

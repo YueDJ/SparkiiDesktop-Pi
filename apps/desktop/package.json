@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "electron/main/index.ts",
+  "main": "dist-electron/main/index.js",
   "scripts": {
     "test": "vitest run",
     "build:renderer": "vite build",

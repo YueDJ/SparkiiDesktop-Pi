@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { BrowserWindow } from 'electron';
-import { LinearRunner, type RunContext } from '@sparkii/agent-host';
+import { LinearRunner, type RunContext, type WorkflowDef } from '@sparkii/agent-host';
 import { documentConnector, knowledgeConnector, reportConnector, type ToolDef } from '@sparkii/connectors';
 import type { ProposalRequest } from '@sparkii/approval';
 import type { Runtime } from './runtime.js';
@@ -65,7 +65,7 @@ async function runTool(rt: Runtime, broker: ReturnType<typeof createBroker>, too
 }
 
 export async function runWorkflow(rt: Runtime, getWindow: () => BrowserWindow | null, input: Record<string, unknown>): Promise<void> {
-  const def = rt.profile.agent.workflow as unknown as { version: 1; engine: 'linear'; steps: unknown[] };
+  const def = rt.profile.agent.workflow as unknown as WorkflowDef;
   const broker = createBroker(rt, getWindow);
   const ctx: RunContext = {
     profileId: rt.profile.manifest.name, sessionId: 'default', actor: rt.subject?.userId ?? 'agent', input,

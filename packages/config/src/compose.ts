@@ -1,6 +1,6 @@
 import type { ResolvedProfile } from './types.js';
 
-function merge<T>(a: T, b: Partial<T>): T {
+function merge<T>(a: T, b?: Partial<T>): T {
   return { ...a, ...b };
 }
 

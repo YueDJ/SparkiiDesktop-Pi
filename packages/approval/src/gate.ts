@@ -22,7 +22,7 @@ export class ApprovalGate {
     const p = this.proposals.get(id);
     if (!p) throw new GateError('NOT_FOUND', id);
     if (p.status !== 'pending') throw new GateError('NOT_PENDING', id);
-    if (approved && !this.opts.rbac.canApprove(by, p.risk)) throw new GateError('UNAUTHORIZED', 'approver lacks permission');
+    if (approved && p.risk !== 'read' && !this.opts.rbac.canApprove(by, p.risk)) throw new GateError('UNAUTHORIZED', 'approver lacks permission');
     const out = transition(p, approved ? 'approved' : 'denied');
     out.decisionBy = by.userId; out.decisionNote = note;
     this.proposals.set(id, out);

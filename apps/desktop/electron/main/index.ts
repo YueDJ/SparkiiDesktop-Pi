@@ -1,9 +1,12 @@
 import { app, BrowserWindow } from 'electron';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { assemble, type Runtime } from './runtime.js';
 import { registerIpc } from './ipc.js';
 import { Logger } from './logger.js';
 import { attachRecovery } from './recovery.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 let rt: Runtime;
 let win: BrowserWindow | null = null;
