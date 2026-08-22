@@ -23,7 +23,17 @@ export class PiProcessSupervisor {
   }
 
   async stop(): Promise<void> {
-    if (this.child && !this.child.killed) this.child.kill();
+    if (!this.child || this.child.killed) return;
+    const pid = this.child.pid;
+    if (process.platform === 'win32' && pid) {
+      await new Promise<void>((resolve) => {
+        const killer = spawn('taskkill', ['/pid', String(pid), '/T', '/F'], { stdio: 'ignore' });
+        killer.on('exit', () => resolve());
+        killer.on('error', () => { this.child?.kill(); resolve(); });
+      });
+    } else {
+      this.child.kill();
+    }
   }
 
   onExit(cb: (code: number | null) => void): () => void {
