@@ -11,7 +11,9 @@ export class PiProcessSupervisor {
     if (this.client) return this.client;
     const bin = this.opts.bin ?? process.env.PI_BIN ?? 'pi';
     const args = this.opts.args ?? ['--mode', 'rpc'];
-    this.child = spawn(bin, args, { stdio: ['pipe', 'pipe', 'inherit'] });
+    this.child = /\.(cmd|bat)$/i.test(bin)
+      ? spawn('cmd.exe', ['/d', '/s', '/c', [bin, ...args].map((a) => (/\s/.test(a) ? `"${a}"` : a)).join(' ')], { stdio: ['pipe', 'pipe', 'inherit'] })
+      : spawn(bin, args, { stdio: ['pipe', 'pipe', 'inherit'] });
     this.client = new PiRpcClient(this.child.stdin, this.child.stdout);
     this.child.on('exit', (code) => {
       this.client = undefined;
