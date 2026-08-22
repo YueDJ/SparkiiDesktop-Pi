@@ -26,9 +26,15 @@ importers:
 
   packages/approval:
     dependencies:
+      '@sparkii/config':
+        specifier: workspace:*
+        version: link:../config
       '@sparkii/connectors':
         specifier: workspace:*
         version: link:../connectors
+      '@sparkii/identity':
+        specifier: workspace:*
+        version: link:../identity
       better-sqlite3:
         specifier: ^13.0.3
         version: 13.0.3

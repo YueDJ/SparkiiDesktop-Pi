@@ -4,6 +4,11 @@
   "type": "module",
   "main": "src/index.ts",
   "scripts": { "test": "vitest run" },
-  "dependencies": { "@sparkii/connectors": "workspace:*", "better-sqlite3": "^13.0.3" },
+  "dependencies": {
+    "@sparkii/config": "workspace:*",
+    "@sparkii/connectors": "workspace:*",
+    "@sparkii/identity": "workspace:*",
+    "better-sqlite3": "^13.0.3"
+  },
   "devDependencies": { "typescript": "^5.6.0" }
 }
