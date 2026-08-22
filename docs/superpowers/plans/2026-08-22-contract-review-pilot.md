@@ -459,9 +459,6 @@ describe('profile integrity', () => {
 
 ```ts
 import { createHash, generateKeyPairSync, sign, verify } from 'node:crypto';
-import { promisify } from 'node:util';
-
-const gen = promisify(generateKeyPairSync);
 
 export function computeIntegrity(files: Record<string, Buffer>): string {
   const h = createHash('sha256');
@@ -488,12 +485,12 @@ export function verifyFiles(files: Record<string, Buffer>, publicKey: string, si
 }
 
 export async function generateKeyPair(): Promise<{ publicKey: string; privateKey: string }> {
-  const { publicKey, privateKey } = gen('ed25519', { publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
+  const { publicKey, privateKey } = generateKeyPairSync('ed25519', { publicKeyEncoding: { type: 'spki', format: 'pem' }, privateKeyEncoding: { type: 'pkcs8', format: 'pem' } });
   return { publicKey, privateKey };
 }
 ```
 
-（Node `generateKeyPairSync` 是回调/同步混合，直接同步调用即可；为可读性保留返回对象形态。）
+（`generateKeyPairSync` 是同步函数，直接调用并返回 PEM 即可；不要用 `promisify` 包它。）
 
 - [ ] **Step 4: 运行确认通过**
 
@@ -551,7 +548,7 @@ describe('loadProfile', () => {
       'security/roles.yaml': 'roles: []\n',
       'security/approval.yaml': 'requireApproval: [report.export]\ntimeoutMs: 60000\nhighRiskDoubleConfirm: true\n',
     });
-    const p = await loadProfile(dir);
+    const p = await loadProfile(dir, { allowUnsigned: true });
     expect(p.manifest.name).toBe('contract-review');
     expect(p.agent.tools).toEqual(['document.read', 'report.export']);
   });
@@ -741,6 +738,42 @@ export function resolveInheritance(base: ResolvedProfile, child: ResolvedProfile
 ```bash
 git add packages/config
 git commit -m "feat(config): support profile inheritance and admin delta overlay"
+```
+
+### Task 4a: config 包公共 API 再导出（index.ts）
+
+**Files:**
+- Modify: `packages/config/src/index.ts`
+
+**Interfaces:**
+- Produces: `@sparkii/config` 的入口导出：`ping`、`parseProfileManifest`、`loadProfile`、`ProfileError`、`applyDelta`、`resolveInheritance`，以及全部类型（`ProfileManifest`、`ResolvedProfile`、`RoleConfig`、`ApprovalPolicy` 等）。后续 identity / approval / model-router / runtime 都从这里 import。
+
+- [ ] **Step 1: 实现**
+
+`packages/config/src/index.ts`：
+
+```ts
+export * from './types.js';
+export * from './schema.js';
+export * from './integrity.js';
+export * from './loader.js';
+export * from './compose.js';
+
+export function ping(): string {
+  return 'pong';
+}
+```
+
+- [ ] **Step 2: 验证**
+
+Run: `pnpm --filter @sparkii/config test`
+Expected: PASS（原 9 个测试仍通过）。
+
+- [ ] **Step 3: 提交**
+
+```bash
+git add packages/config/src/index.ts
+git commit -m "feat(config): re-export public config API"
 ```
 
 ---
