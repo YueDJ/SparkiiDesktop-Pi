@@ -1,0 +1,14 @@
+{
+  "name": "@sparkii/connectors",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": { "test": "vitest run" },
+  "dependencies": {
+    "docx": "^9.7.1",
+    "mammoth": "^1.12.1",
+    "pdfjs-dist": "^6.2.108",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": { "typescript": "^6.0.3" }
+}

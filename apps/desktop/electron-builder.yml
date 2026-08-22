@@ -1,0 +1,21 @@
+appId: com.sparkii.desktop
+productName: Sparkii
+directories:
+  output: out
+files:
+  - dist/**
+  - dist-electron/**
+  - package.json
+asar: true
+win:
+  target:
+    - nsis
+    - appx
+appx:
+  identityName: com.sparkii.desktop
+  applicationId: SparkiiDesktop
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+extraMetadata:
+  main: dist-electron/main/index.js

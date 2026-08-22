@@ -1,0 +1,17 @@
+{
+  "name": "@sparkii/approval",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": { "test": "vitest run" },
+  "dependencies": {
+    "@sparkii/config": "workspace:*",
+    "@sparkii/connectors": "workspace:*",
+    "@sparkii/identity": "workspace:*",
+    "better-sqlite3": "^13.0.3"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "typescript": "^6.0.3"
+  }
+}

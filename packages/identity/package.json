@@ -1,0 +1,9 @@
+{
+  "name": "@sparkii/identity",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": { "test": "vitest run" },
+  "dependencies": { "@sparkii/config": "workspace:*" },
+  "devDependencies": { "typescript": "^6.0.3" }
+}

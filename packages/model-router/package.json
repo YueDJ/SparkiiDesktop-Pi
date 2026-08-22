@@ -1,0 +1,8 @@
+{
+  "name": "@sparkii/model-router",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": { "test": "vitest run" },
+  "devDependencies": { "typescript": "^6.0.3" }
+}

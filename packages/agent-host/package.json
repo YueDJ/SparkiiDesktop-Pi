@@ -1,0 +1,16 @@
+{
+  "name": "@sparkii/agent-host",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": { "test": "vitest run" },
+  "dependencies": {
+    "@sparkii/approval": "workspace:*",
+    "@sparkii/connectors": "workspace:*"
+  },
+  "devDependencies": {
+    "@sparkii/config": "workspace:*",
+    "@sparkii/identity": "workspace:*",
+    "typescript": "^6.0.3"
+  }
+}

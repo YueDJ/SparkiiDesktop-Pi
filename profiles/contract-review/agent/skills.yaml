@@ -1,0 +1,2 @@
+- { name: clause_extract, file: prompts/clause_extract.md }
+- { name: risk_compare, file: prompts/risk_compare.md }
