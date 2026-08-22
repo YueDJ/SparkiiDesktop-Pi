@@ -12,7 +12,7 @@ export interface WorkflowStep {
 export interface WorkflowDef { version: 1; engine: 'linear'; steps: WorkflowStep[] }
 export interface RunContext {
   profileId: string; sessionId: string; actor: string; input: Record<string, unknown>;
-  sendPrompt(text: string): Promise<string>;
+  sendPrompt(text: string, task?: string): Promise<string>;
   runTool(toolName: string, args: unknown): Promise<ToolResult>;
   requestApproval(req: ProposalRequest): Promise<Proposal>;
 }

@@ -5,8 +5,18 @@ export type { RpcCommand, RpcResponse, NormalizedEvent } from './types.js';
 
 export function normalizeEvent(raw: any): NormalizedEvent {
   switch (raw.type) {
-    case 'message_update': return { type: 'message', role: raw.role, delta: raw.textDelta ?? raw.text };
-    case 'message_end': return { type: 'message', role: raw.role, text: raw.text };
+    case 'message_update': {
+      const aev = raw.assistantMessageEvent;
+      if (aev?.type === 'text_delta') return { type: 'message', role: 'assistant', delta: aev.delta };
+      if (raw.role != null) return { type: 'message', role: raw.role, delta: raw.textDelta ?? raw.text };
+      return { type: 'unknown', raw };
+    }
+    case 'message_end': {
+      const role = raw.message?.role ?? raw.role;
+      const content = raw.message?.content ?? raw.content;
+      const text = Array.isArray(content) ? (content.map((c: any) => c?.text ?? '').join('') || undefined) : raw.text;
+      return { type: 'message', role, text };
+    }
     case 'tool_call': return { type: 'tool_call', toolName: raw.toolName, input: raw.input };
     case 'tool_result': return { type: 'tool_result', toolName: raw.toolName, result: raw.result };
     case 'agent_start': return { type: 'agent_start' };

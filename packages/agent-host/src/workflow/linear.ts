@@ -12,7 +12,8 @@ export class LinearRunner implements WorkflowRunner {
           if (!r.ok) throw new Error(`${r.error?.code ?? 'ERROR'}: ${r.error?.message}`);
           state[step.id] = r.data;
         } else if (step.type === 'skill' || step.type === 'llm') {
-          const text = await ctx.sendPrompt(`${step.template ?? ''}\n\n${JSON.stringify(resolveInputs(step, state))}`);
+          const task = step.type === 'llm' ? 'report' : 'extract';
+          const text = await ctx.sendPrompt(`${step.template ?? ''}\n\n${JSON.stringify(resolveInputs(step, state))}`, task);
           state[step.id] = text;
         } else if (step.type === 'human') {
           const p = await ctx.requestApproval({ toolName: 'workflow.approval', targetSystem: 'workflow', summary: `step ${step.id}`, payload: { stepId: step.id, data: resolveInputs(step, state) }, risk: 'high-risk' });

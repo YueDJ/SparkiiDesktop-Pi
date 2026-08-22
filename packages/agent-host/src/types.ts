@@ -11,7 +11,7 @@ export type RpcCommand =
   | { type: 'set_auto_compaction'; enabled: boolean }
   | { type: 'switch_session'; sessionPath: string };
 
-export interface RpcResponse { id?: string; type: 'response'; command: string; success: boolean; data?: unknown }
+export interface RpcResponse { id?: string; type: 'response'; command: string; success: boolean; data?: unknown; error?: string }
 
 export type NormalizedEvent =
   | { type: 'message'; role: 'user' | 'assistant'; delta?: string; text?: string }
