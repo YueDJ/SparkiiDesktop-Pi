@@ -7,7 +7,7 @@ export const manifestSchema = z.object({
   version: z.string().regex(/^\d+\.\d+\.\d+$/),
   extends: z.string().optional(),
   modelRouting: z.object({
-    tasks: z.record(z.array(modelTarget)),
+    tasks: z.record(z.string(), z.array(modelTarget)),
   }),
   integrity: z.object({ sha256: z.string().regex(/^[a-f0-9]{64}$/) }).optional(),
 });

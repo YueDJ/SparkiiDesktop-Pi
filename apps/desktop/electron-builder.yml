@@ -11,6 +11,9 @@ win:
   target:
     - nsis
     - appx
+appx:
+  identityName: com.sparkii.desktop
+  applicationId: SparkiiDesktop
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true

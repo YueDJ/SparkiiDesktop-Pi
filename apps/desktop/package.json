@@ -2,12 +2,15 @@
   "name": "@sparkii/desktop",
   "version": "0.1.0",
   "private": true,
+  "description": "Sparkii Desktop – contract review pilot",
+  "author": "Sparkii",
   "type": "module",
   "main": "dist-electron/main/index.js",
   "scripts": {
     "test": "vitest run",
     "build:renderer": "vite build",
-    "build:main": "tsc -p tsconfig.electron.json",
+    "build:main:check": "tsc --noEmit -p tsconfig.electron.json",
+    "build:main": "esbuild electron/main/index.ts --bundle --platform=node --format=esm --external:electron --external:better-sqlite3 --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" --outfile=dist-electron/main/index.js && esbuild electron/preload/index.ts --bundle --platform=node --format=cjs --external:electron --outfile=dist-electron/preload/index.cjs",
     "dist": "pnpm build:renderer && pnpm build:main && electron-builder --win nsis appx",
     "postinstall": "electron-builder install-app-deps"
   },
@@ -19,17 +22,19 @@
     "@sparkii/agent-host": "workspace:*",
     "@sparkii/connectors": "workspace:*",
     "@sparkii/theme": "workspace:*",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "better-sqlite3": "^13.0.3",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "electron": "^33.2.0",
-    "electron-builder": "^26.0.12",
-    "@playwright/test": "^1.50.0",
-    "vite": "^7.0.0",
-    "@vitejs/plugin-react": "^4.6.0",
-    "@testing-library/react": "^16.1.0",
-    "jsdom": "^26.0.0",
-    "typescript": "^5.6.0"
+    "electron": "^43.4.1",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
+    "@playwright/test": "^1.62.1",
+    "vite": "^8.2.2",
+    "@vitejs/plugin-react": "^6.1.0",
+    "@testing-library/react": "^16.3.2",
+    "jsdom": "^30.0.1",
+    "typescript": "^6.0.3"
   }
 }
