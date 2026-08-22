@@ -15,7 +15,10 @@ let win: BrowserWindow | null = null;
 app.whenReady().then(async () => {
   const dataDir = process.env.SPARKII_DATA_DIR ?? join(app.getPath('userData'), 'data');
   mkdirSync(dataDir, { recursive: true });
-  const profileDir = process.env.SPARKII_PROFILE_DIR ?? join(__dirname, '../../../../profiles/contract-review');
+  const profileDir = process.env.SPARKII_PROFILE_DIR
+    ?? (app.isPackaged
+      ? join(process.resourcesPath, 'profiles', 'contract-review')
+      : join(__dirname, '../../../../profiles/contract-review'));
   rt = await assemble({ profileDir, dataDir, allowUnsigned: process.env.NODE_ENV !== 'production' });
   const logger = new Logger(join(dataDir, 'logs'));
   attachRecovery(rt, logger);
