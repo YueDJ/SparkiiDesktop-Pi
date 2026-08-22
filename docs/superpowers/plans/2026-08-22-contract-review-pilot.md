@@ -17,6 +17,7 @@
 - 本地模型默认（Ollama/vLLM，OpenAI 兼容端点），云端可选；模型路由按 profile 配置并按任务降级切换。
 - 写操作「提议—执行分离」：Pi 只暴露提议工具，无写原语；Main 侧确定性连接器执行器只读权威审批状态放行/阻止；参数在提议时冻结；拒绝 = 直接不写。
 - 审计：SQLite（WAL）追加写 + 可导出；每次写尝试恰好产生一条审计记录；被拒绝的写永远到不了连接器执行器。
+- better-sqlite3 是原生模块：开发/测试阶段用包内预编译二进制（`pnpm-workspace.yaml` 中 `allowBuilds.better-sqlite3 = false`，避免在无 VS Build Tools 的机器上触发 node-gyp 编译）；Electron 打包阶段再用 `electron-builder install-app-deps` 重建 Electron ABI。
 - MVP 本地账号 + 角色 RBAC（角色 → 可见页面/可用工具/可批事项）；SSO/LDAP/AD 预留 `IdentityProvider` 接口，不提前实现。
 - 页面 = 组件注册表 + JSON schema 驱动；页面 schema 校验只能引用注册表内 widget 与允许的数据绑定，配置包不得在渲染层执行任意代码。
 - Renderer 沙箱化：`contextIsolation: true`、`nodeIntegration: false`、`sandbox: true`；无 Node 能力，无凭证访问。
@@ -1971,6 +1972,46 @@ Expected: PASS（全部）。
 ```bash
 git add packages/approval/test/invariants.test.ts
 git commit -m "test(approval): security invariant contract tests"
+```
+
+### Task 15a: identity / approval 包入口导出（index.ts）
+
+**Files:**
+- Create: `packages/identity/src/index.ts`、`packages/approval/src/index.ts`
+
+**Interfaces:**
+- Produces: `@sparkii/identity` 导出 `types/local/rbac`；`@sparkii/approval` 导出 `types/proposal/audit/gate/executor`。后续 agent-host / runtime 从这里 import（如 `Rbac`、`ApprovalGate`、`ConnectorExecutor`、`AuditStore`）。
+
+- [ ] **Step 1: 实现**
+
+`packages/identity/src/index.ts`：
+
+```ts
+export * from './types.js';
+export * from './local.js';
+export * from './rbac.js';
+```
+
+`packages/approval/src/index.ts`：
+
+```ts
+export * from './types.js';
+export * from './proposal.js';
+export * from './audit.js';
+export * from './gate.js';
+export * from './executor.js';
+```
+
+- [ ] **Step 2: 验证**
+
+Run: `pnpm --filter @sparkii/identity test` 与 `pnpm --filter @sparkii/approval test`
+Expected: PASS。
+
+- [ ] **Step 3: 提交**
+
+```bash
+git add packages/identity/src/index.ts packages/approval/src/index.ts
+git commit -m "feat(identity,approval): export public package APIs"
 ```
 
 ---
