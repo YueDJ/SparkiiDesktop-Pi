@@ -956,6 +956,9 @@ export interface ParsedDocument {
 
 export async function parseDocument(path: string): Promise<ParsedDocument> {
   const ext = extname(path).toLowerCase();
+  if (!['.txt', '.md', '.csv', '.pdf', '.docx', '.xlsx'].includes(ext)) {
+    throw new ConnectorError('CONNECTOR_UNSUPPORTED', `unsupported extension: ${ext}`);
+  }
   const buf = await readFile(path).catch((e) => {
     throw new ConnectorError('CONNECTOR_IO', `cannot read ${path}: ${(e as Error).message}`);
   });
