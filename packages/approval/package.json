@@ -1,0 +1,9 @@
+{
+  "name": "@sparkii/approval",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": { "test": "vitest run" },
+  "dependencies": { "@sparkii/connectors": "workspace:*" },
+  "devDependencies": { "typescript": "^5.6.0" }
+}
