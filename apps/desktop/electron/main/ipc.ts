@@ -2,8 +2,9 @@ import { ipcMain, dialog, type BrowserWindow } from 'electron';
 import { ControlServer } from '@sparkii/agent-host';
 import { createBroker, runWorkflow } from './workflow.js';
 import type { Runtime } from './runtime.js';
+import type { Logger } from './logger.js';
 
-export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null) {
+export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, logger: Logger) {
   const broker = createBroker(rt, getWindow);
   const control = new ControlServer({ onProposal: (req) => broker.request(req, 'default') });
   control.start().then(({ url, token }) => {
@@ -73,4 +74,5 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null) 
     }, 'default');
     return { ok: d.approved, proposalId: d.proposalId, status: d.status, result: d.result };
   });
+  ipcMain.handle('sparkii:diagnostics', async () => ({ logs: await logger.export(), audit: await rt.audit.exportJsonl() }));
 }
