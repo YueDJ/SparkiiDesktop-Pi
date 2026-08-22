@@ -1,9 +1,12 @@
 node_modules/
 .pnpm-store/
 dist/
+dist-electron/
 out/
 *.tsbuildinfo
 .env
 .sparkii-data/
 *.key
 *.sig
+apps/desktop/src/types/*.js
+apps/desktop/src/types/*.js.map
