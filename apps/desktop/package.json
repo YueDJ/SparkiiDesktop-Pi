@@ -1,0 +1,27 @@
+{
+  "name": "@sparkii/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "electron/main/index.ts",
+  "scripts": { "test": "vitest run" },
+  "dependencies": {
+    "@sparkii/config": "workspace:*",
+    "@sparkii/model-router": "workspace:*",
+    "@sparkii/identity": "workspace:*",
+    "@sparkii/approval": "workspace:*",
+    "@sparkii/agent-host": "workspace:*",
+    "@sparkii/connectors": "workspace:*",
+    "@sparkii/theme": "workspace:*",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "vite": "^7.0.0",
+    "@vitejs/plugin-react": "^4.6.0",
+    "@testing-library/react": "^16.1.0",
+    "jsdom": "^26.0.0",
+    "typescript": "^5.6.0"
+  }
+}

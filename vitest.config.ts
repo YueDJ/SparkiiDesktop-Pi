@@ -5,5 +5,10 @@ import { defineConfig } from 'vitest/config';
 const root = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-  test: { root, include: ['packages/**/test/**/*.test.ts'], pool: 'forks' },
+  test: {
+    root,
+    include: ['packages/**/test/**/*.test.ts', 'apps/**/test/**/*.test.{ts,tsx}'],
+    environmentMatchGlobs: [['apps/**', 'jsdom']],
+    pool: 'forks',
+  },
 });
