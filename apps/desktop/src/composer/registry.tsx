@@ -11,7 +11,14 @@ export function getByPath(state: Record<string, unknown>, path: string | undefin
 }
 
 function FileUpload(props: WidgetProps) {
-  return <button data-testid={props.id} onClick={() => props.onAction('documents.upload')}>选择合同</button>;
+  const value = getByPath(props.state, props.bind);
+  const files = Array.isArray(value) ? value : value != null ? [value] : [];
+  return (
+    <div>
+      <button data-testid={props.id} onClick={() => props.onAction('documents.upload')}>选择合同</button>
+      {files.map((f, i) => <span key={i} data-testid={`${props.id}-selected`}>{String(f)}</span>)}
+    </div>
+  );
 }
 function ActionButton(props: WidgetProps) {
   return <button data-testid={props.id} onClick={() => props.onAction(props.action ?? '')}>{props.id}</button>;
