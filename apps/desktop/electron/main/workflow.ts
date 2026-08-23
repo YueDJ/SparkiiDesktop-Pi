@@ -3,6 +3,7 @@ import type { BrowserWindow } from 'electron';
 import { LinearRunner, type RunContext, type WorkflowDef } from '@sparkii/agent-host';
 import { documentConnector, knowledgeConnector, reportConnector, type ToolDef } from '@sparkii/connectors';
 import type { ProposalRequest } from '@sparkii/approval';
+import type { ModelTask } from '@sparkii/model-router';
 import type { Runtime } from './runtime.js';
 
 export interface Decision { approved: boolean; proposalId: string; status: string; result?: unknown }
@@ -34,18 +35,45 @@ export function createBroker(rt: Runtime, getWindow: () => BrowserWindow | null)
   };
 }
 
-async function sendPrompt(rt: Runtime, text: string): Promise<string> {
+export async function selectModel(rt: Runtime, task: ModelTask): Promise<void> {
   const client = await rt.supervisor.start();
+  const target = rt.router.resolve(task);
+  if (!target) return;
+  const resp = await client.send({ type: 'set_model', provider: target.provider, modelId: target.modelId });
+  if (!resp.success) throw new Error(`cannot select model ${target.provider}/${target.modelId}: ${resp.error ?? 'unknown'}`);
+}
+
+async function sendPrompt(rt: Runtime, text: string, task: ModelTask = 'default'): Promise<string> {
+  const client = await rt.supervisor.start();
+  await selectModel(rt, task);
+
   let acc = '';
   let off = () => {};
+  let settled = false;
+  let finish!: (err?: Error) => void;
+  let timer!: ReturnType<typeof setTimeout>;
   const done = new Promise<void>((resolve, reject) => {
-    const timeout = setTimeout(() => { off(); reject(new Error('prompt timeout')); }, 300_000);
-    off = client.onEvent((e) => {
-      if (e.type === 'message' && e.role === 'assistant') acc += e.delta ?? e.text ?? '';
-      if (e.type === 'agent_end') { clearTimeout(timeout); off(); resolve(); }
-    });
+    finish = (err) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      off();
+      if (err) reject(err);
+      else resolve();
+    };
+    timer = setTimeout(() => finish(new Error('prompt timeout')), 300_000);
   });
-  await client.send({ type: 'prompt', message: text });
+  off = client.onEvent((e) => {
+    if (e.type === 'message' && e.role === 'assistant') {
+      if (typeof e.delta === 'string') acc += e.delta;
+      else if (typeof e.text === 'string') acc = e.text;
+    }
+    if (e.type === 'agent_end') finish();
+  });
+
+  const resp = await client.send({ type: 'prompt', message: text });
+  if (!resp.success) finish(new Error(resp.error ?? 'prompt failed'));
+
   await done;
   return acc;
 }
@@ -69,7 +97,7 @@ export async function runWorkflow(rt: Runtime, getWindow: () => BrowserWindow | 
   const broker = createBroker(rt, getWindow);
   const ctx: RunContext = {
     profileId: rt.profile.manifest.name, sessionId: 'default', actor: rt.subject?.userId ?? 'agent', input,
-    sendPrompt: (text) => sendPrompt(rt, text),
+    sendPrompt: (text, task) => sendPrompt(rt, text, (task as ModelTask) ?? 'default'),
     runTool: (name, args) => runTool(rt, broker, name, args, 'default'),
     requestApproval: async (req) => {
       const d = await broker.request(req, 'default');

@@ -7,6 +7,9 @@ files:
   - dist-electron/**
   - package.json
 asar: true
+extraResources:
+  - from: ../../profiles
+    to: profiles
 win:
   target:
     - nsis

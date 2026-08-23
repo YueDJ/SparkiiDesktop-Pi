@@ -3,7 +3,7 @@ version: 1.0.0
 modelRouting:
   tasks:
     default:
-      - { provider: local, modelId: qwen2.5:7b }
+      - { provider: deepseek, modelId: deepseek-v4-flash }
     report:
-      - { provider: local, modelId: qwen2.5:14b }
-      - { provider: local, modelId: qwen2.5:7b }
+      - { provider: deepseek, modelId: deepseek-v4-pro }
+      - { provider: deepseek, modelId: deepseek-v4-flash }
