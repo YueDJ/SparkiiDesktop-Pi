@@ -90,9 +90,13 @@ async function runTool(rt: Runtime, broker: ReturnType<typeof createBroker>, too
   return { ok: d.approved, data: d.result };
 }
 
-export async function runWorkflow(rt: Runtime, getWindow: () => BrowserWindow | null, input: Record<string, unknown>): Promise<void> {
+export async function runWorkflow(
+  rt: Runtime,
+  getWindow: () => BrowserWindow | null,
+  input: Record<string, unknown>,
+  broker: ReturnType<typeof createBroker>,
+): Promise<void> {
   const def = rt.profile.agent.workflow as unknown as WorkflowDef;
-  const broker = createBroker(rt, getWindow);
   const ctx: RunContext = {
     profileId: rt.profile.manifest.name, sessionId: 'default', actor: rt.subject?.userId ?? 'agent', input,
     sendPrompt: (text, task) => sendPrompt(rt, text, (task as ModelTask) ?? 'default'),

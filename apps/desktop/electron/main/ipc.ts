@@ -51,7 +51,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     return { ok: true };
   });
   ipcMain.handle('sparkii:runWorkflow', async (_e, _id: string, input: Record<string, unknown>) => {
-    await runWorkflow(rt, getWindow, input);
+    await runWorkflow(rt, getWindow, input, broker);
     return { ok: true };
   });
   ipcMain.handle('sparkii:exportReport', async (_e, input: { title: string; sections: Array<{ heading: string; body: string }> }) => {
