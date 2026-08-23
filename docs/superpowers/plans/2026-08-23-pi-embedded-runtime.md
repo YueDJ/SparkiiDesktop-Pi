@@ -1225,8 +1225,11 @@ export async function createPiSdkSessionHost(
 Edit `packages/agent-host/src/index.ts`:
 
 ```ts
+export { ControlServer } from "./control-server.js";
 export * from "./pi-sdk-runtime.js";
 ```
+
+This changes `control-server.js` from a re-export to a named export so its `ProposalDecision` does not collide with the same type exported by `pi-runtime-transport.js`.
 
 - [ ] **Step 5: Run the agent-host tests**
 
@@ -1242,7 +1245,7 @@ Create `apps/desktop/electron/pi-runtime/transports.ts`:
 
 ```ts
 import { utilityProcess, type UtilityProcess } from "electron";
-import { fork, type ChildProcess } from "node:child_process";
+import { fork, type ChildProcess, type ForkOptions } from "node:child_process";
 import type { PiRuntimeEnvelope, PiRuntimeHostHandle } from "@sparkii/agent-host";
 
 export function createUtilityHostHandle(entryPath: string): PiRuntimeHostHandle {
@@ -1269,7 +1272,7 @@ export function createForkHostHandle(entryPath: string): PiRuntimeHostHandle {
   const child: ChildProcess = fork(entryPath, [], {
     stdio: ["pipe", "pipe", "pipe", "ipc"],
     windowsHide: true,
-  });
+  } as ForkOptions);
   return {
     postMessage: (envelope) => child.send(envelope),
     onMessage: (callback) => {
@@ -1304,7 +1307,8 @@ const childPort = process.parentPort;
 const transport: PiRuntimeChildTransport = {
   postMessage: (envelope: PiRuntimeEnvelope) => childPort.postMessage(envelope),
   onMessage: (callback) => {
-    const listener = (envelope: PiRuntimeEnvelope) => callback(envelope);
+    const listener = (messageEvent: Electron.MessageEvent) =>
+      callback(messageEvent.data as PiRuntimeEnvelope);
     childPort.on("message", listener);
     return () => childPort.removeListener("message", listener);
   },
