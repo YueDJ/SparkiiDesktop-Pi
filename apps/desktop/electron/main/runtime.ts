@@ -8,6 +8,7 @@ import { ApprovalGate, ConnectorExecutor, AuditStore } from "@sparkii/approval";
 import { PiRuntimeSupervisor } from "@sparkii/agent-host";
 import { knowledgeConnector } from "@sparkii/connectors";
 import { createUtilityHostHandle, createForkHostHandle } from "../pi-runtime/transports.js";
+import { registerConnectorHandlers } from "./connector-registry.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -30,6 +31,7 @@ export async function assemble(opts: { profileDir: string; dataDir: string; publ
   const audit = new AuditStore(join(opts.dataDir, "audit.db"));
   const gate = new ApprovalGate({ policy: profile.security.approval, rbac, audit });
   const executor = new ConnectorExecutor(audit);
+  registerConnectorHandlers(executor);
   const identity = new LocalIdentityProvider(join(opts.dataDir, "users.json"));
   if ((await identity.listUsers()).length === 0) {
     await identity.seed({ id: "admin", username: "admin", password: "admin123", roles: ["admin", "reviewer"] });
