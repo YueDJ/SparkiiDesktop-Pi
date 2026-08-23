@@ -407,6 +407,7 @@ class FakeHandle implements PiRuntimeHostHandle {
   postMessage(envelope: PiRuntimeEnvelope) { this.sent.push(envelope); }
   onMessage(cb: (env: PiRuntimeEnvelope) => void) { this.messageCb = cb; return () => { this.messageCb = undefined; }; }
   onExit(cb: (code: number | null) => void) { this.exitCb = cb; return () => { this.exitCb = undefined; }; }
+  emit(envelope: PiRuntimeEnvelope) { this.messageCb?.(envelope); }
   kill() { this.killed = true; this.exitCb?.(1); }
 }
 
@@ -421,7 +422,7 @@ describe("PiRuntimeSupervisor", () => {
     const sent = handle.sent[0];
     expect(sent).toMatchObject({ direction: "main-to-runtime", command: { type: "abort" } });
     const id = "id" in sent ? sent.id : "";
-    handle.onMessage(responseEnvelope(id, { id, type: "response", command: "abort", success: true }));
+    handle.emit(responseEnvelope(id, { id, type: "response", command: "abort", success: true }));
     await expect(p).resolves.toMatchObject({ success: true });
   });
 
@@ -433,17 +434,33 @@ describe("PiRuntimeSupervisor", () => {
     sup.onProposal(onProposal);
     const client = await sup.start();
     client.onEvent(onEvent);
-    handle.onMessage(eventEnvelope({ type: "agent_start" }));
+    handle.emit(eventEnvelope({ type: "agent_start" }));
     expect(onEvent).toHaveBeenCalledWith({ type: "agent_start" });
 
     const proposal = {
       requestId: "p1", toolName: "report.export", targetSystem: "report",
       summary: "export", payload: { path: "a.docx" }, risk: "write" as const,
     };
-    handle.onMessage(proposalEnvelope(proposal));
+    handle.emit(proposalEnvelope(proposal));
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(onProposal).toHaveBeenCalledWith(proposal);
     expect(handle.sent).toContainEqual(proposalDecisionEnvelope("p1", { approved: false, proposalId: "p1", status: "denied" }));
+  });
+
+  it("denies a proposal when the approval handler rejects", async () => {
+    const handle = new FakeHandle();
+    const sup = new PiRuntimeSupervisor(() => handle);
+    sup.onProposal(async () => { throw new Error("broker failed"); });
+    const client = await sup.start();
+    handle.emit(proposalEnvelope({
+      requestId: "p2", toolName: "report.export", targetSystem: "report",
+      summary: "export", payload: { path: "a.docx" }, risk: "write",
+    }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(handle.sent).toContainEqual(proposalDecisionEnvelope("p2", {
+      approved: false, proposalId: "p2", status: "denied",
+    }));
+    expect(client).toBeTruthy();
   });
 
   it("clears the client and reports exit", async () => {
@@ -532,8 +549,16 @@ class PiRuntimeClientImpl implements PiRuntimeClient {
       return;
     }
     if ("proposal" in envelope) {
-      const decision = await this.onProposal(envelope.proposal);
-      this.handle.postMessage(proposalDecisionEnvelope(envelope.proposal.requestId, decision));
+      try {
+        const decision = await this.onProposal(envelope.proposal);
+        this.handle.postMessage(proposalDecisionEnvelope(envelope.proposal.requestId, decision));
+      } catch {
+        this.handle.postMessage(proposalDecisionEnvelope(envelope.proposal.requestId, {
+          approved: false,
+          proposalId: envelope.proposal.requestId,
+          status: "denied",
+        }));
+      }
     }
   }
 }
