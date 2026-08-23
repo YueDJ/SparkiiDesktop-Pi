@@ -35,5 +35,6 @@ test('contract review pilot acceptance', async () => {
   await expect(page.getByRole('dialog')).toBeVisible({ timeout: 120000 });
   await page.getByRole('button', { name: '批准' }).click();
   await expect(page.getByText(/proposal.approved/)).toBeVisible();
+  await expect(page.getByText('审核完成')).toBeVisible({ timeout: 120000 });
   await app.close();
 });
