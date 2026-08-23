@@ -23,6 +23,10 @@ export function normalizeEvent(raw: any): NormalizedEvent {
     case 'agent_end': return { type: 'agent_end' };
     case 'compaction_start': return { type: 'compaction_start' };
     case 'compaction_end': return { type: 'compaction_end' };
+    case "tool_execution_start":
+      return { type: "tool_call", toolName: raw.toolName, input: raw.input ?? raw.params };
+    case "tool_execution_end":
+      return { type: "tool_result", toolName: raw.toolName, result: raw.result ?? raw.details };
     default: return { type: 'unknown', raw };
   }
 }

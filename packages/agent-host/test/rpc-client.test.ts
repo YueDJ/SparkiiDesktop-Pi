@@ -10,6 +10,12 @@ describe('normalizeEvent', () => {
   it('keeps unknown events as unknown', () => {
     expect(normalizeEvent({ type: 'future_thing', x: 1 }).type).toBe('unknown');
   });
+  it("maps SDK tool execution events", () => {
+    expect(normalizeEvent({ type: "tool_execution_start", toolName: "read", params: { path: "a.md" } }))
+      .toEqual({ type: "tool_call", toolName: "read", input: { path: "a.md" } });
+    expect(normalizeEvent({ type: "tool_execution_end", toolName: "read", details: { ok: true } }))
+      .toEqual({ type: "tool_result", toolName: "read", result: { ok: true } });
+  });
 });
 
 describe('PiRpcClient', () => {
