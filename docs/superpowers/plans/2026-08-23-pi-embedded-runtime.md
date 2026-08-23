@@ -1477,9 +1477,10 @@ git commit -m "refactor(desktop): use managed Pi runtime instead of external pi 
 
 - [ ] **Step 1: Add build targets**
 
-Edit `apps/desktop/package.json` and replace the `build:main` script with:
+Edit `apps/desktop/package.json` and replace the `build:main` script, and add a `prebuild:main` script that removes the previous `dist-electron` tree so stale `tsc` output is never packaged:
 
 ```json
+"prebuild:main": "node -e \"const fs=require('fs');fs.rmSync('dist-electron',{recursive:true,force:true})\"",
 "build:main": "esbuild electron/main/index.ts --bundle --platform=node --format=esm --external:electron --external:better-sqlite3 --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" --outfile=dist-electron/main/index.js && esbuild electron/preload/index.ts --bundle --platform=node --format=cjs --external:electron --outfile=dist-electron/preload/index.cjs && esbuild electron/pi-runtime/utility-entry.ts --bundle --platform=node --format=esm --external:electron --outfile=dist-electron/pi-runtime/utility-entry.js && esbuild electron/pi-runtime/fork-entry.ts --bundle --platform=node --format=esm --external:electron --outfile=dist-electron/pi-runtime/fork-entry.js"
 ```
 
