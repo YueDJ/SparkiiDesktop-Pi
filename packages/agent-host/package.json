@@ -6,7 +6,8 @@
   "scripts": { "test": "vitest run" },
   "dependencies": {
     "@sparkii/approval": "workspace:*",
-    "@sparkii/connectors": "workspace:*"
+    "@sparkii/connectors": "workspace:*",
+    "@earendil-works/pi-coding-agent": "^0.80.0"
   },
   "devDependencies": {
     "@sparkii/config": "workspace:*",

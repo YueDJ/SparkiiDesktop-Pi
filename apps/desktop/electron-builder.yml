@@ -5,6 +5,7 @@ directories:
 files:
   - dist/**
   - dist-electron/**
+  - dist-electron/pi-runtime/**
   - package.json
 asar: true
 extraResources:
