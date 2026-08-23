@@ -36,8 +36,8 @@ Create:
 - `packages/agent-host/test/pi-runtime-tools.test.ts`
 - `packages/agent-host/test/fixtures/pi-runtime-test-child.mjs`
 - `packages/agent-host/scripts/pi-sdk-smoke.mjs`
+- `packages/agent-host/scripts/pi-utility-spike-child.mjs`
 - `apps/desktop/scripts/pi-utility-spike-main.mjs`
-- `apps/desktop/scripts/pi-utility-spike-child.mjs`
 - `apps/desktop/electron/pi-runtime/transports.ts`
 - `apps/desktop/electron/pi-runtime/utility-entry.ts`
 - `apps/desktop/electron/pi-runtime/fork-entry.ts`
@@ -132,7 +132,7 @@ This is a throwaway spike. Its only output is a go/no-go for the primary `utilit
 
 **Files:**
 - Create: `apps/desktop/scripts/pi-utility-spike-main.mjs`
-- Create: `apps/desktop/scripts/pi-utility-spike-child.mjs`
+- Create: `packages/agent-host/scripts/pi-utility-spike-child.mjs`
 
 **Interfaces:**
 - Consumes: Pi SDK dependency from Task 1.
@@ -151,7 +151,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 
 app.whenReady().then(() => {
   const child = utilityProcess.fork(
-    join(here, "pi-utility-spike-child.mjs"),
+    join(here, "../../../packages/agent-host/scripts/pi-utility-spike-child.mjs"),
     [],
     { serviceName: "sparkii-pi-runtime-spike" },
   );
@@ -173,7 +173,7 @@ app.whenReady().then(() => {
 
 - [ ] **Step 2: Write the child spike**
 
-Create `apps/desktop/scripts/pi-utility-spike-child.mjs`:
+Create `packages/agent-host/scripts/pi-utility-spike-child.mjs`:
 
 ```js
 import {
@@ -195,7 +195,7 @@ process.parentPort.on("message", () => {
 - [ ] **Step 3: Run the spike**
 
 ```powershell
-pnpm --filter @sparkii/desktop exec electron apps/desktop/scripts/pi-utility-spike-main.mjs
+pnpm --filter @sparkii/desktop exec electron scripts/pi-utility-spike-main.mjs
 ```
 
 Expected:
@@ -211,7 +211,7 @@ If `SPIKE_PONG` does not print, stop this plan and use the `child_process.fork` 
 
 ```powershell
 Remove-Item -LiteralPath "apps/desktop/scripts/pi-utility-spike-main.mjs"
-Remove-Item -LiteralPath "apps/desktop/scripts/pi-utility-spike-child.mjs"
+Remove-Item -LiteralPath "packages/agent-host/scripts/pi-utility-spike-child.mjs"
 ```
 
 ## Task 3: Define the transport envelope contract
@@ -1023,12 +1023,29 @@ git commit -m "feat(agent-host): add proposal-safe Pi runtime tool builder"
 - Create: `apps/desktop/electron/pi-runtime/transports.ts`
 - Create: `apps/desktop/electron/pi-runtime/utility-entry.ts`
 - Create: `apps/desktop/electron/pi-runtime/fork-entry.ts`
+- Modify: `apps/desktop/package.json`
 
 **Interfaces:**
 - Consumes: `PiRuntimeHostHandle`, `PiRuntimeEnvelope`, `PiRuntimeChildTransport`, `buildPiRuntimeTools`, `createPiRuntime`, `PiRuntimeSession`, `PiRuntimeSessionHost` from Tasks 3, 5, and 6.
 - Produces: `createUtilityHostHandle(entryPath)`, `createForkHostHandle(entryPath)`, `utility-entry`, `fork-entry`.
 
-- [ ] **Step 1: Write the transport handle factory**
+- [ ] **Step 1: Add the Pi SDK as a desktop dependency**
+
+Edit `apps/desktop/package.json` so `dependencies` also contains:
+
+```json
+"@earendil-works/pi-coding-agent": "^0.80.0"
+```
+
+Run:
+
+```powershell
+pnpm install --dangerously-allow-all-builds
+```
+
+This is required because the desktop runtime entry imports the SDK directly, and esbuild must resolve it from `apps/desktop`.
+
+- [ ] **Step 2: Write the transport handle factory**
 
 Create `apps/desktop/electron/pi-runtime/transports.ts`:
 
@@ -1079,7 +1096,7 @@ export function createForkHostHandle(entryPath: string): PiRuntimeHostHandle {
 }
 ```
 
-- [ ] **Step 2: Write the utility process entry**
+- [ ] **Step 3: Write the utility process entry**
 
 Create `apps/desktop/electron/pi-runtime/utility-entry.ts`:
 
@@ -1218,7 +1235,7 @@ const host: PiRuntimeSessionHost = {
 createPiRuntime({ host, transport });
 ```
 
-- [ ] **Step 3: Write the fork fallback entry**
+- [ ] **Step 4: Write the fork fallback entry**
 
 Create `apps/desktop/electron/pi-runtime/fork-entry.ts` with the same runtime setup as `utility-entry.ts`, except replace the `childPort` transport with:
 
@@ -1235,7 +1252,7 @@ const transport: PiRuntimeChildTransport = {
 
 Extract the shared setup into `setupPiRuntime(transport)` inside `utility-entry.ts`, export it, and import it from `fork-entry.ts` to avoid duplication.
 
-- [ ] **Step 4: Type-check the desktop main build**
+- [ ] **Step 5: Type-check the desktop main build**
 
 ```powershell
 pnpm --filter @sparkii/desktop run build:main:check
@@ -1243,7 +1260,7 @@ pnpm --filter @sparkii/desktop run build:main:check
 
 Expected: no type errors. If `process.parentPort` or `utilityProcess` types are missing, add the missing Electron type references or a small local declaration, then rerun.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```powershell
 git add apps/desktop/electron/pi-runtime
