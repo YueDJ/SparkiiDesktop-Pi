@@ -4,6 +4,7 @@ import { validatePageSchema } from './composer/validate.js';
 import { ChatWorkbench } from './workbench/ChatWorkbench.js';
 import { ApprovalDialog } from './approval/ApprovalDialog.js';
 import { AuditView } from './audit/AuditView.js';
+import { WorkflowStatus, type WorkflowStatusState } from './workbench/WorkflowStatus.js';
 
 export function App() {
   const api = window.sparkii;
@@ -14,9 +15,15 @@ export function App() {
   const [state, setState] = useState<Record<string, unknown>>({ documents: [] });
   const [pending, setPending] = useState<any[]>([]);
   const [auditVersion, setAuditVersion] = useState(0);
+  const [workflow, setWorkflow] = useState<WorkflowStatusState>({ status: 'idle' });
 
   useEffect(() => api.on('state', (s) => setState(s as Record<string, unknown>)), [api]);
   useEffect(() => api.on('approval', (p) => setPending((xs) => [...xs, p])), [api]);
+  useEffect(() => api.on('workflow', (e: any) => {
+    if (e.type === 'step_started') setWorkflow({ status: 'running', step: e.stepId });
+    else if (e.type === 'workflow_completed') setWorkflow({ status: 'done' });
+    else if (e.type === 'workflow_failed') setWorkflow({ status: 'failed', error: e.error?.message });
+  }), [api]);
 
   const refreshApprovals = () => api.listPendingApprovals().then((xs) => setPending(xs as any[]));
 
@@ -32,7 +39,10 @@ export function App() {
       const { path } = await api.chooseDocument();
       if (path) setState((s) => ({ ...s, documents: [path] }));
     }
-    if (action === 'run-workflow:contract-review') api.runWorkflow('contract-review', { documents: state.documents });
+    if (action === 'run-workflow:contract-review') {
+      setWorkflow({ status: 'running' });
+      api.runWorkflow('contract-review', { documents: state.documents });
+    }
     if (action === 'export-report') {
       const body = ((state.workflow as any)?.result?.report) ?? '';
       api.exportReport({ title: '审核报告', sections: [{ heading: '报告', body: String(body) }] });
@@ -52,6 +62,7 @@ export function App() {
   const page = profile?.pages?.['home'];
   return (
     <div>
+      <WorkflowStatus state={workflow} />
       {page && validatePageSchema(page).ok ? <PageComposer schema={page} state={state} onAction={onAction} /> : null}
       <ChatWorkbench api={api} />
       {pending.map((p) => (
