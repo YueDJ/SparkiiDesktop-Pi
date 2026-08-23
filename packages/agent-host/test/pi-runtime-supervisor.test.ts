@@ -61,6 +61,22 @@ describe("PiRuntimeSupervisor", () => {
     expect(handle.sent).toContainEqual(proposalDecisionEnvelope("p1", { approved: false, proposalId: "p1", status: "denied" }));
   });
 
+  it("denies a proposal when the approval handler rejects", async () => {
+    const handle = new FakeHandle();
+    const sup = new PiRuntimeSupervisor(() => handle);
+    sup.onProposal(async () => { throw new Error("broker failed"); });
+    const client = await sup.start();
+    handle.emit(proposalEnvelope({
+      requestId: "p2", toolName: "report.export", targetSystem: "report",
+      summary: "export", payload: { path: "a.docx" }, risk: "write",
+    }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(handle.sent).toContainEqual(proposalDecisionEnvelope("p2", {
+      approved: false, proposalId: "p2", status: "denied",
+    }));
+    expect(client).toBeTruthy();
+  });
+
   it("clears the client and reports exit", async () => {
     const handle = new FakeHandle();
     const sup = new PiRuntimeSupervisor(() => handle);

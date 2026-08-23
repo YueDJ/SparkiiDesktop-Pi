@@ -58,8 +58,16 @@ class PiRuntimeClientImpl implements PiRuntimeClient {
       return;
     }
     if ("proposal" in envelope) {
-      const decision = await this.onProposal(envelope.proposal);
-      this.handle.postMessage(proposalDecisionEnvelope(envelope.proposal.requestId, decision));
+      try {
+        const decision = await this.onProposal(envelope.proposal);
+        this.handle.postMessage(proposalDecisionEnvelope(envelope.proposal.requestId, decision));
+      } catch {
+        this.handle.postMessage(proposalDecisionEnvelope(envelope.proposal.requestId, {
+          approved: false,
+          proposalId: envelope.proposal.requestId,
+          status: "denied",
+        }));
+      }
     }
   }
 }
