@@ -34,6 +34,7 @@ Create:
 - `packages/agent-host/test/pi-runtime-supervisor.test.ts`
 - `packages/agent-host/test/pi-runtime.test.ts`
 - `packages/agent-host/test/pi-runtime-tools.test.ts`
+- `packages/agent-host/test/fixtures/pi-runtime-test-child.mjs`
 - `packages/agent-host/scripts/pi-sdk-smoke.mjs`
 - `apps/desktop/scripts/pi-utility-spike-main.mjs`
 - `apps/desktop/scripts/pi-utility-spike-child.mjs`
@@ -1415,7 +1416,137 @@ git add apps/desktop/package.json apps/desktop/electron-builder.yml
 git commit -m "build(desktop): bundle Pi runtime entry and SDK into installer"
 ```
 
-## Task 10: Full verification and clean-environment acceptance
+## Task 10: Remove obsolete external-Pi runtime code
+
+**Files:**
+- Delete: `packages/agent-host/src/process.ts`
+- Delete: `packages/agent-host/src/control-server.ts`
+- Delete: `packages/agent-host/src/bridge/extension.ts`
+- Delete: `packages/agent-host/test/process.test.ts`
+- Delete: `packages/agent-host/test/control-server.test.ts`
+- Replace: `packages/agent-host/test/pi.integration.test.ts`
+- Modify: `packages/agent-host/src/index.ts`
+
+**Interfaces:**
+- Consumes: new supervisor/client from Task 4 and envelope contract from Task 3.
+- Produces: a public `@sparkii/agent-host` surface with no external Pi process or HTTP control server.
+
+- [ ] **Step 1: Delete obsolete source and tests**
+
+```powershell
+Remove-Item -LiteralPath "packages/agent-host/src/process.ts"
+Remove-Item -LiteralPath "packages/agent-host/src/control-server.ts"
+Remove-Item -LiteralPath "packages/agent-host/src/bridge/extension.ts"
+Remove-Item -LiteralPath "packages/agent-host/test/process.test.ts"
+Remove-Item -LiteralPath "packages/agent-host/test/control-server.test.ts"
+```
+
+- [ ] **Step 2: Replace the old Pi integration test**
+
+Create `packages/agent-host/test/fixtures/pi-runtime-test-child.mjs`:
+
+```js
+process.on("message", (env) => {
+  if (env && env.direction === "main-to-runtime") {
+    process.send({
+      direction: "runtime-to-main",
+      id: env.id,
+      response: {
+        id: env.id,
+        type: "response",
+        command: env.command.type,
+        success: true,
+      },
+    });
+    process.send({
+      direction: "runtime-to-main",
+      event: { type: "agent_start" },
+    });
+  }
+});
+process.stdin.resume();
+```
+
+Overwrite `packages/agent-host/test/pi.integration.test.ts` with:
+
+```ts
+import { fork, type ChildProcess } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { describe, it, expect } from "vitest";
+import { PiRuntimeSupervisor } from "../src/pi-runtime-supervisor.js";
+import {
+  type PiRuntimeEnvelope,
+  type PiRuntimeHostHandle,
+} from "../src/pi-runtime-transport.js";
+
+const childPath = fileURLToPath(new URL("./fixtures/pi-runtime-test-child.mjs", import.meta.url));
+
+function forkHandle(): PiRuntimeHostHandle {
+  const child: ChildProcess = fork(childPath, [], {
+    stdio: ["pipe", "pipe", "pipe", "ipc"],
+  });
+  return {
+    postMessage: (envelope) => child.send(envelope),
+    onMessage: (callback) => {
+      const listener = (envelope: PiRuntimeEnvelope) => callback(envelope);
+      child.on("message", listener);
+      return () => child.removeListener("message", listener);
+    },
+    onExit: (callback) => {
+      const listener = (code: number | null) => callback(code);
+      child.on("exit", listener);
+      return () => child.removeListener("exit", listener);
+    },
+    kill: () => child.kill(),
+  };
+}
+
+describe("PiRuntimeSupervisor integration", () => {
+  it("round-trips commands and events through a real child process", async () => {
+    const supervisor = new PiRuntimeSupervisor(forkHandle);
+    const client = await supervisor.start();
+    const events: unknown[] = [];
+    client.onEvent((event) => events.push(event));
+    const response = await client.send({ type: "abort" });
+    expect(response.success).toBe(true);
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    expect(events).toContainEqual({ type: "agent_start" });
+    await supervisor.stop();
+  });
+});
+```
+
+- [ ] **Step 3: Trim public exports**
+
+Overwrite `packages/agent-host/src/index.ts` with:
+
+```ts
+export * from "./rpc-client.js";
+export * from "./pi-runtime-transport.js";
+export * from "./pi-runtime-supervisor.js";
+export * from "./pi-runtime.js";
+export * from "./pi-runtime-tools.js";
+export * from "./bridge/typebox.js";
+export * from "./workflow/types.js";
+export * from "./workflow/linear.js";
+```
+
+- [ ] **Step 4: Run the agent-host suite**
+
+```powershell
+pnpm vitest run packages/agent-host/test
+```
+
+Expected: all tests pass, including the replacement integration test.
+
+- [ ] **Step 5: Commit**
+
+```powershell
+git add -A packages/agent-host
+git commit -m "refactor(agent-host): remove obsolete external Pi process and control server"
+```
+
+## Task 11: Full verification and clean-environment acceptance
 
 **Files:**
 - Modify: `apps/desktop/test/preload-api.test.ts` if any new public API shape requires it.
