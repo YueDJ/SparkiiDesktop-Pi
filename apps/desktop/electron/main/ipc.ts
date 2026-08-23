@@ -1,16 +1,11 @@
 import { ipcMain, dialog, type BrowserWindow } from 'electron';
-import { ControlServer } from '@sparkii/agent-host';
 import { createBroker, runWorkflow, selectModel } from './workflow.js';
 import type { Runtime } from './runtime.js';
 import type { Logger } from './logger.js';
 
 export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, logger: Logger) {
   const broker = createBroker(rt, getWindow);
-  const control = new ControlServer({ onProposal: (req) => broker.request(req, 'default') });
-  control.start().then(({ url, token }) => {
-    process.env.SPARKII_CONTROL_URL = url;
-    process.env.SPARKII_CONTROL_TOKEN = token;
-  });
+  rt.supervisor.onProposal((request) => broker.request(request, "default"));
 
   ipcMain.handle('sparkii:login', async (_e, username: string, password: string) => {
     rt.subject = await rt.identity.authenticate(username, password);

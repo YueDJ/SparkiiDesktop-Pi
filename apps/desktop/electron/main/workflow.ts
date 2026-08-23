@@ -1,24 +1,22 @@
 import { randomUUID } from 'node:crypto';
 import type { BrowserWindow } from 'electron';
-import { LinearRunner, type RunContext, type WorkflowDef } from '@sparkii/agent-host';
+import { LinearRunner, type ProposalDecision, type RunContext, type WorkflowDef } from '@sparkii/agent-host';
 import { documentConnector, knowledgeConnector, reportConnector, type ToolDef } from '@sparkii/connectors';
 import type { ProposalRequest } from '@sparkii/approval';
 import type { ModelTask } from '@sparkii/model-router';
 import type { Runtime } from './runtime.js';
-
-export interface Decision { approved: boolean; proposalId: string; status: string; result?: unknown }
 
 const allTools = new Map<string, ToolDef>(
   [documentConnector, knowledgeConnector, reportConnector].flatMap((c) => c.tools.map((t) => [t.name, t] as const)),
 );
 
 export function createBroker(rt: Runtime, getWindow: () => BrowserWindow | null) {
-  const resolvers = new Map<string, { resolve: (d: Decision) => void; timer: ReturnType<typeof setTimeout> }>();
+  const resolvers = new Map<string, { resolve: (d: ProposalDecision) => void; timer: ReturnType<typeof setTimeout> }>();
   return {
-    async request(req: ProposalRequest, sessionId: string): Promise<Decision> {
+    async request(req: ProposalRequest, sessionId: string): Promise<ProposalDecision> {
       const p = await rt.gate.submit(req, { profileId: rt.profile.manifest.name, sessionId, actor: rt.subject?.userId ?? 'agent' });
       getWindow()?.webContents.send('sparkii:event:approval', p);
-      return new Promise<Decision>((resolve) => {
+      return new Promise<ProposalDecision>((resolve) => {
         const timer = setTimeout(() => {
           rt.gate.expire(p.id).then((expired) => {
             resolve({ approved: false, proposalId: p.id, status: expired?.status ?? 'expired' });
@@ -28,7 +26,7 @@ export function createBroker(rt: Runtime, getWindow: () => BrowserWindow | null)
         resolvers.set(p.id, { resolve, timer });
       });
     },
-    decide(id: string, decision: Omit<Decision, 'proposalId'>) {
+    decide(id: string, decision: Omit<ProposalDecision, 'proposalId'>) {
       const entry = resolvers.get(id);
       if (entry) { clearTimeout(entry.timer); entry.resolve({ ...decision, proposalId: id }); resolvers.delete(id); }
     },
