@@ -108,13 +108,19 @@
   - 将现有 `RpcCommand` 映射为 SDK 调用。
   - 处理 `prompt`、`steer`、`follow_up`、`abort`、`new_session`、`get_state`、`get_messages`、`set_model`、`set_auto_retry`、`set_auto_compaction`、`switch_session`。
 
+- `packages/agent-host/src/pi-sdk-runtime.ts`
+  - 导出 `createPiSdkSessionHost(options)`。
+  - 作为唯一直接 import `@earendil-works/pi-coding-agent` 的产品模块。
+  - 负责 `ModelRuntime`、`createAgentSessionRuntime`、`defineTool`、工具注入和 `PiRuntimeSessionHost` 适配。
+  - Desktop 入口不 import Pi SDK，只调用本模块。
+
 - `apps/desktop/electron/pi-runtime/utility-entry.ts`
-  - 创建 utilityProcess `parentPort` transport，并调用 `createPiRuntime(transport)`。
+  - 创建 utilityProcess `parentPort` transport，调用 `createPiSdkSessionHost` 和 `createPiRuntime`，不含 Pi SDK 细节。
 
 - `apps/desktop/electron/pi-runtime/fork-entry.ts`
-  - 创建 fork IPC transport，并调用 `createPiRuntime(transport)`；仅在回退路径启用。
+  - 创建 fork IPC transport，复用同一套高层启动逻辑；仅在回退路径启用。
 
-这两个入口只是 transport bootstrap，不应包含 Agent 业务逻辑。
+这两个入口只是 Electron transport bootstrap，不应包含 Pi SDK 或 Agent 业务逻辑。
 
 ## 8. 通信协议与 transport 抽象
 

@@ -4,7 +4,7 @@
 
 **Goal:** Replace the external `pi --mode rpc` child process with a bundled, Electron-managed, windowless Pi Runtime child that uses the Pi SDK.
 
-**Architecture:** Electron Main owns a `PiRuntimeSupervisor` that forks a `pi-runtime` entry via `utilityProcess` (fallback: hidden `child_process.fork`). The child imports `@earendil-works/pi-coding-agent`, creates an agent runtime, and exchanges structured envelopes with Main. Main keeps approval/audit/executor, and the Pi child only proposes writes.
+**Architecture:** Electron Main owns a `PiRuntimeSupervisor` that forks a `pi-runtime` entry via `utilityProcess` (fallback: hidden `child_process.fork`). `@sparkii/agent-host` owns all Pi SDK knowledge and exposes a high-level `createPiSdkSessionHost`; the thin desktop entry only wires Electron transport and calls that factory. Main keeps approval/audit/executor, and the Pi child only proposes writes.
 
 **Tech Stack:** Electron 43, Node >= 22, TypeScript, pnpm workspace, `@earendil-works/pi-coding-agent`, esbuild, Vitest, Playwright.
 
@@ -30,10 +30,12 @@ Create:
 - `packages/agent-host/src/pi-runtime-supervisor.ts`
 - `packages/agent-host/src/pi-runtime.ts`
 - `packages/agent-host/src/pi-runtime-tools.ts`
+- `packages/agent-host/src/pi-sdk-runtime.ts`
 - `packages/agent-host/test/pi-runtime-transport.test.ts`
 - `packages/agent-host/test/pi-runtime-supervisor.test.ts`
 - `packages/agent-host/test/pi-runtime.test.ts`
 - `packages/agent-host/test/pi-runtime-tools.test.ts`
+- `packages/agent-host/test/pi-sdk-runtime.test.ts`
 - `packages/agent-host/test/fixtures/pi-runtime-test-child.mjs`
 - `packages/agent-host/scripts/pi-sdk-smoke.mjs`
 - `packages/agent-host/scripts/pi-utility-spike-child.mjs`
@@ -1017,35 +1019,199 @@ git add packages/agent-host/src/pi-runtime-tools.ts packages/agent-host/test/pi-
 git commit -m "feat(agent-host): add proposal-safe Pi runtime tool builder"
 ```
 
-## Task 7: Add Electron transport handles and runtime entries
+## Task 7: Add Pi SDK host adapter, Electron transport handles, and runtime entries
 
 **Files:**
+- Create: `packages/agent-host/src/pi-sdk-runtime.ts`
+- Create: `packages/agent-host/test/pi-sdk-runtime.test.ts`
 - Create: `apps/desktop/electron/pi-runtime/transports.ts`
 - Create: `apps/desktop/electron/pi-runtime/utility-entry.ts`
 - Create: `apps/desktop/electron/pi-runtime/fork-entry.ts`
-- Modify: `apps/desktop/package.json`
+- Modify: `packages/agent-host/src/index.ts`
 
 **Interfaces:**
 - Consumes: `PiRuntimeHostHandle`, `PiRuntimeEnvelope`, `PiRuntimeChildTransport`, `buildPiRuntimeTools`, `createPiRuntime`, `PiRuntimeSession`, `PiRuntimeSessionHost` from Tasks 3, 5, and 6.
-- Produces: `createUtilityHostHandle(entryPath)`, `createForkHostHandle(entryPath)`, `utility-entry`, `fork-entry`.
+- Produces: `createPiSdkSessionHost(options)`, `createUtilityHostHandle(entryPath)`, `createForkHostHandle(entryPath)`, `utility-entry`, `fork-entry`.
 
-- [ ] **Step 1: Add the Pi SDK as a desktop dependency**
+- [ ] **Step 1: Write the failing SDK host adapter test**
 
-Edit `apps/desktop/package.json` so `dependencies` also contains:
+Create `packages/agent-host/test/pi-sdk-runtime.test.ts`:
 
-```json
-"@earendil-works/pi-coding-agent": "^0.80.0"
+```ts
+import { describe, it, expect } from "vitest";
+import { createPiSdkSessionHost } from "../src/pi-sdk-runtime.js";
+
+describe("pi-sdk-runtime", () => {
+  it("exports the SDK host factory", () => {
+    expect(typeof createPiSdkSessionHost).toBe("function");
+  });
+});
 ```
 
-Run:
+- [ ] **Step 2: Run the test and confirm it fails**
 
 ```powershell
-pnpm install --dangerously-allow-all-builds
+pnpm vitest run packages/agent-host/test/pi-sdk-runtime.test.ts
 ```
 
-This is required because the desktop runtime entry imports the SDK directly, and esbuild must resolve it from `apps/desktop`.
+Expected: FAIL, module not found.
 
-- [ ] **Step 2: Write the transport handle factory**
+- [ ] **Step 3: Implement the SDK host adapter**
+
+Create `packages/agent-host/src/pi-sdk-runtime.ts`:
+
+```ts
+import {
+  createAgentSessionFromServices,
+  createAgentSessionRuntime,
+  createAgentSessionServices,
+  defineTool,
+  getAgentDir,
+  ModelRuntime,
+  SessionManager,
+  type CreateAgentSessionRuntimeFactory,
+} from "@earendil-works/pi-coding-agent";
+import {
+  documentConnector,
+  knowledgeConnector,
+  reportConnector,
+  type ToolDef,
+} from "@sparkii/connectors";
+import { buildPiRuntimeTools } from "./pi-runtime-tools.js";
+import {
+  proposalEnvelope,
+  type ProposalDecision,
+} from "./pi-runtime-transport.js";
+import type {
+  PiRuntimeChildTransport,
+  PiRuntimeSession,
+  PiRuntimeSessionHost,
+} from "./pi-runtime.js";
+
+export interface PiSdkRuntimeOptions {
+  transport: PiRuntimeChildTransport;
+  tools?: ToolDef[];
+  cwd?: string;
+}
+
+export async function createPiSdkSessionHost(
+  options: PiSdkRuntimeOptions,
+): Promise<PiRuntimeSessionHost> {
+  const pendingProposals = new Map<
+    string,
+    { resolve: (decision: ProposalDecision) => void; reject: (error: Error) => void }
+  >();
+
+  options.transport.onMessage((envelope) => {
+    if ("proposalDecision" in envelope) {
+      const pending = pendingProposals.get(envelope.requestId);
+      if (!pending) return;
+      pendingProposals.delete(envelope.requestId);
+      pending.resolve(envelope.proposalDecision);
+    }
+  });
+
+  const tools =
+    options.tools ??
+    [
+      ...documentConnector.tools,
+      ...knowledgeConnector.tools,
+      ...reportConnector.tools,
+    ];
+
+  const piTools = buildPiRuntimeTools({
+    tools,
+    propose: async (request) =>
+      new Promise<ProposalDecision>((resolve, reject) => {
+        pendingProposals.set(request.requestId, { resolve, reject });
+        options.transport.postMessage(proposalEnvelope(request));
+      }),
+  }).map((tool) => defineTool(tool as any));
+
+  const cwd = options.cwd ?? process.env.SPARKII_PI_CWD ?? process.cwd();
+  const modelRuntime = await ModelRuntime.create();
+
+  const createRuntime: CreateAgentSessionRuntimeFactory = async ({
+    cwd: effectiveCwd,
+    sessionManager,
+    sessionStartEvent,
+  }) => {
+    const services = await createAgentSessionServices({ cwd: effectiveCwd });
+    const result = await createAgentSessionFromServices({
+      services,
+      sessionManager,
+      sessionStartEvent,
+    });
+    return {
+      ...result,
+      services,
+      diagnostics: services.diagnostics,
+    };
+  };
+
+  const runtime = await createAgentSessionRuntime(createRuntime, {
+    cwd,
+    agentDir: getAgentDir(),
+    sessionManager: SessionManager.create(cwd),
+  });
+
+  function adaptSession(): PiRuntimeSession {
+    const session: any = runtime.session;
+    session.agent.state.tools = piTools;
+    return {
+      prompt: (text, promptOptions) => session.prompt(text, promptOptions),
+      steer: (text) => session.steer(text),
+      followUp: (text) => session.followUp(text),
+      abort: () => session.abort(),
+      setModel: async (provider, modelId) => {
+        const model = modelRuntime.getModel(provider, modelId);
+        if (!model) throw new Error(`unknown model ${provider}/${modelId}`);
+        await session.setModel(model);
+      },
+      setAutoRetry: async () => {},
+      setAutoCompaction: async () => {},
+      subscribe: (callback) => session.subscribe(callback),
+      getMessages: () => session.messages,
+      getState: () => ({
+        streaming: session.isStreaming,
+        sessionId: session.sessionId,
+        sessionFile: session.sessionFile,
+      }),
+      dispose: () => session.dispose(),
+    };
+  }
+
+  return {
+    current: () => adaptSession(),
+    newSession: async () => {
+      await runtime.newSession();
+      adaptSession();
+    },
+    switchSession: async (sessionPath: string) => {
+      await runtime.switchSession(sessionPath);
+      adaptSession();
+    },
+  };
+}
+```
+
+- [ ] **Step 4: Export the SDK host adapter**
+
+Edit `packages/agent-host/src/index.ts`:
+
+```ts
+export * from "./pi-sdk-runtime.js";
+```
+
+- [ ] **Step 5: Run the agent-host tests**
+
+```powershell
+pnpm vitest run packages/agent-host/test
+```
+
+Expected: all agent-host tests pass.
+
+- [ ] **Step 6: Write the transport handle factory**
 
 Create `apps/desktop/electron/pi-runtime/transports.ts`:
 
@@ -1096,37 +1262,17 @@ export function createForkHostHandle(entryPath: string): PiRuntimeHostHandle {
 }
 ```
 
-- [ ] **Step 3: Write the utility process entry**
+- [ ] **Step 7: Write the utility process entry**
 
 Create `apps/desktop/electron/pi-runtime/utility-entry.ts`:
 
 ```ts
 import {
-  createAgentSessionRuntime,
-  createAgentSessionFromServices,
-  createAgentSessionServices,
-  defineTool,
-  getAgentDir,
-  ModelRuntime,
-  SessionManager,
-  type CreateAgentSessionRuntimeFactory,
-} from "@earendil-works/pi-coding-agent";
-import {
-  buildPiRuntimeTools,
+  createPiSdkSessionHost,
   createPiRuntime,
-  eventEnvelope,
-  proposalEnvelope,
   type PiRuntimeChildTransport,
   type PiRuntimeEnvelope,
-  type PiRuntimeSession,
-  type PiRuntimeSessionHost,
-  type ProposalDecision,
 } from "@sparkii/agent-host";
-import {
-  documentConnector,
-  knowledgeConnector,
-  reportConnector,
-} from "@sparkii/connectors";
 
 const childPort = process.parentPort;
 
@@ -1139,105 +1285,13 @@ const transport: PiRuntimeChildTransport = {
   },
 };
 
-const pendingProposals = new Map<
-  string,
-  { resolve: (decision: ProposalDecision) => void; reject: (error: Error) => void }
->();
-
-transport.onMessage((envelope) => {
-  if ("proposalDecision" in envelope) {
-    const pending = pendingProposals.get(envelope.requestId);
-    if (!pending) return;
-    pendingProposals.delete(envelope.requestId);
-    pending.resolve(envelope.proposalDecision);
-  }
-});
-
-const piTools = buildPiRuntimeTools({
-  tools: [
-    ...documentConnector.tools,
-    ...knowledgeConnector.tools,
-    ...reportConnector.tools,
-  ],
-  propose: async (request) =>
-    new Promise<ProposalDecision>((resolve, reject) => {
-      pendingProposals.set(request.requestId, { resolve, reject });
-      transport.postMessage(proposalEnvelope(request));
-    }),
-}).map((tool) => defineTool(tool as any));
-
-const cwd = process.env.SPARKII_PI_CWD ?? process.cwd();
-
-const modelRuntime = await ModelRuntime.create();
-
-const createRuntime: CreateAgentSessionRuntimeFactory = async ({
-  cwd: effectiveCwd,
-  sessionManager,
-  sessionStartEvent,
-}) => {
-  const services = await createAgentSessionServices({ cwd: effectiveCwd });
-  const result = await createAgentSessionFromServices({
-    services,
-    sessionManager,
-    sessionStartEvent,
-  });
-  return {
-    ...result,
-    services,
-    diagnostics: services.diagnostics,
-  };
-};
-
-const runtime = await createAgentSessionRuntime(createRuntime, {
-  cwd,
-  agentDir: getAgentDir(),
-  sessionManager: SessionManager.create(cwd),
-});
-
-function adaptSession(): PiRuntimeSession {
-  const session: any = runtime.session;
-  session.agent.state.tools = piTools;
-  return {
-    prompt: (text, options) => session.prompt(text, options),
-    steer: (text) => session.steer(text),
-    followUp: (text) => session.followUp(text),
-    abort: () => session.abort(),
-    setModel: async (provider, modelId) => {
-      const model = modelRuntime.getModel(provider, modelId);
-      if (!model) throw new Error(`unknown model ${provider}/${modelId}`);
-      await session.setModel(model);
-    },
-    setAutoRetry: async () => {},
-    setAutoCompaction: async () => {},
-    subscribe: (callback) => session.subscribe(callback),
-    getMessages: () => session.messages,
-    getState: () => ({
-      streaming: session.isStreaming,
-      sessionId: session.sessionId,
-      sessionFile: session.sessionFile,
-    }),
-    dispose: () => session.dispose(),
-  };
-}
-
-const host: PiRuntimeSessionHost = {
-  current: () => adaptSession(),
-  newSession: async () => {
-    await runtime.newSession();
-    adaptSession();
-  },
-  switchSession: async (sessionPath: string) => {
-    await runtime.switchSession(sessionPath);
-    adaptSession();
-  },
-};
-
+const host = await createPiSdkSessionHost({ transport });
 createPiRuntime({ host, transport });
 ```
 
-- [ ] **Step 4: Write the fork fallback entry**
+- [ ] **Step 8: Write the fork fallback entry**
 
-Create `apps/desktop/electron/pi-runtime/fork-entry.ts` with the same runtime setup as `utility-entry.ts`, except replace the `childPort` transport with:
+Create `apps/desktop/electron/pi-runtime/fork-entry.ts` with the same transport bootstrap as `utility-entry.ts`, except replace the `childPort` transport with:
 
 ```ts
 const transport: PiRuntimeChildTransport = {
@@ -1250,9 +1304,9 @@ const transport: PiRuntimeChildTransport = {
 };
 ```
 
-Extract the shared setup into `setupPiRuntime(transport)` inside `utility-entry.ts`, export it, and import it from `fork-entry.ts` to avoid duplication.
+The fork entry then calls the same `createPiSdkSessionHost` and `createPiRuntime` functions. Extract the shared `startRuntime(transport)` into a small helper if desired, but do not move the Electron-only transport definitions into `@sparkii/agent-host`.
 
-- [ ] **Step 5: Type-check the desktop main build**
+- [ ] **Step 9: Type-check the desktop main build**
 
 ```powershell
 pnpm --filter @sparkii/desktop run build:main:check
@@ -1260,11 +1314,11 @@ pnpm --filter @sparkii/desktop run build:main:check
 
 Expected: no type errors. If `process.parentPort` or `utilityProcess` types are missing, add the missing Electron type references or a small local declaration, then rerun.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 10: Commit**
 
 ```powershell
-git add apps/desktop/electron/pi-runtime
-git commit -m "feat(desktop): add Electron Pi runtime entries and transport handles"
+git add packages/agent-host/src/pi-sdk-runtime.ts packages/agent-host/test/pi-sdk-runtime.test.ts packages/agent-host/src/index.ts apps/desktop/electron/pi-runtime
+git commit -m "feat: add Pi SDK host adapter and Electron runtime entries"
 ```
 
 ## Task 8: Wire Main to the new supervisor and remove the external Pi path
