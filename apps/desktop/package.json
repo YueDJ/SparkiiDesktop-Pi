@@ -10,7 +10,7 @@
     "test": "vitest run",
     "build:renderer": "vite build",
     "build:main:check": "tsc --noEmit -p tsconfig.electron.json",
-    "build:main": "esbuild electron/main/index.ts --bundle --platform=node --format=esm --external:electron --external:better-sqlite3 --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" --outfile=dist-electron/main/index.js && esbuild electron/preload/index.ts --bundle --platform=node --format=cjs --external:electron --outfile=dist-electron/preload/index.cjs",
+    "build:main": "esbuild electron/main/index.ts --bundle --platform=node --format=esm --external:electron --external:better-sqlite3 --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" --outfile=dist-electron/main/index.js && esbuild electron/preload/index.ts --bundle --platform=node --format=cjs --external:electron --outfile=dist-electron/preload/index.cjs && esbuild electron/pi-runtime/utility-entry.ts --bundle --platform=node --format=esm --external:electron --outfile=dist-electron/pi-runtime/utility-entry.js && esbuild electron/pi-runtime/fork-entry.ts --bundle --platform=node --format=esm --external:electron --outfile=dist-electron/pi-runtime/fork-entry.js",
     "dist": "pnpm build:renderer && pnpm build:main && electron-builder --win nsis appx",
     "postinstall": "electron-builder install-app-deps"
   },
