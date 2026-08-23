@@ -1700,3 +1700,115 @@ Record the result in the commit message body or a release note.
 git add .
 git commit -m "test(desktop): verify managed Pi runtime in packaged app"
 ```
+
+## Task 12: Register connector handlers so approved writes execute
+
+**Files:**
+- Create: `apps/desktop/electron/main/connector-registry.ts`
+- Create: `apps/desktop/test/connector-registry.test.ts`
+- Modify: `apps/desktop/electron/main/runtime.ts`
+
+**Interfaces:**
+- Consumes: `ConnectorExecutor` from `@sparkii/approval`, `documentConnector`, `knowledgeConnector`, `reportConnector`, `Connector` from `@sparkii/connectors`.
+- Produces: `registerConnectorHandlers(executor): void`.
+
+This fixes the pre-existing gap found during final review: `assemble()` created `ConnectorExecutor` but never registered any tool handler, so approved writes would transition to `failed` instead of executing.
+
+- [ ] **Step 1: Write the failing registry test**
+
+Create `apps/desktop/test/connector-registry.test.ts`:
+
+```ts
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, it, expect } from "vitest";
+import { ConnectorExecutor, AuditStore, createProposal } from "@sparkii/approval";
+import { reportConnector } from "@sparkii/connectors";
+import { registerConnectorHandlers } from "../electron/main/connector-registry.js";
+
+describe("connector registry", () => {
+  it("registers report.export so an approved write executes", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "sparkii-registry-"));
+    const outPath = join(dir, "report.docx");
+    const audit = new AuditStore(join(dir, "audit.db"));
+    const executor = new ConnectorExecutor(audit);
+    registerConnectorHandlers(executor);
+
+    const proposal = createProposal({
+      toolName: "report.export",
+      targetSystem: "report",
+      summary: "export",
+      payload: { title: "x", sections: [{ heading: "h", body: "b" }], format: "docx", path: outPath },
+      risk: "write",
+    }, { profileId: "p", sessionId: "s" });
+
+    const executed = await executor.execute({ ...proposal, status: "approved" }, { actor: "admin" });
+    expect(executed.status).toBe("executed");
+    expect(executed.execution?.ok).toBe(true);
+    expect(reportConnector.tools.length).toBeGreaterThan(0);
+    audit.close();
+  });
+});
+```
+
+- [ ] **Step 2: Run the test and confirm it fails**
+
+```powershell
+pnpm exec vitest run apps/desktop/test/connector-registry.test.ts
+```
+
+Expected: FAIL, module not found.
+
+- [ ] **Step 3: Implement the registry**
+
+Create `apps/desktop/electron/main/connector-registry.ts`:
+
+```ts
+import type { ConnectorExecutor } from "@sparkii/approval";
+import {
+  documentConnector,
+  knowledgeConnector,
+  reportConnector,
+  type Connector,
+} from "@sparkii/connectors";
+
+export function registerConnectorHandlers(executor: ConnectorExecutor): void {
+  const connectors: Connector[] = [documentConnector, knowledgeConnector, reportConnector];
+  for (const connector of connectors) {
+    for (const tool of connector.tools) {
+      executor.register(tool.name, tool.handler);
+    }
+  }
+}
+```
+
+- [ ] **Step 4: Call the registry during assembly**
+
+Edit `apps/desktop/electron/main/runtime.ts`:
+
+```ts
+import { registerConnectorHandlers } from "./connector-registry.js";
+```
+
+After `const executor = new ConnectorExecutor(audit);`, add:
+
+```ts
+registerConnectorHandlers(executor);
+```
+
+- [ ] **Step 5: Run the registry test and the full suite**
+
+```powershell
+pnpm exec vitest run apps/desktop/test/connector-registry.test.ts
+pnpm test
+```
+
+Expected: registry test passes and full suite remains green.
+
+- [ ] **Step 6: Commit**
+
+```powershell
+git add apps/desktop/electron/main/connector-registry.ts apps/desktop/test/connector-registry.test.ts apps/desktop/electron/main/runtime.ts
+git commit -m "fix(desktop): register connector handlers so approved writes execute"
+```
