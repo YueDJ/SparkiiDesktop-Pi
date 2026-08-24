@@ -4,7 +4,7 @@
 
 **Goal:** Make the end-to-end contract-review pilot pass reliably: the workflow must not hang during Pi runtime cold start, the model must not autonomously trigger write approvals during workflow LLM steps, and the pilot must allow enough time for real DeepSeek calls.
 
-**Architecture:** Add a readiness handshake and timeouts to the Pi runtime client so commands are only sent after the child process finishes booting and never hang forever. Add a `bare` prompt mode so workflow LLM steps run with no tools (no spurious write approvals), while the interactive chat assistant keeps all tools — including `report.export`, whose writes remain gated by user approval. Widen the pilot timeouts.
+**Architecture:** Add a readiness handshake and timeouts to the Pi runtime client so commands are only sent after the child process finishes booting and never hang forever. Add a `readOnly` prompt mode so workflow LLM steps run with only read tools (`document.read`, `knowledge.search`) and cannot trigger spurious write approvals, while the interactive chat assistant keeps all tools — including `report.export`, whose writes remain gated by user approval. Widen the pilot timeouts.
 
 **Tech Stack:** TypeScript, Vitest, @sparkii/agent-host, Electron utilityProcess/fork transport, Playwright e2e.
 
@@ -13,7 +13,7 @@
 ## Root Causes (confirmed by the Task 5 pilot run)
 
 1. **Workflow hangs at the first LLM step.** `PiRuntimeSupervisor.start()` spawns the utility process and returns immediately, but the child only registers its command handler inside `createPiRuntime` after `createPiSdkSessionHost` (slow boot) resolves. `PiRuntimeClientImpl.send()` posts a command and waits forever with no timeout, and child exit does not reject pending sends. A slow/lost boot therefore stalls `selectModel`/`sendPrompt` indefinitely (pilot run 2/3 stuck at `审核中：extract`, no session file created).
-2. **Model autonomously calls `report.export` during workflow LLM steps.** `createPiSdkSessionHost` registers all three connectors as Pi tools, including the write tool `report.export`. During the workflow `report` LLM step the DeepSeek model calls `report.export`, which opens a write-approval dialog that competes with the `review` (human) approval; run 1 produced 9 spurious `report.export` proposals. Fix: workflow LLM steps use a `bare` prompt (no tools), while chat keeps write tools gated by approval.
+2. **Model autonomously calls `report.export` during workflow LLM steps.** `createPiSdkSessionHost` registers all three connectors as Pi tools, including the write tool `report.export`. During the workflow `report` LLM step the DeepSeek model calls `report.export`, which opens a write-approval dialog that competes with the `review` (human) approval; run 1 produced 9 spurious `report.export` proposals. Fix: workflow LLM steps use a `readOnly` prompt (only read tools, no write tool), while chat keeps write tools gated by approval.
 3. **Pilot timeouts are too tight** for cold start + three real model calls + human approval (dialog 120s, test 180s).
 
 ## Global Constraints
@@ -280,7 +280,7 @@ git commit -m "feat(agent-host): add Pi runtime readiness and send timeouts"
 
 ---
 
-### Task 7: Bare prompt for workflow LLM steps (chat keeps write tools)
+### Task 7: Read-only prompt for workflow LLM steps (chat keeps write tools)
 
 **Files:**
 - Modify: `packages/agent-host/src/types.ts`
@@ -292,17 +292,17 @@ git commit -m "feat(agent-host): add Pi runtime readiness and send timeouts"
 **Interfaces:**
 - Consumes: existing `RpcCommand`, `PiRuntimeSession`, `createPiRuntime`, `sendPrompt`.
 - Produces:
-  - `RpcCommand` prompt variant gains `bare?: boolean`.
-  - `PiRuntimeSession.prompt(text, options?: { streamingBehavior?: "steer" | "followUp"; bare?: boolean })`.
-  - `adaptSession.prompt` sets `session.agent.state.tools = []` when `bare`, otherwise the full `piTools` (chat keeps `report.export`, still gated by approval).
-  - `workflow.ts` `sendPrompt` sends `{ type: "prompt", message: text, bare: true }`.
+  - `RpcCommand` prompt variant gains `readOnly?: boolean`.
+  - `PiRuntimeSession.prompt(text, options?: { streamingBehavior?: "steer" | "followUp"; readOnly?: boolean })`.
+  - The session host builds two tool sets — full `piTools` and a read-only `readPiTools` (only `sideEffect === "read"` tools). `adaptSession.prompt` sets `session.agent.state.tools = readPiTools` when `readOnly`, otherwise `piTools` (chat keeps `report.export`, still gated by approval).
+  - `workflow.ts` `sendPrompt` sends `{ type: "prompt", message: text, readOnly: true }`.
 
 - [ ] **Step 1: Write the failing test**
 
-In `packages/agent-host/test/pi-runtime.test.ts`, add a case asserting the `bare` flag flows through to the session:
+In `packages/agent-host/test/pi-runtime.test.ts`, add a case asserting the `readOnly` flag flows through to the session:
 
 ```ts
-it("passes bare flag to the session prompt", async () => {
+it("passes readOnly flag to the session prompt", async () => {
   const session = fakeSession();
   const host: PiRuntimeSessionHost = { current: () => session, newSession: vi.fn(async () => {}), switchSession: vi.fn(async () => {}) };
   const sent: PiRuntimeEnvelope[] = [];
@@ -311,59 +311,76 @@ it("passes bare flag to the session prompt", async () => {
     onMessage: (cb: (env: PiRuntimeEnvelope) => void) => { (transport as any).emit = cb; return () => {}; },
   } as any;
   createPiRuntime({ host, transport });
-  transport.emit(commandEnvelope("r1", { type: "prompt", message: "hi", bare: true }));
+  transport.emit(commandEnvelope("r1", { type: "prompt", message: "hi", readOnly: true }));
   await new Promise((resolve) => setTimeout(resolve, 0));
-  expect(session.prompt).toHaveBeenCalledWith("hi", { streamingBehavior: undefined, bare: true });
+  expect(session.prompt).toHaveBeenCalledWith("hi", { streamingBehavior: undefined, readOnly: true });
 });
 ```
 
 - [ ] **Step 2: Run to verify failure**
 
 Run: `pnpm exec vitest run packages/agent-host/test/pi-runtime.test.ts`
-Expected: FAIL — the session is currently called with `{ streamingBehavior: undefined }` (no `bare`).
+Expected: FAIL — the session is currently called with `{ streamingBehavior: undefined }` (no `readOnly`).
 
-- [ ] **Step 3: Implement the `bare` flag plumbing**
+- [ ] **Step 3: Implement the `readOnly` flag plumbing**
 
 In `packages/agent-host/src/types.ts`, change the prompt variant:
 
 ```ts
-| { type: 'prompt'; message: string; streamingBehavior?: 'steer' | 'followUp'; bare?: boolean }
+| { type: 'prompt'; message: string; streamingBehavior?: 'steer' | 'followUp'; readOnly?: boolean }
 ```
 
 In `packages/agent-host/src/pi-runtime.ts`, widen `PiRuntimeSession.prompt`:
 
 ```ts
-prompt(text: string, options?: { streamingBehavior?: "steer" | "followUp"; bare?: boolean }): Promise<void>;
+prompt(text: string, options?: { streamingBehavior?: "steer" | "followUp"; readOnly?: boolean }): Promise<void>;
 ```
 
 And in `handleCommand`:
 
 ```ts
 case "prompt":
-  await session.prompt(command.message, { streamingBehavior: command.streamingBehavior, bare: command.bare });
+  await session.prompt(command.message, { streamingBehavior: command.streamingBehavior, readOnly: command.readOnly });
   return;
 ```
 
-- [ ] **Step 4: Make `bare` clear the session tools**
+- [ ] **Step 4: Build a read-only tool set and apply it**
 
-In `packages/agent-host/src/pi-sdk-runtime.ts`, change `adaptSession().prompt`:
+In `packages/agent-host/src/pi-sdk-runtime.ts`, extract the `propose` callback and build both tool sets:
+
+```ts
+const propose = async (request: ProposalRequest & { requestId: string }) =>
+  new Promise<ProposalDecision>((resolve, reject) => {
+    pendingProposals.set(request.requestId, { resolve, reject });
+    options.transport.postMessage(proposalEnvelope(request));
+  });
+
+const piTools = buildPiRuntimeTools({ tools, propose }).map((tool) => defineTool(tool as any));
+
+const readPiTools = buildPiRuntimeTools({
+  tools: tools.filter((t) => t.sideEffect === "read"),
+  propose,
+}).map((tool) => defineTool(tool as any));
+```
+
+Then change `adaptSession().prompt`:
 
 ```ts
 prompt: (text, promptOptions) => {
-  session.agent.state.tools = promptOptions?.bare ? [] : piTools;
-  const { bare: _bare, ...sdkOptions } = promptOptions ?? {};
+  session.agent.state.tools = promptOptions?.readOnly ? readPiTools : piTools;
+  const { readOnly: _readOnly, ...sdkOptions } = promptOptions ?? {};
   return session.prompt(text, sdkOptions);
 },
 ```
 
-(Keep the existing `session.agent.state.tools = piTools;` line at the top of `adaptSession` unchanged.)
+(Keep the existing `session.agent.state.tools = piTools;` line at the top of `adaptSession` unchanged, and remove the old inline `propose` that is now extracted.)
 
-- [ ] **Step 5: Route workflow LLM steps as bare**
+- [ ] **Step 5: Route workflow LLM steps as read-only**
 
 In `apps/desktop/electron/main/workflow.ts`, in `sendPrompt`, change the prompt send to:
 
 ```ts
-const resp = await client.send({ type: 'prompt', message: text, bare: true });
+const resp = await client.send({ type: 'prompt', message: text, readOnly: true });
 ```
 
 - [ ] **Step 6: Run to verify pass**
@@ -375,7 +392,7 @@ Expected: PASS (the new test plus all existing agent-host tests).
 
 ```bash
 git add packages/agent-host/src/types.ts packages/agent-host/src/pi-runtime.ts packages/agent-host/src/pi-sdk-runtime.ts apps/desktop/electron/main/workflow.ts packages/agent-host/test/pi-runtime.test.ts
-git commit -m "feat(agent-host): add bare prompt for workflow LLM steps"
+git commit -m "feat(agent-host): add read-only prompt for workflow LLM steps"
 ```
 
 ---
@@ -431,6 +448,6 @@ git commit -m "test(desktop): widen pilot timeouts for live model calls"
 
 ## Self-Review
 
-- **Spec coverage:** Hang (Task 6), spurious write approvals via bare workflow prompts while chat keeps write tools (Task 7), pilot timeouts (Task 8). All three root causes are addressed.
+- **Spec coverage:** Hang (Task 6), spurious write approvals via read-only workflow prompts while chat keeps write tools (Task 7), pilot timeouts (Task 8). All three root causes are addressed.
 - **Placeholder scan:** No TBD/TODO; `stop`/`onExit`/`onProposal` are referenced as unchanged to avoid duplicating verified code.
-- **Type consistency:** `bare?: boolean` appears in `RpcCommand`, `PiRuntimeSession.prompt`, and `handleCommand`; `readyEnvelope()` matches the new `PiRuntimeEnvelope` variant; `send(command: RpcCommand)` matches the `PiRuntimeClient` interface.
+- **Type consistency:** `readOnly?: boolean` appears in `RpcCommand`, `PiRuntimeSession.prompt`, and `handleCommand`; `readPiTools` is derived from `tools.filter((t) => t.sideEffect === "read")`; `readyEnvelope()` matches the new `PiRuntimeEnvelope` variant; `send(command: RpcCommand)` matches the `PiRuntimeClient` interface.
