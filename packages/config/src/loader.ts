@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { parseProfileManifest } from './schema.js';
@@ -40,10 +40,14 @@ export async function loadProfile(
   });
 
   const skills = parseYaml(skillsRaw) as Array<{ name: string; file: string; params?: Record<string, unknown> }>;
+  const promptDir = join(dir, 'agent', 'prompts');
+  const promptNames = await readdir(promptDir);
   const prompts: Record<string, string> = {};
-  for (const s of skills) {
-    prompts[s.name] = await read(dir, `agent/${s.file}`);
-    files[`agent/${s.file}`] = Buffer.from(prompts[s.name]);
+  for (const f of promptNames) {
+    if (!f.endsWith('.md')) continue;
+    const name = f.slice(0, -3);
+    prompts[name] = await read(dir, `agent/prompts/${f}`);
+    files[`agent/prompts/${f}`] = Buffer.from(prompts[name]);
   }
 
   const toolsCfg = parseYaml(toolsRaw) as { tools: string[] };

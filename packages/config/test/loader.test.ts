@@ -21,6 +21,7 @@ describe('loadProfile', () => {
       'agent/skills.yaml': '- { name: clause_extract, file: prompts/clause_extract.md }\n',
       'agent/tools.yaml': 'tools: [document.read, report.export]\n',
       'agent/prompts/clause_extract.md': '# extract clauses\n',
+      'agent/prompts/report.md': '# generate report\n',
       'agent/knowledge/corpus.json': '[]',
       'agent/workflow.yaml': 'version: 1\nengine: linear\nsteps: []\n',
       'ui/pages/home.json': '{}',
@@ -32,6 +33,7 @@ describe('loadProfile', () => {
     const p = await loadProfile(dir, { allowUnsigned: true });
     expect(p.manifest.name).toBe('contract-review');
     expect(p.agent.tools).toEqual(['document.read', 'report.export']);
+    expect(p.agent.prompts).toMatchObject({ report: '# generate report\n' });
   });
 
   it('fails closed on invalid manifest', async () => {
