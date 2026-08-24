@@ -1,5 +1,6 @@
 import { ipcMain, dialog, type BrowserWindow } from 'electron';
 import { createBroker, runWorkflow, selectModel } from './workflow.js';
+import { resolveExportPath } from './export-path.js';
 import type { Runtime } from './runtime.js';
 import type { Logger } from './logger.js';
 
@@ -26,8 +27,22 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     let out = await rt.gate.decide(id, rt.subject, approved, note);
     let result: unknown;
     if (out.status === 'approved' && out.toolName !== 'workflow.approval') {
-      out = await rt.executor.execute(out, { actor: rt.subject.userId });
-      result = out.execution?.result;
+      if (out.toolName === 'report.export') {
+        const path = await resolveExportPath(getWindow, process.env, (win, opts) =>
+          dialog.showSaveDialog(win as BrowserWindow, opts),
+        );
+        if (path) {
+          out.payload = { ...(out.payload as Record<string, unknown>), path };
+          out = await rt.executor.execute(out, { actor: rt.subject.userId });
+          result = out.execution?.result;
+        } else {
+          await rt.audit.append({ actor: rt.subject.userId, action: 'execution.blocked', resource: out.toolName });
+          out.execution = { ok: false, error: 'export path canceled' };
+        }
+      } else {
+        out = await rt.executor.execute(out, { actor: rt.subject.userId });
+        result = out.execution?.result;
+      }
     }
     broker.decide(out.id, { approved: out.status === 'approved' || out.status === 'executed', status: out.status, result });
     return out;
