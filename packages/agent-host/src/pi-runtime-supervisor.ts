@@ -36,6 +36,9 @@ class PiRuntimeClientImpl implements PiRuntimeClient {
       this.resolveReady = resolve;
       this.rejectReady = reject;
     });
+    // Suppress unhandled-rejection noise if the child exits before any send()
+    // attaches a handler; send() still observes the rejection via Promise.race.
+    this.readyPromise.catch(() => {});
     handle.onMessage((envelope) => void this.consume(envelope));
   }
 
@@ -62,7 +65,6 @@ class PiRuntimeClientImpl implements PiRuntimeClient {
 
   close(): void {
     this.failPending(new Error("runtime closed"));
-    this.pending.clear();
     this.listeners.clear();
   }
 
