@@ -18,4 +18,9 @@ describe('report', () => {
     expect(r.ok).toBe(true);
     expect(existsSync(out)).toBe(true);
   });
+  it('does not require a path from the agent', () => {
+    const tool = reportConnector.tools.find((t) => t.name === 'report.export')!;
+    expect((tool.params as any).required).not.toContain('path');
+    expect((tool.params as any).properties?.path).toBeUndefined();
+  });
 });
