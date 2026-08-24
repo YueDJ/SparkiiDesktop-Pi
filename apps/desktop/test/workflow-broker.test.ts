@@ -1,5 +1,18 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createBroker, runWorkflow } from '../electron/main/workflow.js';
+import { createBroker, resolveWorkflowTemplates, runWorkflow } from '../electron/main/workflow.js';
+
+it('resolves skill ref and llm template to prompt content', () => {
+  const def = {
+    version: 1, engine: 'linear',
+    steps: [
+      { id: 'extract', type: 'skill', ref: 'clause_extract', inputs: { from: 'load' } },
+      { id: 'report', type: 'llm', template: 'report', inputs: { from: ['extract', 'compare'] } },
+    ],
+  } as any;
+  const resolved = resolveWorkflowTemplates(def, { clause_extract: '抽取条款', report: '生成报告' });
+  expect(resolved.steps[0].template).toBe('抽取条款');
+  expect(resolved.steps[1].template).toBe('生成报告');
+});
 
 describe('runWorkflow broker sharing', () => {
   it('completes the human step when the shared broker decides approval', async () => {
