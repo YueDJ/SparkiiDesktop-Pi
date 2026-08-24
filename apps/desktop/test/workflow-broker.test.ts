@@ -9,9 +9,12 @@ it('resolves skill ref and llm template to prompt content', () => {
       { id: 'report', type: 'llm', template: 'report', inputs: { from: ['extract', 'compare'] } },
     ],
   } as any;
-  const resolved = resolveWorkflowTemplates(def, { clause_extract: '抽取条款', report: '生成报告' });
-  expect(resolved.steps[0].template).toBe('抽取条款');
-  expect(resolved.steps[1].template).toBe('生成报告');
+  const resolved = resolveWorkflowTemplates(def);
+  const extract = resolved.steps.find((s) => s.id === 'extract');
+  const report = resolved.steps.find((s) => s.id === 'report');
+  expect(extract?.template).toContain('clause_extract');
+  expect(extract?.template).not.toContain('抽取条款');
+  expect(report?.template).toContain('report');
 });
 
 describe('runWorkflow broker sharing', () => {

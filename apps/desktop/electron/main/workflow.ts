@@ -90,15 +90,15 @@ async function runTool(rt: Runtime, broker: ReturnType<typeof createBroker>, too
   return { ok: d.approved, data: d.result };
 }
 
-export function resolveWorkflowTemplates(def: WorkflowDef, prompts: Record<string, string>): WorkflowDef {
+export function resolveWorkflowTemplates(def: WorkflowDef): WorkflowDef {
   return {
     ...def,
     steps: def.steps.map((step) => {
-      if (step.type === 'skill' && step.ref && prompts[step.ref] != null) {
-        return { ...step, template: prompts[step.ref] };
+      if (step.type === 'skill' && step.ref) {
+        return { ...step, template: `请读取并遵循「${step.ref}」这个 skill 完成本步骤。` };
       }
-      if (step.type === 'llm' && step.template && prompts[step.template] != null) {
-        return { ...step, template: prompts[step.template] };
+      if (step.type === 'llm' && step.template) {
+        return { ...step, template: `请读取并遵循「${step.template}」这个 skill 完成本步骤。` };
       }
       return step;
     }),
@@ -112,8 +112,7 @@ export async function runWorkflow(
   broker: ReturnType<typeof createBroker>,
 ): Promise<void> {
   const rawDef = rt.profile.agent.workflow as unknown as WorkflowDef;
-  const prompts = (rt.profile.agent.prompts ?? {}) as Record<string, string>;
-  const def = resolveWorkflowTemplates(rawDef, prompts);
+  const def = resolveWorkflowTemplates(rawDef);
   const ctx: RunContext = {
     profileId: rt.profile.manifest.name, sessionId: 'default', actor: rt.subject?.userId ?? 'agent', input,
     sendPrompt: (text, task) => sendPrompt(rt, text, (task as ModelTask) ?? 'default'),
