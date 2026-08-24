@@ -5,7 +5,7 @@ import { loadProfile } from "@sparkii/config";
 import { ModelRouter, normalizeRouting } from "@sparkii/model-router";
 import { Rbac, LocalIdentityProvider, type Subject } from "@sparkii/identity";
 import { ApprovalGate, ConnectorExecutor, AuditStore } from "@sparkii/approval";
-import { PiRuntimeSupervisor } from "@sparkii/agent-host";
+import { PiRuntimePool } from "@sparkii/agent-host";
 import { knowledgeConnector } from "@sparkii/connectors";
 import { createUtilityHostHandle, createForkHostHandle } from "../pi-runtime/transports.js";
 import { registerConnectorHandlers } from "./connector-registry.js";
@@ -15,7 +15,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export interface Runtime {
   profile: Awaited<ReturnType<typeof loadProfile>>;
   router: ModelRouter; rbac: Rbac; gate: ApprovalGate; executor: ConnectorExecutor; audit: AuditStore;
-  supervisor: PiRuntimeSupervisor; identity: LocalIdentityProvider; subject: Subject | null;
+  pool: PiRuntimePool; identity: LocalIdentityProvider; subject: Subject | null;
 }
 
 function resolvePiRuntimeEntry(): string {
@@ -38,10 +38,13 @@ export async function assemble(opts: { profileDir: string; dataDir: string; publ
   }
   await knowledgeConnector.init({ corpus: profile.agent.knowledge });
   const entry = resolvePiRuntimeEntry();
-  const supervisor = new PiRuntimeSupervisor(() =>
-    process.env.SPARKII_PI_USE_FORK === "1"
-      ? createForkHostHandle(entry)
-      : createUtilityHostHandle(entry),
-  );
-  return { profile, router, rbac, gate, executor, audit, supervisor, identity, subject: null };
+  process.env.SPARKII_SKILLS_DIR = join(opts.profileDir, 'agent', 'skills');
+  const pool = new PiRuntimePool({
+    maxAgents: Number(process.env.SPARKII_MAX_AGENTS ?? 4),
+    makeSupervisor: () =>
+      process.env.SPARKII_PI_USE_FORK === "1"
+        ? createForkHostHandle(entry)
+        : createUtilityHostHandle(entry),
+  });
+  return { profile, router, rbac, gate, executor, audit, pool, identity, subject: null };
 }

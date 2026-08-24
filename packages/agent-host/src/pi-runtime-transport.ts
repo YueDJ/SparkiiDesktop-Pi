@@ -12,8 +12,13 @@ export type PiRuntimeEnvelope =
   | { direction: "main-to-runtime"; id: string; command: RpcCommand }
   | { direction: "runtime-to-main"; id: string; response: RpcResponse }
   | { direction: "runtime-to-main"; event: NormalizedEvent }
+  | { direction: "runtime-to-main"; ready: true }
   | { direction: "runtime-to-main"; proposal: ProposalRequest & { requestId: string } }
   | { direction: "main-to-runtime"; requestId: string; proposalDecision: ProposalDecision };
+
+export function readyEnvelope(): PiRuntimeEnvelope {
+  return { direction: "runtime-to-main", ready: true };
+}
 
 export interface PiRuntimeClient {
   send(command: RpcCommand): Promise<RpcResponse>;

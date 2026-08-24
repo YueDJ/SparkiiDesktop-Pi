@@ -1,5 +1,21 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createBroker, runWorkflow } from '../electron/main/workflow.js';
+import { createBroker, resolveWorkflowTemplates, runWorkflow } from '../electron/main/workflow.js';
+
+it('resolves skill ref and llm template to prompt content', () => {
+  const def = {
+    version: 1, engine: 'linear',
+    steps: [
+      { id: 'extract', type: 'skill', ref: 'clause_extract', inputs: { from: 'load' } },
+      { id: 'report', type: 'llm', template: 'report', inputs: { from: ['extract', 'compare'] } },
+    ],
+  } as any;
+  const resolved = resolveWorkflowTemplates(def);
+  const extract = resolved.steps.find((s) => s.id === 'extract');
+  const report = resolved.steps.find((s) => s.id === 'report');
+  expect(extract?.template).toContain('clause_extract');
+  expect(extract?.template).not.toContain('抽取条款');
+  expect(report?.template).toContain('report');
+});
 
 describe('runWorkflow broker sharing', () => {
   it('completes the human step when the shared broker decides approval', async () => {
@@ -15,6 +31,11 @@ describe('runWorkflow broker sharing', () => {
       gate: {
         submit: async (req: any) => ({ id: 'p1', ...req, status: 'pending', payloadHash: 'h', createdAt: Date.now() }),
         expire: async (id: string) => ({ id, status: 'expired' }),
+      },
+      pool: {
+        acquire: async (sessionId: string) => ({ client: {}, supervisor: { onProposal: () => {} } }),
+        get: (sessionId: string) => undefined,
+        release: async (sessionId: string) => {},
       },
     } as any;
 

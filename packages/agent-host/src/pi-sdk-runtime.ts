@@ -2,6 +2,7 @@ import {
   createAgentSessionFromServices,
   createAgentSessionRuntime,
   createAgentSessionServices,
+  createReadTool,
   defineTool,
   getAgentDir,
   ModelRuntime,
@@ -29,6 +30,11 @@ export interface PiSdkRuntimeOptions {
   transport: PiRuntimeChildTransport;
   tools?: ToolDef[];
   cwd?: string;
+  skillsDir?: string;
+}
+
+export function buildSkillLoaderOptions(skillsDir?: string): { additionalSkillPaths: string[] } {
+  return { additionalSkillPaths: skillsDir ? [skillsDir] : [] };
 }
 
 export async function createPiSdkSessionHost(
@@ -73,7 +79,10 @@ export async function createPiSdkSessionHost(
     sessionManager,
     sessionStartEvent,
   }) => {
-    const services = await createAgentSessionServices({ cwd: effectiveCwd });
+    const services = await createAgentSessionServices({
+      cwd: effectiveCwd,
+      resourceLoaderOptions: buildSkillLoaderOptions(options.skillsDir),
+    });
     const result = await createAgentSessionFromServices({
       services,
       sessionManager,
@@ -94,7 +103,7 @@ export async function createPiSdkSessionHost(
 
   function adaptSession(): PiRuntimeSession {
     const session: any = runtime.session;
-    session.agent.state.tools = piTools;
+    session.agent.state.tools = [...piTools, defineTool(createReadTool(cwd) as any)];
     return {
       prompt: (text, promptOptions) => session.prompt(text, promptOptions),
       steer: (text) => session.steer(text),

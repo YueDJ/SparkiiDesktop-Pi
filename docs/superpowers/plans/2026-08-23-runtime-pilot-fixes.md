@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make the end-to-end contract-review pilot pass reliably: the workflow must not hang during Pi runtime cold start, the model must not autonomously trigger write approvals during workflow LLM steps, and the pilot must allow enough time for real DeepSeek calls.
+**Goal:** Make the end-to-end contract-review pilot pass reliably: the workflow must not hang during Pi runtime cold start, and the pilot must allow enough time for real DeepSeek calls.
 
-**Architecture:** Add a readiness handshake and timeouts to the Pi runtime client so commands are only sent after the child process finishes booting and never hang forever. Remove the write tool (`report.export`) from the Pi agent session so workflow LLM steps cannot generate spurious approval dialogs (export remains a main-process UI action). Widen the pilot timeouts.
+**Architecture:** Add a readiness handshake and timeouts to the Pi runtime client so commands are only sent after the child process finishes booting and never hang forever. Keep the agent's full tool set (writes gated by user approval). Widen the pilot timeouts.
 
 **Tech Stack:** TypeScript, Vitest, @sparkii/agent-host, Electron utilityProcess/fork transport, Playwright e2e.
 
@@ -13,8 +13,7 @@
 ## Root Causes (confirmed by the Task 5 pilot run)
 
 1. **Workflow hangs at the first LLM step.** `PiRuntimeSupervisor.start()` spawns the utility process and returns immediately, but the child only registers its command handler inside `createPiRuntime` after `createPiSdkSessionHost` (slow boot) resolves. `PiRuntimeClientImpl.send()` posts a command and waits forever with no timeout, and child exit does not reject pending sends. A slow/lost boot therefore stalls `selectModel`/`sendPrompt` indefinitely (pilot run 2/3 stuck at `审核中：extract`, no session file created).
-2. **Model autonomously calls `report.export` during workflow LLM steps.** `createPiSdkSessionHost` registers all three connectors as Pi tools, including the write tool `report.export`. During the workflow `report` LLM step the DeepSeek model calls `report.export`, which opens a write-approval dialog that competes with the `review` (human) approval; run 1 produced 9 spurious `report.export` proposals.
-3. **Pilot timeouts are too tight** for cold start + three real model calls + human approval (dialog 120s, test 180s).
+2. **Pilot timeouts are too tight** for cold start + three real model calls + human approval (dialog 120s, test 180s).
 
 ## Global Constraints
 
@@ -280,67 +279,7 @@ git commit -m "feat(agent-host): add Pi runtime readiness and send timeouts"
 
 ---
 
-### Task 7: Remove write tools from the Pi agent session
-
-**Files:**
-- Modify: `packages/agent-host/src/pi-sdk-runtime.ts`
-- Test: `packages/agent-host/test/pi-sdk-runtime.test.ts`
-
-**Interfaces:**
-- Consumes: `documentConnector`, `knowledgeConnector`, `reportConnector` from `@sparkii/connectors`.
-- Produces: `defaultSessionTools(): ToolDef[]` returning only the read-only connectors; `createPiSdkSessionHost` uses it as the default tool set.
-
-- [ ] **Step 1: Write the failing test**
-
-In `packages/agent-host/test/pi-sdk-runtime.test.ts`, add:
-
-```ts
-import { defaultSessionTools } from "../src/pi-sdk-runtime.js";
-
-it("default session tools exclude write tools", () => {
-  const names = defaultSessionTools().map((t) => t.name);
-  expect(names).toContain("document.read");
-  expect(names).toContain("knowledge.search");
-  expect(names).not.toContain("report.export");
-});
-```
-
-- [ ] **Step 2: Run to verify failure**
-
-Run: `pnpm exec vitest run packages/agent-host/test/pi-sdk-runtime.test.ts`
-Expected: FAIL (export not found) before implementation.
-
-- [ ] **Step 3: Implement**
-
-In `packages/agent-host/src/pi-sdk-runtime.ts`, add:
-
-```ts
-export function defaultSessionTools(): ToolDef[] {
-  return [...documentConnector.tools, ...knowledgeConnector.tools];
-}
-```
-
-And change the default in `createPiSdkSessionHost`:
-
-```ts
-const tools = options.tools ?? defaultSessionTools();
-```
-
-- [ ] **Step 4: Run to verify pass**
-
-Run: `pnpm exec vitest run packages/agent-host/test/pi-sdk-runtime.test.ts packages/agent-host/test`
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add packages/agent-host/src/pi-sdk-runtime.ts packages/agent-host/test/pi-sdk-runtime.test.ts
-git commit -m "fix(agent-host): exclude write tools from Pi agent session"
-```
-
----
-
-### Task 8: Widen pilot timeouts and rebuild/verify
+### Task 7: Widen pilot timeouts and rebuild/verify
 
 **Files:**
 - Modify: `apps/desktop/e2e/pilot.spec.ts`
@@ -391,6 +330,6 @@ git commit -m "test(desktop): widen pilot timeouts for live model calls"
 
 ## Self-Review
 
-- **Spec coverage:** Hang (Task 6), spurious write approvals (Task 7), pilot timeouts (Task 8). All three root causes are addressed.
+- **Spec coverage:** Hang (Task 6), pilot timeouts (Task 7). Both confirmed root causes are addressed.
 - **Placeholder scan:** No TBD/TODO; `stop`/`onExit`/`onProposal` are referenced as unchanged to avoid duplicating verified code.
-- **Type consistency:** `defaultSessionTools(): ToolDef[]` is defined and used in the same file; `readyEnvelope()` matches the new `PiRuntimeEnvelope` variant; `send(command: RpcCommand)` matches the `PiRuntimeClient` interface.
+- **Type consistency:** `readyEnvelope()` matches the new `PiRuntimeEnvelope` variant; `send(command: RpcCommand)` matches the `PiRuntimeClient` interface.

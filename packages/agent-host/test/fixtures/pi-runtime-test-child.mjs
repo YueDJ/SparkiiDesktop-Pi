@@ -16,4 +16,5 @@ process.on("message", (env) => {
     });
   }
 });
+process.send({ direction: "runtime-to-main", ready: true });
 process.stdin.resume();

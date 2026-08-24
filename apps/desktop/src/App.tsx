@@ -43,10 +43,6 @@ export function App() {
       setWorkflow({ status: 'running' });
       api.runWorkflow('contract-review', { documents: state.documents });
     }
-    if (action === 'export-report') {
-      const body = ((state.workflow as any)?.result?.report) ?? '';
-      api.exportReport({ title: '审核报告', sections: [{ heading: '报告', body: String(body) }] });
-    }
   };
 
   if (!authed) {

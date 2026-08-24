@@ -2,6 +2,7 @@ import { normalizeEvent } from "./rpc-client.js";
 import type { RpcCommand, RpcResponse } from "./types.js";
 import {
   eventEnvelope,
+  readyEnvelope,
   responseEnvelope,
   type PiRuntimeEnvelope,
 } from "./pi-runtime-transport.js";
@@ -66,6 +67,7 @@ export function createPiRuntime(opts: {
       });
     }
   });
+  opts.transport.postMessage(readyEnvelope());
 
   return () => {
     unsubscribe();

@@ -3,7 +3,6 @@ export interface SparkiiApi {
   getProfile(): Promise<unknown>;
   chooseDocument(): Promise<{ path?: string }>;
   runWorkflow(id: string, input: Record<string, unknown>): Promise<{ ok: boolean }>;
-  exportReport(input: { title: string; sections: Array<{ heading: string; body: string }> }): Promise<unknown>;
   prompt(text: string): Promise<{ ok: boolean }>;
   listPendingApprovals(): Promise<unknown[]>;
   decideApproval(id: string, approved: boolean, note?: string): Promise<unknown>;

@@ -5,6 +5,7 @@ import {
   eventEnvelope,
   proposalEnvelope,
   proposalDecisionEnvelope,
+  readyEnvelope,
 } from "../src/pi-runtime-transport.js";
 
 describe("pi runtime transport envelopes", () => {
@@ -27,5 +28,6 @@ describe("pi runtime transport envelopes", () => {
     expect(proposalDecisionEnvelope("p1", { approved: false, proposalId: "p1", status: "denied" })).toMatchObject({
       direction: "main-to-runtime", requestId: "p1", proposalDecision: { approved: false },
     });
+    expect(readyEnvelope()).toMatchObject({ direction: "runtime-to-main", ready: true });
   });
 });

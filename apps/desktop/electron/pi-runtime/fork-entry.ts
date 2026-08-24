@@ -4,6 +4,7 @@ import {
   type PiRuntimeChildTransport,
   type PiRuntimeEnvelope,
 } from "@sparkii/agent-host";
+import { join } from "node:path";
 
 const transport: PiRuntimeChildTransport = {
   postMessage: (envelope: PiRuntimeEnvelope) => process.send?.(envelope),
@@ -14,5 +15,7 @@ const transport: PiRuntimeChildTransport = {
   },
 };
 
-const host = await createPiSdkSessionHost({ transport });
+const skillsDir = process.env.SPARKII_SKILLS_DIR
+  ?? (process.env.SPARKII_PROFILE_DIR ? join(process.env.SPARKII_PROFILE_DIR, 'agent', 'skills') : undefined);
+const host = await createPiSdkSessionHost({ transport, skillsDir });
 createPiRuntime({ host, transport });

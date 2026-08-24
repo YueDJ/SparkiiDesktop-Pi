@@ -14,7 +14,7 @@ export class ApprovalGate {
   async submit(req: ProposalRequest, meta: { profileId: string; sessionId: string; actor: string }): Promise<Proposal> {
     const p = createProposal(req, { profileId: meta.profileId, sessionId: meta.sessionId });
     this.proposals.set(p.id, p);
-    await this.opts.audit.append({ actor: meta.actor, action: 'proposal.created', resource: p.toolName, payloadSummary: summarizePayload(p.payload) });
+    await this.opts.audit.append({ actor: meta.actor, action: 'proposal.created', resource: p.toolName, payloadSummary: summarizePayload(p.payload), sessionId: meta.sessionId });
     return p;
   }
 
@@ -26,7 +26,7 @@ export class ApprovalGate {
     const out = transition(p, approved ? 'approved' : 'denied');
     out.decisionBy = by.userId; out.decisionNote = note;
     this.proposals.set(id, out);
-    await this.opts.audit.append({ actor: by.userId, action: approved ? 'proposal.approved' : 'proposal.denied', resource: p.toolName, decision: approved ? 'approved' : 'denied' });
+    await this.opts.audit.append({ actor: by.userId, action: approved ? 'proposal.approved' : 'proposal.denied', resource: p.toolName, decision: approved ? 'approved' : 'denied', sessionId: p.sessionId });
     return out;
   }
 
@@ -36,7 +36,7 @@ export class ApprovalGate {
     if (Date.now() - p.createdAt > this.opts.policy.timeoutMs) {
       const out = transition(p, 'expired');
       this.proposals.set(id, out);
-      await this.opts.audit.append({ actor: 'system', action: 'proposal.expired', resource: p.toolName, decision: 'expired' });
+      await this.opts.audit.append({ actor: 'system', action: 'proposal.expired', resource: p.toolName, decision: 'expired', sessionId: p.sessionId });
       return out;
     }
     return p;

@@ -8,6 +8,7 @@ import {
   commandEnvelope,
   eventEnvelope,
   responseEnvelope,
+  readyEnvelope,
   type PiRuntimeEnvelope,
 } from "../src/pi-runtime-transport.js";
 
@@ -48,6 +49,7 @@ describe("createPiRuntime", () => {
       emit: (_env: PiRuntimeEnvelope) => {},
     };
     const dispose = createPiRuntime({ host, transport });
+    expect(sent).toContainEqual(readyEnvelope());
 
     transport.emit(commandEnvelope("r1", { type: "abort" }));
     await new Promise((resolve) => setTimeout(resolve, 0));

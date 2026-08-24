@@ -8,6 +8,7 @@ import {
   eventEnvelope,
   proposalEnvelope,
   proposalDecisionEnvelope,
+  readyEnvelope,
   type PiRuntimeEnvelope,
   type PiRuntimeHostHandle,
 } from "../src/pi-runtime-transport.js";
@@ -32,12 +33,33 @@ describe("PiRuntimeSupervisor", () => {
     const a = await sup.start();
     const b = await sup.start();
     expect(a).toBe(b);
+    handle.emit(readyEnvelope());
     const p = a.send({ type: "abort" });
+    await new Promise((resolve) => setTimeout(resolve, 0));
     const sent = handle.sent[0];
     expect(sent).toMatchObject({ direction: "main-to-runtime", command: { type: "abort" } });
     const id = "id" in sent ? sent.id : "";
     handle.emit(responseEnvelope(id, { id, type: "response", command: "abort", success: true }));
     await expect(p).resolves.toMatchObject({ success: true });
+  });
+
+  it("rejects send when no response arrives", async () => {
+    const handle = new FakeHandle();
+    const sup = new PiRuntimeSupervisor(() => handle, { readinessTimeoutMs: 1000, sendTimeoutMs: 100 });
+    const client = await sup.start();
+    handle.emit(readyEnvelope());
+    await expect(client.send({ type: "abort" })).rejects.toThrow(/timed out/);
+  });
+
+  it("rejects pending sends when the child exits", async () => {
+    const handle = new FakeHandle();
+    const sup = new PiRuntimeSupervisor(() => handle, { readinessTimeoutMs: 1000, sendTimeoutMs: 5000 });
+    const client = await sup.start();
+    handle.emit(readyEnvelope());
+    const p = client.send({ type: "abort" });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    handle.kill();
+    await expect(p).rejects.toThrow(/exited/);
   });
 
   it("streams events and routes proposals", async () => {
@@ -83,6 +105,7 @@ describe("PiRuntimeSupervisor", () => {
     const onExit = vi.fn();
     sup.onExit(onExit);
     await sup.start();
+    handle.emit(readyEnvelope());
     handle.kill();
     expect(onExit).toHaveBeenCalledWith(1);
     expect(handle.killed).toBe(true);

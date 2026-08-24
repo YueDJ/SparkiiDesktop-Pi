@@ -16,20 +16,44 @@ type ProposalHandler = (
 ) => Promise<ProposalDecision>;
 
 class PiRuntimeClientImpl implements PiRuntimeClient {
-  private pending = new Map<string, (response: RpcResponse) => void>();
+  private pending = new Map<string, {
+    resolve: (r: RpcResponse) => void;
+    reject: (e: Error) => void;
+    timer: ReturnType<typeof setTimeout>;
+  }>();
   private listeners = new Set<(event: NormalizedEvent) => void>();
+  private readyPromise: Promise<void>;
+  private resolveReady!: () => void;
+  private rejectReady!: (e: Error) => void;
 
   constructor(
     private handle: PiRuntimeHostHandle,
     private onProposal: ProposalHandler,
+    private sendTimeoutMs = 300_000,
+    private readinessTimeoutMs = 60_000,
   ) {
+    this.readyPromise = new Promise<void>((resolve, reject) => {
+      this.resolveReady = resolve;
+      this.rejectReady = reject;
+    });
+    // Suppress unhandled-rejection noise if the child exits before any send()
+    // attaches a handler; send() still observes the rejection via Promise.race.
+    this.readyPromise.catch(() => {});
     handle.onMessage((envelope) => void this.consume(envelope));
   }
 
-  send(command: RpcCommand): Promise<RpcResponse> {
+  async send(command: RpcCommand): Promise<RpcResponse> {
+    await Promise.race([
+      this.readyPromise,
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`runtime not ready after ${this.readinessTimeoutMs}ms`)), this.readinessTimeoutMs)),
+    ]);
     const id = randomUUID();
-    return new Promise((resolve) => {
-      this.pending.set(id, resolve);
+    return new Promise<RpcResponse>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.pending.delete(id);
+        reject(new Error(`command ${command.type} timed out after ${this.sendTimeoutMs}ms`));
+      }, this.sendTimeoutMs);
+      this.pending.set(id, { resolve, reject, timer });
       this.handle.postMessage(commandEnvelope(id, command));
     });
   }
@@ -40,17 +64,22 @@ class PiRuntimeClientImpl implements PiRuntimeClient {
   }
 
   close(): void {
-    this.pending.clear();
+    this.failPending(new Error("runtime closed"));
     this.listeners.clear();
   }
 
+  failPending(error: Error): void {
+    for (const entry of this.pending.values()) { clearTimeout(entry.timer); entry.reject(error); }
+    this.pending.clear();
+    this.rejectReady(error);
+  }
+
   private async consume(envelope: PiRuntimeEnvelope): Promise<void> {
+    if ("ready" in envelope) { this.resolveReady(); return; }
     if ("response" in envelope) {
-      const resolver = this.pending.get(envelope.response.id ?? envelope.id);
-      if (resolver) {
-        this.pending.delete(envelope.response.id ?? envelope.id);
-        resolver(envelope.response);
-      }
+      const key = envelope.response.id ?? envelope.id;
+      const entry = this.pending.get(key);
+      if (entry) { this.pending.delete(key); clearTimeout(entry.timer); entry.resolve(envelope.response); }
       return;
     }
     if ("event" in envelope) {
@@ -73,7 +102,7 @@ class PiRuntimeClientImpl implements PiRuntimeClient {
 }
 
 export class PiRuntimeSupervisor {
-  private client?: PiRuntimeClient;
+  private client?: PiRuntimeClientImpl;
   private handle?: PiRuntimeHostHandle;
   private exitCbs = new Set<(code: number | null) => void>();
   private proposalCb: ProposalHandler = async () => ({
@@ -82,14 +111,23 @@ export class PiRuntimeSupervisor {
     status: "denied",
   });
 
-  constructor(private makeHandle: () => PiRuntimeHostHandle) {}
+  constructor(
+    private makeHandle: () => PiRuntimeHostHandle,
+    private opts: { sendTimeoutMs?: number; readinessTimeoutMs?: number } = {},
+  ) {}
 
   async start(): Promise<PiRuntimeClient> {
     if (this.client) return this.client;
     const handle = this.makeHandle();
     this.handle = handle;
-    this.client = new PiRuntimeClientImpl(handle, (request) => this.proposalCb(request));
+    this.client = new PiRuntimeClientImpl(
+      handle,
+      (request) => this.proposalCb(request),
+      this.opts.sendTimeoutMs,
+      this.opts.readinessTimeoutMs,
+    );
     handle.onExit((code) => {
+      this.client?.failPending(new Error(`runtime exited with code ${code}`));
       this.client = undefined;
       this.handle = undefined;
       for (const cb of this.exitCbs) cb(code);

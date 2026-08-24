@@ -11,7 +11,7 @@ test.skip(process.env.SPARKII_SKIP_LLM === '1');
 test('contract review pilot acceptance', async () => {
   // The full contract-review flow runs live model calls plus a 120s approval
   // wait, so the default 30s test timeout is not enough.
-  test.setTimeout(180_000);
+  test.setTimeout(360_000);
   const fixture = join(mkdtempSync(join(tmpdir(), 'pilot-')), 'contract.txt');
   writeFileSync(fixture, '合同标的：设备采购。付款：验收后 30 日。违约责任：逾期按日万分之五。');
   const dataDir = mkdtempSync(join(tmpdir(), 'pilot-data-'));
@@ -32,9 +32,9 @@ test('contract review pilot acceptance', async () => {
   await page.getByText('登录').click();
   await page.getByTestId('upload').click();
   await page.getByTestId('review').click();
-  await expect(page.getByRole('dialog')).toBeVisible({ timeout: 120000 });
+  await expect(page.getByRole('dialog')).toBeVisible({ timeout: 300000 });
   await page.getByRole('button', { name: '批准' }).click();
   await expect(page.getByText(/proposal.approved/)).toBeVisible();
-  await expect(page.getByText('审核完成')).toBeVisible({ timeout: 120000 });
+  await expect(page.getByText('审核完成')).toBeVisible({ timeout: 300000 });
   await app.close();
 });
