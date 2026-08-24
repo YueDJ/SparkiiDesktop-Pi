@@ -18,10 +18,9 @@ describe('loadProfile', () => {
   it('loads a valid profile', async () => {
     const dir = writeProfile({
       'manifest.yaml': 'name: contract-review\nversion: 1.0.0\nmodelRouting:\n  tasks:\n    default:\n      - { provider: local, modelId: qwen2.5:7b }\n',
-      'agent/skills.yaml': '- { name: clause_extract, file: prompts/clause_extract.md }\n',
       'agent/tools.yaml': 'tools: [document.read, report.export]\n',
-      'agent/prompts/clause_extract.md': '# extract clauses\n',
-      'agent/prompts/report.md': '# generate report\n',
+      'agent/skills/clause_extract/SKILL.md': '---\nname: clause_extract\ndescription: Extract clauses.\n---\n# extract clauses\n',
+      'agent/skills/report/SKILL.md': '---\nname: report\ndescription: Generate report.\n---\n# generate report\n',
       'agent/knowledge/corpus.json': '[]',
       'agent/workflow.yaml': 'version: 1\nengine: linear\nsteps: []\n',
       'ui/pages/home.json': '{}',
@@ -33,7 +32,9 @@ describe('loadProfile', () => {
     const p = await loadProfile(dir, { allowUnsigned: true });
     expect(p.manifest.name).toBe('contract-review');
     expect(p.agent.tools).toEqual(['document.read', 'report.export']);
-    expect(p.agent.prompts).toMatchObject({ report: '# generate report\n' });
+    expect(p.agent.skills.map((s) => s.name).sort()).toEqual(['clause_extract', 'report']);
+    expect(p.agent.skills[0]?.description).toBeTruthy();
+    expect(p.agent.prompts).toMatchObject({ report: '# generate report\n', clause_extract: '# extract clauses\n' });
   });
 
   it('fails closed on invalid manifest', async () => {

@@ -1,3 +1,5 @@
+import type { SkillPackage } from './skills.js';
+
 export interface ProfileManifest {
   name: string;
   version: string;
@@ -8,7 +10,6 @@ export interface ProfileManifest {
   integrity?: { sha256: string };
 }
 
-export interface SkillRef { name: string; file: string; params?: Record<string, unknown>; }
 export type PageSchema = Record<string, unknown>;
 export interface ThemeRef { file: string; }
 
@@ -21,7 +22,7 @@ export interface ApprovalPolicy {
 }
 
 export interface AgentConfig {
-  skills: SkillRef[];
+  skills: SkillPackage[];
   tools: string[];
   prompts: Record<string, string>;
   workflow: Record<string, unknown>;
