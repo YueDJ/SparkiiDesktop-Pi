@@ -2,6 +2,7 @@ import {
   createAgentSessionFromServices,
   createAgentSessionRuntime,
   createAgentSessionServices,
+  createReadTool,
   defineTool,
   getAgentDir,
   ModelRuntime,
@@ -86,8 +87,6 @@ export async function createPiSdkSessionHost(
       services,
       sessionManager,
       sessionStartEvent,
-      tools: ["read"],
-      customTools: piTools,
     });
     return {
       ...result,
@@ -104,6 +103,7 @@ export async function createPiSdkSessionHost(
 
   function adaptSession(): PiRuntimeSession {
     const session: any = runtime.session;
+    session.agent.state.tools = [...piTools, defineTool(createReadTool(cwd) as any)];
     return {
       prompt: (text, promptOptions) => session.prompt(text, promptOptions),
       steer: (text) => session.steer(text),
