@@ -4,7 +4,7 @@
 
 **Goal:** Make the end-to-end contract-review pilot pass reliably: the workflow must not hang during Pi runtime cold start, the model must not autonomously trigger write approvals during workflow LLM steps, and the pilot must allow enough time for real DeepSeek calls.
 
-**Architecture:** Add a readiness handshake and timeouts to the Pi runtime client so commands are only sent after the child process finishes booting and never hang forever. Remove the write tool (`report.export`) from the Pi agent session so workflow LLM steps cannot generate spurious approval dialogs (export remains a main-process UI action). Widen the pilot timeouts.
+**Architecture:** Add a readiness handshake and timeouts to the Pi runtime client so commands are only sent after the child process finishes booting and never hang forever. Add a `bare` prompt mode so workflow LLM steps run with no tools (no spurious write approvals), while the interactive chat assistant keeps all tools — including `report.export`, whose writes remain gated by user approval. Widen the pilot timeouts.
 
 **Tech Stack:** TypeScript, Vitest, @sparkii/agent-host, Electron utilityProcess/fork transport, Playwright e2e.
 
@@ -13,7 +13,7 @@
 ## Root Causes (confirmed by the Task 5 pilot run)
 
 1. **Workflow hangs at the first LLM step.** `PiRuntimeSupervisor.start()` spawns the utility process and returns immediately, but the child only registers its command handler inside `createPiRuntime` after `createPiSdkSessionHost` (slow boot) resolves. `PiRuntimeClientImpl.send()` posts a command and waits forever with no timeout, and child exit does not reject pending sends. A slow/lost boot therefore stalls `selectModel`/`sendPrompt` indefinitely (pilot run 2/3 stuck at `审核中：extract`, no session file created).
-2. **Model autonomously calls `report.export` during workflow LLM steps.** `createPiSdkSessionHost` registers all three connectors as Pi tools, including the write tool `report.export`. During the workflow `report` LLM step the DeepSeek model calls `report.export`, which opens a write-approval dialog that competes with the `review` (human) approval; run 1 produced 9 spurious `report.export` proposals.
+2. **Model autonomously calls `report.export` during workflow LLM steps.** `createPiSdkSessionHost` registers all three connectors as Pi tools, including the write tool `report.export`. During the workflow `report` LLM step the DeepSeek model calls `report.export`, which opens a write-approval dialog that competes with the `review` (human) approval; run 1 produced 9 spurious `report.export` proposals. Fix: workflow LLM steps use a `bare` prompt (no tools), while chat keeps write tools gated by approval.
 3. **Pilot timeouts are too tight** for cold start + three real model calls + human approval (dialog 120s, test 180s).
 
 ## Global Constraints
@@ -280,62 +280,102 @@ git commit -m "feat(agent-host): add Pi runtime readiness and send timeouts"
 
 ---
 
-### Task 7: Remove write tools from the Pi agent session
+### Task 7: Bare prompt for workflow LLM steps (chat keeps write tools)
 
 **Files:**
+- Modify: `packages/agent-host/src/types.ts`
+- Modify: `packages/agent-host/src/pi-runtime.ts`
 - Modify: `packages/agent-host/src/pi-sdk-runtime.ts`
-- Test: `packages/agent-host/test/pi-sdk-runtime.test.ts`
+- Modify: `apps/desktop/electron/main/workflow.ts`
+- Test: `packages/agent-host/test/pi-runtime.test.ts`
 
 **Interfaces:**
-- Consumes: `documentConnector`, `knowledgeConnector`, `reportConnector` from `@sparkii/connectors`.
-- Produces: `defaultSessionTools(): ToolDef[]` returning only the read-only connectors; `createPiSdkSessionHost` uses it as the default tool set.
+- Consumes: existing `RpcCommand`, `PiRuntimeSession`, `createPiRuntime`, `sendPrompt`.
+- Produces:
+  - `RpcCommand` prompt variant gains `bare?: boolean`.
+  - `PiRuntimeSession.prompt(text, options?: { streamingBehavior?: "steer" | "followUp"; bare?: boolean })`.
+  - `adaptSession.prompt` sets `session.agent.state.tools = []` when `bare`, otherwise the full `piTools` (chat keeps `report.export`, still gated by approval).
+  - `workflow.ts` `sendPrompt` sends `{ type: "prompt", message: text, bare: true }`.
 
 - [ ] **Step 1: Write the failing test**
 
-In `packages/agent-host/test/pi-sdk-runtime.test.ts`, add:
+In `packages/agent-host/test/pi-runtime.test.ts`, add a case asserting the `bare` flag flows through to the session:
 
 ```ts
-import { defaultSessionTools } from "../src/pi-sdk-runtime.js";
-
-it("default session tools exclude write tools", () => {
-  const names = defaultSessionTools().map((t) => t.name);
-  expect(names).toContain("document.read");
-  expect(names).toContain("knowledge.search");
-  expect(names).not.toContain("report.export");
+it("passes bare flag to the session prompt", async () => {
+  const session = fakeSession();
+  const host: PiRuntimeSessionHost = { current: () => session, newSession: vi.fn(async () => {}), switchSession: vi.fn(async () => {}) };
+  const sent: PiRuntimeEnvelope[] = [];
+  const transport = {
+    postMessage: (env: PiRuntimeEnvelope) => sent.push(env),
+    onMessage: (cb: (env: PiRuntimeEnvelope) => void) => { (transport as any).emit = cb; return () => {}; },
+  } as any;
+  createPiRuntime({ host, transport });
+  transport.emit(commandEnvelope("r1", { type: "prompt", message: "hi", bare: true }));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(session.prompt).toHaveBeenCalledWith("hi", { streamingBehavior: undefined, bare: true });
 });
 ```
 
 - [ ] **Step 2: Run to verify failure**
 
-Run: `pnpm exec vitest run packages/agent-host/test/pi-sdk-runtime.test.ts`
-Expected: FAIL (export not found) before implementation.
+Run: `pnpm exec vitest run packages/agent-host/test/pi-runtime.test.ts`
+Expected: FAIL — the session is currently called with `{ streamingBehavior: undefined }` (no `bare`).
 
-- [ ] **Step 3: Implement**
+- [ ] **Step 3: Implement the `bare` flag plumbing**
 
-In `packages/agent-host/src/pi-sdk-runtime.ts`, add:
-
-```ts
-export function defaultSessionTools(): ToolDef[] {
-  return [...documentConnector.tools, ...knowledgeConnector.tools];
-}
-```
-
-And change the default in `createPiSdkSessionHost`:
+In `packages/agent-host/src/types.ts`, change the prompt variant:
 
 ```ts
-const tools = options.tools ?? defaultSessionTools();
+| { type: 'prompt'; message: string; streamingBehavior?: 'steer' | 'followUp'; bare?: boolean }
 ```
 
-- [ ] **Step 4: Run to verify pass**
+In `packages/agent-host/src/pi-runtime.ts`, widen `PiRuntimeSession.prompt`:
 
-Run: `pnpm exec vitest run packages/agent-host/test/pi-sdk-runtime.test.ts packages/agent-host/test`
-Expected: PASS.
+```ts
+prompt(text: string, options?: { streamingBehavior?: "steer" | "followUp"; bare?: boolean }): Promise<void>;
+```
 
-- [ ] **Step 5: Commit**
+And in `handleCommand`:
+
+```ts
+case "prompt":
+  await session.prompt(command.message, { streamingBehavior: command.streamingBehavior, bare: command.bare });
+  return;
+```
+
+- [ ] **Step 4: Make `bare` clear the session tools**
+
+In `packages/agent-host/src/pi-sdk-runtime.ts`, change `adaptSession().prompt`:
+
+```ts
+prompt: (text, promptOptions) => {
+  session.agent.state.tools = promptOptions?.bare ? [] : piTools;
+  const { bare: _bare, ...sdkOptions } = promptOptions ?? {};
+  return session.prompt(text, sdkOptions);
+},
+```
+
+(Keep the existing `session.agent.state.tools = piTools;` line at the top of `adaptSession` unchanged.)
+
+- [ ] **Step 5: Route workflow LLM steps as bare**
+
+In `apps/desktop/electron/main/workflow.ts`, in `sendPrompt`, change the prompt send to:
+
+```ts
+const resp = await client.send({ type: 'prompt', message: text, bare: true });
+```
+
+- [ ] **Step 6: Run to verify pass**
+
+Run: `pnpm exec vitest run packages/agent-host/test`
+Expected: PASS (the new test plus all existing agent-host tests).
+
+- [ ] **Step 7: Commit**
 
 ```bash
-git add packages/agent-host/src/pi-sdk-runtime.ts packages/agent-host/test/pi-sdk-runtime.test.ts
-git commit -m "fix(agent-host): exclude write tools from Pi agent session"
+git add packages/agent-host/src/types.ts packages/agent-host/src/pi-runtime.ts packages/agent-host/src/pi-sdk-runtime.ts apps/desktop/electron/main/workflow.ts packages/agent-host/test/pi-runtime.test.ts
+git commit -m "feat(agent-host): add bare prompt for workflow LLM steps"
 ```
 
 ---
@@ -391,6 +431,6 @@ git commit -m "test(desktop): widen pilot timeouts for live model calls"
 
 ## Self-Review
 
-- **Spec coverage:** Hang (Task 6), spurious write approvals (Task 7), pilot timeouts (Task 8). All three root causes are addressed.
+- **Spec coverage:** Hang (Task 6), spurious write approvals via bare workflow prompts while chat keeps write tools (Task 7), pilot timeouts (Task 8). All three root causes are addressed.
 - **Placeholder scan:** No TBD/TODO; `stop`/`onExit`/`onProposal` are referenced as unchanged to avoid duplicating verified code.
-- **Type consistency:** `defaultSessionTools(): ToolDef[]` is defined and used in the same file; `readyEnvelope()` matches the new `PiRuntimeEnvelope` variant; `send(command: RpcCommand)` matches the `PiRuntimeClient` interface.
+- **Type consistency:** `bare?: boolean` appears in `RpcCommand`, `PiRuntimeSession.prompt`, and `handleCommand`; `readyEnvelope()` matches the new `PiRuntimeEnvelope` variant; `send(command: RpcCommand)` matches the `PiRuntimeClient` interface.
