@@ -6,4 +6,3 @@ steps:
   - { id: extract, type: skill, ref: clause_extract, inputs: { from: load } }
   - { id: compare, type: skill, ref: risk_compare, inputs: { from: [extract, search] } }
   - { id: report,  type: llm,   template: report, inputs: { from: [extract, compare] } }
-  - { id: review,  type: human, inputs: { from: report } }
