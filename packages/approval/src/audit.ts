@@ -9,6 +9,21 @@ export interface AuditEvent {
   sessionId?: string;
 }
 
+interface AuditRow {
+  id: string; ts: number; actor: string; action: string;
+  resource: string | null; payload_summary: string | null;
+  decision: string | null; model_route: string | null; session_id: string | null;
+}
+
+function mapRow(r: AuditRow): AuditEvent {
+  return {
+    id: r.id, ts: r.ts, actor: r.actor, action: r.action,
+    resource: r.resource ?? undefined, payloadSummary: r.payload_summary ?? undefined,
+    decision: r.decision as AuditEvent['decision'] | undefined, modelRoute: r.model_route ?? undefined,
+    sessionId: r.session_id ?? undefined,
+  };
+}
+
 export class AuditStore {
   private db: Database.Database;
   constructor(file: string) {
@@ -39,21 +54,12 @@ export class AuditStore {
       (@sessionId IS NULL OR session_id = @sessionId) ORDER BY ts DESC`).all({
       actor: filter.actor ?? null, action: filter.action ?? null,
       resource: filter.resource ?? null, sessionId: filter.sessionId ?? null,
-    }) as Array<{
-      id: string; ts: number; actor: string; action: string;
-      resource: string | null; payload_summary: string | null;
-      decision: string | null; model_route: string | null; session_id: string | null;
-    }>;
-    return rows.map((r) => ({
-      id: r.id, ts: r.ts, actor: r.actor, action: r.action,
-      resource: r.resource ?? undefined, payloadSummary: r.payload_summary ?? undefined,
-      decision: r.decision as AuditEvent['decision'] | undefined, modelRoute: r.model_route ?? undefined,
-      sessionId: r.session_id ?? undefined,
-    }));
+    }) as AuditRow[];
+    return rows.map(mapRow);
   }
   async exportJsonl(): Promise<string> {
-    const rows = this.db.prepare('SELECT * FROM audit ORDER BY ts ASC').all() as AuditEvent[];
-    return rows.map((r) => JSON.stringify(r)).join('\n');
+    const rows = this.db.prepare('SELECT * FROM audit ORDER BY ts ASC').all() as AuditRow[];
+    return rows.map((r) => JSON.stringify(mapRow(r))).join('\n');
   }
   close(): void { this.db.close(); }
 }

@@ -30,4 +30,15 @@ describe('AuditStore', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].sessionId).toBe("s-1");
   });
+  it("exports jsonl with camelCase fields", async () => {
+    const s = new AuditStore(join(mkdtempSync(join(tmpdir(), "audit-")), "a.db"));
+    stores.push(s);
+    await s.append({ actor: "u1", action: "proposal.created", resource: "report.export", payloadSummary: "x", sessionId: "s-1" });
+    const line = (await s.exportJsonl()).trim().split("\n")[0];
+    const parsed = JSON.parse(line);
+    expect(parsed.sessionId).toBe("s-1");
+    expect(parsed.session_id).toBeUndefined();
+    expect(parsed.payloadSummary).toBe("x");
+    expect(parsed.payload_summary).toBeUndefined();
+  });
 });
