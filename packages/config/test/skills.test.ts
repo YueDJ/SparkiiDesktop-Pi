@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { loadSkillsFromDir, parseSkillFrontmatter } from '../src/skills.js';
+import { readFile } from 'node:fs/promises';
+import { collectSkillDirFiles } from '../src/skills.js';
 
 function write(files: Record<string, string>): string {
   const dir = mkdtempSync(join(tmpdir(), 'skills-'));
@@ -57,5 +59,20 @@ describe('loadSkillsFromDir', () => {
     const { skills, diagnostics } = await loadSkillsFromDir(dir);
     expect(skills).toHaveLength(1);
     expect(diagnostics.some((d) => d.type === 'collision')).toBe(true);
+  });
+});
+
+describe('collectSkillDirFiles', () => {
+  it('recursively collects skill files and skips ignored paths', async () => {
+    const dir = write({
+      'clause_extract/SKILL.md': '---\nname: clause_extract\ndescription: Extract.\n---\n正文\n',
+      'clause_extract/references/law.md': '法规条文',
+      'clause_extract/assets/logo.png': 'PNG',
+      'clause_extract/node_modules/x.js': 'skip',
+      'clause_extract/.hidden': 'skip',
+    });
+    const files = await collectSkillDirFiles(join(dir, 'clause_extract'));
+    expect(Object.keys(files).sort()).toEqual(['SKILL.md', 'assets/logo.png', 'references/law.md']);
+    expect(files['references/law.md'].toString()).toBe('法规条文');
   });
 });

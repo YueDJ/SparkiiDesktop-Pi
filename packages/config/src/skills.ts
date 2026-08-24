@@ -110,3 +110,20 @@ export async function loadSkillsFromDir(dir: string): Promise<LoadSkillsResult> 
   if (await isDirectory(dir)) await loadDir(dir, dir, true, state);
   return { skills: state.skills, diagnostics: state.diagnostics };
 }
+
+export async function collectSkillDirFiles(root: string): Promise<Record<string, Buffer>> {
+  const out: Record<string, Buffer> = {};
+  async function walk(dir: string): Promise<void> {
+    let entries;
+    try { entries = await readdir(dir, { withFileTypes: true }); } catch { return; }
+    for (const entry of entries) {
+      if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) { await walk(full); continue; }
+      const rel = relative(root, full).split(sep).join('/');
+      out[rel] = await readFile(full);
+    }
+  }
+  await walk(root);
+  return out;
+}

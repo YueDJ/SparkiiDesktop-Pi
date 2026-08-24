@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { parseProfileManifest } from './schema.js';
 import { computeIntegrity } from './integrity.js';
-import { loadSkillsFromDir } from './skills.js';
+import { collectSkillDirFiles, loadSkillsFromDir } from './skills.js';
 import type { ResolvedProfile } from './types.js';
 
 export class ProfileError extends Error {
@@ -39,12 +39,16 @@ export async function loadProfile(
     'security/approval.yaml': Buffer.from(approvalRaw),
   });
 
-  const skillResult = await loadSkillsFromDir(join(dir, 'agent', 'skills'));
+  const skillRoot = join(dir, 'agent', 'skills');
+  const skillResult = await loadSkillsFromDir(skillRoot);
   const skills = skillResult.skills;
   const prompts: Record<string, string> = {};
   for (const s of skills) {
     prompts[s.name] = s.content;
-    files[`agent/skills/${s.relPath}`] = Buffer.from(s.raw);
+  }
+  const skillFiles = await collectSkillDirFiles(skillRoot);
+  for (const [rel, buf] of Object.entries(skillFiles)) {
+    files[`agent/skills/${rel}`] = buf;
   }
 
   const toolsCfg = parseYaml(toolsRaw) as { tools: string[] };
