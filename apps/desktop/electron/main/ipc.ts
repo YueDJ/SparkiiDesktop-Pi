@@ -1,4 +1,5 @@
 import { ipcMain, dialog, type BrowserWindow } from 'electron';
+import { randomUUID } from 'node:crypto';
 import { createBroker, runWorkflow, selectModel } from './workflow.js';
 import { resolveExportPath } from './export-path.js';
 import type { Runtime } from './runtime.js';
@@ -6,7 +7,6 @@ import type { Logger } from './logger.js';
 
 export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, logger: Logger) {
   const broker = createBroker(rt, getWindow);
-  rt.supervisor.onProposal((request) => broker.request(request, "default"));
 
   ipcMain.handle('sparkii:login', async (_e, username: string, password: string) => {
     rt.subject = await rt.identity.authenticate(username, password);
@@ -49,20 +49,27 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   });
   ipcMain.handle('sparkii:queryAudit', (_e, filter: object) => rt.audit.query(filter));
   ipcMain.handle('sparkii:prompt', async (_e, text: string) => {
-    await selectModel(rt, 'chat');
-    const c = await rt.supervisor.start();
-    const win = getWindow();
-    let off = () => {};
-    await new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => { off(); reject(new Error('prompt timeout')); }, 300_000);
-      off = c.onEvent((ev) => {
-        win?.webContents.send('sparkii:event:chat-event', ev);
-        if (ev.type === 'agent_end') { clearTimeout(timer); off(); resolve(); }
+    const sessionId = randomUUID();
+    const slot = await rt.pool.acquire(sessionId);
+    slot.supervisor.onProposal((req) => broker.request(req, sessionId));
+    try {
+      await selectModel(rt, 'chat', sessionId);
+      const c = slot.client;
+      const win = getWindow();
+      await new Promise<void>((resolve, reject) => {
+        let off = () => {};
+        const timer = setTimeout(() => { off(); reject(new Error('prompt timeout')); }, 300_000);
+        off = c.onEvent((ev) => {
+          win?.webContents.send('sparkii:event:chat-event', ev);
+          if (ev.type === 'agent_end') { clearTimeout(timer); off(); resolve(); }
+        });
+        c.send({ type: 'prompt', message: text }).then((resp) => {
+          if (!resp.success) { clearTimeout(timer); off(); reject(new Error(resp.error ?? 'prompt failed')); }
+        });
       });
-      c.send({ type: 'prompt', message: text }).then((resp) => {
-        if (!resp.success) { clearTimeout(timer); off(); reject(new Error(resp.error ?? 'prompt failed')); }
-      });
-    });
+    } finally {
+      await rt.pool.release(sessionId);
+    }
     return { ok: true };
   });
   ipcMain.handle('sparkii:runWorkflow', async (_e, _id: string, input: Record<string, unknown>) => {

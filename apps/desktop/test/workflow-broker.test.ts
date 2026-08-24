@@ -32,6 +32,11 @@ describe('runWorkflow broker sharing', () => {
         submit: async (req: any) => ({ id: 'p1', ...req, status: 'pending', payloadHash: 'h', createdAt: Date.now() }),
         expire: async (id: string) => ({ id, status: 'expired' }),
       },
+      pool: {
+        acquire: async (sessionId: string) => ({ client: {}, supervisor: { onProposal: () => {} } }),
+        get: (sessionId: string) => undefined,
+        release: async (sessionId: string) => {},
+      },
     } as any;
 
     const broker = createBroker(rt, getWindow);

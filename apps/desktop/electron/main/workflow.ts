@@ -33,17 +33,19 @@ export function createBroker(rt: Runtime, getWindow: () => BrowserWindow | null)
   };
 }
 
-export async function selectModel(rt: Runtime, task: ModelTask): Promise<void> {
-  const client = await rt.supervisor.start();
+export async function selectModel(rt: Runtime, task: ModelTask, sessionId: string): Promise<void> {
+  const client = rt.pool.get(sessionId);
+  if (!client) throw new Error(`unknown session ${sessionId}`);
   const target = rt.router.resolve(task);
   if (!target) return;
   const resp = await client.send({ type: 'set_model', provider: target.provider, modelId: target.modelId });
   if (!resp.success) throw new Error(`cannot select model ${target.provider}/${target.modelId}: ${resp.error ?? 'unknown'}`);
 }
 
-async function sendPrompt(rt: Runtime, text: string, task: ModelTask = 'default'): Promise<string> {
-  const client = await rt.supervisor.start();
-  await selectModel(rt, task);
+async function sendPrompt(rt: Runtime, text: string, task: ModelTask, sessionId: string): Promise<string> {
+  const client = rt.pool.get(sessionId);
+  if (!client) throw new Error(`unknown session ${sessionId}`);
+  await selectModel(rt, task, sessionId);
 
   let acc = '';
   let off = () => {};
@@ -111,22 +113,29 @@ export async function runWorkflow(
   input: Record<string, unknown>,
   broker: ReturnType<typeof createBroker>,
 ): Promise<void> {
-  const rawDef = rt.profile.agent.workflow as unknown as WorkflowDef;
-  const def = resolveWorkflowTemplates(rawDef);
-  const ctx: RunContext = {
-    profileId: rt.profile.manifest.name, sessionId: 'default', actor: rt.subject?.userId ?? 'agent', input,
-    sendPrompt: (text, task) => sendPrompt(rt, text, (task as ModelTask) ?? 'default'),
-    runTool: (name, args) => runTool(rt, broker, name, args, 'default'),
-    requestApproval: async (req) => {
-      const d = await broker.request(req, 'default');
-      return { id: d.proposalId, status: d.approved ? 'approved' : 'denied' } as any;
-    },
-  };
-  const win = getWindow();
-  let finalState: Record<string, unknown> = {};
-  for await (const e of new LinearRunner().run(def, ctx)) {
-    win?.webContents.send('sparkii:event:workflow', e);
-    if (e.type === 'workflow_completed') finalState = e.result as Record<string, unknown>;
+  const sessionId = randomUUID();
+  const slot = await rt.pool.acquire(sessionId);
+  slot.supervisor.onProposal((req) => broker.request(req, sessionId));
+  try {
+    const rawDef = rt.profile.agent.workflow as unknown as WorkflowDef;
+    const def = resolveWorkflowTemplates(rawDef);
+    const ctx: RunContext = {
+      profileId: rt.profile.manifest.name, sessionId, actor: rt.subject?.userId ?? 'agent', input,
+      sendPrompt: (text, task) => sendPrompt(rt, text, (task as ModelTask) ?? 'default', sessionId),
+      runTool: (name, args) => runTool(rt, broker, name, args, sessionId),
+      requestApproval: async (req) => {
+        const d = await broker.request(req, sessionId);
+        return { id: d.proposalId, status: d.approved ? 'approved' : 'denied' } as any;
+      },
+    };
+    const win = getWindow();
+    let finalState: Record<string, unknown> = {};
+    for await (const e of new LinearRunner().run(def, ctx)) {
+      win?.webContents.send('sparkii:event:workflow', { ...e, sessionId });
+      if (e.type === 'workflow_completed') finalState = e.result as Record<string, unknown>;
+    }
+    win?.webContents.send('sparkii:event:state', { workflow: { result: finalState }, sessionId });
+  } finally {
+    await rt.pool.release(sessionId);
   }
-  win?.webContents.send('sparkii:event:state', { workflow: { result: finalState } });
 }
