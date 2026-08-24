@@ -69,24 +69,5 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     await runWorkflow(rt, getWindow, input, broker);
     return { ok: true };
   });
-  ipcMain.handle('sparkii:exportReport', async (_e, input: { title: string; sections: Array<{ heading: string; body: string }> }) => {
-    if (!rt.subject) throw new Error('not authenticated');
-    let filePath: string | undefined;
-    if (process.env.SPARKII_E2E_EXPORT_DIR) {
-      filePath = `${process.env.SPARKII_E2E_EXPORT_DIR}/report.docx`;
-    } else {
-      const win = getWindow();
-      const r = win
-        ? await dialog.showSaveDialog(win, { defaultPath: `${input.title || 'report'}.docx` })
-        : { canceled: true, filePath: undefined };
-      if (r.canceled || !r.filePath) return { ok: false, status: 'canceled' };
-      filePath = r.filePath;
-    }
-    const d = await broker.request({
-      toolName: 'report.export', targetSystem: 'report', summary: `导出报告到 ${filePath}`,
-      payload: { ...input, format: 'docx', path: filePath }, risk: 'write',
-    }, 'default');
-    return { ok: d.approved, proposalId: d.proposalId, status: d.status, result: d.result };
-  });
   ipcMain.handle('sparkii:diagnostics', async () => ({ logs: await logger.export(), audit: await rt.audit.exportJsonl() }));
 }

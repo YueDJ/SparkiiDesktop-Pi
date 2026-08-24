@@ -13,7 +13,6 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
     getProfile: () => invoke('getProfile'),
     chooseDocument: () => invoke('chooseDocument') as Promise<{ path?: string }>,
     runWorkflow: (id, input) => invoke('runWorkflow', id, input) as Promise<{ ok: boolean }>,
-    exportReport: (input) => invoke('exportReport', input),
     prompt: (text) => invoke('prompt', text) as Promise<{ ok: boolean }>,
     listPendingApprovals: () => invoke('listPendingApprovals') as Promise<unknown[]>,
     decideApproval: (id, approved, note) => invoke('decideApproval', id, approved, note),
