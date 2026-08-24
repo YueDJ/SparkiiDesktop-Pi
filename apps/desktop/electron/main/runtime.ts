@@ -38,6 +38,7 @@ export async function assemble(opts: { profileDir: string; dataDir: string; publ
   }
   await knowledgeConnector.init({ corpus: profile.agent.knowledge });
   const entry = resolvePiRuntimeEntry();
+  process.env.SPARKII_SKILLS_DIR = join(opts.profileDir, 'agent', 'skills');
   const pool = new PiRuntimePool({
     maxAgents: Number(process.env.SPARKII_MAX_AGENTS ?? 4),
     makeSupervisor: () =>
