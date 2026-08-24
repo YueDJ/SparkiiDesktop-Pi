@@ -9,7 +9,7 @@ export class ConnectorExecutor {
 
   async execute(p: Proposal, ctx: { actor: string }): Promise<Proposal> {
     if (p.status !== 'approved') {
-      await this.audit.append({ actor: ctx.actor, action: 'execution.blocked', resource: p.toolName, decision: p.status === 'denied' ? 'denied' : 'expired' });
+      await this.audit.append({ actor: ctx.actor, action: 'execution.blocked', resource: p.toolName, decision: p.status === 'denied' ? 'denied' : 'expired', sessionId: p.sessionId });
       return p;
     }
     const handler = this.handlers.get(p.toolName);
@@ -21,17 +21,17 @@ export class ConnectorExecutor {
       if (!result.ok) {
         const failed = transition(p, 'failed');
         failed.execution = { ok: false, error: result.error?.message };
-        await this.audit.append({ actor: ctx.actor, action: 'proposal.failed', resource: p.toolName });
+        await this.audit.append({ actor: ctx.actor, action: 'proposal.failed', resource: p.toolName, sessionId: p.sessionId });
         return failed;
       }
       const done = transition(p, 'executed');
       done.execution = { ok: true, result: result.data };
-      await this.audit.append({ actor: ctx.actor, action: 'proposal.executed', resource: p.toolName });
+      await this.audit.append({ actor: ctx.actor, action: 'proposal.executed', resource: p.toolName, sessionId: p.sessionId });
       return done;
     } catch (e) {
       const failed = transition(p, 'failed');
       failed.execution = { ok: false, error: (e as Error).message };
-      await this.audit.append({ actor: ctx.actor, action: 'proposal.failed', resource: p.toolName });
+      await this.audit.append({ actor: ctx.actor, action: 'proposal.failed', resource: p.toolName, sessionId: p.sessionId });
       return failed;
     }
   }

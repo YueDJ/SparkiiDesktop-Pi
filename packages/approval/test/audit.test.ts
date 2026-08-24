@@ -22,4 +22,12 @@ describe('AuditStore', () => {
     const line = (await s.exportJsonl()).trim().split('\n')[0];
     expect(JSON.parse(line).action).toBe('proposal.denied');
   });
+  it("persists and queries sessionId", async () => {
+    const store = new AuditStore(join(mkdtempSync(join(tmpdir(), "audit-")), "a.db"));
+    stores.push(store);
+    await store.append({ actor: "admin", action: "proposal.created", resource: "report.export", sessionId: "s-1" });
+    const rows = await store.query({ sessionId: "s-1" });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].sessionId).toBe("s-1");
+  });
 });
