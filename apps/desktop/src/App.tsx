@@ -9,13 +9,7 @@ import { AuditView } from './audit/AuditView.js';
 import type { WorkflowStatusState } from './workbench/WorkflowStatus.js';
 import { ContractSurface } from './surfaces/ContractSurface.js';
 import { HomeView } from './surfaces/HomeView.js';
-
-const AGENTS: ShellAgent[] = [
-  { id: 'contract', name: '合同审核', status: 'idle' },
-];
-
-// 会话历史接口待后端提供;暂无数据时不展示 mock 会话
-const SESSIONS: Record<string, ShellSession[]> = {};
+import { GeneralChatSurface } from './surfaces/GeneralChatSurface.js';
 
 export function App() {
   const api = window.sparkii;
@@ -30,6 +24,10 @@ export function App() {
   const [screen, setScreen] = useState<ScreenId>('home');
   const [roles, setRoles] = useState<string[]>([]);
   const [detail, setDetail] = useState<ApprovalProposalLike | null>(null);
+  const [agents, setAgents] = useState<ShellAgent[]>([{ id: 'contract', name: '合同审核', status: 'idle' }]);
+  const [sessions, setSessions] = useState<Record<string, ShellSession[]>>({});
+  const [activeGeneralSession, setActiveGeneralSession] = useState<string | null>(null);
+  const [generalTitle, setGeneralTitle] = useState('');
 
   useEffect(() => api.on('state', (s) => setState(s as Record<string, unknown>)), [api]);
   useEffect(() => api.on('approval', (p) => {
@@ -82,6 +80,11 @@ export function App() {
     setRoles(res.roles ?? []);
     setProfile(await api.getProfile());
     await refreshApprovals();
+    api.listAgents?.().then((list: Array<{ id: string; name: string }>) => {
+      if (Array.isArray(list) && list.length) {
+        setAgents(list.map((a) => ({ id: a.id as ScreenId, name: a.name, status: 'idle' })));
+      }
+    }).catch(() => {});
   };
 
   const onAction = async (action: string) => {
@@ -95,9 +98,42 @@ export function App() {
     }
   };
 
-  const onNewSession = () => {
+  const refreshSessions = (agentId: string) => {
+    api.listChatSessions?.(agentId)?.then((list: any[]) => {
+      const mapped: ShellSession[] = (list ?? []).map((s) => ({
+        id: s.id,
+        name: s.title ?? s.id,
+        state: '',
+        time: s.updatedAt ? new Date(s.updatedAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
+      }));
+      setSessions((prev) => ({ ...prev, [agentId]: mapped }));
+      const active = mapped.find((s) => s.id === activeGeneralSession);
+      if (active) setGeneralTitle(active.name);
+    }).catch(() => {});
+  };
+
+  const onNewSession = async (agentId: string) => {
+    if (agentId === 'general') {
+      const res = await api.newChatSession?.('general');
+      if (res?.sessionId) {
+        setActiveGeneralSession(res.sessionId);
+        refreshSessions('general');
+      }
+      return;
+    }
     setWorkflow({ status: 'idle' });
     setState((s) => ({ ...s, documents: [] }));
+  };
+
+  const onRenameSession = (agentId: string, sessionId: string, title: string) => {
+    api.setChatTitle?.(sessionId, title).then(() => refreshSessions(agentId));
+  };
+
+  const onDeleteSession = (agentId: string, sessionId: string) => {
+    api.deleteChatSession?.(sessionId).then(() => {
+      if (sessionId === activeGeneralSession) setActiveGeneralSession(null);
+      refreshSessions(agentId);
+    });
   };
 
   if (!authed) {
@@ -130,6 +166,11 @@ export function App() {
         : '● 合同审核就绪 · 等待开始';
 
   const navigate = (s: ScreenId) => {
+    if (s === 'general') {
+      setScreen('general');
+      refreshSessions('general');
+      return;
+    }
     // 仅合同审核已落地;对话/仪表板表面留档,待后端就绪后接入
     if (s === 'chat' || s === 'dashboard') { setScreen('contract'); return; }
     setScreen(s);
@@ -137,10 +178,17 @@ export function App() {
 
   const surfaces: Partial<Record<ScreenId, ReactNode>> = {
     home: (
-      <HomeView userName={username} agents={AGENTS} pendingApprovals={pending} onNavigate={setScreen} />
+      <HomeView userName={username} agents={agents} pendingApprovals={pending} onNavigate={navigate} />
     ),
     contract: (
       <ContractSurface state={state} workflow={workflow} onAction={onAction} onRequestExport={() => setScreen('approvals')} />
+    ),
+    general: (
+      <GeneralChatSurface
+        api={api}
+        sessionId={activeGeneralSession}
+        onNewSession={() => onNewSession('general')}
+      />
     ),
     approvals: (
       <div>
@@ -160,14 +208,15 @@ export function App() {
     contract: '合同审核 · 会话#3',
     chat: '法规问答 · 会话#1',
     dashboard: '舆情监控 · 会话#2',
+    general: activeGeneralSession ? `通用智能体 · ${generalTitle || '会话'}` : '通用智能体',
   };
 
   return (
     <>
       <Shell
         active={screen}
-        agents={AGENTS}
-        sessions={SESSIONS}
+        agents={agents}
+        sessions={sessions}
         pendingApprovals={pending.length}
         statusText={statusText}
         userName={username}
@@ -175,6 +224,8 @@ export function App() {
         surfaceTitle={surfaceTitles[screen]}
         onNavigate={navigate}
         onNewSession={onNewSession}
+        onRenameSession={onRenameSession}
+        onDeleteSession={onDeleteSession}
       >
         {surfaces[screen]}
       </Shell>
