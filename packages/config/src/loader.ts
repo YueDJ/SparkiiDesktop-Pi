@@ -51,6 +51,12 @@ export async function loadProfile(
     files[`agent/skills/${rel}`] = buf;
   }
 
+  const systemPromptRaw = await readFile(join(dir, 'agent', 'prompts', 'system.md'), 'utf8').catch(() => null);
+  if (systemPromptRaw !== null) {
+    files['agent/prompts/system.md'] = Buffer.from(systemPromptRaw);
+    prompts.system = systemPromptRaw;
+  }
+
   const toolsCfg = parseYaml(toolsRaw) as { tools: string[] };
   const themeCfg = parseYaml(themeRaw) as { file: string };
   const tokens = await read(dir, `ui/${themeCfg.file}`);
