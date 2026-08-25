@@ -1,5 +1,5 @@
 import { normalizeEvent } from "./rpc-client.js";
-import type { RpcCommand, RpcResponse } from "./types.js";
+import type { RpcCommand, RpcResponse, SessionSaddle } from "./types.js";
 import {
   eventEnvelope,
   readyEnvelope,
@@ -25,6 +25,7 @@ export interface PiRuntimeSessionHost {
   current(): PiRuntimeSession;
   newSession(): Promise<void>;
   switchSession(sessionPath: string): Promise<void>;
+  configureSaddle(saddle: SessionSaddle | null): Promise<void>;
 }
 
 export interface PiRuntimeChildTransport {
@@ -108,6 +109,9 @@ async function handleCommand(host: PiRuntimeSessionHost, command: RpcCommand): P
       return undefined;
     case "switch_session":
       await host.switchSession(command.sessionPath);
+      return undefined;
+    case "configure_session":
+      await host.configureSaddle(command.saddle);
       return undefined;
   }
 }

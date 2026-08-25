@@ -1,3 +1,11 @@
+export interface SessionSaddle {
+  tools: string[];
+  skillsDir?: string;
+  cwd?: string;
+  systemPrompt?: string;
+  workspaceRoot?: string;
+}
+
 export type RpcCommand =
   | { type: 'prompt'; message: string; streamingBehavior?: 'steer' | 'followUp' }
   | { type: 'steer'; message: string }
@@ -9,7 +17,8 @@ export type RpcCommand =
   | { type: 'set_model'; provider: string; modelId: string }
   | { type: 'set_auto_retry'; enabled: boolean }
   | { type: 'set_auto_compaction'; enabled: boolean }
-  | { type: 'switch_session'; sessionPath: string };
+  | { type: 'switch_session'; sessionPath: string }
+  | { type: 'configure_session'; saddle: SessionSaddle };
 
 export interface RpcResponse { id?: string; type: 'response'; command: string; success: boolean; data?: unknown; error?: string }
 

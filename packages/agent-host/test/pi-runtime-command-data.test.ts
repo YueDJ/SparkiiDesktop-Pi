@@ -55,4 +55,19 @@ describe("pi runtime command data", () => {
     const resp = posted.find((e) => "response" in e && e.id === "2");
     expect((resp as any)?.response?.data).toEqual([{ role: "user", text: "hi" }]);
   });
+
+  it("dispatches configure_session to the host", async () => {
+    const { host } = makeHost();
+    const posted: PiRuntimeEnvelope[] = [];
+    let handler: (e: PiRuntimeEnvelope) => void = () => {};
+    const transport = {
+      postMessage: (e: PiRuntimeEnvelope) => posted.push(e),
+      onMessage: (cb: (e: PiRuntimeEnvelope) => void) => { handler = cb; return () => {}; },
+    };
+    createPiRuntime({ host, transport });
+    const saddle = { tools: ["read", "bash"], skillsDir: "/tmp/skills" };
+    handler(commandEnvelope("3", { type: "configure_session", saddle }));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(host.configureSaddle).toHaveBeenCalledWith(saddle);
+  });
 });
