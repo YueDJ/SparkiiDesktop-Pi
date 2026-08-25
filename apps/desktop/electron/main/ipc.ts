@@ -14,7 +14,16 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     rt.subject = await rt.identity.authenticate(username, password);
     return { userId: rt.subject.userId, roles: rt.subject.roles };
   });
-  ipcMain.handle('sparkii:getProfile', () => ({ manifest: rt.profile.manifest, pages: rt.profile.ui.pages, theme: rt.profile.ui.theme, tools: rt.profile.agent.tools }));
+  ipcMain.handle('sparkii:getProfile', () => {
+    const first = [...rt.profiles.values()][0];
+    return { manifest: first.profile.manifest, pages: first.profile.ui.pages, theme: first.profile.ui.theme, tools: first.profile.agent.tools };
+  });
+  ipcMain.handle('sparkii:listAgents', () =>
+    [...rt.profiles.values()].map((pr) => ({
+      id: pr.profile.manifest.name,
+      name: pr.profile.manifest.displayName ?? pr.profile.manifest.name,
+    })),
+  );
   ipcMain.handle('sparkii:chooseDocument', async () => {
     if (process.env.SPARKII_E2E_DOCUMENT) return { path: process.env.SPARKII_E2E_DOCUMENT };
     const win = getWindow();
@@ -57,7 +66,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   ipcMain.handle('sparkii:prompt', async (_e, text: string) => {
     const sessionId = randomUUID();
     const slot = await rt.pool.acquire(sessionId);
-    slot.supervisor.onProposal((req) => broker.request(req, sessionId));
+    slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId: 'contract-review' }));
     try {
       await selectModel(rt, 'chat', sessionId);
       const c = slot.client;
