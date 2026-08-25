@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Countdown } from './Countdown.js';
 import { payloadSummary, riskInfo, type ApprovalProposalLike } from './types.js';
+import { DiffView } from '../workbench/DiffView.js';
 
 export interface ApprovalPanelProps {
   proposal: ApprovalProposalLike;
@@ -32,7 +33,12 @@ export function ApprovalPanel(props: ApprovalPanelProps) {
           <div style={{ margin: '12px 0' }}>
             <button type="button" className="btn sm" onClick={() => setShowPayload((v) => !v)}>冻结参数 {showPayload ? '▾' : '▸'}</button>
             {showPayload && (
-              <pre className="payload-box">{payloadSummary(proposal.payload)}</pre>
+              <>
+                <pre className="payload-box">{payloadSummary(proposal.payload)}</pre>
+                {typeof (proposal.payload as { diff?: unknown })?.diff === 'string' && (
+                  <DiffView diff={(proposal.payload as { diff: string }).diff} />
+                )}
+              </>
             )}
           </div>
           <textarea className="field" rows={3} placeholder="审批意见(可选)" value={note} onChange={(e) => setNote(e.target.value)} />
