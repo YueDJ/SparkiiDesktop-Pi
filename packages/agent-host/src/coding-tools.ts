@@ -22,7 +22,7 @@ function guardPath(ctx: CodingToolsContext, absolutePath: string): void {
   }
 }
 
-export function createCodingToolDefinitions(ctx: CodingToolsContext): ToolDefinition[] {
+export function createCodingToolDefinitions(ctx: CodingToolsContext): Array<ToolDefinition<any, any, any>> {
   const bash = createBashToolDefinition(ctx.cwd, {
     operations: {
       exec: async (command: string, cwd: string, opts: { onData: (data: Buffer) => void }) => {

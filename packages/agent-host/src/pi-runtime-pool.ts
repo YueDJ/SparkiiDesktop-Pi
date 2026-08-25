@@ -77,7 +77,7 @@ export class PiRuntimePool {
     try { await slot.client.send({ type: "new_session" }); } catch { /* 子进程已退出则忽略 */ }
     slot.sessionId = null;
     const next = this.pending.shift();
-    if (next) next.resolve(this.bind(slot, next.sessionId, {}));
+    if (next) void this.bind(slot, next.sessionId, {}).then(next.resolve, next.reject);
   }
 
   activeCount(): number {
