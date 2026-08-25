@@ -87,7 +87,7 @@ async function loadSkillFile(filePath: string, root: string, state: LoadState): 
 }
 
 async function loadDir(dir: string, root: string, includeRootFiles: boolean, state: LoadState): Promise<void> {
-  let entries;
+  let entries: import('node:fs').Dirent[];
   try { entries = await readdir(dir, { withFileTypes: true }); } catch { return; }
   if (entries.some((e) => e.name === 'SKILL.md')) {
     await loadSkillFile(join(dir, 'SKILL.md'), root, state);

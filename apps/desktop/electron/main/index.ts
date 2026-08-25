@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, Menu } from 'electron';
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +13,7 @@ let rt: Runtime;
 let win: BrowserWindow | null = null;
 
 app.whenReady().then(async () => {
+  Menu.setApplicationMenu(null);
   const dataDir = process.env.SPARKII_DATA_DIR ?? join(app.getPath('userData'), 'data');
   mkdirSync(dataDir, { recursive: true });
   const profileDir = process.env.SPARKII_PROFILE_DIR

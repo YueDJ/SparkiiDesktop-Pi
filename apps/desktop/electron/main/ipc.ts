@@ -2,6 +2,8 @@ import { ipcMain, dialog, type BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { createBroker, runWorkflow, selectModel } from './workflow.js';
 import { resolveExportPath } from './export-path.js';
+import { loadSettings, saveSettings } from './settings.js';
+import { listModels, testModel } from './model-probe.js';
 import type { Runtime } from './runtime.js';
 import type { Logger } from './logger.js';
 
@@ -48,6 +50,10 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     return out;
   });
   ipcMain.handle('sparkii:queryAudit', (_e, filter: object) => rt.audit.query(filter));
+  ipcMain.handle('sparkii:getSettings', () => loadSettings(rt.dataDir));
+  ipcMain.handle('sparkii:saveSettings', (_e, settings: unknown) => saveSettings(rt.dataDir, settings as Parameters<typeof saveSettings>[1]));
+  ipcMain.handle('sparkii:listModels', (_e, baseUrl: string, apiKey?: string) => listModels(baseUrl, apiKey));
+  ipcMain.handle('sparkii:testModel', (_e, baseUrl: string, apiKey?: string) => testModel(baseUrl, apiKey));
   ipcMain.handle('sparkii:prompt', async (_e, text: string) => {
     const sessionId = randomUUID();
     const slot = await rt.pool.acquire(sessionId);

@@ -8,6 +8,7 @@ out/
 *.tsbuildinfo
 .env
 .sparkii-data/
+.superpowers/
 *.key
 *.sig
 apps/desktop/src/types/*.js

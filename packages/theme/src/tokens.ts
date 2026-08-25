@@ -15,10 +15,10 @@ export function resolveTheme(raw: unknown): DesignTokens {
   return raw as DesignTokens;
 }
 
-export function cssVariables(tokens: DesignTokens): string {
+export function cssVariables(tokens: DesignTokens, selector: ':root' | '.dark' = ':root'): string {
   const vars: string[] = [];
   for (const g of groups) {
     for (const [k, v] of Object.entries(tokens[g])) vars.push(`--${g}-${k}: ${v}`);
   }
-  return `:root { ${vars.join('; ')}; }`;
+  return `${selector} { ${vars.join('; ')}; }`;
 }

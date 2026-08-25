@@ -8,6 +8,7 @@
   "main": "dist-electron/main/index.js",
   "scripts": {
     "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.electron.json",
     "build:renderer": "vite build",
     "build:main:check": "tsc --noEmit -p tsconfig.electron.json",
     "prebuild:main": "node -e \"const fs=require('fs');fs.rmSync('dist-electron',{recursive:true,force:true})\"",
@@ -16,26 +17,28 @@
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
-    "@sparkii/config": "workspace:*",
-    "@sparkii/model-router": "workspace:*",
-    "@sparkii/identity": "workspace:*",
-    "@sparkii/approval": "workspace:*",
     "@sparkii/agent-host": "workspace:*",
+    "@sparkii/approval": "workspace:*",
+    "@sparkii/config": "workspace:*",
     "@sparkii/connectors": "workspace:*",
+    "@sparkii/identity": "workspace:*",
+    "@sparkii/model-router": "workspace:*",
     "@sparkii/theme": "workspace:*",
     "better-sqlite3": "^13.0.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "@vitejs/plugin-react": "^6.1.0",
     "electron": "^43.4.1",
     "electron-builder": "^26.15.3",
     "esbuild": "^0.28.2",
-    "@playwright/test": "^1.62.1",
-    "vite": "^8.2.2",
-    "@vitejs/plugin-react": "^6.1.0",
-    "@testing-library/react": "^16.3.2",
     "jsdom": "^30.0.1",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vite": "^8.2.2"
   }
 }

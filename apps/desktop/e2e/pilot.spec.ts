@@ -32,9 +32,13 @@ test('contract review pilot acceptance', async () => {
   await page.getByText('登录').click();
   await page.getByTestId('upload').click();
   await page.getByTestId('review').click();
+  // 新提案到达时自动弹出审批详情(高风险为模态,写操作为右侧面板)
   await expect(page.getByRole('dialog')).toBeVisible({ timeout: 300000 });
   await page.getByRole('button', { name: '批准' }).click();
+  // 底部状态栏常驻显示一句话状态,含"审核完成"
+  await expect(page.getByText(/审核完成/)).toBeVisible({ timeout: 300000 });
+  // 审计移入独立页面:批准后进入审计时间线查看留痕
+  await page.getByRole('button', { name: '审计' }).click();
   await expect(page.getByText(/proposal.approved/)).toBeVisible();
-  await expect(page.getByText('审核完成')).toBeVisible({ timeout: 300000 });
   await app.close();
 });

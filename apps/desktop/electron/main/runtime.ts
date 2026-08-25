@@ -16,6 +16,7 @@ export interface Runtime {
   profile: Awaited<ReturnType<typeof loadProfile>>;
   router: ModelRouter; rbac: Rbac; gate: ApprovalGate; executor: ConnectorExecutor; audit: AuditStore;
   pool: PiRuntimePool; identity: LocalIdentityProvider; subject: Subject | null;
+  dataDir: string;
 }
 
 function resolvePiRuntimeEntry(): string {
@@ -46,5 +47,5 @@ export async function assemble(opts: { profileDir: string; dataDir: string; publ
         ? createForkHostHandle(entry)
         : createUtilityHostHandle(entry),
   });
-  return { profile, router, rbac, gate, executor, audit, pool, identity, subject: null };
+  return { profile, router, rbac, gate, executor, audit, pool, identity, subject: null, dataDir: opts.dataDir };
 }
