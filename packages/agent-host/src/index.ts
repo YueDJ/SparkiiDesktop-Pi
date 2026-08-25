@@ -1,4 +1,5 @@
 export * from "./rpc-client.js";
+export * from "./types.js";
 export * from "./workspace-guard.js";
 export * from "./edit-diff.js";
 export * from "./pi-runtime-transport.js";
