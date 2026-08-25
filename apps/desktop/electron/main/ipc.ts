@@ -8,6 +8,7 @@ import { resolveExportPath } from './export-path.js';
 import { loadSettings, saveSettings } from './settings.js';
 import { listModels, testModel } from './model-probe.js';
 import { autoWorkspacePath } from './workspace.js';
+import { buildProfileSaddle } from './saddle.js';
 import type { Runtime } from './runtime.js';
 import type { Logger } from './logger.js';
 
@@ -18,15 +19,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   const anchorDir = (sessionId: string) => join(rt.dataDir, 'sessions', sessionId);
 
   function buildSaddle(profileId: string, sessionId: string): SessionSaddle {
-    const pr = rt.profileOf(profileId);
-    const rec = rt.chatSessions.get(sessionId);
-    return {
-      tools: pr.profile.agent.tools,
-      skillsDir: join(pr.dir, 'agent', 'skills'),
-      cwd: anchorDir(sessionId),
-      systemPrompt: pr.profile.agent.prompts.system,
-      workspaceRoot: rec?.workspacePath,
-    };
+    return buildProfileSaddle(rt.profileOf(profileId), anchorDir(sessionId), rt.chatSessions.get(sessionId)?.workspacePath);
   }
 
   ipcMain.handle('sparkii:newChatSession', async (_e, profileId: string) => {
@@ -222,7 +215,9 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   ipcMain.handle('sparkii:testModel', (_e, baseUrl: string, apiKey?: string) => testModel(baseUrl, apiKey));
   ipcMain.handle('sparkii:prompt', async (_e, text: string) => {
     const sessionId = randomUUID();
-    const slot = await rt.pool.acquire(sessionId);
+    const slot = await rt.pool.acquire(sessionId, {
+      saddle: buildProfileSaddle(rt.profileOf('contract-review'), anchorDir(sessionId)),
+    });
     slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId: 'contract-review' }));
     try {
       await selectModel(rt, 'chat', sessionId);

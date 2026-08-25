@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { BrowserWindow } from 'electron';
 import { LinearRunner, type ProposalDecision, type RunContext, type WorkflowDef } from '@sparkii/agent-host';
 import { computeEditDiff } from '@sparkii/agent-host';
@@ -7,6 +8,7 @@ import { documentConnector, knowledgeConnector, reportConnector, type ToolDef } 
 import type { ProposalRequest } from '@sparkii/approval';
 import type { ModelTask } from '@sparkii/model-router';
 import type { Runtime } from './runtime.js';
+import { buildProfileSaddle } from './saddle.js';
 import { isReadOnlyBashCommand, riskOfCommand } from './general-executor.js';
 
 const allTools = new Map<string, ToolDef>(
@@ -145,10 +147,12 @@ export async function runWorkflow(
   broker: ReturnType<typeof createBroker>,
 ): Promise<void> {
   const sessionId = randomUUID();
-  const slot = await rt.pool.acquire(sessionId);
+  const pr = rt.profileOf('contract-review');
+  const slot = await rt.pool.acquire(sessionId, {
+    saddle: buildProfileSaddle(pr, join(rt.dataDir, 'sessions', sessionId)),
+  });
   slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId: 'contract-review' }));
   try {
-    const pr = rt.profileOf('contract-review');
     const rawDef = pr.profile.agent.workflow as unknown as WorkflowDef;
     const def = resolveWorkflowTemplates(rawDef);
     const ctx: RunContext = {

@@ -1,4 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createBroker, resolveWorkflowTemplates, runWorkflow } from '../electron/main/workflow.js';
 
 it('resolves skill ref and llm template to prompt content', () => {
@@ -21,12 +24,19 @@ describe('runWorkflow broker sharing', () => {
   it('completes the human step when the shared broker decides approval', async () => {
     const send = vi.fn();
     const getWindow = () => ({ webContents: { send } }) as any;
+    const acquiredSaddles: any[] = [];
     const rt = {
+      dataDir: mkdtempSync(join(tmpdir(), 'wf-')),
       profileOf: (id: string) => ({
+        dir: join(rt.dataDir, 'profiles', 'contract-review'),
         profile: {
           manifest: { name: 'contract-review' },
           security: { approval: { timeoutMs: 50 } },
-          agent: { workflow: { version: 1, engine: 'linear', steps: [{ id: 'review', type: 'human', inputs: { from: 'x' } }] } },
+          agent: {
+            tools: ['document.read', 'knowledge.search', 'report.export', 'read'],
+            prompts: { system: '你是 Sparkii Desktop 的合同审核智能体。' },
+            workflow: { version: 1, engine: 'linear', steps: [{ id: 'review', type: 'human', inputs: { from: 'x' } }] },
+          },
         },
       }),
       subject: { userId: 'admin' },
@@ -35,7 +45,10 @@ describe('runWorkflow broker sharing', () => {
         expire: async (id: string) => ({ id, status: 'expired' }),
       },
       pool: {
-        acquire: async (sessionId: string) => ({ client: {}, supervisor: { onProposal: () => {} } }),
+        acquire: async (sessionId: string, opts?: { saddle?: unknown }) => {
+          acquiredSaddles.push(opts?.saddle);
+          return { client: {}, supervisor: { onProposal: () => {} } };
+        },
         get: (sessionId: string) => undefined,
         release: async (sessionId: string) => {},
       },
@@ -44,6 +57,17 @@ describe('runWorkflow broker sharing', () => {
     const broker = createBroker(rt, getWindow);
     const running = runWorkflow(rt, getWindow, { documents: [] }, broker);
     await new Promise((r) => setTimeout(r, 0));
+
+    expect(acquiredSaddles).toHaveLength(1);
+    expect(acquiredSaddles[0]).toMatchObject({
+      tools: ['document.read', 'knowledge.search', 'report.export', 'read'],
+      systemPrompt: expect.stringContaining('合同审核智能体'),
+    });
+    expect(acquiredSaddles[0]?.skillsDir?.split(/[\\/]/).slice(-2).join('/')).toBe('agent/skills');
+    const cwd: string = acquiredSaddles[0]?.cwd;
+    expect(cwd.startsWith(join(rt.dataDir, 'sessions'))).toBe(true);
+    expect(cwd).not.toBe(join(rt.dataDir, 'sessions'));
+    expect(acquiredSaddles[0]?.workspaceRoot).toBeUndefined();
 
     expect(send).toHaveBeenCalledWith('sparkii:event:approval', expect.objectContaining({ id: 'p1' }));
     broker.decide('p1', { approved: true, status: 'approved', result: undefined });
