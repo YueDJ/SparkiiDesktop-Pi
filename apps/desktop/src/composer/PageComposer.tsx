@@ -2,7 +2,7 @@ import type { PageSchema } from '@sparkii/config';
 import { widgetRegistry, type WidgetProps } from './registry.js';
 
 export function PageComposer(props: { schema: PageSchema; state: Record<string, unknown>; onAction(a: string): void }) {
-  const widgets = (props.schema.widgets as Array<WidgetProps>) ?? [];
+  const widgets = (props.schema.widgets as Array<WidgetProps & { type: string }>) ?? [];
   return (
     <div className="page" data-page={props.schema.page}>
       {widgets.map((w) => {
