@@ -22,11 +22,13 @@ describe('runWorkflow broker sharing', () => {
     const send = vi.fn();
     const getWindow = () => ({ webContents: { send } }) as any;
     const rt = {
-      profile: {
-        manifest: { name: 'contract-review' },
-        security: { approval: { timeoutMs: 50 } },
-        agent: { workflow: { version: 1, engine: 'linear', steps: [{ id: 'review', type: 'human', inputs: { from: 'x' } }] } },
-      },
+      profileOf: (id: string) => ({
+        profile: {
+          manifest: { name: 'contract-review' },
+          security: { approval: { timeoutMs: 50 } },
+          agent: { workflow: { version: 1, engine: 'linear', steps: [{ id: 'review', type: 'human', inputs: { from: 'x' } }] } },
+        },
+      }),
       subject: { userId: 'admin' },
       gate: {
         submit: async (req: any) => ({ id: 'p1', ...req, status: 'pending', payloadHash: 'h', createdAt: Date.now() }),
