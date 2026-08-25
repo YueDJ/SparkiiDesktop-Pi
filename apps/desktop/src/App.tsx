@@ -53,11 +53,24 @@ export function App() {
   };
 
   const exportAudit = (jsonl: string) => {
-    const blob = new Blob([jsonl], { type: 'application/x-ndjson' });
+    // 服务器权威导出:使用主进程 diagnostics 返回的完整审计 JSONL
+    api.diagnostics().then((d) => downloadText(`sparkii-audit-${new Date().toISOString().slice(0, 10)}.jsonl`, d.audit)).catch(() => {
+      const blob = new Blob([jsonl], { type: 'application/x-ndjson' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `sparkii-audit-${new Date().toISOString().slice(0, 10)}.jsonl`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  };
+
+  const downloadText = (filename: string, text: string) => {
+    const blob = new Blob([text], { type: 'application/x-ndjson' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `sparkii-audit-${new Date().toISOString().slice(0, 10)}.jsonl`;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -134,7 +147,7 @@ export function App() {
       <AuditView key={auditVersion} api={api} onExport={exportAudit} />
     ),
     settings: (
-      <SettingsView />
+      <SettingsView api={api} />
     ),
   };
 
