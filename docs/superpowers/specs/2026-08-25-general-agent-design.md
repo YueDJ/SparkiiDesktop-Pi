@@ -61,7 +61,7 @@ profiles/general/
   manifest.yaml     # name: general, displayName: 通用智能体, modelRouting
   agent/
     prompts/system.md   # 系统提示（身份/工作区规则/审批说明/行为准则）
-    tools.yaml          # general.bash / general.edit / general.write（由代码注册，非连接器）
+    tools.yaml          # bash / edit / write（Pi 原生工具，执行后端委托 Main）
   security/
     roles.yaml          # reviewer/admin 可批准 write；admin 可批准 high-risk
     approval.yaml       # timeoutMs 300000, highRiskDoubleConfirm true
@@ -91,12 +91,15 @@ profiles/general/
 - `submit`/`decide`/`expire` 通过 `meta.profileId` / proposal 的 `profileId` 查对应策略与 RBAC（超时、可批准风险级均按 profile 生效）；
 - `Proposal` 已携带 `profileId` 与 `sessionId`，审计可回溯，无需改动。
 
-### 5.3 进程池按 profile 绑定
+### 5.3 统一进程池 + 会话级「鞍」（configure_session）
 
-- `PiRuntimePool.acquire(sessionId, { profileId, resumeSessionFile? })`：优先复用同 profile 的空闲槽位；无则新建（受 `SPARKII_MAX_AGENTS` 总上限约束）；有上限时排队（沿用现有队列）。
-- 槽位记录 `profileCtx`（skillsDir、tools 模式、cwd、profileId）。释放时保持槽位与 profile 绑定，不做跨 profile 复用（换 profile 需重启子进程，成本高）。
-- `makeSupervisor(profileCtx)` 生成对应 profile 的子进程；transports（`createUtilityHostHandle` / `createForkHostHandle`）支持传入 `env` 覆写（`SPARKII_SKILLS_DIR`、`SPARKII_PROFILE_ID` 等），避免依赖进程级全局 env 的竞态。
-- `pi-sdk-runtime` 增加 `mode: 'connectors' | 'coding'`（见 §6）；`SPARKII_SESSION_ID` 等环境变量按槽位注入。
+- 所有 Pi 子进程以**完整内核**启动，不预装任何 profile 的工具/skills；槽位不绑定 profile，可跨智能体复用。
+- `PiRuntimePool.acquire(sessionId, { profileId, resumeSessionFile?, saddle })`：空闲槽位直接复用；无空闲且未达 `SPARKII_MAX_AGENTS` 则新建；有上限时排队（沿用现有队列）。
+- 会话绑定后 Main 发送新 RPC `configure_session`（载荷：工具清单、skillsDir、cwd/工作区、系统提示），子进程按鞍装配当前会话；继续会话（`switch_session` 恢复）时重发同一份鞍。
+- 释放槽位：`new_session` 重置（清除会话与工具状态），槽位回到无 profile 状态；下个会话重新配置。
+- 安全不变量：**未配置 = 无工具**（fail closed）；**鞍不残留**（释放即重置）；测试断言跨 profile 无泄漏。
+- 取消 transports 按 profile 注入 env 的方案：skillsDir/cwd 等经 `configure_session` 下发，避免进程级全局 env 竞态。
+- `pi-sdk-runtime` 增加 `mode: 'connectors' | 'coding'`（见 §6），按当前会话的鞍装配工具。
 
 ## 6. 通用智能体工具集（coding 模式）
 
@@ -106,22 +109,24 @@ Pi 会话内注册的工具：
 
 | 工具 | 行为 | 审批 |
 | --- | --- | --- |
-| read / ls / grep / find | Pi 原生只读工具，cwd=会话锚点；包装层做路径白名单与「工作区未创建」提示 | 免审批（审计 tool.read） |
-| general.bash | 命令发 Main，由 Main 分类 | 只读白名单免审批；其余审批 |
-| general.edit | 提议（old_string→new_string） | 必审批，带 diff |
-| general.write | 提议（全量写入） | 必审批，带 diff |
+| read / ls / grep / find | Pi 原生只读工具，本地执行；包装层做路径白名单与「工作区未创建」提示 | 免审批（审计 tool.read） |
+| bash | Pi 原生工具定义 + `BashOperations.exec` 委托 Main | 只读白名单免审批；其余审批 |
+| edit | Pi 原生工具定义 + `EditOperations` 委托 Main | 必审批，带 diff |
+| write | Pi 原生工具定义 + `WriteOperations` 委托 Main | 必审批，带 diff |
 
-子进程内**没有可执行的写原语**：`general.bash`/`general.edit`/`general.write` 的 execute 只负责把请求发给 Main 并等待决定；真实执行全部发生在 Main 侧确定性执行器。沿用现有 proposal 通道（proposal envelope → Main → decision envelope 回传）。
+注册进子进程的就是 **Pi 原生工具定义本身**：`createBashToolDefinition` / `createEditToolDefinition` / `createWriteToolDefinition`，工具名与 schema 与 Codex 完全一致；仅通过 Pi 官方提供的可插拔 operations 插槽（`BashOperations.exec`、`EditOperations.readFile/writeFile/access`、`WriteOperations.writeFile/mkdir`，官方注释即「委托到远程系统执行」的用途）把**真正的执行**委托给 Main。参数校验、diff 生成（edit）、输出截断、tool_call/tool_result 事件、渲染信息仍由 Pi 原生处理。
+
+子进程内**没有可执行的写原语**：operations 的实现只发请求等决定；真实执行全部发生在 Main 侧确定性执行器。沿用现有 proposal 通道（proposal envelope → Main → decision envelope 回传）。被拒绝时：edit/write 的 operations 抛错、bash 返回拒绝标记，工具结果呈「未执行」，不会出现「显示成功但没写」。
 
 ### 6.2 bash 命令分类（Main 侧，安全相关逻辑不放子进程）
 
-`general.bash` 提议到达 Main 后，由 `isReadOnlyBashCommand(command)` 判定：
+`bash` 经 `BashOperations.exec` 到达 Main 后，由 `isReadOnlyBashCommand(command)` 判定：
 
 - **只读判定（严格）**：单条命令；不含 shell 元字符（`;` `&&` `||` `|` `>` `>>` `<` `$(` `)` 反引号、换行、`&`）；整命令以白名单前缀开头（实现时可扩展，只增不减）：
   - 文件：`ls` `cat` `head` `tail` `wc` `grep` `rg` `cut` `sort` `uniq` `diff`
   - 环境/信息：`pwd` `echo` `which` `type` `env` `date` `printf` `true` `false`
-  - git 只读：`git status` `git diff` `git log` `git show` `git branch` `git stash list`
-- 命中 → Main 直接执行（工作区未创建时返回「工作区尚未创建（尚无写操作）。请先让智能体创建文件，或在输入框上方指定工作区。」），审计 `tool.read`，不弹审批。
+  - git 只读：`git status` `git diff` `git log` `git show` `git branch` `git stash list`（仅状态/历史查询；索引刷新视为内部行为）
+- 命中 → Main 直接执行，输出经 `onData` 流回 Pi（工作区未创建时返回「工作区尚未创建（尚无写操作）。请先让智能体创建文件，或在输入框上方指定工作区。」），审计 `tool.read`，不弹审批。
 - 未命中 → `gate.submit`（`risk: write`；破坏性模式如 `rm -rf`、`git reset --hard`、`drop`、格式化命令标记 `high-risk`，触发二次确认）。
 - 白名单是**精确前缀/整命令匹配**，任何含元字符或未知动词的命令一律走审批——宁可多审，不可漏放。
 
@@ -129,7 +134,7 @@ Pi 会话内注册的工具：
 
 ### 6.3 edit / write 与 diff 预览
 
-- 提议载荷（冻结）：`{ path, args, diff }`。Main 在提交提案前**只读地**计算 diff：
+- 提议载荷（冻结）：`{ path, args, diff }`。Main 在提交提案前**只读地**计算 diff（Pi 侧也会为自己的结果展示计算一份 diff，两者并存；审批展示以 Main 计算为准）：
   - edit：读现有文件 → 按 old_string 匹配位置生成 unified diff（`generateUnifiedPatch` 复用 Pi 能力或自实现等价逻辑）；
   - write：新文件 = 全量新增行；覆盖 = 删除旧全文 + 新增新全文；
   - 路径不在工作区内或 `..` 逃逸 → 直接拒绝（`CONNECTOR_DENIED` 语义），不产生提案。
@@ -140,8 +145,8 @@ Pi 会话内注册的工具：
 
 新文件 `apps/desktop/electron/main/general-executor.ts`，向 `ConnectorExecutor` 注册：
 
-- `general.bash`：`child_process.spawn`（shell 执行），cwd=工作区根；**写命令**执行前先 `ensureWorkspace()` 创建目录；**只读命令**在工作区未创建时按 §6.2 返回提示、不创建目录；支持 `timeout`（默认 60s，超时 kill）；stdout/stderr 合并输出并截断（上限 128KB，超限提示 `fullOutputPath` 语义，v1 只截断+提示）；返回 `{ exitCode, output, timedOut }`。
-- `general.edit` / `general.write`：文件变更（见 §6.3），返回 `{ path, diff }`。
+- `bash`：`child_process.spawn`（shell 执行），cwd=工作区根；**写命令**执行前先 `ensureWorkspace()` 创建目录；**只读命令**在工作区未创建时按 §6.2 返回提示、不创建目录；支持 `timeout`（默认 60s，超时 kill）；stdout/stderr 合并输出并经 `onData` 流回子进程，截断（上限 128KB，超限提示 `fullOutputPath` 语义，v1 只截断+提示）；返回 `{ exitCode, output, timedOut }`。
+- `edit` / `write`：文件变更（见 §6.3），返回 `{ path, diff }`。
 - 执行器通过 `ChatSessionStore` 由 `proposal.sessionId` 解析会话工作区；执行结果作为 proposal execution 回传子进程（沿用现有 proposal decision 通道）。
 - 所有执行（含只读直通）写审计：`tool.read` / `proposal.created` / `proposal.approved` / `proposal.denied` / `proposal.executed` / `proposal.failed` / `workspace.created`，均带 `sessionId`、`profileId`。
 
@@ -215,7 +220,7 @@ CREATE TABLE chat_sessions (
 表面头部:通用智能体 · <会话标题> [会话▾] [新会话]
 消息流:
   用户气泡(右) / 助手气泡(左, Markdown + 代码块复制 + 流式光标)
-  工具卡片:命令(general.bash) / 文件 diff(edit/write) / 只读结果(read/grep/ls/find)
+  工具卡片:命令(bash) / 文件 diff(edit/write) / 只读结果(read/grep/ls/find)
     - 状态:运行中(蓝) → 等待审批(琥珀, 倒计时) → 已执行(绿) / 已拒绝·未执行(红)
 Composer:
   [工作区选择行: 当前工作区路径 · 选择文件夹 · 清除(回自动)]  ← 用户指定优先
@@ -233,7 +238,7 @@ Composer:
 ## 10. 安全模型
 
 1. 只读免审批，写必逐条审批（`risk: write`），破坏性操作 `high-risk` 二次确认；拒绝/超时即不执行。
-2. 子进程无写能力：`general.*` 工具在 Pi 内只提议；执行只在 Main 侧、且仅当 gate 状态为 `approved` 时发生（确定性执行器，LLM 无法绕过）。
+2. 子进程无写能力：`bash`/`edit`/`write` 的 operations 只把请求发往 Main；执行只在 Main 侧、且仅当 gate 状态为 `approved` 时发生（确定性执行器，LLM 无法绕过）。
 3. 命令分类在白名单式严格判定（§6.2），宁可多审不可漏放。
 4. 路径白名单：所有文件操作 resolve 后必须位于会话工作区根内；`..`/越界直接拒绝并审计。符号链接逃逸防护不在 v1 范围（标注为后续硬沙箱项）。
 5. 审计全程：读工具调用、写提议、批准/拒绝、执行结果、工作区创建均落审计（带 sessionId/profileId）。
@@ -284,7 +289,7 @@ Composer:
 **新增**
 
 - `profiles/general/`（manifest / prompts/system.md / security）
-- `packages/agent-host/src/general-tools.ts`（只读工具包装 + bash/edit/write 提议包装）
+- `packages/agent-host/src/coding-tools.ts`（Pi 原生工具定义 + 委托 Main 的 operations + 只读工具路径白名单包装）
 - `apps/desktop/electron/main/chat-session-store.ts`、`workspace.ts`、`general-executor.ts`
 - `apps/desktop/src/surfaces/GeneralChatSurface.tsx`、`src/workbench/ToolCard.tsx`、`src/workbench/Composer.tsx`（或并入 surface）
 - 依赖：`react-markdown`（或 `marked`）
