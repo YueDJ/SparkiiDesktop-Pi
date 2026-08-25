@@ -1,7 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Shell, type ScreenId, type ShellAgent, type ShellSession } from './shell/Shell.js';
 import { SettingsView } from './shell/SettingsView.js';
-import { ApprovalDialog } from './approval/ApprovalDialog.js';
+import { ApprovalCenter } from './trust/ApprovalCenter.js';
+import { ApprovalPanel } from './trust/ApprovalPanel.js';
+import { ApprovalModal } from './trust/ApprovalModal.js';
+import { riskInfo, type ApprovalProposalLike } from './trust/types.js';
 import { AuditView } from './audit/AuditView.js';
 import type { WorkflowStatusState } from './workbench/WorkflowStatus.js';
 import { ContractSurface } from './surfaces/ContractSurface.js';
@@ -29,6 +32,7 @@ export function App() {
   const [auditVersion, setAuditVersion] = useState(0);
   const [workflow, setWorkflow] = useState<WorkflowStatusState>({ status: 'idle' });
   const [screen, setScreen] = useState<ScreenId>('contract');
+  const [detail, setDetail] = useState<ApprovalProposalLike | null>(null);
 
   useEffect(() => api.on('state', (s) => setState(s as Record<string, unknown>)), [api]);
   useEffect(() => api.on('approval', (p) => setPending((xs) => [...xs, p])), [api]);
@@ -39,6 +43,24 @@ export function App() {
   }), [api]);
 
   const refreshApprovals = () => api.listPendingApprovals().then((xs) => setPending(xs as any[]));
+
+  const decide = (id: string, ok: boolean, note?: string) => {
+    api.decideApproval(id, ok, note).then(() => {
+      setDetail(null);
+      refreshApprovals();
+      setAuditVersion((v) => v + 1);
+    });
+  };
+
+  const exportAudit = (jsonl: string) => {
+    const blob = new Blob([jsonl], { type: 'application/x-ndjson' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sparkii-audit-${new Date().toISOString().slice(0, 10)}.jsonl`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const login = async () => {
     await api.login(username, password);
@@ -105,23 +127,11 @@ export function App() {
     approvals: (
       <div>
         <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>审批中心</h3>
-        {pending.length === 0 && <div className="card muted">没有待处理的审批事项</div>}
-        {pending.map((p) => (
-          <ApprovalDialog
-            key={p.id}
-            proposal={p}
-            onDecide={(id, ok, note) => {
-              api.decideApproval(id, ok, note).then(() => {
-                refreshApprovals();
-                setAuditVersion((v) => v + 1);
-              });
-            }}
-          />
-        ))}
+        <ApprovalCenter proposals={pending} onOpenDetail={setDetail} />
       </div>
     ),
     audit: (
-      <AuditView key={auditVersion} api={api} />
+      <AuditView key={auditVersion} api={api} onExport={exportAudit} />
     ),
     settings: (
       <SettingsView />
@@ -135,17 +145,22 @@ export function App() {
   };
 
   return (
-    <Shell
-      active={screen}
-      agents={AGENTS}
-      sessions={SESSIONS}
-      pendingApprovals={pending.length}
-      statusText={statusText}
-      surfaceTitle={surfaceTitles[screen]}
-      onNavigate={navigate}
-      onNewSession={onNewSession}
-    >
-      {surfaces[screen]}
-    </Shell>
+    <>
+      <Shell
+        active={screen}
+        agents={AGENTS}
+        sessions={SESSIONS}
+        pendingApprovals={pending.length}
+        statusText={statusText}
+        surfaceTitle={surfaceTitles[screen]}
+        onNavigate={navigate}
+        onNewSession={onNewSession}
+      >
+        {surfaces[screen]}
+      </Shell>
+      {detail && (riskInfo(detail.risk).level === 'high'
+        ? <ApprovalModal proposal={detail} onDecide={decide} onClose={() => setDetail(null)} />
+        : <ApprovalPanel proposal={detail} onDecide={decide} onClose={() => setDetail(null)} />)}
+    </>
   );
 }
