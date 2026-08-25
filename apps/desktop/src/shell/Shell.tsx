@@ -4,7 +4,7 @@ import {
   SessionsIcon, PlusIcon, GearIcon, MoonIcon, SunIcon, UserIcon, ShieldIcon, AuditIcon,
 } from './icons.js';
 
-export type ScreenId = 'home' | 'contract' | 'chat' | 'dashboard' | 'approvals' | 'audit' | 'settings';
+export type ScreenId = 'home' | 'contract' | 'chat' | 'dashboard' | 'general' | 'approvals' | 'audit' | 'settings';
 export type AgentStatus = 'running' | 'idle' | 'queued';
 
 export interface ShellAgent {
@@ -34,6 +34,8 @@ export interface ShellProps {
   surfaceActions?: ReactNode;
   onNavigate(screen: ScreenId): void;
   onNewSession(agentId: string): void;
+  onRenameSession?(agentId: string, sessionId: string, title: string): void;
+  onDeleteSession?(agentId: string, sessionId: string): void;
   children?: ReactNode;
 }
 
@@ -51,6 +53,8 @@ export function Shell(props: ShellProps) {
   const { active, agents, sessions, pendingApprovals, statusText, userName = 'admin', userRole = '审核员', surfaceTitle, surfaceActions, onNavigate, onNewSession, children } = props;
   const [drawer, setDrawer] = useState<DrawerKind>(null);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState('');
 
   const activeAgent = agents.find((a) => a.id === active);
   const runningCount = agents.filter((a) => a.status === 'running').length;
@@ -66,6 +70,17 @@ export function Shell(props: ShellProps) {
 
   const closeDrawer = () => setDrawer(null);
   const openDrawer = (kind: Exclude<DrawerKind, null>) => setDrawer((cur) => (cur === kind ? null : kind));
+
+  const startRename = (s: ShellSession) => {
+    setRenamingId(s.id);
+    setRenameDraft(s.name);
+  };
+
+  const commitRename = (agentId: string, s: ShellSession) => {
+    const title = renameDraft.trim();
+    setRenamingId(null);
+    if (title && title !== s.name) props.onRenameSession?.(agentId, s.id, title);
+  };
 
   return (
     <div className="shell">
@@ -151,11 +166,33 @@ export function Shell(props: ShellProps) {
           <button type="button" className="btn primary block" onClick={() => onNewSession(active)}>+ 新会话</button>
           <div className="appr-list">
             {activeSessions.map((s) => (
-              <button key={s.id} type="button" className="item" onClick={() => onNavigate(active)}>
+              <div key={s.id} className="item" onClick={() => onNavigate(active)}>
                 <span className={`dot ${s.active ? 'dot-run' : 'dot-idle'}`} />
-                <span>{s.name} {s.state}</span>
+                {renamingId === s.id ? (
+                  <input
+                    className="field"
+                    value={renameDraft}
+                    autoFocus
+                    onChange={(e) => setRenameDraft(e.target.value)}
+                    onBlur={() => commitRename(active, s)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') commitRename(active, s);
+                      if (e.key === 'Escape') setRenamingId(null);
+                    }}
+                  />
+                ) : (
+                  <>
+                    <span>{s.name} {s.state}</span>
+                    {props.onRenameSession && (
+                      <button type="button" className="icon-btn sm" title={`重命名 ${s.id}`} onClick={(e) => { e.stopPropagation(); startRename(s); }}>✎</button>
+                    )}
+                    {props.onDeleteSession && (
+                      <button type="button" className="icon-btn sm" title={`删除 ${s.id}`} onClick={(e) => { e.stopPropagation(); props.onDeleteSession?.(active, s.id); }}>✕</button>
+                    )}
+                  </>
+                )}
                 <span className="muted">{s.time}</span>
-              </button>
+              </div>
             ))}
           </div>
         </div>

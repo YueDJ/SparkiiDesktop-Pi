@@ -89,4 +89,22 @@ describe('Shell', () => {
     fireEvent.click(screen.getByTitle('账号'));
     expect(screen.getByText('admin')).toBeTruthy();
   });
+
+  it('supports general agent and rename/delete callbacks in session drawer', () => {
+    const props = makeProps();
+    props.active = 'general';
+    props.agents = [...props.agents, { id: 'general', name: '通用智能体', status: 'idle' }];
+    props.sessions = { ...props.sessions, general: [{ id: 'g1', name: '会话 08-25 17:10', state: '', time: '今天' }] };
+    props.onRenameSession = vi.fn();
+    props.onDeleteSession = vi.fn();
+    render(<Shell {...props} />);
+    fireEvent.click(screen.getByTitle('会话'));
+    fireEvent.click(screen.getByTitle('重命名 g1'));
+    const input = screen.getByDisplayValue('会话 08-25 17:10');
+    fireEvent.change(input, { target: { value: '新标题' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(props.onRenameSession).toHaveBeenCalledWith('general', 'g1', '新标题');
+    fireEvent.click(screen.getByTitle('删除 g1'));
+    expect(props.onDeleteSession).toHaveBeenCalledWith('general', 'g1');
+  });
 });
