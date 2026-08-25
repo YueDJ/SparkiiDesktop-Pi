@@ -21,6 +21,7 @@
 * { box-sizing: border-box; }
 
 html, body { margin: 0; height: 100%; }
+#root { height: 100%; }
 body {
   background: var(--page-bg, #E8EEF6);
   font: 13px/1.5 var(--font-body, system-ui, sans-serif);

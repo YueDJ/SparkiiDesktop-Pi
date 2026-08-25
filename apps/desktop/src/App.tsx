@@ -8,18 +8,14 @@ import { riskInfo, type ApprovalProposalLike } from './trust/types.js';
 import { AuditView } from './audit/AuditView.js';
 import type { WorkflowStatusState } from './workbench/WorkflowStatus.js';
 import { ContractSurface } from './surfaces/ContractSurface.js';
+import { HomeView } from './surfaces/HomeView.js';
 
 const AGENTS: ShellAgent[] = [
-  { id: 'contract', name: '合同审核', status: 'running' },
+  { id: 'contract', name: '合同审核', status: 'idle' },
 ];
 
-const SESSIONS: Record<string, ShellSession[]> = {
-  contract: [
-    { id: 's3', name: '会话#3', state: '比对中', time: '今天', active: true },
-    { id: 's2', name: '会话#2', state: '已完成', time: '昨天' },
-    { id: 's1', name: '会话#1', state: '已归档', time: '周一' },
-  ],
-};
+// 会话历史接口待后端提供;暂无数据时不展示 mock 会话
+const SESSIONS: Record<string, ShellSession[]> = {};
 
 export function App() {
   const api = window.sparkii;
@@ -31,7 +27,8 @@ export function App() {
   const [pending, setPending] = useState<any[]>([]);
   const [auditVersion, setAuditVersion] = useState(0);
   const [workflow, setWorkflow] = useState<WorkflowStatusState>({ status: 'idle' });
-  const [screen, setScreen] = useState<ScreenId>('contract');
+  const [screen, setScreen] = useState<ScreenId>('home');
+  const [roles, setRoles] = useState<string[]>([]);
   const [detail, setDetail] = useState<ApprovalProposalLike | null>(null);
 
   useEffect(() => api.on('state', (s) => setState(s as Record<string, unknown>)), [api]);
@@ -80,8 +77,9 @@ export function App() {
   };
 
   const login = async () => {
-    await api.login(username, password);
+    const res = await api.login(username, password);
     setAuthed(true);
+    setRoles(res.roles ?? []);
     setProfile(await api.getProfile());
     await refreshApprovals();
   };
@@ -132,12 +130,15 @@ export function App() {
         : '● 合同审核就绪 · 等待开始';
 
   const navigate = (s: ScreenId) => {
-    // 仅合同审核已落地;对话/仪表板/首页总览表面留档,待后端就绪后接入
-    if (s === 'home' || s === 'chat' || s === 'dashboard') { setScreen('contract'); return; }
+    // 仅合同审核已落地;对话/仪表板表面留档,待后端就绪后接入
+    if (s === 'chat' || s === 'dashboard') { setScreen('contract'); return; }
     setScreen(s);
   };
 
   const surfaces: Partial<Record<ScreenId, ReactNode>> = {
+    home: (
+      <HomeView userName={username} agents={AGENTS} pendingApprovals={pending} onNavigate={setScreen} />
+    ),
     contract: (
       <ContractSurface state={state} workflow={workflow} onAction={onAction} onRequestExport={() => setScreen('approvals')} />
     ),
@@ -169,6 +170,8 @@ export function App() {
         sessions={SESSIONS}
         pendingApprovals={pending.length}
         statusText={statusText}
+        userName={username}
+        userRole={roles.length ? roles.join(' · ') : '审核员'}
         surfaceTitle={surfaceTitles[screen]}
         onNavigate={navigate}
         onNewSession={onNewSession}

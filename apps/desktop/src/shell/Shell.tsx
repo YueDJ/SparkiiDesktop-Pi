@@ -28,6 +28,8 @@ export interface ShellProps {
   sessions: Record<string, ShellSession[]>;
   pendingApprovals: number;
   statusText: string;
+  userName?: string;
+  userRole?: string;
   surfaceTitle?: string;
   surfaceActions?: ReactNode;
   onNavigate(screen: ScreenId): void;
@@ -46,7 +48,7 @@ const TITLES: Partial<Record<ScreenId, string>> = {
 type DrawerKind = 'session' | 'queue' | 'account' | null;
 
 export function Shell(props: ShellProps) {
-  const { active, agents, sessions, pendingApprovals, statusText, surfaceTitle, surfaceActions, onNavigate, onNewSession, children } = props;
+  const { active, agents, sessions, pendingApprovals, statusText, userName = 'admin', userRole = '审核员', surfaceTitle, surfaceActions, onNavigate, onNewSession, children } = props;
   const [drawer, setDrawer] = useState<DrawerKind>(null);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
 
@@ -135,7 +137,7 @@ export function Shell(props: ShellProps) {
         <button type="button" className="queue-entry" onClick={() => openDrawer('queue')}>
           运行 {runningCount}/{MAX_AGENTS} · {queueCount} 排队
         </button>
-        <span className="tech">本机 · deepseek-chat</span>
+        <span className="tech">本机运行</span>
       </footer>
 
       {drawer && <button type="button" className="drawer-backdrop" data-testid="drawer-backdrop" aria-label="关闭面板" onClick={closeDrawer} />}
@@ -166,17 +168,21 @@ export function Shell(props: ShellProps) {
         </div>
         <div className="drawer-body">
           <div className="rail-label">运行中</div>
-          {agents.filter((a) => a.status === 'running').map((a) => (
-            <div key={a.id} className="item"><span className="dot dot-run" />{a.name}</div>
-          ))}
+          {agents.filter((a) => a.status === 'running').length === 0
+            ? <div className="muted">暂无运行中的智能体</div>
+            : agents.filter((a) => a.status === 'running').map((a) => (
+              <div key={a.id} className="item"><span className="dot dot-run" />{a.name}</div>
+            ))}
           <div className="rail-label">排队中</div>
-          {agents.filter((a) => a.status === 'queued').map((a) => (
-            <div key={a.id} className="item">
-              <span className="dot dot-wait" />
-              <span>{a.name} · 第 {a.queuePosition ?? 1} 位</span>
-              <span className="muted">取消</span>
-            </div>
-          ))}
+          {agents.filter((a) => a.status === 'queued').length === 0
+            ? <div className="muted">暂无排队任务</div>
+            : agents.filter((a) => a.status === 'queued').map((a) => (
+              <div key={a.id} className="item">
+                <span className="dot dot-wait" />
+                <span>{a.name} · 第 {a.queuePosition ?? 1} 位</span>
+                <span className="muted">取消</span>
+              </div>
+            ))}
           <p className="muted">轮到时会通知你</p>
         </div>
       </aside>
@@ -187,8 +193,8 @@ export function Shell(props: ShellProps) {
           <button type="button" className="icon-btn" title="关闭" onClick={closeDrawer}>✕</button>
         </div>
         <div className="drawer-body">
-          <div className="kv">用户名:<b>admin</b></div>
-          <div className="kv">角色:<b>审核员</b></div>
+          <div className="kv">用户名:<b>{userName}</b></div>
+          <div className="kv">角色:<b>{userRole}</b></div>
           <div className="kv">数据目录:<b>本机 · 已加密</b></div>
           <div className="appr-list" style={{ marginTop: 12 }}>
             <div className="item">修改密码</div>

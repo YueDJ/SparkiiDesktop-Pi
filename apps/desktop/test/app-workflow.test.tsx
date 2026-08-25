@@ -39,6 +39,9 @@ describe('App workflow feedback', () => {
     fireEvent.change(screen.getByPlaceholderText('用户名'), { target: { value: 'admin' } });
     fireEvent.change(screen.getByPlaceholderText('密码'), { target: { value: 'admin123' } });
     fireEvent.click(screen.getByText('登录'));
+    // 登录后进入工作台首页,点击合同审核卡片进入其表面
+    await screen.findByText(/工作台 · 上午好/);
+    fireEvent.click(screen.getByTestId('agent-card-contract'));
     await screen.findByTestId('review');
     fireEvent.click(screen.getByTestId('review'));
     expect(api.runWorkflow).toHaveBeenCalledWith('contract-review', { documents: [] });
