@@ -22,4 +22,14 @@ describe('ModelRouter', () => {
   it('returns null when all targets unavailable', () => {
     expect(new ModelRouter(routing).resolve('report', () => false)).toBeNull();
   });
+
+  it('resolves coding task, falling back to default when absent', () => {
+    const router = new ModelRouter(normalizeRouting({ default: [{ provider: 'local', modelId: 'qwen2.5:7b' }] }));
+    expect(router.resolve('coding')).toEqual({ provider: 'local', modelId: 'qwen2.5:7b' });
+    const withCoding = new ModelRouter(normalizeRouting({
+      default: [{ provider: 'local', modelId: 'qwen2.5:7b' }],
+      coding: [{ provider: 'cloud', modelId: 'deepseek-v4-pro' }],
+    }));
+    expect(withCoding.resolve('coding')).toEqual({ provider: 'cloud', modelId: 'deepseek-v4-pro' });
+  });
 });

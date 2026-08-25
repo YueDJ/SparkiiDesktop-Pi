@@ -1,8 +1,8 @@
 import type { ModelTask, ModelTarget } from './types.js';
 
 export function normalizeRouting(raw: Record<string, ModelTarget[]>): Record<ModelTask, ModelTarget[]> {
-  const out = { default: raw.default ?? [], chat: [], extract: [], report: [] } as Record<ModelTask, ModelTarget[]>;
-  for (const key of ['chat', 'extract', 'report'] as const) {
+  const out = { default: raw.default ?? [], chat: [], extract: [], report: [], coding: [] } as Record<ModelTask, ModelTarget[]>;
+  for (const key of ['chat', 'extract', 'report', 'coding'] as const) {
     out[key] = raw[key] ?? out.default;
   }
   return out;
