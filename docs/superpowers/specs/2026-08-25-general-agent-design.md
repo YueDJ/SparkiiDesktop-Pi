@@ -14,7 +14,7 @@
 
 | 现状 | 目标 |
 | --- | --- |
-| 运行时只加载单个 profile（合同审核） | 多 profile 加载，池槽位按 profile 绑定 |
+| 运行时只加载单个 profile（合同审核） | 多 profile 加载；统一进程池 + 会话级配置（鞍） |
 | `sparkii:prompt(text)` 一次性会话，用完即弃 | 持久会话：注册表 + Pi session 文件 + 恢复 |
 | Pi 子进程工具被覆写为只读连接器工具 | 按 profile 区分：合同审核沿用连接器工具；通用智能体启用编码工具并加审批包装 |
 | ChatWorkbench 未接入（裸输入框） | GeneralChatSurface 落地（C1 规格扩展） |
@@ -47,9 +47,9 @@ Main Process
   ├─ profiles: Map<profileId, { profile, router, rbac }>   ← 多 profile 加载
   ├─ ApprovalGate（按 profileId 查策略/RBAC）· AuditStore（全局）
   ├─ ChatSessionStore（SQLite）· GeneralExecutor（bash/edit/write 确定性执行）
-  └─ PiRuntimePool（槽位按 profile 绑定，上限 4）
-        └─ Pi 子进程（cwd=会话锚点目录；工具=只读工具 + 提议包装工具）
-              bash/edit/write 在子进程内**无执行能力**，仅向 Main 提议
+  └─ PiRuntimePool（统一加固 Pi 子进程池，上限 4）
+        └─ Pi 子进程（同一份运行时；工具按鞍注册，cwd=会话锚点目录）
+              bash/edit/write 执行后端**固定路由 Main**（池级系统保障）
 ```
 
 ## 4. profile：`profiles/general/`
@@ -94,10 +94,11 @@ profiles/general/
 ### 5.3 统一进程池 + 会话级「鞍」（configure_session）
 
 - 所有 Pi 子进程以**完整内核**启动，不预装任何 profile 的工具/skills；槽位不绑定 profile，可跨智能体复用。
+- **池级系统保障（与鞍无关）**：子进程是加固的统一 Pi——内核能力完整、不裁剪，但 `bash`/`edit`/`write` 的 operations 在子进程运行时层面**固定路由 Main**；无论鞍如何配置（甚至配置失败），有风险操作的审批与执行都由 Main 完成，子进程在任何情况下都不拥有本地写原语。鞍只决定工具**可见性**（注册哪些工具）、skills、cwd/工作区、系统提示与模型。
 - `PiRuntimePool.acquire(sessionId, { profileId, resumeSessionFile?, saddle })`：空闲槽位直接复用；无空闲且未达 `SPARKII_MAX_AGENTS` 则新建；有上限时排队（沿用现有队列）。
 - 会话绑定后 Main 发送新 RPC `configure_session`（载荷：工具清单、skillsDir、cwd/工作区、系统提示），子进程按鞍装配当前会话；继续会话（`switch_session` 恢复）时重发同一份鞍。
 - 释放槽位：`new_session` 重置（清除会话与工具状态），槽位回到无 profile 状态；下个会话重新配置。
-- 安全不变量：**未配置 = 无工具**（fail closed）；**鞍不残留**（释放即重置）；测试断言跨 profile 无泄漏。
+- 安全不变量：**未配置 = 无工具**（fail closed）；**鞍不残留**（释放即重置）；**写安全不依赖鞍**（池级兜底）；测试断言跨 profile 无泄漏。
 - 取消 transports 按 profile 注入 env 的方案：skillsDir/cwd 等经 `configure_session` 下发，避免进程级全局 env 竞态。
 - `pi-sdk-runtime` 增加 `mode: 'connectors' | 'coding'`（见 §6），按当前会话的鞍装配工具。
 
@@ -116,7 +117,7 @@ Pi 会话内注册的工具：
 
 注册进子进程的就是 **Pi 原生工具定义本身**：`createBashToolDefinition` / `createEditToolDefinition` / `createWriteToolDefinition`，工具名与 schema 与 Codex 完全一致；仅通过 Pi 官方提供的可插拔 operations 插槽（`BashOperations.exec`、`EditOperations.readFile/writeFile/access`、`WriteOperations.writeFile/mkdir`，官方注释即「委托到远程系统执行」的用途）把**真正的执行**委托给 Main。参数校验、diff 生成（edit）、输出截断、tool_call/tool_result 事件、渲染信息仍由 Pi 原生处理。
 
-子进程内**没有可执行的写原语**：operations 的实现只发请求等决定；真实执行全部发生在 Main 侧确定性执行器。沿用现有 proposal 通道（proposal envelope → Main → decision envelope 回传）。被拒绝时：edit/write 的 operations 抛错、bash 返回拒绝标记，工具结果呈「未执行」，不会出现「显示成功但没写」。
+子进程内**没有可执行的写原语**：operations 的实现只发请求等决定；真实执行全部发生在 Main 侧确定性执行器。这条 operations→Main 路由是**池级统一运行时的一部分**，对每个 profile/鞍都成立（合同审核也一样，只是它的鞍不把 bash/edit/write 注册给模型可见）。沿用现有 proposal 通道（proposal envelope → Main → decision envelope 回传）。被拒绝时：edit/write 的 operations 抛错、bash 返回拒绝标记，工具结果呈「未执行」，不会出现「显示成功但没写」。
 
 ### 6.2 bash 命令分类（Main 侧，安全相关逻辑不放子进程）
 
@@ -238,7 +239,7 @@ Composer:
 ## 10. 安全模型
 
 1. 只读免审批，写必逐条审批（`risk: write`），破坏性操作 `high-risk` 二次确认；拒绝/超时即不执行。
-2. 子进程无写能力：`bash`/`edit`/`write` 的 operations 只把请求发往 Main；执行只在 Main 侧、且仅当 gate 状态为 `approved` 时发生（确定性执行器，LLM 无法绕过）。
+2. 子进程无写能力（**池级系统保障**）：`bash`/`edit`/`write` 的 operations 只把请求发往 Main——该路由固定于统一子进程运行时，与鞍无关；执行只在 Main 侧、且仅当 gate 状态为 `approved` 时发生（确定性执行器，LLM 无法绕过）。
 3. 命令分类在白名单式严格判定（§6.2），宁可多审不可漏放。
 4. 路径白名单：所有文件操作 resolve 后必须位于会话工作区根内；`..`/越界直接拒绝并审计。符号链接逃逸防护不在 v1 范围（标注为后续硬沙箱项）。
 5. 审计全程：读工具调用、写提议、批准/拒绝、执行结果、工作区创建均落审计（带 sessionId/profileId）。
@@ -265,7 +266,8 @@ Composer:
 
 ### 集成（desktop / agent-host）
 
-- 多 profile：pool 槽位按 profile 绑定与排队；transports env 注入。
+- 统一池：槽位跨智能体复用；`configure_session` 按会话下发鞍（工具清单/skills/cwd/系统提示）。
+- **写安全不依赖鞍（池级不变量）**：即使 `configure_session` 缺失或失败，子进程的 `bash`/`edit`/`write` 也无法本地执行（只读工具除外）；跨 profile 无工具/skills 泄漏（合同会话结束后，同槽位新通用会话看不到合同工具/skills）。
 - GeneralExecutor：bash 只读直通、bash 写审批后执行、edit diff 计算与应用、write 懒创建工作区、超时 kill。
 - RPC：`get_state` 返回 sessionFile；`get_messages` 返回历史；事件带 sessionId。
 
@@ -299,7 +301,7 @@ Composer:
 - `packages/model-router`：types（`coding`）、normalizeRouting
 - `packages/config`：manifest schema 增加可选 `displayName`
 - `packages/approval`：ApprovalGate 多策略
-- `packages/agent-host`：pool（profile 绑定/恢复）、supervisor/transports（env 注入）、pi-sdk-runtime（coding 模式）、RPC types（get_state/get_messages 返回数据）
+- `packages/agent-host`：pool（跨智能体复用/会话恢复）、RPC `configure_session`、pi-sdk-runtime（coding 模式 + 池级 operations 路由）、RPC types（get_state/get_messages 返回数据）
 - `apps/desktop/electron`：runtime.ts（多 profile）、ipc.ts、index.ts（profiles 发现）、preload api-types
 - `apps/desktop/src`：App.tsx（agents/路由/surfaces）、Shell.tsx（ScreenId `general`）、styles.css
 
