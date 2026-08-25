@@ -19,7 +19,7 @@ export function ApprovalPanel(props: ApprovalPanelProps) {
   return (
     <>
       <button type="button" className="drawer-backdrop fixed" aria-label="关闭审批" onClick={onClose} />
-      <aside className="drawer open fixed" aria-label="写操作审批">
+      <aside className="drawer open fixed" role="dialog" aria-label="写操作审批">
         <div className="drawer-head"><span>写操作审批</span><button type="button" className="icon-btn" title="关闭" onClick={onClose}>✕</button></div>
         <div className="drawer-body">
           <div className="kv">操作:<b>{proposal.summary}</b></div>

@@ -35,7 +35,11 @@ export function App() {
   const [detail, setDetail] = useState<ApprovalProposalLike | null>(null);
 
   useEffect(() => api.on('state', (s) => setState(s as Record<string, unknown>)), [api]);
-  useEffect(() => api.on('approval', (p) => setPending((xs) => [...xs, p])), [api]);
+  useEffect(() => api.on('approval', (p) => {
+    setPending((xs) => [...xs, p]);
+    // 审批是需要人工接管的时刻:新提案到达时自动弹出详情(P2/P1)
+    setDetail((cur) => cur ?? (p as ApprovalProposalLike));
+  }), [api]);
   useEffect(() => api.on('workflow', (e: any) => {
     if (e.type === 'step_started') setWorkflow({ status: 'running', step: e.stepId });
     else if (e.type === 'workflow_completed') setWorkflow({ status: 'done' });
