@@ -1,0 +1,8 @@
+tools:
+  - read
+  - ls
+  - grep
+  - find
+  - bash
+  - edit
+  - write

@@ -1,5 +1,5 @@
 import { normalizeEvent } from "./rpc-client.js";
-import type { RpcCommand, RpcResponse } from "./types.js";
+import type { RpcCommand, RpcResponse, SessionSaddle } from "./types.js";
 import {
   eventEnvelope,
   readyEnvelope,
@@ -25,6 +25,7 @@ export interface PiRuntimeSessionHost {
   current(): PiRuntimeSession;
   newSession(): Promise<void>;
   switchSession(sessionPath: string): Promise<void>;
+  configureSaddle(saddle: SessionSaddle | null): Promise<void>;
 }
 
 export interface PiRuntimeChildTransport {
@@ -55,11 +56,11 @@ export function createPiRuntime(opts: {
     if (!("command" in envelope)) return;
     const { id, command } = envelope;
     try {
-      await handleCommand(opts.host, command);
+      const data = await handleCommand(opts.host, command);
       if (command.type === "new_session" || command.type === "switch_session") {
         resubscribe();
       }
-      send(id, command, { id, type: "response", command: command.type, success: true });
+      send(id, command, { id, type: "response", command: command.type, success: true, data });
     } catch (error) {
       send(id, command, {
         id, type: "response", command: command.type, success: false,
@@ -75,39 +76,42 @@ export function createPiRuntime(opts: {
   };
 }
 
-async function handleCommand(host: PiRuntimeSessionHost, command: RpcCommand): Promise<void> {
+async function handleCommand(host: PiRuntimeSessionHost, command: RpcCommand): Promise<unknown> {
   const session = host.current();
   switch (command.type) {
     case "prompt":
       await session.prompt(command.message, { streamingBehavior: command.streamingBehavior });
-      return;
+      return undefined;
     case "steer":
       await session.steer(command.message);
-      return;
+      return undefined;
     case "follow_up":
       await session.followUp(command.message);
-      return;
+      return undefined;
     case "abort":
       await session.abort();
-      return;
+      return undefined;
     case "new_session":
       await host.newSession();
-      return;
+      return undefined;
     case "get_state":
-      return;
+      return session.getState();
     case "get_messages":
-      return;
+      return session.getMessages();
     case "set_model":
       await session.setModel(command.provider, command.modelId);
-      return;
+      return undefined;
     case "set_auto_retry":
       await session.setAutoRetry(command.enabled);
-      return;
+      return undefined;
     case "set_auto_compaction":
       await session.setAutoCompaction(command.enabled);
-      return;
+      return undefined;
     case "switch_session":
       await host.switchSession(command.sessionPath);
-      return;
+      return undefined;
+    case "configure_session":
+      await host.configureSaddle(command.saddle);
+      return undefined;
   }
 }

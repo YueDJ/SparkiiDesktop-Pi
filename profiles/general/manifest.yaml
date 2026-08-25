@@ -1,0 +1,10 @@
+name: general
+displayName: 通用智能体
+version: 1.0.0
+modelRouting:
+  tasks:
+    coding:
+      - { provider: deepseek, modelId: deepseek-v4-pro }
+      - { provider: deepseek, modelId: deepseek-v4-flash }
+    default:
+      - { provider: deepseek, modelId: deepseek-v4-flash }

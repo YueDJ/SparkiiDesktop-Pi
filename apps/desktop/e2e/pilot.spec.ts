@@ -29,7 +29,7 @@ test('contract review pilot acceptance', async () => {
   const page = await app.firstWindow();
   await page.getByPlaceholder('用户名').fill('admin');
   await page.getByPlaceholder('密码').fill('admin123');
-  await page.getByText('登录').click();
+  await page.getByRole('button', { name: '登录' }).click();
   await page.getByTestId('upload').click();
   await page.getByTestId('review').click();
   // 新提案到达时自动弹出审批详情(高风险为模态,写操作为右侧面板)

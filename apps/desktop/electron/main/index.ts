@@ -1,6 +1,6 @@
 import { app, BrowserWindow, Menu } from 'electron';
-import { mkdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { mkdirSync, readdirSync, existsSync } from 'node:fs';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assemble, type Runtime } from './runtime.js';
 import { registerIpc } from './ipc.js';
@@ -16,11 +16,16 @@ app.whenReady().then(async () => {
   Menu.setApplicationMenu(null);
   const dataDir = process.env.SPARKII_DATA_DIR ?? join(app.getPath('userData'), 'data');
   mkdirSync(dataDir, { recursive: true });
-  const profileDir = process.env.SPARKII_PROFILE_DIR
-    ?? (app.isPackaged
-      ? join(process.resourcesPath, 'profiles', 'contract-review')
-      : join(__dirname, '../../../../profiles/contract-review'));
-  rt = await assemble({ profileDir, dataDir, allowUnsigned: process.env.NODE_ENV !== 'production' });
+  const single = process.env.SPARKII_PROFILE_DIR;
+  const profileRoot = single
+    ? dirname(single)
+    : (app.isPackaged ? join(process.resourcesPath, 'profiles') : join(__dirname, '../../../../profiles'));
+  const profileDirs = single
+    ? [{ id: basename(single), dir: single }]
+    : readdirSync(profileRoot, { withFileTypes: true })
+        .filter((e) => e.isDirectory() && existsSync(join(profileRoot, e.name, 'manifest.yaml')))
+        .map((e) => ({ id: e.name, dir: join(profileRoot, e.name) }));
+  rt = await assemble({ profiles: profileDirs, dataDir, allowUnsigned: process.env.NODE_ENV !== 'production' });
   const logger = new Logger(join(dataDir, 'logs'));
   attachRecovery(rt, logger);
   win = new BrowserWindow({

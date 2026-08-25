@@ -5,6 +5,7 @@ const modelTarget = z.object({ provider: z.string().min(1), modelId: z.string().
 export const manifestSchema = z.object({
   name: z.string().min(1),
   version: z.string().regex(/^\d+\.\d+\.\d+$/),
+  displayName: z.string().optional(),
   extends: z.string().optional(),
   modelRouting: z.object({
     tasks: z.record(z.string(), z.array(modelTarget)),

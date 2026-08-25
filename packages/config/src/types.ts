@@ -3,6 +3,7 @@ import type { SkillPackage } from './skills.js';
 export interface ProfileManifest {
   name: string;
   version: string;
+  displayName?: string;
   extends?: string;
   modelRouting: {
     tasks: Record<string, Array<{ provider: string; modelId: string }>>;

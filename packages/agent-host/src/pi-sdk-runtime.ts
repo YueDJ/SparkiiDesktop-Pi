@@ -2,24 +2,20 @@ import {
   createAgentSessionFromServices,
   createAgentSessionRuntime,
   createAgentSessionServices,
-  createReadTool,
-  defineTool,
   getAgentDir,
   ModelRuntime,
   SessionManager,
   type CreateAgentSessionRuntimeFactory,
+  type ExtensionAPI,
+  type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
-import {
-  documentConnector,
-  knowledgeConnector,
-  reportConnector,
-  type ToolDef,
-} from "@sparkii/connectors";
-import { buildPiRuntimeTools } from "./pi-runtime-tools.js";
+import type { ToolDef } from "@sparkii/connectors";
+import { resolveToolDefinitions } from "./tool-registry.js";
 import {
   proposalEnvelope,
   type ProposalDecision,
 } from "./pi-runtime-transport.js";
+import type { SessionSaddle } from "./types.js";
 import type {
   PiRuntimeChildTransport,
   PiRuntimeSession,
@@ -31,15 +27,26 @@ export interface PiSdkRuntimeOptions {
   tools?: ToolDef[];
   cwd?: string;
   skillsDir?: string;
+  workspaceRoot?: string;
 }
 
 export function buildSkillLoaderOptions(skillsDir?: string): { additionalSkillPaths: string[] } {
   return { additionalSkillPaths: skillsDir ? [skillsDir] : [] };
 }
 
+function systemPromptExtensionFactory(getSystemPrompt: () => string | undefined) {
+  return (pi: ExtensionAPI) => {
+    pi.on("before_agent_start", () => {
+      const systemPrompt = getSystemPrompt();
+      return systemPrompt ? { systemPrompt } : undefined;
+    });
+  };
+}
+
 export async function createPiSdkSessionHost(
   options: PiSdkRuntimeOptions,
 ): Promise<PiRuntimeSessionHost> {
+  let pendingSaddle: SessionSaddle | null = null;
   const pendingProposals = new Map<
     string,
     { resolve: (decision: ProposalDecision) => void; reject: (error: Error) => void }
@@ -54,24 +61,8 @@ export async function createPiSdkSessionHost(
     }
   });
 
-  const tools =
-    options.tools ??
-    [
-      ...documentConnector.tools,
-      ...knowledgeConnector.tools,
-      ...reportConnector.tools,
-    ];
-
-  const piTools = buildPiRuntimeTools({
-    tools,
-    propose: async (request) =>
-      new Promise<ProposalDecision>((resolve, reject) => {
-        pendingProposals.set(request.requestId, { resolve, reject });
-        options.transport.postMessage(proposalEnvelope(request));
-      }),
-  }).map((tool) => defineTool(tool as any));
-
   const cwd = options.cwd ?? process.env.SPARKII_PI_CWD ?? process.cwd();
+  const currentWorkspaceRoot = options.workspaceRoot ?? process.env.SPARKII_WORKSPACE_ROOT ?? cwd;
   const modelRuntime = await ModelRuntime.create();
 
   const createRuntime: CreateAgentSessionRuntimeFactory = async ({
@@ -79,9 +70,13 @@ export async function createPiSdkSessionHost(
     sessionManager,
     sessionStartEvent,
   }) => {
+    const saddle = pendingSaddle;
     const services = await createAgentSessionServices({
       cwd: effectiveCwd,
-      resourceLoaderOptions: buildSkillLoaderOptions(options.skillsDir),
+      resourceLoaderOptions: {
+        additionalSkillPaths: saddle?.skillsDir ? [saddle.skillsDir] : options.skillsDir ? [options.skillsDir] : [],
+        extensionFactories: [systemPromptExtensionFactory(() => pendingSaddle?.systemPrompt)],
+      },
     });
     const result = await createAgentSessionFromServices({
       services,
@@ -103,7 +98,18 @@ export async function createPiSdkSessionHost(
 
   function adaptSession(): PiRuntimeSession {
     const session: any = runtime.session;
-    session.agent.state.tools = [...piTools, defineTool(createReadTool(cwd) as any)];
+    const saddleTools: ToolDefinition[] = pendingSaddle
+      ? resolveToolDefinitions(pendingSaddle.tools, {
+          cwd,
+          workspaceRoot: pendingSaddle.workspaceRoot ?? currentWorkspaceRoot,
+          propose: async (request) =>
+            new Promise<ProposalDecision>((resolve, reject) => {
+              pendingProposals.set(request.requestId, { resolve, reject });
+              options.transport.postMessage(proposalEnvelope(request));
+            }),
+        })
+      : [];
+    session.agent.state.tools = saddleTools;
     return {
       prompt: (text, promptOptions) => session.prompt(text, promptOptions),
       steer: (text) => session.steer(text),
@@ -135,6 +141,10 @@ export async function createPiSdkSessionHost(
     },
     switchSession: async (sessionPath: string) => {
       await runtime.switchSession(sessionPath);
+      adaptSession();
+    },
+    configureSaddle: async (saddle: SessionSaddle | null) => {
+      pendingSaddle = saddle;
       adaptSession();
     },
   };

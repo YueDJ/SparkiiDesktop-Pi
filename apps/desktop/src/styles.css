@@ -216,3 +216,55 @@ table.tbl th { background: var(--field-bg, #F8FAFE); color: var(--color-textSeco
 
 /* Toast */
 .toast { position: absolute; left: 50%; bottom: 64px; transform: translateX(-50%); background: var(--toast-bg, #0F172A); color: #fff; border-radius: 999px; padding: 8px 18px; font-size: 13px; box-shadow: var(--shadow-overlay, 0 8px 24px rgba(15,23,42,.12)); z-index: 60; pointer-events: none; }
+
+/* 通用智能体聊天界面 */
+.chat-surface { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.chat-list { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.chat-hint { text-align: center; margin-top: 32px; }
+.chat-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 12px; text-align: center; }
+.msg { max-width: 78%; padding: 10px 14px; border-radius: 12px; line-height: 1.6; }
+.msg-user { align-self: flex-end; background: #2563EB; color: #fff; border-bottom-right-radius: 4px; }
+.msg-agent { align-self: flex-start; background: #fff; border: 1px solid #EAF0F6; border-bottom-left-radius: 4px; }
+.msg-text { white-space: pre-wrap; }
+.caret { display: inline-block; width: 8px; height: 16px; margin-left: 2px; background: #2563EB; animation: caret-blink 1s steps(2) infinite; vertical-align: text-bottom; }
+@keyframes caret-blink { 50% { opacity: 0; } }
+.chat-error { margin: 0 16px 8px; padding: 8px 12px; border-radius: 8px; background: #FEF2F2; color: #B91C1C; font-size: 12px; }
+
+/* 工具卡片 */
+.tool-card { border: 1px dashed #CBD5E1; border-radius: 10px; background: #EFF6FF; padding: 8px 10px; align-self: stretch; }
+.tool-card.await { background: #FFF7ED; border-color: #FDBA74; }
+.tool-card.done { background: #F0FDF4; border-color: #86EFAC; }
+.tool-head { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.tool-summary { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #475569; }
+.tool-status.run { color: #2563EB; }
+.tool-status.await { color: #C2410C; }
+.tool-status.done { color: #15803D; }
+.tool-detail { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+
+/* diff */
+.diff { background: #0B1220; color: #E2E8F0; border-radius: 8px; padding: 8px; font-size: 12px; overflow-x: auto; }
+.diff div { white-space: pre; }
+.diff-hdr { color: #60A5FA; }
+.diff-add { color: #4ADE80; }
+.diff-del { color: #F87171; }
+.diff-ctx { color: #94A3B8; }
+
+/* markdown */
+.md p { margin: 0 0 8px; }
+.md pre { margin: 8px 0; }
+.md code { background: rgba(37, 99, 235, 0.08); border-radius: 4px; padding: 0 4px; font-size: 12px; }
+.md pre code { background: none; padding: 0; }
+.code-block { position: relative; background: #0B1220; border-radius: 8px; padding: 10px; margin: 8px 0; }
+.code-block pre { margin: 0; color: #E2E8F0; overflow-x: auto; }
+.copy-btn { position: absolute; top: 6px; right: 6px; border: none; background: #1E293B; color: #E2E8F0; border-radius: 6px; padding: 2px 8px; font-size: 11px; cursor: pointer; }
+
+/* composer */
+.composer { border-top: 1px solid #EAF0F6; padding: 10px 16px 14px; display: flex; flex-direction: column; gap: 8px; background: #fff; }
+.composer-row { display: flex; align-items: center; gap: 8px; }
+.composer-input { flex: 1; resize: vertical; min-height: 56px; }
+.composer-send { align-self: flex-end; }
+.ws-path { flex: 1; font-size: 12px; color: #475569; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.model-select { font-size: 12px; padding: 4px 8px; border-radius: 8px; border: 1px solid #E2E8F0; background: #fff; }
+
+/* 会话抽屉行内操作 */
+.item .icon-btn.sm { width: 22px; height: 22px; font-size: 12px; }

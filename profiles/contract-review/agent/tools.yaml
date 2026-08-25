@@ -2,3 +2,4 @@ tools:
   - document.read
   - knowledge.search
   - report.export
+  - read
