@@ -16,10 +16,12 @@
 | --- | --- |
 | 运行时只加载单个 profile（合同审核） | 多 profile 加载；统一进程池 + 会话级配置（鞍） |
 | `sparkii:prompt(text)` 一次性会话，用完即弃 | 持久会话：注册表 + Pi session 文件 + 恢复 |
-| Pi 子进程工具被覆写为只读连接器工具 | 按 profile 区分：合同审核沿用连接器工具；通用智能体启用编码工具并加审批包装 |
+| Pi 子进程工具被覆写为只读连接器工具 | 统一进程池 + 鞍：合同审核只注册连接器工具；通用智能体注册编码工具（写操作经 Main） |
 | ChatWorkbench 未接入（裸输入框） | GeneralChatSurface 落地（C1 规格扩展） |
 | 审批门单策略、单 RBAC | 按 profileId 查策略/RBAC |
 | 模型任务只有 chat/extract/report/default | 增加 `coding` 任务；Composer 内模型选择器 |
+
+> 现状代码依据：`packages/agent-host/src/pi-sdk-runtime.ts` 的 `adaptSession()` 直接覆写 `session.agent.state.tools = [...piTools, readTool]`，把 Pi 默认编码工具（bash/edit/write）整体替换为三连接器工具 + read。本次把这种「子进程特例」消除：统一内核 + 鞍装配（§5.3、§6.1）。
 
 ## 2. 已确认决策
 
@@ -75,6 +77,20 @@ profiles/general/
   - 行为准则：先勘察再动手；命令注意超时与输出量；git 写操作（commit/push/checkout 等）与破坏性命令（rm -rf、git reset --hard）会被标记为高风险。
 - `roles.yaml`：`reviewer.canApprove: [write]`、`admin.canApprove: [write, high-risk]`（沿用现有角色模型；页面权限沿用 home/audit）。
 
+### 4.1 合同审核鞍的迁移（业务不动，装配统一）
+
+现有合同审核在子进程侧是特例：`pi-sdk-runtime` 硬编码注册三连接器 + read，无身份系统提示，cwd 无归属。统一池后收敛为与通用智能体同一条「profile 声明 → 工具注册表解析 → 鞍装配」路径：
+
+| 项 | 现在 | 统一后 |
+| --- | --- | --- |
+| 工具 | pi-sdk-runtime 硬编码 document/knowledge/report + read | 按 `tools.yaml` 声明经注册表解析：`document.read / knowledge.search / report.export / read` |
+| 系统提示 | 无身份提示 | 新增 `agent/prompts/system.md`（身份 + 流程 + 行为） |
+| cwd | 进程启动目录 | 会话锚点目录（内部，无工作区 UI） |
+| 审批/RBAC/模型路由 | profile 驱动 | 不变，由鞍自动携带 |
+| workflow/skills/审计/ContractSurface | 已就绪 | **完全不动** |
+
+约束：合同审核 pilot e2e 作为回归基线必须原样通过；不改变业务流程与审批语义。
+
 ## 5. 多 profile 运行时
 
 ### 5.1 assemble 与 Runtime
@@ -100,13 +116,34 @@ profiles/general/
 - 释放槽位：`new_session` 重置（清除会话与工具状态），槽位回到无 profile 状态；下个会话重新配置。
 - 安全不变量：**未配置 = 无工具**（fail closed）；**鞍不残留**（释放即重置）；**写安全不依赖鞍**（池级兜底）；测试断言跨 profile 无泄漏。
 - 取消 transports 按 profile 注入 env 的方案：skillsDir/cwd 等经 `configure_session` 下发，避免进程级全局 env 竞态。
-- `pi-sdk-runtime` 增加 `mode: 'connectors' | 'coding'`（见 §6），按当前会话的鞍装配工具。
+- `pi-sdk-runtime` 按当前会话的鞍装配工具：经注册表解析工具清单，区分连接器工具与编码工具（见 §6）。
 
 ## 6. 通用智能体工具集（coding 模式）
 
-### 6.1 工具组成
+### 6.1 统一工具注册表与鞍装配
 
-Pi 会话内注册的工具：
+所有工具定义集中在**统一工具注册表**，按名字解析，分两侧：
+
+| 侧 | 内容 | 用途 |
+| --- | --- | --- |
+| 子进程侧工具目录（agent-host） | 名字 → 工具定义：Pi 原生（read / ls / grep / find / bash / edit / write）+ Sparkii 连接器（document.read / knowledge.search / report.export） | 鞍装配时按名注册进当前会话；未选中的不注册 |
+| Main 侧执行器目录（desktop main） | 名字 → 真实执行 handler：report.export、bash、edit、write（含连接器既有 handler） | 审批通过后由 Main 确定性执行 |
+
+Sparkii 连接器工具行为（业务层，非 Pi 内核）：
+
+- `document.read`（read）：解析本地文档为纯文本——PDF（pdfjs-dist）/ DOCX（mammoth）/ XLSX（xlsx 转 CSV）/ txt/md/csv；
+- `knowledge.search`（read）：本地法规知识库 BM25 检索（profile `agent.knowledge` 语料，启动时载入内存）；
+- `report.export`（write）：把审核结论导出为 Word（docx 库生成），当前仅 `format: docx`，审批后由 Main 写文件。
+
+鞍装配流程：profile `tools.yaml` 声明工具名 → 子进程侧目录解析（未知名报错，fail closed）→ `configure_session` 下发 → 子进程把选中的定义注册进当前会话。
+
+**未选中工具为何不可见、不可调（内核强制，非提示词约束）**：
+
+- 看不见：Pi 每轮只把**已注册工具**的 schema 放入模型请求，未注册的定义不进上下文；
+- 调不到：agent 循环按工具名在注册表 dispatch，未命中直接报错，不执行任何东西；
+- 即使注册了写工具，执行也只在 Main（见 §6.2–§6.4）。
+
+#### 通用智能体鞍注册的工具（coding 模式）
 
 | 工具 | 行为 | 审批 |
 | --- | --- | --- |
@@ -185,7 +222,7 @@ CREATE TABLE chat_sessions (
 
 ### 7.3 槽位与恢复
 
-- 新会话：`acquire(sessionId, { profileId })`；首次 turn 后经 `get_state` 捕获 `pi_session_file` 入库；会话打开期间不释放槽位。
+- 新会话：`acquire(sessionId, { profileId, saddle })`；首次 turn 后经 `get_state` 捕获 `pi_session_file` 入库；会话打开期间不释放槽位。
 - 关闭会话：先 `get_state` 更新 `pi_session_file`，再 `release`（`new_session` 重置槽位）。
 - 应用重启后继续会话：`acquire(..., { resumeSessionFile })` → 绑定后 `switch_session` 恢复历史。
 - RPC 扩展（agent-host）：`get_state` 响应携带 `{ sessionId, sessionFile }`；`get_messages` 响应携带消息数组（供会话抽屉/首屏历史，避免解析 Pi 内部文件格式）。
@@ -239,11 +276,12 @@ Composer:
 ## 10. 安全模型
 
 1. 只读免审批，写必逐条审批（`risk: write`），破坏性操作 `high-risk` 二次确认；拒绝/超时即不执行。
-2. 子进程无写能力（**池级系统保障**）：`bash`/`edit`/`write` 的 operations 只把请求发往 Main——该路由固定于统一子进程运行时，与鞍无关；执行只在 Main 侧、且仅当 gate 状态为 `approved` 时发生（确定性执行器，LLM 无法绕过）。
-3. 命令分类在白名单式严格判定（§6.2），宁可多审不可漏放。
-4. 路径白名单：所有文件操作 resolve 后必须位于会话工作区根内；`..`/越界直接拒绝并审计。符号链接逃逸防护不在 v1 范围（标注为后续硬沙箱项）。
-5. 审计全程：读工具调用、写提议、批准/拒绝、执行结果、工作区创建均落审计（带 sessionId/profileId）。
-6. Renderer 仍不接触密钥与系统权限（沿用 contextIsolation + sandbox）。
+2. 工具可见性由内核强制（三层）：未注册工具 schema 不进模型上下文（**看不见**）；agent 循环按名 dispatch 未命中即报错（**调不到**）；写工具的 operations 固定路由 Main（**执行在 Main**）。
+3. 子进程无写能力（**池级系统保障**）：`bash`/`edit`/`write` 的 operations 只把请求发往 Main——该路由固定于统一子进程运行时，与鞍无关；执行只在 Main 侧、且仅当 gate 状态为 `approved` 时发生（确定性执行器，LLM 无法绕过）。
+4. 命令分类在白名单式严格判定（§6.2），宁可多审不可漏放。
+5. 路径白名单：所有文件操作 resolve 后必须位于会话工作区根内；`..`/越界直接拒绝并审计。符号链接逃逸防护不在 v1 范围（标注为后续硬沙箱项）。
+6. 审计全程：读工具调用、写提议、批准/拒绝、执行结果、工作区创建均落审计（带 sessionId/profileId）。
+7. Renderer 仍不接触密钥与系统权限（沿用 contextIsolation + sandbox）。
 
 ## 11. 错误处理
 
@@ -263,6 +301,7 @@ Composer:
 - 路径白名单：合法相对/绝对路径、`..` 逃逸、越界拒绝。
 - ChatSessionStore CRUD 与默认标题；模型优先级（用户选择 > 路由）。
 - ApprovalGate 多策略：不同 profile 超时/可批准风险级独立生效。
+- 工具注册表：未知工具名解析失败（fail closed）；鞍只注册选中的工具。
 
 ### 集成（desktop / agent-host）
 
@@ -270,6 +309,7 @@ Composer:
 - **写安全不依赖鞍（池级不变量）**：即使 `configure_session` 缺失或失败，子进程的 `bash`/`edit`/`write` 也无法本地执行（只读工具除外）；跨 profile 无工具/skills 泄漏（合同会话结束后，同槽位新通用会话看不到合同工具/skills）。
 - GeneralExecutor：bash 只读直通、bash 写审批后执行、edit diff 计算与应用、write 懒创建工作区、超时 kill。
 - RPC：`get_state` 返回 sessionFile；`get_messages` 返回历史；事件带 sessionId。
+- 合同审核鞍迁移：pilot e2e 原样通过（业务行为不变，仅装配方式统一）。
 
 ### E2E（Playwright + Electron，假 provider / `SPARKII_SKIP_LLM` 若可用，沿用 pilot 模式）
 
@@ -291,6 +331,7 @@ Composer:
 **新增**
 
 - `profiles/general/`（manifest / prompts/system.md / security）
+- `packages/agent-host/src/tool-registry.ts`（统一工具注册表：子进程侧工具目录）
 - `packages/agent-host/src/coding-tools.ts`（Pi 原生工具定义 + 委托 Main 的 operations + 只读工具路径白名单包装）
 - `apps/desktop/electron/main/chat-session-store.ts`、`workspace.ts`、`general-executor.ts`
 - `apps/desktop/src/surfaces/GeneralChatSurface.tsx`、`src/workbench/ToolCard.tsx`、`src/workbench/Composer.tsx`（或并入 surface）
@@ -301,13 +342,14 @@ Composer:
 - `packages/model-router`：types（`coding`）、normalizeRouting
 - `packages/config`：manifest schema 增加可选 `displayName`
 - `packages/approval`：ApprovalGate 多策略
-- `packages/agent-host`：pool（跨智能体复用/会话恢复）、RPC `configure_session`、pi-sdk-runtime（coding 模式 + 池级 operations 路由）、RPC types（get_state/get_messages 返回数据）
+- `packages/agent-host`：pool（跨智能体复用/会话恢复）、RPC `configure_session`、pi-sdk-runtime（鞍装配 + 池级 operations 路由）、RPC types（get_state/get_messages 返回数据）
+- `profiles/contract-review/`：tools.yaml 显式声明 `read`、新增 `agent/prompts/system.md`（鞍迁移，见 §4.1）
 - `apps/desktop/electron`：runtime.ts（多 profile）、ipc.ts、index.ts（profiles 发现）、preload api-types
 - `apps/desktop/src`：App.tsx（agents/路由/surfaces）、Shell.tsx（ScreenId `general`）、styles.css
 
 ## 15. 自检记录
 
 - 无 TBD/TODO；白名单初始清单与易混字符排除规则已给出，扩展点已注明。
-- 一致性：§2 决策与 §6/§7/§8 行为一一对应；会话级模型优先级、工作区懒创建、拒绝即不写在正文与测试中一致。
+- 一致性：§2 决策与 §5/§6/§7/§8 行为一一对应；统一工具注册表（§6.1）与鞍装配、合同审核鞍迁移（§4.1）、三层保障（§10）在正文与测试中一致。
 - 范围：聚焦单个智能体的完整落地，无跨子系统蔓延；设置页 routes 接线、健康降级等明确排除。
 - 歧义收敛：删除会话不删文件夹；用户指定工作区后 auto 路径作废；命令分类采用严格白名单而非启发式。
