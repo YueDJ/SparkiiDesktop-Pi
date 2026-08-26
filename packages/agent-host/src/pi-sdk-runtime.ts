@@ -9,6 +9,7 @@ import {
   type ExtensionAPI,
   type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
+import { join } from "node:path";
 import type { ToolDef } from "@sparkii/connectors";
 import { resolveToolDefinitions } from "./tool-registry.js";
 import {
@@ -28,10 +29,15 @@ export interface PiSdkRuntimeOptions {
   cwd?: string;
   skillsDir?: string;
   workspaceRoot?: string;
+  agentDir?: string;
 }
 
 export function buildSkillLoaderOptions(skillsDir?: string): { additionalSkillPaths: string[] } {
   return { additionalSkillPaths: skillsDir ? [skillsDir] : [] };
+}
+
+export function resolveAgentDir(explicit?: string): string {
+  return explicit ?? process.env.PI_CODING_AGENT_DIR ?? getAgentDir();
 }
 
 function systemPromptExtensionFactory(getSystemPrompt: () => string | undefined) {
@@ -63,7 +69,13 @@ export async function createPiSdkSessionHost(
 
   const cwd = options.cwd ?? process.env.SPARKII_PI_CWD ?? process.cwd();
   const currentWorkspaceRoot = options.workspaceRoot ?? process.env.SPARKII_WORKSPACE_ROOT ?? cwd;
-  const modelRuntime = await ModelRuntime.create();
+  const agentDir = resolveAgentDir(options.agentDir);
+  const sessionDir = join(agentDir, "sessions");
+  const modelRuntime = await ModelRuntime.create({
+    authPath: join(agentDir, "auth.json"),
+    modelsPath: join(agentDir, "models.json"),
+  });
+  const apiKey = process.env.SPARKII_PI_API_KEY;
 
   const createRuntime: CreateAgentSessionRuntimeFactory = async ({
     cwd: effectiveCwd,
@@ -92,8 +104,8 @@ export async function createPiSdkSessionHost(
 
   const runtime = await createAgentSessionRuntime(createRuntime, {
     cwd,
-    agentDir: getAgentDir(),
-    sessionManager: SessionManager.create(cwd),
+    agentDir,
+    sessionManager: SessionManager.create(cwd, sessionDir),
   });
 
   function adaptSession(): PiRuntimeSession {
@@ -116,6 +128,7 @@ export async function createPiSdkSessionHost(
       followUp: (text) => session.followUp(text),
       abort: () => session.abort(),
       setModel: async (provider, modelId) => {
+        if (apiKey) await modelRuntime.setRuntimeApiKey(provider, apiKey);
         const model = modelRuntime.getModel(provider, modelId);
         if (!model) throw new Error(`unknown model ${provider}/${modelId}`);
         await session.setModel(model);

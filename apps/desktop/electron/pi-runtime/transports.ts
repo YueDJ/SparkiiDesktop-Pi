@@ -2,9 +2,13 @@ import { utilityProcess, type UtilityProcess } from "electron";
 import { fork, type ChildProcess, type ForkOptions } from "node:child_process";
 import type { PiRuntimeEnvelope, PiRuntimeHostHandle } from "@sparkii/agent-host";
 
-export function createUtilityHostHandle(entryPath: string): PiRuntimeHostHandle {
+export function createUtilityHostHandle(
+  entryPath: string,
+  env?: Record<string, string>,
+): PiRuntimeHostHandle {
   const child: UtilityProcess = utilityProcess.fork(entryPath, [], {
     serviceName: "sparkii-pi-runtime",
+    env: env ? { ...process.env, ...env } : undefined,
   });
   return {
     postMessage: (envelope) => child.postMessage(envelope),
@@ -22,10 +26,14 @@ export function createUtilityHostHandle(entryPath: string): PiRuntimeHostHandle 
   };
 }
 
-export function createForkHostHandle(entryPath: string): PiRuntimeHostHandle {
+export function createForkHostHandle(
+  entryPath: string,
+  env?: Record<string, string>,
+): PiRuntimeHostHandle {
   const child: ChildProcess = fork(entryPath, [], {
     stdio: ["pipe", "pipe", "pipe", "ipc"],
     windowsHide: true,
+    env: env ? { ...process.env, ...env } : undefined,
   } as ForkOptions);
   return {
     postMessage: (envelope) => child.send(envelope),
