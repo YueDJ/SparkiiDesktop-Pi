@@ -11,6 +11,14 @@ import { ContractSurface } from './surfaces/ContractSurface.js';
 import { HomeView } from './surfaces/HomeView.js';
 import { GeneralChatSurface } from './surfaces/GeneralChatSurface.js';
 
+export function sessionDisplayName(s: { title?: string; firstMessage?: string; updatedAt?: number }): string {
+  if (s.title) return s.title;
+  if (s.firstMessage) return String(s.firstMessage).slice(0, 24);
+  return s.updatedAt
+    ? new Date(s.updatedAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+    : '会话';
+}
+
 export function App() {
   const api = window.sparkii;
   const [authed, setAuthed] = useState(false);
@@ -82,7 +90,7 @@ export function App() {
     await refreshApprovals();
     api.listAgents?.().then((list: Array<{ id: string; name: string }>) => {
       if (Array.isArray(list) && list.length) {
-        setAgents(list.map((a) => ({ id: a.id as ScreenId, name: a.name, status: 'idle' })));
+        setAgents(list.map((a) => ({ id: (a.id === 'contract-review' ? 'contract' : a.id) as ScreenId, name: a.name, status: 'idle' })));
       }
     }).catch(() => {});
   };
@@ -99,10 +107,11 @@ export function App() {
   };
 
   const refreshSessions = (agentId: string) => {
-    api.listChatSessions?.(agentId)?.then((list: any[]) => {
+    const profileId = agentId === 'contract' ? 'contract-review' : agentId;
+    api.listChatSessions?.(profileId)?.then((list: any[]) => {
       const mapped: ShellSession[] = (list ?? []).map((s) => ({
         id: s.id,
-        name: s.title ?? s.id,
+        name: sessionDisplayName({ title: s.title, firstMessage: s.firstMessage, updatedAt: s.updatedAt }),
         state: '',
         time: s.updatedAt ? new Date(s.updatedAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
       }));
@@ -165,13 +174,18 @@ export function App() {
       : workflow.status === 'failed' ? '审核失败'
         : '● 合同审核就绪 · 等待开始';
 
-  const navigate = (s: ScreenId) => {
+  const navigate = (s: ScreenId | 'contract-review') => {
     if (s === 'general') {
       setScreen('general');
       refreshSessions('general');
       return;
     }
-    // 仅合同审核已落地;对话/仪表板表面留档,待后端就绪后接入
+    if (s === 'contract' || s === 'contract-review') {
+      setScreen('contract');
+      refreshSessions('contract');
+      return;
+    }
+    // 对话/仪表板表面留档,待后端就绪后接入
     if (s === 'chat' || s === 'dashboard') { setScreen('contract'); return; }
     setScreen(s);
   };

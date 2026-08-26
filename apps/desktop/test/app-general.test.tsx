@@ -1,8 +1,18 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, waitFor, cleanup } from '@testing-library/react';
-import { App } from '../src/App.js';
+import { App, sessionDisplayName } from '../src/App.js';
 
 afterEach(cleanup);
+
+describe('sessionDisplayName', () => {
+  it('prefers title, then firstMessage, then time, then a default', () => {
+    expect(sessionDisplayName({ title: 'PRD 标题', firstMessage: 'x', updatedAt: 1 })).toBe('PRD 标题');
+    expect(sessionDisplayName({ firstMessage: '帮我写一个合同审核流程' })).toBe('帮我写一个合同审核流程');
+    expect(sessionDisplayName({ firstMessage: 'a'.repeat(30) })).toBe('a'.repeat(24));
+    expect(sessionDisplayName({ updatedAt: new Date(2026, 7, 26, 10, 30).getTime() })).toContain('08/26');
+    expect(sessionDisplayName({})).toBe('会话');
+  });
+});
 
 function makeApi() {
   const channels: Record<string, (p: any) => void> = {};
