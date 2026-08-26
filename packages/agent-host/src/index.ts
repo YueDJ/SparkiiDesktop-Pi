@@ -8,6 +8,7 @@ export * from "./pi-runtime-pool.js";
 export * from "./pi-runtime.js";
 export * from "./pi-runtime-tools.js";
 export * from "./pi-sdk-runtime.js";
+export * from "./session-catalog.js";
 export * from "./bridge/typebox.js";
 export * from "./workflow/types.js";
 export * from "./workflow/linear.js";

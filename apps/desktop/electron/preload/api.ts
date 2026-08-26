@@ -9,7 +9,7 @@ export type IpcLike = {
 export function buildApi(ipc: IpcLike): SparkiiApi {
   const invoke = (name: string, ...args: unknown[]) => ipc.invoke(`sparkii:${name}`, ...args);
   return {
-    login: (username, password) => invoke('login', username, password) as Promise<{ userId: string; roles: string[] }>,
+    getLocalSubject: () => invoke('getLocalSubject') as Promise<{ userId: string; roles: string[] }>,
     getProfile: () => invoke('getProfile'),
     chooseDocument: () => invoke('chooseDocument') as Promise<{ path?: string }>,
     runWorkflow: (id, input) => invoke('runWorkflow', id, input) as Promise<{ ok: boolean }>,
@@ -33,8 +33,8 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
     queryAudit: (filter) => invoke('queryAudit', filter) as Promise<unknown[]>,
     getSettings: () => invoke('getSettings'),
     saveSettings: (settings) => invoke('saveSettings', settings),
-    listModels: (baseUrl, apiKey) => invoke('listModels', baseUrl, apiKey) as Promise<{ ok: boolean; models?: string[]; error?: string }>,
-    testModel: (baseUrl, apiKey) => invoke('testModel', baseUrl, apiKey) as Promise<{ ok: boolean; latencyMs?: number; error?: string }>,
+    listModels: (provider) => invoke('listModels', provider) as Promise<{ ok: boolean; models?: string[]; error?: string }>,
+    testModel: (provider, modelId) => invoke('testModel', provider, modelId) as Promise<{ ok: boolean; latencyMs?: number; error?: string }>,
     diagnostics: () => invoke('diagnostics') as Promise<{ logs: string; audit: string }>,
     on: (channel, cb) => {
       const listener = (_e: unknown, payload: unknown) => cb(payload);

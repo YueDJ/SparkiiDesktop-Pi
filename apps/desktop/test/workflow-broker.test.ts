@@ -27,7 +27,7 @@ describe('runWorkflow broker sharing', () => {
     const acquiredSaddles: any[] = [];
     const rt = {
       dataDir: mkdtempSync(join(tmpdir(), 'wf-')),
-      profileOf: (id: string) => ({
+      profileOf: (_id: string) => ({
         dir: join(rt.dataDir, 'profiles', 'contract-review'),
         profile: {
           manifest: { name: 'contract-review' },
@@ -45,12 +45,12 @@ describe('runWorkflow broker sharing', () => {
         expire: async (id: string) => ({ id, status: 'expired' }),
       },
       pool: {
-        acquire: async (sessionId: string, opts?: { saddle?: unknown }) => {
+        acquire: async (_sessionId: string, opts?: { saddle?: unknown }) => {
           acquiredSaddles.push(opts?.saddle);
           return { client: {}, supervisor: { onProposal: () => {} } };
         },
-        get: (sessionId: string) => undefined,
-        release: async (sessionId: string) => {},
+        get: (_sessionId: string) => undefined,
+        release: async (_sessionId: string) => {},
       },
     } as any;
 

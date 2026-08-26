@@ -14,8 +14,8 @@ interface ModelState { label: string; status: string; cls: '' | 'ok' | 'fail' | 
 export interface SettingsApi {
   getSettings?(): Promise<unknown>;
   saveSettings?(settings: unknown): Promise<unknown>;
-  listModels?(baseUrl: string, apiKey?: string): Promise<{ ok: boolean; models?: string[]; error?: string }>;
-  testModel?(baseUrl: string, apiKey?: string): Promise<{ ok: boolean; latencyMs?: number; error?: string }>;
+  listModels?(provider: string): Promise<{ ok: boolean; models?: string[]; error?: string }>;
+  testModel?(provider: string, modelId: string): Promise<{ ok: boolean; latencyMs?: number; error?: string }>;
 }
 
 export interface SettingsViewProps { api?: SettingsApi; }
@@ -72,7 +72,7 @@ export function SettingsView(props: SettingsViewProps) {
   const fetchModels = async () => {
     if (!api?.listModels) { setInfo('IPC 未连接,无法拉取模型'); return; }
     setBusy(true);
-    const r = await api.listModels(baseUrl, apiKey || undefined);
+    const r = await api.listModels(provider);
     if (r.ok && r.models) {
       applyModels(r.models);
       setInfo(`当前节点:${provider} · 已拉取 ${r.models.length} 个模型`);
@@ -90,7 +90,9 @@ export function SettingsView(props: SettingsViewProps) {
       for (const k of Object.keys(next)) next[k] = { ...next[k], status: '连接中…', cls: 'wait' };
       return next;
     });
-    const r = await api.testModel(baseUrl, apiKey || undefined);
+    const modelId = modelNames[0] ?? defaultModel;
+    if (!modelId) { setInfo('请先拉取模型或设置默认模型'); setBusy(false); return; }
+    const r = await api.testModel(provider, modelId);
     setModels((prev) => {
       const next = { ...prev };
       for (const k of Object.keys(next)) {

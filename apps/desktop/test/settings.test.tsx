@@ -33,7 +33,7 @@ describe('SettingsView', () => {
     fireEvent.click(screen.getByText('拉取模型列表'));
     await screen.findByText(/已拉取 2 个模型/);
     expect(screen.getByText('qwen2.5 · 本地')).toBeTruthy();
-    expect(api.listModels).toHaveBeenCalledWith('http://127.0.0.1:11434/v1', undefined);
+    expect(api.listModels).toHaveBeenCalledWith('本地 Ollama');
   });
 
   it('tests the connection and marks model states', async () => {
@@ -43,7 +43,7 @@ describe('SettingsView', () => {
     await screen.findByText(/已拉取 2 个模型/);
     fireEvent.click(screen.getByText('测试连接'));
     await screen.findAllByText(/已连接 · 86ms/);
-    expect(api.testModel).toHaveBeenCalled();
+    expect(api.testModel).toHaveBeenCalledWith('本地 Ollama', 'qwen2.5');
   });
 
   it('saves settings via IPC', async () => {

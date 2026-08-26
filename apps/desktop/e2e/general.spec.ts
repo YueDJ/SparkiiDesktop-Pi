@@ -1,10 +1,7 @@
 import { test, expect, _electron as electron } from '@playwright/test';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+import { join } from 'node:path';
 
 test('general agent surface smoke', async () => {
   test.setTimeout(120_000);

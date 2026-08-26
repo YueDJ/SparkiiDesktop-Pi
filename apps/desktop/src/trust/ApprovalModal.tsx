@@ -11,7 +11,7 @@ export interface ApprovalModalProps {
 }
 
 export function ApprovalModal(props: ApprovalModalProps) {
-  const { proposal, timeoutMs = 120000, onDecide, onClose } = props;
+  const { proposal, timeoutMs = 120000, onDecide } = props;
   const [note, setNote] = useState('');
   const [showPayload, setShowPayload] = useState(false);
   const [armed, setArmed] = useState(false);

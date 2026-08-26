@@ -52,10 +52,42 @@ describe("PiRuntimePool", () => {
   it("sends new_session on release", async () => {
     const handle = new FakeHandle();
     const pool = new PiRuntimePool({ maxAgents: 1, makeSupervisor: () => handle });
-    const { client } = await pool.acquire("a");
+    await pool.acquire("a");
     handle.ready();
     await pool.release("a");
     const sent = handle.sent.find((e) => "command" in e && (e as any).command?.type === "new_session");
     expect(sent).toBeTruthy();
+  });
+
+  it("renames a session id while keeping the same client", async () => {
+    const handle = new FakeHandle();
+    const pool = new PiRuntimePool({ maxAgents: 1, makeSupervisor: () => handle });
+    const { client } = await pool.acquire("temp");
+    handle.ready();
+
+    pool.renameSession("temp", "real");
+
+    expect(pool.get("temp")).toBeUndefined();
+    expect(pool.get("real")).toBe(client);
+    expect(pool.activeCount()).toBe(1);
+
+    await pool.release("real");
+    expect(pool.get("real")).toBeUndefined();
+    expect(pool.activeCount()).toBe(0);
+    const sent = handle.sent.find((e) => "command" in e && (e as any).command?.type === "new_session");
+    expect(sent).toBeTruthy();
+  });
+
+  it("renameSession is a no-op when the source id is unknown", async () => {
+    const handle = new FakeHandle();
+    const pool = new PiRuntimePool({ maxAgents: 1, makeSupervisor: () => handle });
+    await pool.acquire("known");
+    handle.ready();
+
+    pool.renameSession("missing", "ghost");
+
+    expect(pool.get("ghost")).toBeUndefined();
+    expect(pool.get("known")).toBeTruthy();
+    expect(pool.activeCount()).toBe(1);
   });
 });

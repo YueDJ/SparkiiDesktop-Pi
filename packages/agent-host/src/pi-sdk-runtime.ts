@@ -9,6 +9,7 @@ import {
   type ExtensionAPI,
   type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
+import { join } from "node:path";
 import type { ToolDef } from "@sparkii/connectors";
 import { resolveToolDefinitions } from "./tool-registry.js";
 import {
@@ -28,10 +29,15 @@ export interface PiSdkRuntimeOptions {
   cwd?: string;
   skillsDir?: string;
   workspaceRoot?: string;
+  agentDir?: string;
 }
 
 export function buildSkillLoaderOptions(skillsDir?: string): { additionalSkillPaths: string[] } {
   return { additionalSkillPaths: skillsDir ? [skillsDir] : [] };
+}
+
+export function resolveAgentDir(explicit?: string): string {
+  return explicit ?? process.env.PI_CODING_AGENT_DIR ?? getAgentDir();
 }
 
 function systemPromptExtensionFactory(getSystemPrompt: () => string | undefined) {
@@ -63,7 +69,23 @@ export async function createPiSdkSessionHost(
 
   const cwd = options.cwd ?? process.env.SPARKII_PI_CWD ?? process.cwd();
   const currentWorkspaceRoot = options.workspaceRoot ?? process.env.SPARKII_WORKSPACE_ROOT ?? cwd;
-  const modelRuntime = await ModelRuntime.create();
+  const agentDir = resolveAgentDir(options.agentDir);
+  const sessionDir = join(agentDir, "sessions");
+  const modelRuntime = await ModelRuntime.create({
+    authPath: join(agentDir, "auth.json"),
+    modelsPath: join(agentDir, "models.json"),
+  });
+  const apiKey = process.env.SPARKII_PI_API_KEY;
+
+  // 每次真正用模型前，让本进程重新读一次 models.json（不联网），
+  // 使 baseUrl/服务商等 provider 配置变更能在下一条消息时热生效（与 key 的懒加载口径一致）。
+  const syncModelConfig = async (provider: string): Promise<void> => {
+    try {
+      await modelRuntime.refresh({ providers: [provider], allowNetwork: false });
+    } catch {
+      // 配置刷新失败时沿用现有 provider 配置，不阻塞主流程
+    }
+  };
 
   const createRuntime: CreateAgentSessionRuntimeFactory = async ({
     cwd: effectiveCwd,
@@ -73,6 +95,7 @@ export async function createPiSdkSessionHost(
     const saddle = pendingSaddle;
     const services = await createAgentSessionServices({
       cwd: effectiveCwd,
+      modelRuntime,
       resourceLoaderOptions: {
         additionalSkillPaths: saddle?.skillsDir ? [saddle.skillsDir] : options.skillsDir ? [options.skillsDir] : [],
         extensionFactories: [systemPromptExtensionFactory(() => pendingSaddle?.systemPrompt)],
@@ -92,8 +115,8 @@ export async function createPiSdkSessionHost(
 
   const runtime = await createAgentSessionRuntime(createRuntime, {
     cwd,
-    agentDir: getAgentDir(),
-    sessionManager: SessionManager.create(cwd),
+    agentDir,
+    sessionManager: SessionManager.create(cwd, sessionDir),
   });
 
   function adaptSession(): PiRuntimeSession {
@@ -116,12 +139,70 @@ export async function createPiSdkSessionHost(
       followUp: (text) => session.followUp(text),
       abort: () => session.abort(),
       setModel: async (provider, modelId) => {
+        await syncModelConfig(provider);
+        if (apiKey) await modelRuntime.setRuntimeApiKey(provider, apiKey);
         const model = modelRuntime.getModel(provider, modelId);
         if (!model) throw new Error(`unknown model ${provider}/${modelId}`);
         await session.setModel(model);
       },
       setAutoRetry: async () => {},
       setAutoCompaction: async () => {},
+      setSessionName: async (name) => {
+        session.setSessionName(name);
+      },
+      setApiKey: async (provider, apiKey) => {
+        await modelRuntime.setRuntimeApiKey(provider, apiKey);
+      },
+      complete: async (provider, modelId, text) => {
+        await syncModelConfig(provider);
+        const model = modelRuntime.getModel(provider, modelId);
+        if (!model) throw new Error(`unknown model ${provider}/${modelId}`);
+        const out = await modelRuntime.completeSimple(model, {
+          messages: [{ role: "user", content: text, timestamp: Date.now() }],
+        });
+        return out.content
+          .filter((block): block is { type: "text"; text: string } => block.type === "text")
+          .map((block) => block.text)
+          .join("");
+      },
+      listModels: async (provider) => {
+        if (provider) {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 15_000);
+          try {
+            const result = await modelRuntime.refresh({
+              providers: [provider],
+              allowNetwork: true,
+              force: true,
+              signal: controller.signal,
+            });
+            if (result.aborted) throw new Error('模型拉取超时');
+            const error = result.errors.get(provider);
+            if (error) throw error;
+          } finally {
+            clearTimeout(timer);
+          }
+        }
+        const models = modelRuntime.getModels(provider);
+        return models.map((model) => ({
+          provider: model.provider ?? provider ?? "",
+          modelId: model.id,
+        }));
+      },
+      testConnection: async (provider, modelId) => {
+        const start = Date.now();
+        await syncModelConfig(provider);
+        const model = modelRuntime.getModel(provider, modelId);
+        if (!model) return { ok: false, error: `unknown model ${provider}/${modelId}` };
+        try {
+          await modelRuntime.completeSimple(model, {
+            messages: [{ role: "user", content: "ping", timestamp: Date.now() }],
+          });
+          return { ok: true, latencyMs: Date.now() - start };
+        } catch (error) {
+          return { ok: false, error: error instanceof Error ? error.message : String(error) };
+        }
+      },
       subscribe: (callback) => session.subscribe(callback),
       getMessages: () => session.messages,
       getState: () => ({

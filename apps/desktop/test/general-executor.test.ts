@@ -1,8 +1,8 @@
-import { mkdtempSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
+import { mkdtempSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
-import { isReadOnlyBashCommand, riskOfCommand, registerGeneralExecutor, WORKSPACE_NOT_CREATED } from '../electron/main/general-executor.js';
+import { isReadOnlyBashCommand, riskOfCommand, registerGeneralExecutor } from '../electron/main/general-executor.js';
 import { ConnectorExecutor } from '@sparkii/approval';
 import { AuditStore } from '@sparkii/approval';
 

@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { safeStorage } from 'electron';
 
@@ -6,6 +6,7 @@ export class Keyring {
   constructor(private dir: string, private ss = safeStorage) {}
   private file(name: string) { return join(this.dir, `${name}.enc`); }
   async set(name: string, value: string): Promise<void> {
+    await mkdir(this.dir, { recursive: true });
     const enc = this.ss.encryptString(value).toString('base64');
     await writeFile(this.file(name), enc);
   }

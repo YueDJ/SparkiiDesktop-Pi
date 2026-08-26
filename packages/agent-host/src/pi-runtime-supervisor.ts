@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import {
   commandEnvelope,
-  eventEnvelope,
   proposalDecisionEnvelope,
   type PiRuntimeClient,
   type PiRuntimeEnvelope,

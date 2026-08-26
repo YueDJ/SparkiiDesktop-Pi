@@ -28,7 +28,8 @@ describe("createCodingToolDefinitions", () => {
     const c = ctx();
     const defs = createCodingToolDefinitions(c);
     const bash = defs.find((d) => d.name === "bash")!;
-    const result = await (bash as any).execute("t1", { command: "echo hi" }, undefined, undefined, toolCtx);
+    const sessionCtx = { sessionManager: { getSessionId: () => "s1", getSessionFile: () => "/tmp/s1.jsonl" } };
+    const result = await (bash as any).execute("t1", { command: "echo hi" }, undefined, undefined, sessionCtx);
     expect(c.proposes).toHaveBeenCalledWith(expect.objectContaining({ toolName: "bash" }));
     expect((result as any).content?.[0]?.text).toContain("ok");
   });

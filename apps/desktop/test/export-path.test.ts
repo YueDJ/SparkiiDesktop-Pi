@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { resolveExportPath } from '../electron/main/export-path.js';
 
-const picker = async (o: unknown) => ({ canceled: false, filePath: 'C:/tmp/chosen.docx' });
+const picker = async (_o: unknown) => ({ canceled: false, filePath: 'C:/tmp/chosen.docx' });
 
 describe('resolveExportPath', () => {
   it('uses SPARKII_E2E_EXPORT_DIR when set', async () => {

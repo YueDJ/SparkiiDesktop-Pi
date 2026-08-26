@@ -70,6 +70,14 @@ export class PiRuntimePool {
     return this.bySession.get(sessionId);
   }
 
+  renameSession(from: string, to: string): void {
+    const slot = this.slots.find((s) => s.sessionId === from);
+    if (!slot) return;
+    slot.sessionId = to;
+    this.bySession.delete(from);
+    this.bySession.set(to, slot.client);
+  }
+
   async release(sessionId: string): Promise<void> {
     const slot = this.slots.find((s) => s.sessionId === sessionId);
     if (!slot) return;

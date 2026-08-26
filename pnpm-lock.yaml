@@ -100,7 +100,7 @@ importers:
   packages/agent-host:
     dependencies:
       '@earendil-works/pi-coding-agent':
-        specifier: ^0.84.0
+        specifier: ^0.84.3
         version: 0.84.3(supports-color@7.2.0)(ws@8.21.3)(zod@4.4.3)
       '@sparkii/approval':
         specifier: workspace:*

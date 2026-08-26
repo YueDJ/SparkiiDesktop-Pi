@@ -2,7 +2,6 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { parseProfileManifest } from './schema.js';
-import { computeIntegrity } from './integrity.js';
 import { collectSkillDirFiles, loadSkillsFromDir } from './skills.js';
 import type { ResolvedProfile } from './types.js';
 
