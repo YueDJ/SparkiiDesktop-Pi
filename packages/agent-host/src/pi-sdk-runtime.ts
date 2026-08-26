@@ -77,6 +77,16 @@ export async function createPiSdkSessionHost(
   });
   const apiKey = process.env.SPARKII_PI_API_KEY;
 
+  // 每次真正用模型前，让本进程重新读一次 models.json（不联网），
+  // 使 baseUrl/服务商等 provider 配置变更能在下一条消息时热生效（与 key 的懒加载口径一致）。
+  const syncModelConfig = async (provider: string): Promise<void> => {
+    try {
+      await modelRuntime.refresh({ providers: [provider], allowNetwork: false });
+    } catch {
+      // 配置刷新失败时沿用现有 provider 配置，不阻塞主流程
+    }
+  };
+
   const createRuntime: CreateAgentSessionRuntimeFactory = async ({
     cwd: effectiveCwd,
     sessionManager,
@@ -85,6 +95,7 @@ export async function createPiSdkSessionHost(
     const saddle = pendingSaddle;
     const services = await createAgentSessionServices({
       cwd: effectiveCwd,
+      modelRuntime,
       resourceLoaderOptions: {
         additionalSkillPaths: saddle?.skillsDir ? [saddle.skillsDir] : options.skillsDir ? [options.skillsDir] : [],
         extensionFactories: [systemPromptExtensionFactory(() => pendingSaddle?.systemPrompt)],
@@ -128,6 +139,7 @@ export async function createPiSdkSessionHost(
       followUp: (text) => session.followUp(text),
       abort: () => session.abort(),
       setModel: async (provider, modelId) => {
+        await syncModelConfig(provider);
         if (apiKey) await modelRuntime.setRuntimeApiKey(provider, apiKey);
         const model = modelRuntime.getModel(provider, modelId);
         if (!model) throw new Error(`unknown model ${provider}/${modelId}`);
@@ -142,6 +154,7 @@ export async function createPiSdkSessionHost(
         await modelRuntime.setRuntimeApiKey(provider, apiKey);
       },
       complete: async (provider, modelId, text) => {
+        await syncModelConfig(provider);
         const model = modelRuntime.getModel(provider, modelId);
         if (!model) throw new Error(`unknown model ${provider}/${modelId}`);
         const out = await modelRuntime.completeSimple(model, {
@@ -178,6 +191,7 @@ export async function createPiSdkSessionHost(
       },
       testConnection: async (provider, modelId) => {
         const start = Date.now();
+        await syncModelConfig(provider);
         const model = modelRuntime.getModel(provider, modelId);
         if (!model) return { ok: false, error: `unknown model ${provider}/${modelId}` };
         try {
