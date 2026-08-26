@@ -12,4 +12,13 @@ describe('Keyring', () => {
     await k.set('api', 'secret123');
     expect(await k.get('api')).toBe('secret123');
   });
+
+  it('creates the storage directory when it does not exist', async () => {
+    const base = mkdtempSync(join(tmpdir(), 'key-dir-'));
+    const dir = join(base, 'nested', 'keyring');
+    const fakeSafeStorage = { encryptString: (s: string) => Buffer.from(s).toString('base64'), decryptString: (b: Buffer) => b.toString('utf8') };
+    const k = new Keyring(dir, fakeSafeStorage as any);
+    await k.set('api', 'secret456');
+    expect(await k.get('api')).toBe('secret456');
+  });
 });
