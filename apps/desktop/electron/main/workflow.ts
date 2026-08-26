@@ -130,10 +130,12 @@ export function resolveWorkflowTemplates(def: WorkflowDef): WorkflowDef {
     ...def,
     steps: def.steps.map((step) => {
       if (step.type === 'skill' && step.ref) {
-        return { ...step, template: `请读取并遵循「${step.ref}」这个 skill 完成本步骤。` };
+        // /skill:NAME expands the skill file into the prompt (pi-native), so the
+        // agent follows the actual skill content instead of hunting for the file.
+        return { ...step, template: `/skill:${step.ref}\n请严格遵循上述 skill 的内容完成本步骤，并将结果直接返回。` };
       }
       if (step.type === 'llm' && step.template) {
-        return { ...step, template: `请读取并遵循「${step.template}」这个 skill 完成本步骤。` };
+        return { ...step, template: `/skill:${step.template}\n严格遵循上述 skill 的内容完成本步骤。若 skill 要求调用写工具，请直接调用（工具调用会自动弹出审批请求，无需先在对话中征询用户），并将结果直接返回。` };
       }
       return step;
     }),

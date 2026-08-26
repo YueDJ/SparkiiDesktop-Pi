@@ -62,7 +62,10 @@ export function resolveToolDefinitions(toolNames: string[], ctx: RegistryContext
     const connector = CONNECTOR_TOOLS.get(name);
     if (connector) {
       const wrapped = buildPiRuntimeTools({ tools: [connector], propose: ctx.propose })[0];
-      out.push({ ...wrapped, name: connector.name } as unknown as ToolDefinition);
+      // buildPiRuntimeTools already exposes an API-safe name ([a-zA-Z0-9_-])
+      // while keeping the original connector name for proposals; do not
+      // override it back, or OpenAI-compatible endpoints reject the tool.
+      out.push(wrapped as unknown as ToolDefinition);
       continue;
     }
     throw new Error(`unknown tool in saddle: ${name}`);

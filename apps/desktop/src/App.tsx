@@ -82,7 +82,12 @@ export function App() {
     await refreshApprovals();
     api.listAgents?.().then((list: Array<{ id: string; name: string }>) => {
       if (Array.isArray(list) && list.length) {
-        setAgents(list.map((a) => ({ id: a.id as ScreenId, name: a.name, status: 'idle' })));
+        setAgents(list.map((a) => ({
+          // profile manifest name is contract-review, while the surface key is contract
+          id: (a.id === 'contract-review' ? 'contract' : a.id) as ScreenId,
+          name: a.name,
+          status: 'idle',
+        })));
       }
     }).catch(() => {});
   };

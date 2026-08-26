@@ -12,7 +12,7 @@ describe("resolveToolDefinitions", () => {
     const defs = resolveToolDefinitions(["read", "bash", "document.read"], {
       cwd: tmpdir(), workspaceRoot: mkdtempSync(join(tmpdir(), "ws-")), propose,
     });
-    expect(defs.map((d) => d.name).sort()).toEqual(["bash", "document.read", "read"]);
+    expect(defs.map((d) => d.name).sort()).toEqual(["bash", "document_read", "read"]);
   });
 
   it("fails closed on unknown tool names", () => {
