@@ -23,8 +23,8 @@ export interface SparkiiApi {
   queryAudit(filter: object): Promise<unknown[]>;
   getSettings(): Promise<unknown>;
   saveSettings(settings: unknown): Promise<unknown>;
-  listModels(baseUrl: string, apiKey?: string): Promise<{ ok: boolean; models?: string[]; error?: string }>;
-  testModel(baseUrl: string, apiKey?: string): Promise<{ ok: boolean; latencyMs?: number; error?: string }>;
+  listModels(provider: string): Promise<{ ok: boolean; models?: string[]; error?: string }>;
+  testModel(provider: string, modelId: string): Promise<{ ok: boolean; latencyMs?: number; error?: string }>;
   diagnostics(): Promise<{ logs: string; audit: string }>;
   on(channel: string, cb: (payload: unknown) => void): () => void;
 }

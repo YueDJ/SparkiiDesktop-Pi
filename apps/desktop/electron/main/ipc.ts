@@ -6,9 +6,9 @@ import { listPiSessions, readPiSessionMessages, type SessionSaddle } from '@spar
 import { createBroker, runWorkflow, selectModel } from './workflow.js';
 import { resolveExportPath } from './export-path.js';
 import { loadSettings, saveSettings } from './settings.js';
-import { listModels, testModel } from './model-probe.js';
 import { autoWorkspacePath } from './workspace.js';
 import { buildProfileSaddle } from './saddle.js';
+import { providerIdForLabel, writePiModelsConfig } from './pi-model-config.js';
 import type { Runtime } from './runtime.js';
 import type { Logger } from './logger.js';
 
@@ -21,6 +21,21 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
 
   function buildSaddle(profileId: string, sessionId: string): SessionSaddle {
     return buildProfileSaddle(rt.profileOf(profileId), anchorDir(sessionId), rt.chatSessions.get(sessionId)?.workspacePath);
+  }
+
+  async function withProbeSlot<T>(fn: (client: Awaited<ReturnType<typeof rt.pool.acquire>>['client']) => Promise<T>): Promise<T> {
+    const key = `probe:${randomUUID()}`;
+    const slot = await rt.pool.acquire(key, {});
+    try {
+      return await fn(slot.client);
+    } finally {
+      await rt.pool.release(key);
+    }
+  }
+
+  async function injectProbeKey(client: Awaited<ReturnType<typeof rt.pool.acquire>>['client'], providerId: string): Promise<void> {
+    const key = await rt.keyring.get('apiKey');
+    if (key) await client.send({ type: 'set_api_key', provider: providerId, apiKey: key });
   }
 
   const messageText = (m: unknown): string => {
@@ -240,7 +255,13 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
 
   ipcMain.handle('sparkii:getModelOptions', async () => {
     const settings = await loadSettings(rt.dataDir, rt.keyring);
-    const models = settings.baseUrl ? (await listModels(settings.baseUrl, settings.apiKey)).models ?? [] : [];
+    const providerId = providerIdForLabel(settings.provider ?? 'DeepSeek');
+    const models = await withProbeSlot(async (client) => {
+      await injectProbeKey(client, providerId);
+      const resp = await client.send({ type: 'list_models', provider: providerId });
+      if (!resp.success) return [] as string[];
+      return ((resp.data ?? []) as Array<{ modelId: string }>).map((m) => m.modelId);
+    }).catch(() => [] as string[]);
     return { defaultModel: settings.defaultModel ?? null, models };
   });
 
@@ -307,14 +328,40 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   });
   ipcMain.handle('sparkii:queryAudit', (_e, filter: object) => rt.audit.query(filter));
   ipcMain.handle('sparkii:getSettings', () => loadSettings(rt.dataDir, rt.keyring));
-  ipcMain.handle('sparkii:saveSettings', (_e, settings: unknown) => saveSettings(rt.dataDir, settings as Parameters<typeof saveSettings>[1], rt.keyring));
-  ipcMain.handle('sparkii:listModels', async (_e, baseUrl: string, _apiKey?: string) => {
-    const settings = await loadSettings(rt.dataDir, rt.keyring);
-    return listModels(baseUrl, settings.apiKey);
+  ipcMain.handle('sparkii:saveSettings', async (_e, settings: unknown) => {
+    const s = settings as Parameters<typeof saveSettings>[1];
+    await saveSettings(rt.dataDir, s, rt.keyring);
+    if (s.provider && s.baseUrl) {
+      await writePiModelsConfig(rt.piAgentDir, providerIdForLabel(s.provider), s.baseUrl);
+    }
+    return { ok: true };
   });
-  ipcMain.handle('sparkii:testModel', async (_e, baseUrl: string, _apiKey?: string) => {
-    const settings = await loadSettings(rt.dataDir, rt.keyring);
-    return testModel(baseUrl, settings.apiKey);
+  ipcMain.handle('sparkii:listModels', async (_e, providerLabel: string) => {
+    const providerId = providerIdForLabel(providerLabel);
+    try {
+      const models = await withProbeSlot(async (client) => {
+        await injectProbeKey(client, providerId);
+        const resp = await client.send({ type: 'list_models', provider: providerId });
+        if (!resp.success) throw new Error(resp.error ?? 'list_models failed');
+        return ((resp.data ?? []) as Array<{ modelId: string }>).map((m) => m.modelId);
+      });
+      return { ok: true, models };
+    } catch (e) {
+      return { ok: false, error: (e as Error).message };
+    }
+  });
+  ipcMain.handle('sparkii:testModel', async (_e, providerLabel: string, modelId: string) => {
+    const providerId = providerIdForLabel(providerLabel);
+    try {
+      return await withProbeSlot(async (client) => {
+        await injectProbeKey(client, providerId);
+        const resp = await client.send({ type: 'test_connection', provider: providerId, modelId });
+        if (!resp.success) return { ok: false, error: resp.error ?? 'test_connection failed' };
+        return resp.data as { ok: boolean; latencyMs?: number; error?: string };
+      });
+    } catch (e) {
+      return { ok: false, error: (e as Error).message };
+    }
   });
   ipcMain.handle('sparkii:prompt', async (_e, text: string) => {
     const sessionId = randomUUID();
