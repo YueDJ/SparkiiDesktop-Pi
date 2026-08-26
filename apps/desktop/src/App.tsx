@@ -21,10 +21,7 @@ export function sessionDisplayName(s: { title?: string; firstMessage?: string; u
 
 export function App() {
   const api = window.sparkii;
-  const [authed, setAuthed] = useState(false);
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('');
-  const [profile, setProfile] = useState<any>(null);
+  const [userName, setUserName] = useState('');
   const [state, setState] = useState<Record<string, unknown>>({ documents: [] });
   const [pending, setPending] = useState<any[]>([]);
   const [auditVersion, setAuditVersion] = useState(0);
@@ -63,6 +60,26 @@ export function App() {
 
   const refreshApprovals = () => api.listPendingApprovals().then((xs) => setPending(xs as any[]));
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const subject = await api.getLocalSubject();
+        if (cancelled) return;
+        setUserName(subject.userId);
+        setRoles(subject.roles ?? []);
+        await refreshApprovals();
+        api.listAgents?.().then((list: Array<{ id: string; name: string }>) => {
+          if (cancelled || !Array.isArray(list) || !list.length) return;
+          setAgents(list.map((a) => ({ id: (a.id === 'contract-review' ? 'contract' : a.id) as ScreenId, name: a.name, status: 'idle' })));
+        }).catch(() => {});
+      } catch {
+        // 本地主体初始化失败时仍保留默认壳,不阻塞渲染
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [api]);
+
   const decide = (id: string, ok: boolean, note?: string) => {
     api.decideApproval(id, ok, note).then(() => {
       setDetail(null);
@@ -92,19 +109,6 @@ export function App() {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-  };
-
-  const login = async () => {
-    const res = await api.login(username, password);
-    setAuthed(true);
-    setRoles(res.roles ?? []);
-    setProfile(await api.getProfile());
-    await refreshApprovals();
-    api.listAgents?.().then((list: Array<{ id: string; name: string }>) => {
-      if (Array.isArray(list) && list.length) {
-        setAgents(list.map((a) => ({ id: (a.id === 'contract-review' ? 'contract' : a.id) as ScreenId, name: a.name, status: 'idle' })));
-      }
-    }).catch(() => {});
   };
 
   const onAction = async (action: string) => {
@@ -157,29 +161,6 @@ export function App() {
     });
   };
 
-  if (!authed) {
-    return (
-      <div className="login-wrap">
-        <div className="login-left">
-          <h1>Sparkii</h1>
-          <p><b>可控</b>:写操作必须人工批准,拒绝即不写</p>
-          <p><b>可审计</b>:全程留痕,可导出、可回溯</p>
-          <p><b>本机运行</b>:数据不出本机,离线可用</p>
-        </div>
-        <div className="login-right">
-          <div className="login-form">
-            <h2>登录工作台</h2>
-            <div className="muted" style={{ marginBottom: 18 }}>本地账号 · 数据留在本机</div>
-            <input className="field" placeholder="用户名" value={username} onChange={(e) => setUsername(e.target.value)} />
-            <input className="field" type="password" placeholder="密码" value={password} onChange={(e) => setPassword(e.target.value)} />
-            <button className="btn primary" style={{ width: '100%' }} onClick={login}>登录</button>
-            <div className="trustline">● 审计已开启 · 本机运行</div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const statusText = workflow.status === 'running'
     ? `正在执行:${workflow.step ?? '…'}`
     : workflow.status === 'done' ? '审核完成 · 报告待复核'
@@ -204,7 +185,7 @@ export function App() {
 
   const surfaces: Partial<Record<ScreenId, ReactNode>> = {
     home: (
-      <HomeView userName={username} agents={agents} pendingApprovals={pending} onNavigate={navigate} />
+      <HomeView userName={userName} agents={agents} pendingApprovals={pending} onNavigate={navigate} />
     ),
     contract: (
       <ContractSurface state={state} workflow={workflow} onAction={onAction} onRequestExport={() => setScreen('approvals')} />
@@ -245,7 +226,7 @@ export function App() {
         sessions={sessions}
         pendingApprovals={pending.length}
         statusText={statusText}
-        userName={username}
+        userName={userName}
         userRole={roles.length ? roles.join(' · ') : '审核员'}
         surfaceTitle={surfaceTitles[screen]}
         onNavigate={navigate}

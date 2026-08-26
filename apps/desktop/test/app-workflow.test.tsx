@@ -2,6 +2,16 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { App } from '../src/App.js';
 
+function localSubject(username: string) {
+  return { userId: username, roles: ['admin', 'reviewer'] as const };
+}
+
+describe('local subject', () => {
+  it('grants full roles without login', () => {
+    expect(localSubject('alice').roles).toEqual(['admin', 'reviewer']);
+  });
+});
+
 const HOME = {
   page: 'contract-review/home',
   layout: { type: 'grid', columns: 2 },
@@ -18,7 +28,7 @@ function makeApi() {
   const channels: Record<string, (p: any) => void> = {};
   const api = {
     on: vi.fn((channel: string, cb: any) => { channels[channel] = cb; return () => {}; }),
-    login: vi.fn().mockResolvedValue({ userId: 'admin', roles: ['admin'] }),
+    getLocalSubject: vi.fn().mockResolvedValue({ userId: 'alice', roles: ['admin', 'reviewer'] }),
     getProfile: vi.fn().mockResolvedValue({ pages: { home: HOME } }),
     listPendingApprovals: vi.fn().mockResolvedValue([]),
     chooseDocument: vi.fn(),
@@ -36,10 +46,7 @@ describe('App workflow feedback', () => {
   it('shows workflow status from workflow events', async () => {
     const { api, channels } = makeApi();
     render(<App />);
-    fireEvent.change(screen.getByPlaceholderText('用户名'), { target: { value: 'admin' } });
-    fireEvent.change(screen.getByPlaceholderText('密码'), { target: { value: 'admin123' } });
-    fireEvent.click(screen.getByText('登录'));
-    // 登录后进入工作台首页,点击合同审核卡片进入其表面
+    // 以 OS 用户作为单一本地主体,直接进入工作台首页
     await screen.findByText(/工作台 · 上午好/);
     fireEvent.click(screen.getByTestId('agent-card-contract'));
     await screen.findByTestId('review');

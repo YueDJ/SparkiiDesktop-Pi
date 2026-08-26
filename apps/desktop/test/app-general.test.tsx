@@ -23,7 +23,7 @@ function makeApi() {
       channels[channel] = (p: any) => (listeners[channel] ?? new Set()).forEach((fn) => fn(p));
       return () => { listeners[channel]?.delete(cb); };
     }),
-    login: vi.fn().mockResolvedValue({ userId: 'admin', roles: ['admin'] }),
+    getLocalSubject: vi.fn().mockResolvedValue({ userId: 'admin', roles: ['admin', 'reviewer'] }),
     getProfile: vi.fn().mockResolvedValue({ pages: {} }),
     listPendingApprovals: vi.fn().mockResolvedValue([]),
     listAgents: vi.fn().mockResolvedValue([
@@ -49,9 +49,6 @@ describe('App general agent', () => {
   it('lists agents, creates a session, and streams a reply', async () => {
     const { api, channels } = makeApi();
     render(<App />);
-    fireEvent.change(screen.getByPlaceholderText('用户名'), { target: { value: 'admin' } });
-    fireEvent.change(screen.getByPlaceholderText('密码'), { target: { value: 'admin123' } });
-    fireEvent.click(screen.getByText('登录'));
     await screen.findByText(/工作台 · 上午好/);
     fireEvent.click(screen.getByTestId('agent-card-general'));
     await screen.findByText('新建会话');
@@ -68,9 +65,6 @@ describe('App general agent', () => {
   it('deletes the active session and returns to empty state', async () => {
     const { api } = makeApi();
     render(<App />);
-    fireEvent.change(screen.getByPlaceholderText('用户名'), { target: { value: 'admin' } });
-    fireEvent.change(screen.getByPlaceholderText('密码'), { target: { value: 'admin123' } });
-    fireEvent.click(screen.getByText('登录'));
     await screen.findByText(/工作台 · 上午好/);
     fireEvent.click(screen.getByTestId('agent-card-general'));
     await screen.findByText('新建会话');

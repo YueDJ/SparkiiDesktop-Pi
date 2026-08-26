@@ -9,7 +9,7 @@ export type IpcLike = {
 export function buildApi(ipc: IpcLike): SparkiiApi {
   const invoke = (name: string, ...args: unknown[]) => ipc.invoke(`sparkii:${name}`, ...args);
   return {
-    login: (username, password) => invoke('login', username, password) as Promise<{ userId: string; roles: string[] }>,
+    getLocalSubject: () => invoke('getLocalSubject') as Promise<{ userId: string; roles: string[] }>,
     getProfile: () => invoke('getProfile'),
     chooseDocument: () => invoke('chooseDocument') as Promise<{ path?: string }>,
     runWorkflow: (id, input) => invoke('runWorkflow', id, input) as Promise<{ ok: boolean }>,

@@ -249,10 +249,10 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     return { ok: true };
   });
 
-  ipcMain.handle('sparkii:login', async (_e, username: string, password: string) => {
-    rt.subject = await rt.identity.authenticate(username, password);
-    return { userId: rt.subject.userId, roles: rt.subject.roles };
-  });
+  ipcMain.handle('sparkii:getLocalSubject', () => ({
+    userId: rt.subject.userId,
+    roles: rt.subject.roles,
+  }));
   ipcMain.handle('sparkii:getProfile', () => {
     const first = [...rt.profiles.values()][0];
     return { manifest: first.profile.manifest, pages: first.profile.ui.pages, theme: first.profile.ui.theme, tools: first.profile.agent.tools };
@@ -273,7 +273,6 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   });
   ipcMain.handle('sparkii:listPendingApprovals', () => rt.gate.listPending());
   ipcMain.handle('sparkii:decideApproval', async (_e, id: string, approved: boolean, note?: string) => {
-    if (!rt.subject) throw new Error('not authenticated');
     let out = await rt.gate.decide(id, rt.subject, approved, note);
     let result: unknown;
     if (out.status === 'approved' && out.toolName !== 'workflow.approval') {
