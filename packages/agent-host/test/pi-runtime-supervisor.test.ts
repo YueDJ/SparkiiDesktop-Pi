@@ -3,7 +3,6 @@ import {
   PiRuntimeSupervisor,
 } from "../src/pi-runtime-supervisor.js";
 import {
-  commandEnvelope,
   responseEnvelope,
   eventEnvelope,
   proposalEnvelope,

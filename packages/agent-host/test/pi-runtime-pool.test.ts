@@ -52,7 +52,7 @@ describe("PiRuntimePool", () => {
   it("sends new_session on release", async () => {
     const handle = new FakeHandle();
     const pool = new PiRuntimePool({ maxAgents: 1, makeSupervisor: () => handle });
-    const { client } = await pool.acquire("a");
+    await pool.acquire("a");
     handle.ready();
     await pool.release("a");
     const sent = handle.sent.find((e) => "command" in e && (e as any).command?.type === "new_session");

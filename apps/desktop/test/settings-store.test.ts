@@ -6,7 +6,6 @@ import { loadSettings, saveSettings } from '../electron/main/settings.js';
 import { Keyring } from '../electron/main/keyring.js';
 
 function fakeSafeStorage() {
-  const store = new Map<string, string>();
   return {
     isEncryptionAvailable: () => true,
     encryptString: (value: string) => Buffer.from(`enc:${value}`),

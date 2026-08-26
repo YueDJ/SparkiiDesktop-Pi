@@ -3,7 +3,6 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { loadSkillsFromDir, parseSkillFrontmatter } from '../src/skills.js';
-import { readFile } from 'node:fs/promises';
 import { collectSkillDirFiles } from '../src/skills.js';
 
 function write(files: Record<string, string>): string {
