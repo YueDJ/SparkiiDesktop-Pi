@@ -71,12 +71,15 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     const slot = await rt.pool.acquire(tempKey, {
       saddle: buildProfileSaddle(rt.profileOf(profileId), anchorDir(tempKey), workspacePath),
     });
+    let sessionId: string | undefined;
     try {
       const state = await slot.client.send({ type: 'get_state' });
       if (!state.success) throw new Error(state.error ?? 'get_state failed');
-      const sessionId = (state.data as { sessionId?: string } | undefined)?.sessionId;
+      sessionId = (state.data as { sessionId?: string } | undefined)?.sessionId;
       const sessionFile = (state.data as { sessionFile?: string } | undefined)?.sessionFile;
       if (!sessionId) throw new Error('runtime did not provide a session id');
+      rt.pool.renameSession(tempKey, sessionId);
+      openSessions.set(sessionId, { slot, profileId });
       await mkdir(anchorDir(sessionId), { recursive: true });
       rt.chatSessions.create({
         id: sessionId,
@@ -86,8 +89,14 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
         piSessionFile: sessionFile ?? null,
       });
       return { sessionId, workspacePath, model: null };
-    } finally {
-      await rt.pool.release(tempKey);
+    } catch (e) {
+      if (sessionId) {
+        openSessions.delete(sessionId);
+        await rt.pool.release(sessionId);
+      } else {
+        await rt.pool.release(tempKey);
+      }
+      throw e;
     }
   });
 
