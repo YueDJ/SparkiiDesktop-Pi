@@ -135,6 +135,43 @@ export async function createPiSdkSessionHost(
       },
       setAutoRetry: async () => {},
       setAutoCompaction: async () => {},
+      setSessionName: async (name) => {
+        session.setSessionName(name);
+      },
+      setApiKey: async (provider, apiKey) => {
+        await modelRuntime.setRuntimeApiKey(provider, apiKey);
+      },
+      complete: async (provider, modelId, text) => {
+        const model = modelRuntime.getModel(provider, modelId);
+        if (!model) throw new Error(`unknown model ${provider}/${modelId}`);
+        const out = await modelRuntime.completeSimple(model, {
+          messages: [{ role: "user", content: text, timestamp: Date.now() }],
+        });
+        return out.content
+          .filter((block): block is { type: "text"; text: string } => block.type === "text")
+          .map((block) => block.text)
+          .join("");
+      },
+      listModels: async (provider) => {
+        const models = modelRuntime.getModels(provider);
+        return models.map((model) => ({
+          provider: model.provider ?? provider ?? "",
+          modelId: model.id,
+        }));
+      },
+      testConnection: async (provider, modelId) => {
+        const start = Date.now();
+        const model = modelRuntime.getModel(provider, modelId);
+        if (!model) return { ok: false, error: `unknown model ${provider}/${modelId}` };
+        try {
+          await modelRuntime.completeSimple(model, {
+            messages: [{ role: "user", content: "ping", timestamp: Date.now() }],
+          });
+          return { ok: true, latencyMs: Date.now() - start };
+        } catch (error) {
+          return { ok: false, error: error instanceof Error ? error.message : String(error) };
+        }
+      },
       subscribe: (callback) => session.subscribe(callback),
       getMessages: () => session.messages,
       getState: () => ({

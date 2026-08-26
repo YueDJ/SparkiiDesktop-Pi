@@ -18,7 +18,12 @@ export type RpcCommand =
   | { type: 'set_auto_retry'; enabled: boolean }
   | { type: 'set_auto_compaction'; enabled: boolean }
   | { type: 'switch_session'; sessionPath: string }
-  | { type: 'configure_session'; saddle: SessionSaddle };
+  | { type: 'configure_session'; saddle: SessionSaddle }
+  | { type: 'set_session_name'; name: string }
+  | { type: 'set_api_key'; provider: string; apiKey: string }
+  | { type: 'complete'; provider: string; modelId: string; text: string }
+  | { type: 'list_models'; provider?: string }
+  | { type: 'test_connection'; provider: string; modelId: string };
 
 export interface RpcResponse { id?: string; type: 'response'; command: string; success: boolean; data?: unknown; error?: string }
 

@@ -15,6 +15,11 @@ export interface PiRuntimeSession {
   setModel(provider: string, modelId: string): Promise<void>;
   setAutoRetry(enabled: boolean): Promise<void>;
   setAutoCompaction(enabled: boolean): Promise<void>;
+  setSessionName(name: string): Promise<void>;
+  setApiKey(provider: string, apiKey: string): Promise<void>;
+  complete(provider: string, modelId: string, text: string): Promise<string>;
+  listModels(provider?: string): Promise<Array<{ provider: string; modelId: string }>>;
+  testConnection(provider: string, modelId: string): Promise<{ ok: boolean; latencyMs?: number; error?: string }>;
   subscribe(callback: (event: any) => void): () => void;
   getMessages(): unknown[];
   getState(): Record<string, unknown>;
@@ -113,5 +118,17 @@ async function handleCommand(host: PiRuntimeSessionHost, command: RpcCommand): P
     case "configure_session":
       await host.configureSaddle(command.saddle);
       return undefined;
+    case "set_session_name":
+      await session.setSessionName(command.name);
+      return undefined;
+    case "set_api_key":
+      await session.setApiKey(command.provider, command.apiKey);
+      return undefined;
+    case "complete":
+      return await session.complete(command.provider, command.modelId, command.text);
+    case "list_models":
+      return await session.listModels(command.provider);
+    case "test_connection":
+      return await session.testConnection(command.provider, command.modelId);
   }
 }
