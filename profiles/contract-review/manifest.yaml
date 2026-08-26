@@ -7,3 +7,5 @@ modelRouting:
     report:
       - { provider: deepseek, modelId: deepseek-v4-pro }
       - { provider: deepseek, modelId: deepseek-v4-flash }
+    title:
+      - { provider: deepseek, modelId: deepseek-v4-flash }

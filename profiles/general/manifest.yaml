@@ -8,3 +8,5 @@ modelRouting:
       - { provider: deepseek, modelId: deepseek-v4-flash }
     default:
       - { provider: deepseek, modelId: deepseek-v4-flash }
+    title:
+      - { provider: deepseek, modelId: deepseek-v4-flash }

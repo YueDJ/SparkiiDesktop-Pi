@@ -15,9 +15,14 @@ describe('sessionDisplayName', () => {
 });
 
 function makeApi() {
+  const listeners: Record<string, Set<(p: any) => void>> = {};
   const channels: Record<string, (p: any) => void> = {};
   const api = {
-    on: vi.fn((channel: string, cb: any) => { channels[channel] = cb; return () => {}; }),
+    on: vi.fn((channel: string, cb: any) => {
+      (listeners[channel] ??= new Set()).add(cb);
+      channels[channel] = (p: any) => (listeners[channel] ?? new Set()).forEach((fn) => fn(p));
+      return () => { listeners[channel]?.delete(cb); };
+    }),
     login: vi.fn().mockResolvedValue({ userId: 'admin', roles: ['admin'] }),
     getProfile: vi.fn().mockResolvedValue({ pages: {} }),
     listPendingApprovals: vi.fn().mockResolvedValue([]),

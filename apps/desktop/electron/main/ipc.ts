@@ -15,11 +15,53 @@ import type { Logger } from './logger.js';
 export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, logger: Logger) {
   const broker = createBroker(rt, getWindow);
   const openSessions = new Map<string, { slot: Awaited<ReturnType<typeof rt.pool.acquire>>; profileId: string }>();
+  const titledSessions = new Set<string>();
 
   const anchorDir = (sessionId: string) => join(rt.dataDir, 'sessions', sessionId);
 
   function buildSaddle(profileId: string, sessionId: string): SessionSaddle {
     return buildProfileSaddle(rt.profileOf(profileId), anchorDir(sessionId), rt.chatSessions.get(sessionId)?.workspacePath);
+  }
+
+  const messageText = (m: unknown): string => {
+    const rec = (m ?? {}) as { role?: string; text?: string; content?: unknown };
+    if (typeof rec.content === 'string') return rec.content;
+    if (Array.isArray(rec.content)) return rec.content.map((b) => (b as { text?: string })?.text ?? '').join('');
+    return typeof rec.text === 'string' ? rec.text : '';
+  };
+
+  async function maybeGenerateTitle(
+    sessionId: string,
+    profileId: string,
+    slot: Awaited<ReturnType<typeof rt.pool.acquire>>,
+  ): Promise<void> {
+    try {
+      const target = rt.profileOf(profileId).router.resolve('title') ?? rt.profileOf(profileId).router.resolve('default');
+      if (!target) return;
+      const resp = await slot.client.send({ type: 'get_messages' });
+      const messages = (resp.data ?? []) as unknown[];
+      const firstUser = messages.find((m) => (m as { role?: string })?.role === 'user');
+      const firstAssistant = messages.find((m) => (m as { role?: string })?.role === 'assistant');
+      const userText = messageText(firstUser);
+      const assistantText = messageText(firstAssistant);
+      const prompt = userText
+        ? `请为以下对话生成一个不超过20字的标题。\n用户：${userText}${assistantText ? `\n助手：${assistantText}` : ''}`
+        : '';
+      if (!prompt) return;
+      const titleResp = await slot.client.send({
+        type: 'complete',
+        provider: target.provider,
+        modelId: target.modelId,
+        text: prompt,
+      });
+      if (!titleResp.success) return;
+      const name = String(titleResp.data ?? '').trim().slice(0, 40);
+      if (!name) return;
+      await slot.client.send({ type: 'set_session_name', name });
+      getWindow()?.webContents.send('sparkii:event:chat-event', { type: 'session_title', sessionId, title: name });
+    } catch {
+      // 标题生成失败不影响主流程
+    }
   }
 
   ipcMain.handle('sparkii:newChatSession', async (_e, profileId: string) => {
@@ -113,7 +155,13 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       const timer = setTimeout(() => { off(); reject(new Error('prompt timeout')); }, 300_000);
       off = slot.client.onEvent((ev) => {
         win?.webContents.send('sparkii:event:chat-event', { ...ev, sessionId });
-        if (ev.type === 'agent_end') { clearTimeout(timer); off(); resolve(); }
+        if (ev.type === 'agent_end') {
+          clearTimeout(timer); off(); resolve();
+          if (!titledSessions.has(sessionId)) {
+            titledSessions.add(sessionId);
+            void maybeGenerateTitle(sessionId, profileId, slot).catch(() => {});
+          }
+        }
       });
       slot.client.send({ type: 'prompt', message: text }).then((resp) => {
         if (!resp.success) { clearTimeout(timer); off(); reject(new Error(resp.error ?? 'prompt failed')); }

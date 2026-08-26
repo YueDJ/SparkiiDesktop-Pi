@@ -32,4 +32,10 @@ describe('ModelRouter', () => {
     }));
     expect(withCoding.resolve('coding')).toEqual({ provider: 'cloud', modelId: 'deepseek-v4-pro' });
   });
+
+  it('resolves title task and falls back to default', () => {
+    const normalized = normalizeRouting({ default: [{ provider: 'deepseek', modelId: 'deepseek-v4-flash' }] });
+    expect(normalized.title).toEqual([{ provider: 'deepseek', modelId: 'deepseek-v4-flash' }]);
+    expect(new ModelRouter(normalized).resolve('title')).toEqual({ provider: 'deepseek', modelId: 'deepseek-v4-flash' });
+  });
 });

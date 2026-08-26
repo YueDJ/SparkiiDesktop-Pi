@@ -48,6 +48,18 @@ export function App() {
     else if (e.type === 'workflow_completed') setWorkflow({ status: 'done' });
     else if (e.type === 'workflow_failed') setWorkflow({ status: 'failed', error: e.error?.message });
   }), [api]);
+  useEffect(() => api.on('chat-event', (p: any) => {
+    if (p?.type === 'session_title' && p?.sessionId) {
+      setSessions((prev) => {
+        const next = { ...prev };
+        for (const k of Object.keys(next)) {
+          next[k] = next[k].map((s) => (s.id === p.sessionId ? { ...s, name: p.title } : s));
+        }
+        return next;
+      });
+      if (p.sessionId === activeGeneralSession) setGeneralTitle(p.title);
+    }
+  }), [api, activeGeneralSession]);
 
   const refreshApprovals = () => api.listPendingApprovals().then((xs) => setPending(xs as any[]));
 
