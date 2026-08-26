@@ -9,27 +9,34 @@ function store() {
 }
 
 describe('ChatSessionStore', () => {
-  it('creates and reads a session', () => {
+  it('creates and reads a session keyed by pi session id', () => {
     const s = store();
-    const rec = s.create({ id: 's1', profileId: 'general', title: '会话 08-25 17:10', workspaceKind: 'auto', workspacePath: 'C:/ws/SparkiiXyZ9202608251710' });
-    expect(s.get('s1')).toMatchObject({ id: 's1', title: '会话 08-25 17:10', model: null, piSessionFile: null });
+    const rec = s.create({ id: 'pi-1', profileId: 'general', workspaceKind: 'auto', workspacePath: 'C:/ws/SparkiiXyZ9202608251710' });
+    expect(s.get('pi-1')).toMatchObject({ id: 'pi-1', model: null, piSessionFile: null });
+    expect(s.get('pi-1')).not.toHaveProperty('title');
     expect(rec.createdAt).toBeGreaterThan(0);
+    s.close();
+  });
+  it('stores the piSessionFile overlay', () => {
+    const s = store();
+    s.create({ id: 'pi-1', profileId: 'general', workspaceKind: 'auto', workspacePath: 'C:/a', piSessionFile: 'C:/pi/sessions/pi-1.jsonl' });
+    expect(s.get('pi-1')).toMatchObject({ piSessionFile: 'C:/pi/sessions/pi-1.jsonl' });
     s.close();
   });
   it('updates model and workspace', () => {
     const s = store();
-    s.create({ id: 's1', profileId: 'general', title: 't', workspaceKind: 'auto', workspacePath: 'C:/a' });
-    s.update('s1', { model: 'deepseek-v4-pro', workspaceKind: 'user', workspacePath: 'C:/user-ws' });
-    expect(s.get('s1')).toMatchObject({ model: 'deepseek-v4-pro', workspaceKind: 'user', workspacePath: 'C:/user-ws' });
+    s.create({ id: 'pi-1', profileId: 'general', workspaceKind: 'auto', workspacePath: 'C:/a' });
+    s.update('pi-1', { model: 'deepseek-v4-pro', workspaceKind: 'user', workspacePath: 'C:/user-ws' });
+    expect(s.get('pi-1')).toMatchObject({ model: 'deepseek-v4-pro', workspaceKind: 'user', workspacePath: 'C:/user-ws' });
     s.close();
   });
   it('lists by profile and deletes', () => {
     const s = store();
-    s.create({ id: 'a', profileId: 'general', title: 't', workspaceKind: 'auto', workspacePath: 'C:/a' });
-    s.create({ id: 'b', profileId: 'contract', title: 't', workspaceKind: 'auto', workspacePath: 'C:/b' });
-    expect(s.list('general').map((r) => r.id)).toEqual(['a']);
-    s.delete('a');
-    expect(s.get('a')).toBeUndefined();
+    s.create({ id: 'pi-a', profileId: 'general', workspaceKind: 'auto', workspacePath: 'C:/a' });
+    s.create({ id: 'pi-b', profileId: 'contract-review', workspaceKind: 'auto', workspacePath: 'C:/b' });
+    expect(s.list('general').map((r) => r.id)).toEqual(['pi-a']);
+    s.delete('pi-a');
+    expect(s.get('pi-a')).toBeUndefined();
     s.close();
   });
 });

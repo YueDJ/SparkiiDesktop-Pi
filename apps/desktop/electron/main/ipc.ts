@@ -2,7 +2,7 @@ import { ipcMain, dialog, app, type BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { SessionSaddle } from '@sparkii/agent-host';
+import { listPiSessions, readPiSessionMessages, type SessionSaddle } from '@sparkii/agent-host';
 import { createBroker, runWorkflow, selectModel } from './workflow.js';
 import { resolveExportPath } from './export-path.js';
 import { loadSettings, saveSettings } from './settings.js';
@@ -23,37 +23,55 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   }
 
   ipcMain.handle('sparkii:newChatSession', async (_e, profileId: string) => {
-    const sessionId = randomUUID();
     const now = new Date();
     const workspacePath = autoWorkspacePath(app.getPath('desktop'), now);
-    await mkdir(anchorDir(sessionId), { recursive: true });
-    rt.chatSessions.create({
-      id: sessionId, profileId, title: `会话 ${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
-      workspaceKind: 'auto', workspacePath,
+    const tempKey = `new:${randomUUID()}`;
+    const slot = await rt.pool.acquire(tempKey, {
+      saddle: buildProfileSaddle(rt.profileOf(profileId), anchorDir(tempKey), workspacePath),
     });
-    return { sessionId, workspacePath, model: null };
+    try {
+      const state = await slot.client.send({ type: 'get_state' });
+      if (!state.success) throw new Error(state.error ?? 'get_state failed');
+      const sessionId = (state.data as { sessionId?: string } | undefined)?.sessionId;
+      const sessionFile = (state.data as { sessionFile?: string } | undefined)?.sessionFile;
+      if (!sessionId) throw new Error('runtime did not provide a session id');
+      await mkdir(anchorDir(sessionId), { recursive: true });
+      rt.chatSessions.create({
+        id: sessionId,
+        profileId,
+        workspaceKind: 'auto',
+        workspacePath,
+        piSessionFile: sessionFile ?? null,
+      });
+      return { sessionId, workspacePath, model: null };
+    } finally {
+      await rt.pool.release(tempKey);
+    }
   });
 
   ipcMain.handle('sparkii:openChatSession', async (_e, sessionId: string) => {
-    const rec = rt.chatSessions.get(sessionId);
+    const rec = rt.chatSessions.get(sessionId) ?? (await listPiSessions(join(rt.piAgentDir, 'sessions'))).find((s) => s.id === sessionId);
     if (!rec) throw new Error('session not found');
-    if (!openSessions.has(sessionId)) {
-      const slot = await rt.pool.acquire(sessionId, {
-        saddle: buildSaddle(rec.profileId, sessionId),
-        resumeSessionFile: rec.piSessionFile ?? undefined,
-      });
-      openSessions.set(sessionId, { slot, profileId: rec.profileId });
-      const state = await slot.client.send({ type: 'get_state' });
-      if ((state.data as { sessionFile?: string } | undefined)?.sessionFile) {
-        rt.chatSessions.update(sessionId, { piSessionFile: (state.data as { sessionFile: string }).sessionFile });
-      }
-    }
-    const open = openSessions.get(sessionId)!;
-    const resp = await open.slot.client.send({ type: 'get_messages' });
-    return { messages: (resp.data ?? []) as unknown[] };
+    const file = (rec as { piSessionFile?: string | null }).piSessionFile
+      ?? (rec as { path?: string }).path;
+    if (!file) throw new Error('session file missing');
+    return { messages: readPiSessionMessages(file) };
   });
 
-  ipcMain.handle('sparkii:listChatSessions', (_e, profileId?: string) => rt.chatSessions.list(profileId));
+  ipcMain.handle('sparkii:listChatSessions', async (_e, profileId?: string) => {
+    const all = await listPiSessions(join(rt.piAgentDir, 'sessions'));
+    const mapped = all.map((s) => {
+      const rec = rt.chatSessions.get(s.id);
+      return {
+        id: s.id,
+        title: s.name ?? s.firstMessage,
+        profileId: rec?.profileId,
+        updatedAt: s.modified.getTime(),
+        piFile: s.path,
+      };
+    });
+    return profileId ? mapped.filter((m) => m.profileId === profileId || m.profileId === undefined) : mapped;
+  });
   ipcMain.handle('sparkii:getChatSession', (_e, sessionId: string) => rt.chatSessions.get(sessionId) ?? null);
   ipcMain.handle('sparkii:getChatMessages', async (_e, sessionId: string) => {
     const open = openSessions.get(sessionId);
@@ -63,8 +81,17 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   });
 
   ipcMain.handle('sparkii:promptSession', async (_e, sessionId: string, text: string) => {
-    const open = openSessions.get(sessionId);
-    if (!open) throw new Error('session not open');
+    let open = openSessions.get(sessionId);
+    if (!open) {
+      const rec = rt.chatSessions.get(sessionId);
+      if (!rec) throw new Error('session not found');
+      const slot = await rt.pool.acquire(sessionId, {
+        saddle: buildSaddle(rec.profileId, sessionId),
+        resumeSessionFile: rec.piSessionFile ?? undefined,
+      });
+      open = { slot, profileId: rec.profileId };
+      openSessions.set(sessionId, open);
+    }
     const { slot, profileId } = open;
     slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId }));
     const rec = rt.chatSessions.get(sessionId);
@@ -106,7 +133,21 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   });
 
   ipcMain.handle('sparkii:setChatTitle', (_e, sessionId: string, title: string) => {
-    rt.chatSessions.update(sessionId, { title });
+    const open = openSessions.get(sessionId);
+    if (!open) {
+      const rec = rt.chatSessions.get(sessionId);
+      if (rec) {
+        void rt.pool.acquire(sessionId, {
+          saddle: buildSaddle(rec.profileId, sessionId),
+          resumeSessionFile: rec.piSessionFile ?? undefined,
+        }).then((slot) => {
+          openSessions.set(sessionId, { slot, profileId: rec.profileId });
+          return slot.client.send({ type: 'set_session_name', name: title });
+        }).catch(() => {});
+        return { ok: true };
+      }
+    }
+    if (open) void open.slot.client.send({ type: 'set_session_name', name: title }).catch(() => {});
     return { ok: true };
   });
 
@@ -141,7 +182,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   });
 
   ipcMain.handle('sparkii:getModelOptions', async () => {
-    const settings = await loadSettings(rt.dataDir);
+    const settings = await loadSettings(rt.dataDir, rt.keyring);
     const models = settings.baseUrl ? (await listModels(settings.baseUrl, settings.apiKey)).models ?? [] : [];
     return { defaultModel: settings.defaultModel ?? null, models };
   });
@@ -209,10 +250,16 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     return out;
   });
   ipcMain.handle('sparkii:queryAudit', (_e, filter: object) => rt.audit.query(filter));
-  ipcMain.handle('sparkii:getSettings', () => loadSettings(rt.dataDir));
-  ipcMain.handle('sparkii:saveSettings', (_e, settings: unknown) => saveSettings(rt.dataDir, settings as Parameters<typeof saveSettings>[1]));
-  ipcMain.handle('sparkii:listModels', (_e, baseUrl: string, apiKey?: string) => listModels(baseUrl, apiKey));
-  ipcMain.handle('sparkii:testModel', (_e, baseUrl: string, apiKey?: string) => testModel(baseUrl, apiKey));
+  ipcMain.handle('sparkii:getSettings', () => loadSettings(rt.dataDir, rt.keyring));
+  ipcMain.handle('sparkii:saveSettings', (_e, settings: unknown) => saveSettings(rt.dataDir, settings as Parameters<typeof saveSettings>[1], rt.keyring));
+  ipcMain.handle('sparkii:listModels', async (_e, baseUrl: string, _apiKey?: string) => {
+    const settings = await loadSettings(rt.dataDir, rt.keyring);
+    return listModels(baseUrl, settings.apiKey);
+  });
+  ipcMain.handle('sparkii:testModel', async (_e, baseUrl: string, _apiKey?: string) => {
+    const settings = await loadSettings(rt.dataDir, rt.keyring);
+    return testModel(baseUrl, settings.apiKey);
+  });
   ipcMain.handle('sparkii:prompt', async (_e, text: string) => {
     const sessionId = randomUUID();
     const slot = await rt.pool.acquire(sessionId, {
