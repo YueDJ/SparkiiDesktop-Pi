@@ -35,6 +35,11 @@ export class ChatSessionStore {
         updated_at INTEGER NOT NULL
       );
     `);
+    // 迁移旧 schema：老版本有 `title NOT NULL` 列，去掉它，避免旧库首次 INSERT 报错。
+    const columns = this.db.pragma('table_info(chat_sessions)') as Array<{ name: string }>;
+    if (columns.some((c) => c.name === 'title')) {
+      this.db.exec('ALTER TABLE chat_sessions DROP COLUMN title');
+    }
   }
 
   create(rec: { id: string; profileId: string; workspaceKind: WorkspaceKind; workspacePath: string; model?: string | null; piSessionFile?: string | null }): ChatSessionRecord {
