@@ -5,6 +5,8 @@ import { describe, it, expect, vi } from "vitest";
 import { createCodingToolDefinitions, type CodingToolsContext } from "../src/coding-tools.js";
 import type { ProposalDecision } from "../src/pi-runtime-transport.js";
 
+const toolCtx = { sessionManager: { getSessionId: () => "test-session", getSessionFile: () => null } };
+
 function ctx(over: Partial<CodingToolsContext & { proposes: ReturnType<typeof vi.fn> }> = {}): CodingToolsContext & { proposes: ReturnType<typeof vi.fn> } {
   const proposes = vi.fn(async () => ({ approved: true, proposalId: "p", status: "executed", result: { exitCode: 0, output: "ok" } }) as ProposalDecision);
   return {
@@ -37,7 +39,7 @@ describe("createCodingToolDefinitions", () => {
     const denied = ctx({ propose, proposes: propose });
     const defs = createCodingToolDefinitions(denied);
     const write = defs.find((d) => d.name === "write")!;
-    await expect((write as any).execute("t1", { path: join(denied.workspaceRoot, "a.txt"), content: "x" }, undefined, undefined, {})).rejects.toThrow(/未执行/);
+    await expect((write as any).execute("t1", { path: join(denied.workspaceRoot, "a.txt"), content: "x" }, undefined, undefined, toolCtx)).rejects.toThrow(/未执行/);
     expect(denied.proposes).toHaveBeenCalledWith(expect.objectContaining({ toolName: "write", payload: expect.objectContaining({ path: expect.stringContaining("a.txt") }) }));
   });
 
@@ -45,7 +47,7 @@ describe("createCodingToolDefinitions", () => {
     const c = ctx();
     const defs = createCodingToolDefinitions(c);
     const write = defs.find((d) => d.name === "write")!;
-    await expect((write as any).execute("t1", { path: join(tmpdir(), "outside.txt"), content: "x" }, undefined, undefined, {})).rejects.toThrow(/不在工作区/);
+    await expect((write as any).execute("t1", { path: join(tmpdir(), "outside.txt"), content: "x" }, undefined, undefined, toolCtx)).rejects.toThrow(/不在工作区/);
     expect(c.proposes).not.toHaveBeenCalled();
   });
 });
