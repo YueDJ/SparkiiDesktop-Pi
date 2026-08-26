@@ -71,6 +71,11 @@ export async function selectModel(rt: Runtime, task: ModelTask, sessionId: strin
   if (!client) throw new Error(`unknown session ${sessionId}`);
   const target = rt.profileOf('contract-review').router.resolve(task);
   if (!target) return;
+  const apiKey = await rt.keyring.get('apiKey');
+  if (apiKey) {
+    const keyResp = await client.send({ type: 'set_api_key', provider: target.provider, apiKey });
+    if (!keyResp.success) throw new Error(`cannot set api key for ${target.provider}: ${keyResp.error ?? 'unknown'}`);
+  }
   const resp = await client.send({ type: 'set_model', provider: target.provider, modelId: target.modelId });
   if (!resp.success) throw new Error(`cannot select model ${target.provider}/${target.modelId}: ${resp.error ?? 'unknown'}`);
 }

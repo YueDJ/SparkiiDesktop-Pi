@@ -116,12 +116,23 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   });
 
   ipcMain.handle('sparkii:openChatSession', async (_e, sessionId: string) => {
+    const open = openSessions.get(sessionId);
+    if (open) {
+      const resp = await open.slot.client.send({ type: 'get_messages' });
+      return { messages: (resp.data ?? []) as unknown[] };
+    }
     const rec = rt.chatSessions.get(sessionId) ?? (await listPiSessions(join(rt.piAgentDir, 'sessions'))).find((s) => s.id === sessionId);
     if (!rec) throw new Error('session not found');
     const file = (rec as { piSessionFile?: string | null }).piSessionFile
       ?? (rec as { path?: string }).path;
-    if (!file) throw new Error('session file missing');
-    return { messages: readPiSessionMessages(file) };
+    if (!file) return { messages: [] };
+    try {
+      return { messages: readPiSessionMessages(file) };
+    } catch (e) {
+      // 空会话或尚未落盘的会话（首条 assistant 才写 jsonl）没有文件，返回空消息。
+      if ((e as NodeJS.ErrnoException).code === 'ENOENT') return { messages: [] };
+      throw e;
+    }
   });
 
   ipcMain.handle('sparkii:listChatSessions', async (_e, profileId?: string) => {
@@ -162,16 +173,23 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId }));
     const rec = rt.chatSessions.get(sessionId);
     const pr = rt.profileOf(profileId);
+    const apiKey = await rt.keyring.get('apiKey');
+
+    const selectModel = async (provider: string, modelId: string): Promise<void> => {
+      if (apiKey) {
+        const keyResp = await slot.client.send({ type: 'set_api_key', provider, apiKey });
+        if (!keyResp.success) throw new Error(`cannot set api key for ${provider}: ${keyResp.error ?? 'unknown'}`);
+      }
+      const resp = await slot.client.send({ type: 'set_model', provider, modelId });
+      if (!resp.success) throw new Error(`cannot select model ${provider}/${modelId}: ${resp.error ?? 'unknown'}`);
+    };
+
     if (rec?.model) {
       const [provider, modelId] = rec.model.split('/');
-      const resp = await slot.client.send({ type: 'set_model', provider, modelId });
-      if (!resp.success) throw new Error(`cannot select model ${rec.model}: ${resp.error ?? 'unknown'}`);
+      await selectModel(provider, modelId);
     } else {
       const target = pr.router.resolve('coding') ?? pr.router.resolve('default');
-      if (target) {
-        const resp = await slot.client.send({ type: 'set_model', provider: target.provider, modelId: target.modelId });
-        if (!resp.success) throw new Error(`cannot select model ${target.provider}/${target.modelId}: ${resp.error ?? 'unknown'}`);
-      }
+      if (target) await selectModel(target.provider, target.modelId);
     }
     const win = getWindow();
     await new Promise<void>((resolve, reject) => {
