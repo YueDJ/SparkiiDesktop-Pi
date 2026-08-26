@@ -153,6 +153,23 @@ export async function createPiSdkSessionHost(
           .join("");
       },
       listModels: async (provider) => {
+        if (provider) {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 15_000);
+          try {
+            const result = await modelRuntime.refresh({
+              providers: [provider],
+              allowNetwork: true,
+              force: true,
+              signal: controller.signal,
+            });
+            if (result.aborted) throw new Error('模型拉取超时');
+            const error = result.errors.get(provider);
+            if (error) throw error;
+          } finally {
+            clearTimeout(timer);
+          }
+        }
         const models = modelRuntime.getModels(provider);
         return models.map((model) => ({
           provider: model.provider ?? provider ?? "",
