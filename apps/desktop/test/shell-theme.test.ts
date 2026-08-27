@@ -17,6 +17,7 @@ describe('shell theme', () => {
     expect(style!.textContent).toContain(':root {');
     expect(style!.textContent).toContain('.dark {');
     expect(style!.textContent).toContain('--color-primary: #2563EB');
+    expect(style!.textContent).toContain('--control-height-md');
   });
 
   it('setTheme toggles the dark class and persists the choice', () => {

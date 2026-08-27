@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App.js';
+import '@sparkii/ui/styles.css';
 import './styles.css';
 import { initTheme } from './shell/theme.js';
 

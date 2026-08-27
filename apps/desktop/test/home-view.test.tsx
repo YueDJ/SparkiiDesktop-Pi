@@ -14,6 +14,7 @@ describe('HomeView', () => {
     expect(screen.getByText(/工作台 · 上午好,admin/)).toBeTruthy();
     expect(screen.getByText('合同审核')).toBeTruthy();
     expect(screen.getByText('导出审核报告')).toBeTruthy();
+    expect(screen.queryByText('●')).toBeNull();
   });
 
   it('shows empty states when there is nothing pending or no sessions', () => {
