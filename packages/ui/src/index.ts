@@ -18,3 +18,7 @@ export * from './primitives/Drawer.js';
 export * from './primitives/Modal.js';
 export * from './primitives/Menu.js';
 export * from './icons/index.js';
+export * from './patterns/ChatMessage.js';
+export * from './patterns/ToolCard.js';
+export * from './patterns/ModelEffortControl.js';
+export * from './patterns/ChatComposer.js';

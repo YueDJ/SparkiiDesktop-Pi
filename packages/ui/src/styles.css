@@ -71,3 +71,23 @@ button { font: inherit; color: inherit; }
 .ui-menu-item:hover { background: var(--color-primaryBg); }
 .ui-menu-item-hint { margin-left: auto; color: var(--color-textMuted); font-size: var(--font-size-sm); }
 .ui-menu-item-chevron { color: var(--color-textMuted); }
+
+.ui-chat-message { max-width: 78%; padding: var(--spacing-sm) var(--spacing-md); border-radius: var(--radius-card); line-height: 1.6; }
+.ui-chat-message--user { align-self: flex-end; background: var(--color-primary); color: var(--color-onPrimary); border-bottom-right-radius: 4px; }
+.ui-chat-message--assistant { align-self: flex-start; background: var(--color-surface); border: 1px solid var(--color-border); border-bottom-left-radius: 4px; }
+.ui-caret { display: inline-block; width: 8px; height: 16px; margin-left: 2px; background: var(--color-primary); animation: caret-blink 1s steps(2) infinite; vertical-align: text-bottom; }
+@keyframes caret-blink { 50% { opacity: 0; } }
+.ui-thinking { margin-bottom: var(--spacing-xs); padding: var(--spacing-xs) var(--spacing-sm); border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-controlBg); color: var(--color-textSecondary); }
+.ui-tool-card { border: 1px dashed var(--color-controlBorderHover); border-radius: var(--radius-button); background: var(--color-primaryBg); padding: var(--spacing-xs) var(--spacing-sm); }
+.ui-tool-card--approval { background: var(--color-warnBg); border-color: var(--color-warnBorder); }
+.ui-tool-card--ok { background: var(--color-okBg); border-color: var(--color-okBorder); }
+.ui-composer { border-top: 1px solid var(--color-border); padding: var(--spacing-sm) var(--spacing-md); background: var(--color-surface); display: flex; flex-direction: column; gap: var(--spacing-xs); }
+.ui-composer-input-row { display: flex; align-items: flex-end; gap: var(--spacing-xs); }
+.ui-composer-input { flex: 1; min-height: var(--control-textarea-min); }
+.ui-composer-send { min-width: 76px; }
+.ui-composer-controls { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-sm); flex-wrap: wrap; }
+.ui-composer-workspace { display: flex; align-items: center; gap: var(--spacing-xs); min-width: 0; color: var(--color-textSecondary); }
+.ui-composer-path { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--font-size-sm); }
+.ui-model-effort { position: relative; }
+.ui-model-effort-trigger { min-width: 180px; justify-content: flex-start; }
+.ui-payload { background: var(--color-controlBg); border: 1px solid var(--color-border); border-radius: var(--radius-control); padding: var(--spacing-sm); overflow: auto; font: var(--font-size-sm)/1.5 var(--font-mono); color: var(--color-textSecondary); white-space: pre-wrap; }
