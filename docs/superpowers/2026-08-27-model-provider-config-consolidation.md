@@ -79,16 +79,29 @@ createProvider({
 
 这条规则直接收口昨天的三个问题：问题 1（切换丢 URL）消失；问题 2（provider id 不一致）由单一注册表保证；问题 3（自定义缺认证）变成 custom 的必填项。
 
-## 六、已记录 TODO（后续阶段）
+## 六、运行时机制
+
+这张「表」是代码里的静态单一事实来源，不是运行时反复去网络拉取的东西。它只在两个时刻被用到：渲染设置页（决定展示哪些 provider、哪些字段可编辑/隐藏）、保存设置（决定写什么）。
+
+各字段在运行时的真实来源：
+
+- 内置 provider 的 `baseUrl / auth / models`：由 Pi 子进程启动时 `ModelRuntime.create()` 从 SDK 目录加载一次并常驻内存，我们表里只留 `id`，不写、不覆盖、不展示。
+- API key：每次真正用模型前（发消息 / 拉模型 / 测试连接）由主进程 `keyring.get` 读一次，再 `set_api_key` 注入 Pi 进程（热生效）。
+- 自定义 provider 的 `baseUrl`：保存时写 `pi-agent/models.json`，运行中的 Pi 进程在 `setModel / complete / testConnection` 前 `refresh({ allowNetwork: false })` 重读（热生效）。
+- 模型列表：点「拉取模型列表」才走 Pi 的 `list_models`（可能联网），provider 清单本身是静态的。
+
+一次「发消息」的链路：`promptSession` → 读 keyring → `set_api_key` → （自定义 provider）refresh 刷新 baseUrl → `set_model` → `prompt`。
+
+## 七、已记录 TODO（后续阶段）
 
 - OpenAI / Anthropic 的 OAuth 登录（第一期不做）。
 
-## 七、待定 / 实现前需核对
+## 八、待定 / 实现前需核对
 
-1. 国内 provider 精确 id 与变体：上面列了多组（`-cn`、`token-plan` 等），实现时确认每个品牌暴露哪个/哪些 id。
+1. 国内 provider 的 id 与变体：Pi 分开列的 provider 就分开列、不去重/合并（例如 `minimax` 与 `minimax-cn` 是两个独立 provider）。具体 id 以 SDK 目录为准，实现时逐个核对并落进注册表。
 2. custom provider 在 `models.json` 里的认证方式精确写法（`composeModelProvider` 认不认 config 里的 apiKey，还是要靠运行时 `setRuntimeApiKey`）——动手前读 SDK 确认，这也决定昨天问题 3 的修法。
 
-## 八、下一步
+## 九、下一步
 
 - 本分支 `codex/model-provider-config-consolidation` 作为这轮 follow-up 的实现分支。
 - 确认待定点后，排实现：注册表 → SettingsView → pi-model-config → 聊天路由。
