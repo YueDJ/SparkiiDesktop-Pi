@@ -6,8 +6,12 @@ afterEach(cleanup);
 
 function makeApi(over: Record<string, unknown> = {}) {
   return {
-    getSettings: vi.fn().mockResolvedValue({ provider: '本地 Ollama', baseUrl: 'http://127.0.0.1:11434/v1' }),
+    getSettings: vi.fn().mockResolvedValue({ activeProviderId: 'deepseek' }),
     saveSettings: vi.fn().mockResolvedValue({}),
+    listProviders: vi.fn().mockResolvedValue([
+      { id: 'deepseek', name: 'DeepSeek', kind: 'builtin', baseUrl: 'https://api.deepseek.com', apiKeyAuth: true, oauthAuth: false },
+      { id: 'ollama', name: '本地 Ollama', kind: 'custom', baseUrl: 'http://127.0.0.1:11434/v1', apiKeyAuth: false, oauthAuth: false, api: 'openai-completions' },
+    ]),
     listModels: vi.fn().mockResolvedValue({ ok: true, models: ['qwen2.5', 'llama3.1'] }),
     testModel: vi.fn().mockResolvedValue({ ok: true, latencyMs: 86 }),
     ...over,
@@ -30,27 +34,30 @@ describe('SettingsView', () => {
   it('fetches models from the configured endpoint via IPC', async () => {
     const api = makeApi();
     render(<SettingsView api={api} />);
+    await screen.findByText('已加载本机配置');
     fireEvent.click(screen.getByText('拉取模型列表'));
     await screen.findByText(/已拉取 2 个模型/);
-    expect(screen.getByText('qwen2.5 · 本地')).toBeTruthy();
-    expect(api.listModels).toHaveBeenCalledWith('本地 Ollama');
+    expect(screen.getByText('qwen2.5 · DeepSeek')).toBeTruthy();
+    expect(api.listModels).toHaveBeenCalledWith('deepseek');
   });
 
   it('tests the connection and marks model states', async () => {
     const api = makeApi();
     render(<SettingsView api={api} />);
+    await screen.findByText('已加载本机配置');
     fireEvent.click(screen.getByText('拉取模型列表'));
     await screen.findByText(/已拉取 2 个模型/);
     fireEvent.click(screen.getByText('测试连接'));
     await screen.findAllByText(/已连接 · 86ms/);
-    expect(api.testModel).toHaveBeenCalledWith('本地 Ollama', 'qwen2.5');
+    expect(api.testModel).toHaveBeenCalledWith('deepseek', 'qwen2.5');
   });
 
   it('saves settings via IPC', async () => {
     const api = makeApi();
     render(<SettingsView api={api} />);
+    await screen.findByText('已加载本机配置');
     fireEvent.click(screen.getByText('保存'));
     await screen.findByText('设置已保存');
-    expect(api.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ provider: '本地 Ollama' }));
+    expect(api.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ activeProviderId: 'deepseek' }));
   });
 });

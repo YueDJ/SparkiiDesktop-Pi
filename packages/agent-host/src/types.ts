@@ -6,6 +6,14 @@ export interface SessionSaddle {
   workspaceRoot?: string;
 }
 
+export interface PiProviderInfo {
+  id: string;
+  name: string;
+  baseUrl: string;
+  apiKeyAuth: boolean;
+  oauthAuth: boolean;
+}
+
 export type RpcCommand =
   | { type: 'prompt'; message: string; streamingBehavior?: 'steer' | 'followUp' }
   | { type: 'steer'; message: string }
@@ -23,7 +31,8 @@ export type RpcCommand =
   | { type: 'set_api_key'; provider: string; apiKey: string }
   | { type: 'complete'; provider: string; modelId: string; text: string }
   | { type: 'list_models'; provider?: string }
-  | { type: 'test_connection'; provider: string; modelId: string };
+  | { type: 'test_connection'; provider: string; modelId: string }
+  | { type: 'list_providers' };
 
 export interface RpcResponse { id?: string; type: 'response'; command: string; success: boolean; data?: unknown; error?: string }
 

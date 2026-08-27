@@ -1,19 +1,29 @@
 import { useEffect, useState } from 'react';
 
-interface Provider { url: string; source: string; }
+export interface ProviderEntry {
+  id: string;
+  name: string;
+  kind: 'builtin' | 'custom';
+  baseUrl: string;
+  apiKeyAuth: boolean;
+  oauthAuth: boolean;
+  api?: 'openai-completions' | 'anthropic-messages';
+}
 
-const PROVIDERS: Record<string, Provider> = {
-  '本地 Ollama': { url: 'http://127.0.0.1:11434/v1', source: '本地' },
-  '本地 vLLM': { url: 'http://127.0.0.1:8000/v1', source: '本地' },
-  '云端 OpenAI 兼容': { url: 'https://api.example.com/v1', source: '云端' },
-  DeepSeek: { url: 'https://api.deepseek.com/v1', source: '云端' },
-};
+interface CustomProvider {
+  id: string;
+  name: string;
+  baseUrl: string;
+  api: 'openai-completions' | 'anthropic-messages';
+}
 
 interface ModelState { label: string; status: string; cls: '' | 'ok' | 'fail' | 'wait'; }
 
 export interface SettingsApi {
   getSettings?(): Promise<unknown>;
   saveSettings?(settings: unknown): Promise<unknown>;
+  getApiKey?(provider: string): Promise<string | null>;
+  listProviders?(): Promise<ProviderEntry[]>;
   listModels?(provider: string): Promise<{ ok: boolean; models?: string[]; error?: string }>;
   testModel?(provider: string, modelId: string): Promise<{ ok: boolean; latencyMs?: number; error?: string }>;
 }
@@ -31,8 +41,11 @@ const ROUTE_TASKS = ['对话 chat', '抽取 extract', '报告 report', '默认 d
 export function SettingsView(props: SettingsViewProps) {
   const { api } = props;
   const [pane, setPane] = useState<Pane>('llm');
-  const [provider, setProvider] = useState('本地 Ollama');
-  const [baseUrl, setBaseUrl] = useState(PROVIDERS['本地 Ollama'].url);
+  const [entries, setEntries] = useState<ProviderEntry[]>([]);
+  const [providerId, setProviderId] = useState('');
+  const [customProviders, setCustomProviders] = useState<CustomProvider[]>([]);
+  const [customBaseUrl, setCustomBaseUrl] = useState('');
+  const [customApi, setCustomApi] = useState<'openai-completions' | 'anthropic-messages'>('openai-completions');
   const [apiKey, setApiKey] = useState('');
   const [defaultModel, setDefaultModel] = useState('');
   const [routes, setRoutes] = useState<Record<string, string>>({});
@@ -40,42 +53,51 @@ export function SettingsView(props: SettingsViewProps) {
   const [models, setModels] = useState<Record<string, ModelState>>({});
   const [busy, setBusy] = useState(false);
 
+  const active = entries.find((e) => e.id === providerId);
+
   useEffect(() => {
-    if (!api?.getSettings) return;
-    api.getSettings().then((raw) => {
-      const s = (raw ?? {}) as Record<string, any>;
-      if (s.provider && PROVIDERS[s.provider]) {
-        setProvider(s.provider);
-        setBaseUrl(s.baseUrl ?? PROVIDERS[s.provider].url);
-      }
-      if (typeof s.apiKey === 'string') setApiKey(s.apiKey);
-      if (typeof s.defaultModel === 'string') setDefaultModel(s.defaultModel);
-      if (s.routes && typeof s.routes === 'object') setRoutes(s.routes as Record<string, string>);
-      setInfo('已加载本机配置');
-    }).catch(() => setInfo('配置加载失败'));
+    if (!api?.getSettings || !api?.listProviders) return;
+    Promise.all([api.getSettings(), api.listProviders()])
+      .then(([raw, providerEntries]) => {
+        setEntries(providerEntries);
+        const s = (raw ?? {}) as Record<string, any>;
+        setProviderId(typeof s.activeProviderId === 'string' ? s.activeProviderId : (providerEntries[0]?.id ?? ''));
+        setCustomProviders(Array.isArray(s.providers) ? (s.providers as CustomProvider[]) : []);
+        if (typeof s.apiKey === 'string') setApiKey(s.apiKey);
+        if (typeof s.defaultModel === 'string') setDefaultModel(s.defaultModel);
+        if (s.routes && typeof s.routes === 'object') setRoutes(s.routes as Record<string, string>);
+        setInfo('已加载本机配置');
+      })
+      .catch(() => setInfo('配置加载失败'));
   }, [api]);
 
   const applyModels = (names: string[]) => {
-    const source = PROVIDERS[provider]?.source ?? '本地';
+    const source = active?.name ?? providerId;
     const out: Record<string, ModelState> = {};
     for (const m of names) out[m] = { label: `${m} · ${source}`, status: '未测试', cls: '' };
     setModels(out);
   };
 
-  const switchProvider = (name: string) => {
-    setProvider(name);
-    setBaseUrl(PROVIDERS[name]?.url ?? '');
+  const switchProvider = (id: string) => {
+    setProviderId(id);
+    const next = entries.find((e) => e.id === id);
+    if (next?.kind === 'custom') {
+      setCustomBaseUrl(next.baseUrl);
+      setCustomApi(next.api ?? 'openai-completions');
+    }
+    setApiKey('');
+    api?.getApiKey?.(id).then((k) => setApiKey(k ?? '')).catch(() => setApiKey(''));
     setModels({});
-    setInfo(`当前节点:${name} · 未拉取`);
+    setInfo(`当前节点:${id} · 未拉取`);
   };
 
   const fetchModels = async () => {
     if (!api?.listModels) { setInfo('IPC 未连接,无法拉取模型'); return; }
     setBusy(true);
-    const r = await api.listModels(provider);
+    const r = await api.listModels(providerId);
     if (r.ok && r.models) {
       applyModels(r.models);
-      setInfo(`当前节点:${provider} · 已拉取 ${r.models.length} 个模型`);
+      setInfo(`当前节点:${providerId} · 已拉取 ${r.models.length} 个模型`);
     } else {
       setInfo(`拉取失败:${r.error ?? '未知错误'}`);
     }
@@ -92,7 +114,7 @@ export function SettingsView(props: SettingsViewProps) {
     });
     const modelId = modelNames[0] ?? defaultModel;
     if (!modelId) { setInfo('请先拉取模型或设置默认模型'); setBusy(false); return; }
-    const r = await api.testModel(provider, modelId);
+    const r = await api.testModel(providerId, modelId);
     setModels((prev) => {
       const next = { ...prev };
       for (const k of Object.keys(next)) {
@@ -108,7 +130,11 @@ export function SettingsView(props: SettingsViewProps) {
 
   const save = async () => {
     if (!api?.saveSettings) { setInfo('IPC 未连接,无法保存'); return; }
-    await api.saveSettings({ provider, baseUrl, apiKey, defaultModel, routes });
+    const nextCustom = active?.kind === 'custom'
+      ? [...customProviders.filter((p) => p.id !== providerId), { id: providerId, name: active.name, baseUrl: customBaseUrl, api: customApi }]
+      : customProviders;
+    await api.saveSettings({ activeProviderId: providerId, providers: nextCustom, defaultModel, routes, apiKey });
+    setCustomProviders(nextCustom);
     setInfo('设置已保存');
   };
 
@@ -130,11 +156,22 @@ export function SettingsView(props: SettingsViewProps) {
             <div className="muted" style={{ marginBottom: 6 }}>配置模型端点与任务路由;数据默认不出本机</div>
             <div className="set-row">
               <span>服务商</span>
-              <select className="set-field" value={provider} onChange={(e) => switchProvider(e.target.value)}>
-                {Object.keys(PROVIDERS).map((p) => <option key={p}>{p}</option>)}
+              <select className="set-field" value={providerId} onChange={(e) => switchProvider(e.target.value)}>
+                {entries.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
               </select>
             </div>
-            <div className="set-row"><span>接口地址(Base URL)</span><input className="set-field" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} /></div>
+            {active?.kind === 'custom' && (
+              <>
+                <div className="set-row"><span>接口地址(Base URL)</span><input className="set-field" value={customBaseUrl} onChange={(e) => setCustomBaseUrl(e.target.value)} /></div>
+                <div className="set-row">
+                  <span>API 类型</span>
+                  <select className="set-field" value={customApi} onChange={(e) => setCustomApi(e.target.value as 'openai-completions' | 'anthropic-messages')}>
+                    <option value="openai-completions">openai-completions</option>
+                    <option value="anthropic-messages">anthropic-messages</option>
+                  </select>
+                </div>
+              </>
+            )}
             <div className="set-row"><span>API Key</span><input className="set-field" type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="本地端点可留空" /></div>
             <div className="set-row"><span>默认模型</span><input className="set-field" value={defaultModel} onChange={(e) => setDefaultModel(e.target.value)} placeholder="拉取模型后选择" /></div>
             <div className="set-row">

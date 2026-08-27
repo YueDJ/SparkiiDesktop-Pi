@@ -28,6 +28,9 @@ function fakeSession(): PiRuntimeSession & { emit: (event: any) => void } {
     complete: vi.fn(async () => "标题"),
     listModels: vi.fn(async () => []),
     testConnection: vi.fn(async () => ({ ok: true })),
+    listProviders: vi.fn(async () => [
+      { id: "deepseek", name: "DeepSeek", baseUrl: "https://api.deepseek.com", apiKeyAuth: true, oauthAuth: false },
+    ]),
     subscribe: (cb) => { listeners.add(cb); return () => listeners.delete(cb); },
     getMessages: () => [{ role: "user", text: "hi" }],
     getState: () => ({ streaming: false }),
@@ -126,6 +129,35 @@ describe("createPiRuntime", () => {
     expect(session.complete).toHaveBeenCalledWith("deepseek", "m", "hi");
     expect(sent).toContainEqual(responseEnvelope("r3", {
       id: "r3", type: "response", command: "complete", success: true, data: "标题",
+    }));
+  });
+
+  it("routes list_providers to the session and returns provider info", async () => {
+    const session = fakeSession();
+    const host: PiRuntimeSessionHost = {
+      current: () => session,
+      newSession: vi.fn(async () => {}),
+      switchSession: vi.fn(async () => {}),
+      configureSaddle: vi.fn(async () => {}),
+    };
+    const sent: PiRuntimeEnvelope[] = [];
+    const transport = {
+      postMessage: (env: PiRuntimeEnvelope) => sent.push(env),
+      onMessage: (cb: (env: PiRuntimeEnvelope) => void) => {
+        transport.emit = cb;
+        return () => {};
+      },
+      emit: (_env: PiRuntimeEnvelope) => {},
+    };
+    createPiRuntime({ host, transport });
+
+    transport.emit(commandEnvelope("r4", { type: "list_providers" }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(sent).toContainEqual(responseEnvelope("r4", {
+      id: "r4", type: "response", command: "list_providers", success: true,
+      data: [
+        { id: "deepseek", name: "DeepSeek", baseUrl: "https://api.deepseek.com", apiKeyAuth: true, oauthAuth: false },
+      ],
     }));
   });
 });

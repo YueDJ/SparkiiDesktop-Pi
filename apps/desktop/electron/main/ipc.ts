@@ -2,13 +2,14 @@ import { ipcMain, dialog, app, type BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { listPiSessions, readPiSessionMessages, type SessionSaddle } from '@sparkii/agent-host';
+import { listPiSessions, readPiSessionMessages, type PiProviderInfo, type SessionSaddle } from '@sparkii/agent-host';
 import { createBroker, runWorkflow, selectModel } from './workflow.js';
 import { resolveExportPath } from './export-path.js';
 import { loadSettings, saveSettings } from './settings.js';
+import { buildProviderList } from './provider-catalog.js';
 import { autoWorkspacePath } from './workspace.js';
 import { buildProfileSaddle } from './saddle.js';
-import { providerIdForLabel, writePiModelsConfig } from './pi-model-config.js';
+import { writePiModelsConfig } from './pi-model-config.js';
 import type { Runtime } from './runtime.js';
 import type { Logger } from './logger.js';
 
@@ -34,7 +35,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   }
 
   async function injectProbeKey(client: Awaited<ReturnType<typeof rt.pool.acquire>>['client'], providerId: string): Promise<void> {
-    const key = await rt.keyring.get('apiKey');
+    const key = await rt.keyFor(providerId);
     if (key) await client.send({ type: 'set_api_key', provider: providerId, apiKey: key });
   }
 
@@ -172,10 +173,9 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     const { slot, profileId } = open;
     slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId }));
     const rec = rt.chatSessions.get(sessionId);
-    const pr = rt.profileOf(profileId);
-    const apiKey = await rt.keyring.get('apiKey');
 
     const selectModel = async (provider: string, modelId: string): Promise<void> => {
+      const apiKey = await rt.keyFor(provider);
       if (apiKey) {
         const keyResp = await slot.client.send({ type: 'set_api_key', provider, apiKey });
         if (!keyResp.success) throw new Error(`cannot set api key for ${provider}: ${keyResp.error ?? 'unknown'}`);
@@ -188,8 +188,10 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       const [provider, modelId] = rec.model.split('/');
       await selectModel(provider, modelId);
     } else {
-      const target = pr.router.resolve('coding') ?? pr.router.resolve('default');
-      if (target) await selectModel(target.provider, target.modelId);
+      const settings = await loadSettings(rt.dataDir);
+      const provider = settings.activeProviderId ?? 'deepseek';
+      const modelId = settings.defaultModel ?? '';
+      if (provider && modelId) await selectModel(provider, modelId);
     }
     const win = getWindow();
     await new Promise<void>((resolve, reject) => {
@@ -272,8 +274,8 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   });
 
   ipcMain.handle('sparkii:getModelOptions', async () => {
-    const settings = await loadSettings(rt.dataDir, rt.keyring);
-    const providerId = providerIdForLabel(settings.provider ?? 'DeepSeek');
+    const settings = await loadSettings(rt.dataDir);
+    const providerId = settings.activeProviderId ?? 'deepseek';
     const models = await withProbeSlot(async (client) => {
       await injectProbeKey(client, providerId);
       const resp = await client.send({ type: 'list_models', provider: providerId });
@@ -345,17 +347,32 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     return out;
   });
   ipcMain.handle('sparkii:queryAudit', (_e, filter: object) => rt.audit.query(filter));
-  ipcMain.handle('sparkii:getSettings', () => loadSettings(rt.dataDir, rt.keyring));
+  ipcMain.handle('sparkii:getSettings', async () => {
+    const settings = await loadSettings(rt.dataDir);
+    const apiKey = settings.activeProviderId ? await rt.keyFor(settings.activeProviderId) : null;
+    return { ...settings, ...(apiKey ? { apiKey } : {}) };
+  });
+  ipcMain.handle('sparkii:getApiKey', (_e, providerId: string) => rt.keyFor(providerId));
+  ipcMain.handle('sparkii:listProviders', async () => {
+    const settings = await loadSettings(rt.dataDir);
+    const runtimeProviders = await withProbeSlot(async (client) => {
+      const resp = await client.send({ type: 'list_providers' });
+      if (!resp.success) throw new Error(resp.error ?? 'list_providers failed');
+      return (resp.data ?? []) as PiProviderInfo[];
+    });
+    return buildProviderList(runtimeProviders, settings.providers ?? []);
+  });
   ipcMain.handle('sparkii:saveSettings', async (_e, settings: unknown) => {
-    const s = settings as Parameters<typeof saveSettings>[1];
-    await saveSettings(rt.dataDir, s, rt.keyring);
-    if (s.provider && s.baseUrl) {
-      await writePiModelsConfig(rt.piAgentDir, providerIdForLabel(s.provider), s.baseUrl);
+    const s = settings as Parameters<typeof saveSettings>[1] & { apiKey?: string };
+    const { apiKey, ...rest } = s;
+    await saveSettings(rt.dataDir, rest);
+    if (s.activeProviderId) {
+      await rt.setKey(s.activeProviderId, apiKey ?? '');
     }
+    await writePiModelsConfig(rt.piAgentDir, s.providers ?? []);
     return { ok: true };
   });
-  ipcMain.handle('sparkii:listModels', async (_e, providerLabel: string) => {
-    const providerId = providerIdForLabel(providerLabel);
+  ipcMain.handle('sparkii:listModels', async (_e, providerId: string) => {
     try {
       const models = await withProbeSlot(async (client) => {
         await injectProbeKey(client, providerId);
@@ -368,8 +385,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       return { ok: false, error: (e as Error).message };
     }
   });
-  ipcMain.handle('sparkii:testModel', async (_e, providerLabel: string, modelId: string) => {
-    const providerId = providerIdForLabel(providerLabel);
+  ipcMain.handle('sparkii:testModel', async (_e, providerId: string, modelId: string) => {
     try {
       return await withProbeSlot(async (client) => {
         await injectProbeKey(client, providerId);

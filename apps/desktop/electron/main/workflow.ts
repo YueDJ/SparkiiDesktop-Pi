@@ -10,6 +10,7 @@ import type { ModelTask } from '@sparkii/model-router';
 import type { Runtime } from './runtime.js';
 import { buildProfileSaddle } from './saddle.js';
 import { isReadOnlyBashCommand, riskOfCommand } from './general-executor.js';
+import { loadSettings } from './settings.js';
 
 const allTools = new Map<string, ToolDef>(
   [documentConnector, knowledgeConnector, reportConnector].flatMap((c) => c.tools.map((t) => [t.name, t] as const)),
@@ -66,18 +67,20 @@ function attachDiff(rt: Runtime, req: ProposalRequest & { requestId: string }): 
   return payload;
 }
 
-export async function selectModel(rt: Runtime, task: ModelTask, sessionId: string): Promise<void> {
+export async function selectModel(rt: Runtime, _task: ModelTask, sessionId: string): Promise<void> {
   const client = rt.pool.get(sessionId);
   if (!client) throw new Error(`unknown session ${sessionId}`);
-  const target = rt.profileOf('contract-review').router.resolve(task);
-  if (!target) return;
-  const apiKey = await rt.keyring.get('apiKey');
+  const settings = await loadSettings(rt.dataDir);
+  const provider = settings.activeProviderId ?? 'deepseek';
+  const modelId = settings.defaultModel ?? '';
+  if (!modelId) return;
+  const apiKey = await rt.keyFor(provider);
   if (apiKey) {
-    const keyResp = await client.send({ type: 'set_api_key', provider: target.provider, apiKey });
-    if (!keyResp.success) throw new Error(`cannot set api key for ${target.provider}: ${keyResp.error ?? 'unknown'}`);
+    const keyResp = await client.send({ type: 'set_api_key', provider, apiKey });
+    if (!keyResp.success) throw new Error(`cannot set api key for ${provider}: ${keyResp.error ?? 'unknown'}`);
   }
-  const resp = await client.send({ type: 'set_model', provider: target.provider, modelId: target.modelId });
-  if (!resp.success) throw new Error(`cannot select model ${target.provider}/${target.modelId}: ${resp.error ?? 'unknown'}`);
+  const resp = await client.send({ type: 'set_model', provider, modelId });
+  if (!resp.success) throw new Error(`cannot select model ${provider}/${modelId}: ${resp.error ?? 'unknown'}`);
 }
 
 async function sendPrompt(rt: Runtime, text: string, task: ModelTask, sessionId: string): Promise<string> {
