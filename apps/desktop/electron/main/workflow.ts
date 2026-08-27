@@ -106,7 +106,7 @@ export function resolveThinkingLevel(
 }
 
 export async function applyThinkingLevel(
-  client: { send: (command: unknown) => Promise<{ success: boolean; error?: string }> },
+  client: { send: (command: any) => Promise<{ success: boolean; error?: string }> },
   level: string | null,
 ): Promise<void> {
   if (!level) return;
