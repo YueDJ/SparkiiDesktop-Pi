@@ -31,6 +31,14 @@ describe('ChatSessionStore', () => {
     expect(s.get('pi-1')).toMatchObject({ model: 'deepseek-v4-pro', workspaceKind: 'user', workspacePath: 'C:/user-ws' });
     s.close();
   });
+  it('stores and updates the thinking level', () => {
+    const s = store();
+    s.create({ id: 'pi-1', profileId: 'general', workspaceKind: 'auto', workspacePath: 'C:/a', thinkingLevel: 'high' });
+    expect(s.get('pi-1')).toMatchObject({ thinkingLevel: 'high' });
+    s.update('pi-1', { thinkingLevel: null });
+    expect(s.get('pi-1')).toMatchObject({ thinkingLevel: null });
+    s.close();
+  });
   it('lists by profile and deletes', () => {
     const s = store();
     s.create({ id: 'pi-a', profileId: 'general', workspaceKind: 'auto', workspacePath: 'C:/a' });
@@ -67,6 +75,7 @@ describe('ChatSessionStore', () => {
     const check = new Database(dbPath);
     const cols = check.pragma('table_info(chat_sessions)') as Array<{ name: string }>;
     expect(cols.some((c) => c.name === 'title')).toBe(false);
+    expect(cols.some((c) => c.name === 'thinking_level')).toBe(true);
     check.close();
   });
 });
