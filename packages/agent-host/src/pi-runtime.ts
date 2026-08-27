@@ -19,6 +19,9 @@ export interface PiRuntimeSession {
   setApiKey(provider: string, apiKey: string): Promise<void>;
   removeApiKey(provider: string): Promise<void>;
   complete(provider: string, modelId: string, text: string): Promise<string>;
+  setThinkingLevel(level: string): void;
+  getThinkingLevel(): string;
+  getAvailableThinkingLevels(): string[];
   listModels(provider?: string): Promise<Array<{ provider: string; modelId: string }>>;
   listProviders(): Promise<PiProviderInfo[]>;
   subscribe(callback: (event: any) => void): () => void;
@@ -130,6 +133,13 @@ async function handleCommand(host: PiRuntimeSessionHost, command: RpcCommand): P
       return undefined;
     case "complete":
       return await session.complete(command.provider, command.modelId, command.text);
+    case "set_thinking_level":
+      session.setThinkingLevel(command.level);
+      return undefined;
+    case "get_thinking_level":
+      return session.getThinkingLevel();
+    case "list_thinking_levels":
+      return session.getAvailableThinkingLevels();
     case "list_models":
       return await session.listModels(command.provider);
     case "list_providers":

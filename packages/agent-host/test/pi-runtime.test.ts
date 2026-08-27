@@ -28,6 +28,9 @@ function fakeSession(): PiRuntimeSession & { emit: (event: any) => void } {
     removeApiKey: vi.fn(async () => {}),
     complete: vi.fn(async () => "标题"),
     listModels: vi.fn(async () => []),
+    setThinkingLevel: vi.fn(),
+    getThinkingLevel: vi.fn(() => "medium"),
+    getAvailableThinkingLevels: vi.fn(() => ["off", "minimal", "low", "medium", "high", "xhigh", "max"]),
     listProviders: vi.fn(async () => [
       { id: "deepseek", name: "DeepSeek", baseUrl: "https://api.deepseek.com", apiKeyAuth: true, oauthAuth: false },
     ]),
@@ -162,6 +165,43 @@ describe("createPiRuntime", () => {
       data: [
         { id: "deepseek", name: "DeepSeek", baseUrl: "https://api.deepseek.com", apiKeyAuth: true, oauthAuth: false },
       ],
+    }));
+  });
+
+  it("routes thinking level commands to the session", async () => {
+    const session = fakeSession();
+    const host: PiRuntimeSessionHost = {
+      current: () => session,
+      newSession: vi.fn(async () => {}),
+      switchSession: vi.fn(async () => {}),
+      configureSaddle: vi.fn(async () => {}),
+    };
+    const sent: PiRuntimeEnvelope[] = [];
+    const transport = {
+      postMessage: (env: PiRuntimeEnvelope) => sent.push(env),
+      onMessage: (cb: (env: PiRuntimeEnvelope) => void) => {
+        transport.emit = cb;
+        return () => {};
+      },
+      emit: (_env: PiRuntimeEnvelope) => {},
+    };
+    createPiRuntime({ host, transport });
+
+    transport.emit(commandEnvelope("t1", { type: "set_thinking_level", level: "high" }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(session.setThinkingLevel).toHaveBeenCalledWith("high");
+
+    transport.emit(commandEnvelope("t2", { type: "get_thinking_level" }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(sent).toContainEqual(responseEnvelope("t2", {
+      id: "t2", type: "response", command: "get_thinking_level", success: true, data: "medium",
+    }));
+
+    transport.emit(commandEnvelope("t3", { type: "list_thinking_levels" }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(sent).toContainEqual(responseEnvelope("t3", {
+      id: "t3", type: "response", command: "list_thinking_levels", success: true,
+      data: ["off", "minimal", "low", "medium", "high", "xhigh", "max"],
     }));
   });
 });
