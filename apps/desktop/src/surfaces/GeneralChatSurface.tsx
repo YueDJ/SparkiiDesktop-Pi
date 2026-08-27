@@ -3,6 +3,7 @@ import type { SparkiiApi } from '../types/sparkii-api.js';
 import { Composer } from '../workbench/Composer.js';
 import { ToolCard } from '../workbench/ToolCard.js';
 import { Markdown } from '../workbench/Markdown.js';
+import { THINKING_LEVELS } from '../workbench/thinking-levels.js';
 
 export type ChatEntry =
   | { kind: 'message'; id: string; role: 'user' | 'assistant'; text: string; streaming: boolean }
@@ -71,6 +72,21 @@ export interface GeneralChatSurfaceProps {
   onNewSession(): void;
 }
 
+function resolveThinkingTarget(
+  model: string | null,
+  provider: string,
+  defaultModel: string | null,
+): { provider: string; modelId: string } | null {
+  if (model) {
+    const slash = model.indexOf('/');
+    return slash >= 0
+      ? { provider: model.slice(0, slash), modelId: model.slice(slash + 1) }
+      : { provider, modelId: model };
+  }
+  if (defaultModel) return { provider, modelId: defaultModel };
+  return null;
+}
+
 export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
   const { api, sessionId, onNewSession } = props;
   const [entries, setEntries] = useState<ChatEntry[]>([]);
@@ -79,15 +95,27 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
   const [models, setModels] = useState<string[]>([]);
   const [defaultModel, setDefaultModel] = useState<string | null>(null);
   const [model, setModel] = useState<string | null>(null);
+  const [provider, setProvider] = useState<string>('deepseek');
+  const [thinkingLevels, setThinkingLevels] = useState<string[]>([...THINKING_LEVELS]);
+  const [thinkingLevel, setThinkingLevel] = useState<string | null>(null);
   const [workspacePath, setWorkspacePath] = useState<string | null>(null);
   const [workspaceKind, setWorkspaceKind] = useState<'auto' | 'user'>('auto');
+
+  const refreshThinkingLevels = (m: string | null, prov = provider, def = defaultModel) => {
+    const target = resolveThinkingTarget(m, prov, def);
+    if (!target) { setThinkingLevels([...THINKING_LEVELS]); return; }
+    api.listThinkingLevels(target.provider, target.modelId)
+      .then((levels) => setThinkingLevels(levels?.length ? levels : [...THINKING_LEVELS]))
+      .catch(() => setThinkingLevels([...THINKING_LEVELS]));
+  };
 
   const refreshMeta = () => {
     if (!sessionId) return;
     api.getChatSession(sessionId).then((rec: any) => {
       if (rec?.workspacePath) setWorkspacePath(rec.workspacePath);
       if (rec?.workspaceKind === 'user') setWorkspaceKind('user');
-      if (rec?.model) setModel(rec.model);
+      if (rec?.thinkingLevel !== undefined) setThinkingLevel(rec.thinkingLevel ?? null);
+      if (rec?.model) { setModel(rec.model); refreshThinkingLevels(rec.model); }
     });
   };
 
@@ -96,6 +124,9 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
     setBusy(false);
     setError('');
     setModel(null);
+    setThinkingLevel(null);
+    setThinkingLevels([...THINKING_LEVELS]);
+    setProvider('deepseek');
     if (!sessionId) return;
     api.openChatSession(sessionId).then(({ messages }: any) => {
       setEntries(normalizeMessages(messages ?? []));
@@ -103,6 +134,8 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
     api.getModelOptions().then((r: any) => {
       setModels(r.models ?? []);
       setDefaultModel(r.defaultModel ?? null);
+      setProvider(r.provider ?? 'deepseek');
+      refreshThinkingLevels(model ?? r.defaultModel ?? null, r.provider ?? 'deepseek', r.defaultModel ?? null);
     });
     refreshMeta();
     const off1 = api.on('chat-event', (p: any) => {
@@ -137,6 +170,12 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
   const onModelChange = (next: string | null) => {
     setModel(next);
     if (sessionId) void api.setChatModel(sessionId, next);
+    refreshThinkingLevels(next);
+  };
+
+  const onThinkingLevelChange = (next: string | null) => {
+    setThinkingLevel(next);
+    if (sessionId) void api.setChatThinkingLevel(sessionId, next);
   };
 
   const chooseWorkspace = () => {
@@ -183,6 +222,9 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
         defaultModel={defaultModel}
         model={model}
         onModelChange={onModelChange}
+        thinkingLevels={thinkingLevels}
+        thinkingLevel={thinkingLevel}
+        onThinkingLevelChange={onThinkingLevelChange}
         workspacePath={workspacePath}
         workspaceKind={workspaceKind}
         onChooseWorkspace={chooseWorkspace}

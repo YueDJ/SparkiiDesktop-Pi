@@ -14,9 +14,11 @@ function makeApi() {
     promptSession: vi.fn().mockResolvedValue({ ok: true }),
     abortChat: vi.fn().mockResolvedValue({ ok: true }),
     setChatModel: vi.fn().mockResolvedValue({ ok: true }),
+    setChatThinkingLevel: vi.fn().mockResolvedValue({ ok: true }),
+    listThinkingLevels: vi.fn().mockResolvedValue(['off', 'medium', 'high']),
     setChatWorkspace: vi.fn().mockResolvedValue({ ok: true }),
     chooseWorkspace: vi.fn().mockResolvedValue({ path: 'C:/user-ws' }),
-    getModelOptions: vi.fn().mockResolvedValue({ defaultModel: 'deepseek-v4-flash', models: ['deepseek-v4-pro', 'deepseek-v4-flash'] }),
+    getModelOptions: vi.fn().mockResolvedValue({ defaultModel: 'deepseek-v4-flash', models: ['deepseek-v4-pro', 'deepseek-v4-flash'], provider: 'deepseek' }),
   };
   return { api: api as any, channels };
 }
@@ -78,5 +80,13 @@ describe('GeneralChatSurface', () => {
     act(() => channels['chat-event']({ sessionId: 's1', type: 'tool_call', toolName: 'write', input: { path: 'C:/ws/a.txt' } }));
     act(() => channels['approval']({ sessionId: 's1', toolName: 'write' }));
     expect(screen.getByText(/等待审批/)).toBeTruthy();
+  });
+
+  it('changes the thinking level through the composer', async () => {
+    const { api } = makeApi();
+    render(<GeneralChatSurface api={api} sessionId="s1" onNewSession={vi.fn()} />);
+    await screen.findByText('hi');
+    fireEvent.change(screen.getByTestId('thinking-select'), { target: { value: 'high' } });
+    expect(api.setChatThinkingLevel).toHaveBeenCalledWith('s1', 'high');
   });
 });
