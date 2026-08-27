@@ -11,9 +11,6 @@ test('general agent surface smoke', async () => {
     env: { ...process.env, SPARKII_DATA_DIR: dataDir },
   });
   const page = await app.firstWindow();
-  await page.getByPlaceholder('用户名').fill('admin');
-  await page.getByPlaceholder('密码').fill('admin123');
-  await page.getByRole('button', { name: '登录' }).click();
   await page.getByTestId('agent-card-general').click();
   await page.getByText('新建会话').click();
   await expect(page.getByTestId('composer-input')).toBeVisible();
