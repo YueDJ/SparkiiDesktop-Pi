@@ -18,7 +18,7 @@
 
 1. 切换服务商时自定义 baseUrl 丢失：`SettingsView.tsx` 的 `switchProvider` 每次切换都无条件 `setBaseUrl(预设)`，且只存一个全局 `(provider, baseUrl)`。
 2. 设置页服务商 ≠ 聊天 provider：设置页选的服务商被映射成 `openai-compat` 等 id，聊天却走 `manifest.yaml` 硬编码的 `deepseek`，两条线没对应。
-3. 自定义 provider 缺认证方式拉不到模型：`writePiModelsConfig` 只写 `{ baseUrl, api }`，没有认证方式，SDK 的 `composeModelProvider` 对无内置 base 且无 apiKey 的 provider 抛 `no authentication method configured`。
+3. 自定义 provider 拉不到模型：`writePiModelsConfig` 只写 `{ baseUrl, api }`，没有 `models` 也没有 key 供联网拉取，因此 `getModels` 为空（`composeModelProvider` 本身能组成、不会抛错；真正缺的是可鉴权的 key 与模型列表）。
 
 已确认可用、无需返工：key 热加载、baseUrl 热刷新、`modelRuntime` 已贯通。
 
@@ -42,7 +42,7 @@
 - 自定义覆盖：`models.json`（`ModelConfig`）承载我们写的自定义 provider——这是 Pi 自己的配置文件（`ModelRuntime.create({ modelsPath })` 读它），不是我们造的表。
 - 合成：`composeModelProvider(providerId, base, config)` 把「内置 base」和「models.json config」合成一个 provider，字段优先级 `config?.baseUrl ?? base?.baseUrl`（我们写了就覆盖，没写就用内置）。
 - 所以 SDK 内部天然就是「一张表 = 内置目录 + models.json 覆盖」。我们只需往里写自定义项、再读出来渲染。
-- 昨天问题 3 的根因：自定义项没写认证方式，`composeModelProvider` 抛 `no authentication method configured`。
+- 昨天问题 3 的根因：自定义 provider 只写了 `{ baseUrl, api }`，既无内置 `models`、也无 key 可鉴权，所以 `list_models` 联网拉不到模型、`getModels` 为空。`composeModelProvider` 对无 key 的自定义 provider 不会抛 `no authentication method configured`（已实测确认）。
 
 ## 五、前后端一致性落地
 
