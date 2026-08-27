@@ -33,7 +33,7 @@
 ## 四、Pi SDK 的合并机制
 
 - 内置目录：`getBuiltinProviders()` 返回 SDK 内置 provider（`id / name / baseUrl / auth / models / api`）。
-- 自定义覆盖：`models.json`（`ModelConfig`）承载我们写的自定义 provider。
+- 自定义覆盖：`models.json`（`ModelConfig`）承载我们写的自定义 provider——这是 Pi 自己的配置文件（`ModelRuntime.create({ modelsPath })` 读它），不是我们造的表。
 - 合成：`composeModelProvider(providerId, base, config)` 把「内置 base」和「models.json config」合成一个 provider，字段优先级 `config?.baseUrl ?? base?.baseUrl`（我们写了就覆盖，没写就用内置）。
 - 所以 SDK 内部天然就是「一张表 = 内置目录 + models.json 覆盖」。我们只需往里写自定义项、再读出来渲染。
 - 昨天问题 3 的根因：自定义项没写认证方式，`composeModelProvider` 抛 `no authentication method configured`。
