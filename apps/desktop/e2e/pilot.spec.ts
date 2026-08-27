@@ -27,9 +27,6 @@ test('contract review pilot acceptance', async () => {
     },
   });
   const page = await app.firstWindow();
-  await page.getByPlaceholder('用户名').fill('admin');
-  await page.getByPlaceholder('密码').fill('admin123');
-  await page.getByRole('button', { name: '登录' }).click();
   await page.getByTestId('agent-card-contract').click();
   await page.getByTestId('upload').click();
   await page.getByTestId('review').click();
