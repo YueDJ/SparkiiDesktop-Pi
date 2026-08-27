@@ -23,9 +23,11 @@ export interface SparkiiApi {
   abortChat(sessionId: string): Promise<{ ok: boolean }>;
   setChatTitle(sessionId: string, title: string): Promise<{ ok: boolean }>;
   setChatModel(sessionId: string, model: string | null): Promise<{ ok: boolean }>;
+  setChatThinkingLevel(sessionId: string, level: string | null): Promise<{ ok: boolean }>;
   setChatWorkspace(sessionId: string, path: string | null): Promise<{ ok: boolean }>;
   chooseWorkspace(): Promise<{ path?: string }>;
-  getModelOptions(): Promise<{ defaultModel: string | null; models: string[] }>;
+  getModelOptions(): Promise<{ defaultModel: string | null; models: string[]; provider: string }>;
+  listThinkingLevels(providerId: string, modelId: string): Promise<string[]>;
   deleteChatSession(sessionId: string): Promise<{ ok: boolean }>;
   listAgents(): Promise<Array<{ id: string; name: string }>>;
   listPendingApprovals(): Promise<unknown[]>;
