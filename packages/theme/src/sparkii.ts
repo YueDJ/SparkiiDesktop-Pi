@@ -1,13 +1,22 @@
 import type { DesignTokens } from './tokens.js';
 
 const base = {
-  spacing: { xxs: '4px', xs: '8px', sm: '12px', md: '16px' },
+  spacing: { xxs: '4px', xs: '8px', sm: '12px', md: '16px', lg: '20px', xl: '24px' },
   radius: { control: '8px', button: '10px', card: '12px', overlay: '14px', pill: '999px' },
   shadow: { card: '0 2px 8px rgba(15,23,42,.04)', overlay: '0 8px 24px rgba(15,23,42,.12)' },
   font: {
     body: 'system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif',
     mono: 'ui-monospace, SFMono-Regular, Consolas, monospace',
+    'size-xs': '11px', 'size-sm': '12px', 'size-md': '13px', 'size-lg': '14px',
+    'size-xl': '15px', 'size-2xl': '18px', 'size-3xl': '22px',
+    'weight-normal': '400', 'weight-medium': '500', 'weight-semibold': '600', 'weight-bold': '700',
   },
+  control: {
+    'height-sm': '28px', 'height-md': '34px', 'height-lg': '40px',
+    'icon-sm': '28px', 'icon-md': '34px', 'icon-lg': '40px', 'textarea-min': '64px',
+  },
+  motion: { fast: '120ms', normal: '180ms', slow: '240ms', ease: 'ease-out' },
+  z: { base: '0', dropdown: '30', drawer: '40', modal: '50', toast: '60' },
 };
 
 export const sparkiiLight: DesignTokens = {
@@ -29,6 +38,20 @@ export const sparkiiLight: DesignTokens = {
     warnBg: '#FFF7ED',
     ok: '#15803D',
     okBg: '#F0FDF4',
+    controlBg: '#F8FAFE',
+    controlBorder: '#E2E8F0',
+    controlBorderHover: '#CBD5E1',
+    controlFocusRing: 'rgba(37,99,235,.24)',
+    disabled: '#CBD5E1',
+    disabledBg: '#F1F5F9',
+    primaryActive: '#1E40AF',
+    riskBorder: '#FECACA',
+    warnBorder: '#FED7AA',
+    okBorder: '#BBF7D0',
+    onPrimary: '#FFFFFF',
+    toastBg: '#0F172A',
+    toastText: '#FFFFFF',
+    modalMask: 'rgba(15,23,42,.32)',
   },
 };
 
@@ -51,6 +74,20 @@ export const sparkiiDark: DesignTokens = {
     warnBg: 'rgba(245,158,11,.12)',
     ok: '#4ADE80',
     okBg: 'rgba(74,222,128,.12)',
+    controlBg: '#0F172A',
+    controlBorder: '#28364A',
+    controlBorderHover: '#3B4A63',
+    controlFocusRing: 'rgba(96,165,250,.28)',
+    disabled: '#475569',
+    disabledBg: '#1E293B',
+    primaryActive: '#2563EB',
+    riskBorder: 'rgba(248,113,113,.32)',
+    warnBorder: 'rgba(251,191,36,.32)',
+    okBorder: 'rgba(74,222,128,.32)',
+    onPrimary: '#0B1220',
+    toastBg: '#1E293B',
+    toastText: '#E2E8F0',
+    modalMask: 'rgba(2,6,23,.55)',
   },
 };
 

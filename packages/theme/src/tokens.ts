@@ -4,8 +4,11 @@ export interface DesignTokens {
   radius: Record<string, string>;
   shadow: Record<string, string>;
   font: Record<string, string>;
+  control: Record<string, string>;
+  motion: Record<string, string>;
+  z: Record<string, string>;
 }
-const groups = ['color', 'spacing', 'radius', 'shadow', 'font'] as const;
+const groups = ['color', 'spacing', 'radius', 'shadow', 'font', 'control', 'motion', 'z'] as const;
 
 export function resolveTheme(raw: unknown): DesignTokens {
   if (!raw || typeof raw !== 'object') throw new Error('THEME_INVALID: theme must be an object');

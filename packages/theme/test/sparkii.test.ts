@@ -34,4 +34,12 @@ describe('Sparkii V3 theme tokens', () => {
     expect(variantTheme('light')).toBe(sparkiiLight);
     expect(variantTheme('dark')).toBe(sparkiiDark);
   });
+
+  it('carries component, motion and z-index tokens', () => {
+    expect(sparkiiLight.control['height-md']).toBe('34px');
+    expect(sparkiiLight.motion.normal).toBe('180ms');
+    expect(sparkiiLight.z.modal).toBe('50');
+    expect(sparkiiLight.font['size-sm']).toBe('12px');
+    expect(sparkiiLight.color.controlBorder).toBe('#E2E8F0');
+  });
 });
