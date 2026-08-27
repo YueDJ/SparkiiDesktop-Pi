@@ -43,21 +43,22 @@ describe('Composer', () => {
     expect(props.onSend).not.toHaveBeenCalled();
   });
 
-  it('model select defaults to 默认(跟随配置)', () => {
+  it('model effort trigger shows default model and drills into model list', () => {
     const props = makeProps();
     render(<Composer {...props} />);
-    const select = screen.getByTestId('model-select') as HTMLSelectElement;
-    expect(select.value).toBe('');
-    fireEvent.change(select, { target: { value: 'deepseek-v4-pro' } });
+    expect(screen.getByTestId('model-effort-trigger').textContent).toContain('deepseek-v4-flash');
+    fireEvent.click(screen.getByTestId('model-effort-trigger'));
+    fireEvent.click(screen.getByText('模型'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'deepseek-v4-pro' }));
     expect(props.onModelChange).toHaveBeenCalledWith('deepseek-v4-pro');
   });
 
-  it('thinking select emits level changes', () => {
+  it('thinking menu emits level changes', () => {
     const props = makeProps();
     render(<Composer {...props} />);
-    const select = screen.getByTestId('thinking-select') as HTMLSelectElement;
-    expect(select.value).toBe('');
-    fireEvent.change(select, { target: { value: 'high' } });
+    fireEvent.click(screen.getByTestId('model-effort-trigger'));
+    fireEvent.click(screen.getByText('思考强度'));
+    fireEvent.click(screen.getByRole('menuitem', { name: '高' }));
     expect(props.onThinkingLevelChange).toHaveBeenCalledWith('high');
   });
 

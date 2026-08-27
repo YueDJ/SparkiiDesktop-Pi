@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { SparkiiApi } from '../types/sparkii-api.js';
+import { Button, ChatMessage } from '@sparkii/ui';
 import { Composer } from '../workbench/Composer.js';
 import { ToolCard } from '../workbench/ToolCard.js';
 import { Markdown } from '../workbench/Markdown.js';
@@ -208,7 +209,7 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
       <div className="chat-empty">
         <h3>通用智能体</h3>
         <p>可以对话问答，也可以在工作区内编程：读代码、跑命令、改文件。</p>
-        <button type="button" className="btn primary" onClick={onNewSession}>新建会话</button>
+        <Button variant="primary" onClick={onNewSession}>新建会话</Button>
       </div>
     );
   }
@@ -218,16 +219,9 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
       <div className="chat-list">
         {entries.map((e) => (
           e.kind === 'message' ? (
-            <div key={e.id} className={`msg msg-${e.role}`}>
-              {e.thinking ? (
-                <details className="thinking">
-                  <summary>思考过程</summary>
-                  <div className="thinking-body"><Markdown text={e.thinking} /></div>
-                </details>
-              ) : null}
-              {e.role === 'assistant' ? <Markdown text={e.text} /> : <span className="msg-text">{e.text}</span>}
-              {e.streaming && <span className="caret" aria-hidden="true" />}
-            </div>
+            e.role === 'assistant'
+              ? <ChatMessage key={e.id} role="assistant" text={e.text} thinking={e.thinking} streaming={e.streaming}><Markdown text={e.text} /></ChatMessage>
+              : <ChatMessage key={e.id} role="user" text={e.text} />
           ) : (
             <ToolCard key={e.id} toolName={e.toolName} input={e.input} result={e.result} awaitingApproval={e.awaitingApproval} />
           )

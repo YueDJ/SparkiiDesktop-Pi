@@ -100,7 +100,9 @@ describe('GeneralChatSurface', () => {
     const { api } = makeApi();
     render(<GeneralChatSurface api={api} sessionId="s1" onNewSession={vi.fn()} />);
     await screen.findByText('hi');
-    fireEvent.change(screen.getByTestId('thinking-select'), { target: { value: 'high' } });
+    fireEvent.click(screen.getByTestId('model-effort-trigger'));
+    fireEvent.click(screen.getByText('思考强度'));
+    fireEvent.click(screen.getByRole('menuitem', { name: '高' }));
     expect(api.setChatThinkingLevel).toHaveBeenCalledWith('s1', 'high');
   });
 

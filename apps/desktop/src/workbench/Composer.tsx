@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { thinkingLevelLabel } from './thinking-levels.js';
+import { ChatComposer } from '@sparkii/ui';
 
 export interface ComposerProps {
   busy: boolean;
@@ -19,68 +18,24 @@ export interface ComposerProps {
 }
 
 export function Composer(props: ComposerProps) {
-  const [draft, setDraft] = useState('');
-  const send = () => {
-    const text = draft.trim();
-    if (!text || props.busy) return;
-    props.onSend(text);
-    setDraft('');
-  };
-
   return (
-    <div className="composer">
-      <div className="composer-row ws-row">
-        <span className="muted">工作区</span>
-        <span className="ws-path" data-testid="workspace-path" title={props.workspacePath ?? ''}>
-          {props.workspacePath ?? '（首次写操作时生成）'}
-        </span>
-        <button type="button" className="btn sm" onClick={props.onChooseWorkspace}>选择文件夹</button>
-        {props.workspaceKind === 'user' && (
-          <button type="button" className="btn sm" data-testid="workspace-clear" onClick={props.onClearWorkspace}>清除</button>
-        )}
-      </div>
-      <div className="composer-row">
-        <select
-          className="model-select"
-          data-testid="model-select"
-          value={props.model ?? ''}
-          onChange={(e) => props.onModelChange(e.target.value || null)}
-        >
-          <option value="">默认（跟随配置）{props.defaultModel ? ` · ${props.defaultModel}` : ''}</option>
-          {props.models.map((m) => <option key={m} value={m}>{m}</option>)}
-        </select>
-        <select
-          className="model-select"
-          data-testid="thinking-select"
-          value={props.thinkingLevel ?? ''}
-          onChange={(e) => props.onThinkingLevelChange(e.target.value || null)}
-        >
-          <option value="">默认（跟随配置）</option>
-          {props.thinkingLevels.map((l) => <option key={l} value={l}>{thinkingLevelLabel(l)}</option>)}
-          {props.thinkingLevel && !props.thinkingLevels.includes(props.thinkingLevel) && (
-            <option value={props.thinkingLevel}>{thinkingLevelLabel(props.thinkingLevel)}</option>
-          )}
-        </select>
-      </div>
-      <div className="composer-row">
-        <textarea
-          className="field composer-input"
-          data-testid="composer-input"
-          rows={3}
-          placeholder="输入消息，Ctrl+Enter 发送"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-              e.preventDefault();
-              send();
-            }
-          }}
-        />
-        <button type="button" className="btn primary composer-send" data-testid="composer-send" onClick={props.busy ? props.onStop : send}>
-          {props.busy ? '停止' : '发送'}
-        </button>
-      </div>
-    </div>
+    <ChatComposer
+      busy={props.busy}
+      workspacePath={props.workspacePath}
+      workspaceKind={props.workspaceKind}
+      onChooseWorkspace={props.onChooseWorkspace}
+      onClearWorkspace={props.onClearWorkspace}
+      modelProps={{
+        model: props.model,
+        defaultModel: props.defaultModel,
+        models: props.models,
+        thinkingLevel: props.thinkingLevel,
+        thinkingLevels: props.thinkingLevels,
+        onModelChange: props.onModelChange,
+        onThinkingLevelChange: props.onThinkingLevelChange,
+      }}
+      onSend={props.onSend}
+      onStop={props.onStop}
+    />
   );
 }
