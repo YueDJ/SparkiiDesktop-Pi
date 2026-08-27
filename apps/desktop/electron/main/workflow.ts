@@ -78,12 +78,48 @@ export function resolveModelTarget(
   return { provider, modelId };
 }
 
+export function resolveSessionModel(
+  settings: AppSettings,
+  rec: { model: string | null } | null | undefined,
+): { provider: string; modelId: string } | null {
+  const provider = settings.activeProviderId ?? 'deepseek';
+  if (rec?.model) {
+    const slash = rec.model.indexOf('/');
+    return slash >= 0
+      ? { provider: rec.model.slice(0, slash), modelId: rec.model.slice(slash + 1) }
+      : { provider, modelId: rec.model };
+  }
+  return resolveModelTarget(settings, 'chat');
+}
+
+export function resolveThinkingLevel(
+  settings: AppSettings,
+  rec: { thinkingLevel: string | null } | null | undefined,
+  target: { provider: string; modelId: string } | null,
+): string | null {
+  if (rec?.thinkingLevel) return rec.thinkingLevel;
+  if (target) {
+    const remembered = settings.modelThinkingLevels?.[`${target.provider}/${target.modelId}`];
+    if (remembered) return remembered;
+  }
+  return settings.defaultThinkingLevel ?? null;
+}
+
+export async function applyThinkingLevel(
+  client: { send: (command: unknown) => Promise<{ success: boolean; error?: string }> },
+  level: string | null,
+): Promise<void> {
+  if (!level) return;
+  const resp = await client.send({ type: 'set_thinking_level', level });
+  if (!resp.success) throw new Error(`cannot set thinking level ${level}: ${resp.error ?? 'unknown'}`);
+}
+
 export async function selectModel(
   rt: Runtime,
   task: ModelTask,
   sessionId: string,
   override?: string | null,
-): Promise<void> {
+): Promise<{ provider: string; modelId: string } | null> {
   const client = rt.pool.get(sessionId);
   if (!client) throw new Error(`unknown session ${sessionId}`);
   const settings = await loadSettings(rt.dataDir);
@@ -100,7 +136,7 @@ export async function selectModel(
     }
   } else {
     const target = resolveModelTarget(settings, task);
-    if (!target) return;
+    if (!target) return null;
     provider = target.provider;
     modelId = target.modelId;
   }
@@ -111,12 +147,17 @@ export async function selectModel(
   }
   const resp = await client.send({ type: 'set_model', provider, modelId });
   if (!resp.success) throw new Error(`cannot select model ${provider}/${modelId}: ${resp.error ?? 'unknown'}`);
+  return { provider, modelId };
 }
 
 async function sendPrompt(rt: Runtime, text: string, task: ModelTask, sessionId: string): Promise<string> {
   const client = rt.pool.get(sessionId);
   if (!client) throw new Error(`unknown session ${sessionId}`);
-  await selectModel(rt, task, sessionId);
+  const target = await selectModel(rt, task, sessionId);
+  if (target) {
+    const settings = await loadSettings(rt.dataDir);
+    await applyThinkingLevel(client, resolveThinkingLevel(settings, null, target));
+  }
 
   let acc = '';
   let off = () => {};
