@@ -1,8 +1,8 @@
-# 模型 provider 配置 —— 决策与待办
+# 模型 provider 配置 —— 决策定稿
 
 日期：2026-08-27
 
-状态：讨论稿（方向已定，实现细节待核对）
+状态：定稿（另有「实现前待核对」清单）
 
 关联：昨天 follow-up 文档 `docs/superpowers/2026-08-26-model-provider-follow-ups.md`（在分支 `codex/session-storage-and-credentials` 上）；本分支：`codex/model-provider-config-consolidation`
 
@@ -10,7 +10,7 @@
 
 昨天（2026-08-26）完成了「会话记录 / 标题 / 身份 / 凭据统一」的实现，实测时发现设置页的「服务商 / baseUrl / API key」和聊天实际使用的 provider 没有打通。
 
-本文档合并昨天的遗留问题和今天的讨论决策，目标是：让「设置页 provider 配置」与「聊天实际使用的 provider」以 Pi SDK 为唯一事实来源，前后端一致，不重复发明格式、不覆盖 Pi 内置内容。
+本文档合并昨天的遗留问题和今天的讨论决策，目标：让「设置页 provider 配置」与「聊天实际使用的 provider」以 Pi SDK 为唯一事实来源，前后端一致，不重复发明格式、不覆盖 Pi 内置内容、不引入每次交互的额外读写。
 
 ## 二、昨天的 follow-up（待修）
 
@@ -22,15 +22,20 @@
 
 已确认可用、无需返工：key 热加载、baseUrl 热刷新、`modelRuntime` 已贯通。
 
-## 三、结论：以 Pi SDK 为唯一事实来源，不维护自己的 provider 表
+## 三、最终决策
 
-1. provider 的 `baseUrl / auth / models` 全部由 Pi SDK 管理，我们不维护一张并行的 provider 表。
-2. 设置 provider 时，把「自定义 URL」写进 `models.json`、把「API key」用 `setRuntimeApiKey` 交给 Pi 内核；Pi 自己合成 provider 并在发请求时使用。
-3. 内置 provider：不覆盖 URL、前端不展示 URL，只填 key。
-4. 内置展示清单：OpenAI、Anthropic、DeepSeek + Pi 里所有国产 provider（Qwen、智谱 GLM、Kimi/月之暗面、MiniMax、小米 MiMo 等，全部放）；不放 Groq、xAI、Google。
-5. OpenAI / Anthropic 的 OAuth 登录：第一期不做，记为 TODO。
+1. Pi SDK 是唯一事实来源：provider 的 `baseUrl / auth / models` 全由 Pi SDK 管理，我们不维护一张并行的 provider 表，也不发明自己的格式。
+2. 内置 provider：不覆盖 URL、前端完全不展示 URL，只填 API key；URL / 认证 / 模型目录来自 SDK 内置目录。
+3. 内置展示清单：OpenAI、Anthropic、DeepSeek + Pi 里所有国产 provider（通义千问 Qwen、智谱 GLM / Z.ai、Kimi / 月之暗面、MiniMax、小米 MiMo 等，全部放）；不放 Groq、xAI、Google。Pi 分开列的 provider 就分开列、不去重 / 合并（`minimax` 与 `minimax-cn` 是两个独立 provider）。
+4. 自定义 provider：URL 写进 `models.json`（Pi 自己的配置文件）、API key 走 `setRuntimeApiKey`；URL / API 类型 / 认证方式可定义、可修改。
+5. API key 的存储与更新：
+   - 持久化：存我们加密的 `keyring`（Electron `safeStorage`，Windows 走 DPAPI）。
+   - 改 key 三步闭环：写 keyring（持久化）→ 对在跑的每个 Pi 进程各调一次 SDK 的 `setRuntimeApiKey`（热更新）→ 之后新 fork 的进程在启动时注入新 key。
+   - 没改 key 时：key 常驻各进程内存，不做任何读取 / 注入。
+   - `setRuntimeApiKey` 是 Pi SDK 原生方法（`ModelRuntime.setRuntimeApiKey`），不是我们发明的。
+6. OpenAI / Anthropic 的 OAuth 登录：第一期不做，记为后续 TODO。
 
-## 四、Pi SDK 的合并机制
+## 四、Pi SDK 的合并机制（为什么不需要自己的表）
 
 - 内置目录：`getBuiltinProviders()` 返回 SDK 内置 provider（`id / name / baseUrl / auth / models / api`）。
 - 自定义覆盖：`models.json`（`ModelConfig`）承载我们写的自定义 provider——这是 Pi 自己的配置文件（`ModelRuntime.create({ modelsPath })` 读它），不是我们造的表。
@@ -45,25 +50,36 @@
 - 自定义 provider：写 `models.json`（`baseUrl + api + auth.apiKey`），成为 SDK 表的一行。
 - 内置 provider：只 `setRuntimeApiKey`，不写 `models.json`。
 
-## 六、运行时机制
+## 六、运行时机制（目标态）
 
 - URL / 认证 / 模型目录：Pi 子进程 `ModelRuntime.create()` 启动时读一次（内置目录 + models.json），常驻内存。
-- API key：`setRuntimeApiKey` 写入 Pi 进程内存；`keyring` 只是我们这边的持久化存储，改 key 时才读写。
-- 变更时推一次：改 URL → 写 models.json + 对运行中的 Pi 调 `refresh`；改 key → 重新 `setRuntimeApiKey`。
-- 结论：不需要每次交互前读 keyring / refresh models.json（现在这两处是我们自己加的热生效逻辑，可去掉或改成「变更时推一次」）。
+- 改自定义 URL：写 models.json + 对运行中的 Pi 调一次 `refresh`。
+- API key：按第三节第 5 条的三步闭环；平时常驻内存。
+- 无每次交互读：不再每次交互前读 keyring / `refresh` models.json（内置 provider 更是完全不读 models.json）。
 
-## 七、已记录 TODO（后续阶段）
+当前代码需一并修正的两点：
+
+1. `runtime.ts` 在 app 启动时读一次 keyring 并固化成 `env.SPARKII_PI_API_KEY`，导致改 key 后新 fork 的进程拿到旧 key；应把 keyring 读取移到「每次 fork 时」。
+2. `ipc.ts` / `workflow.ts` 现在每次操作前都读 keyring + `set_api_key`，是为补第 1 点的洞；应按目标态删掉，改成「改 key 时广播 + fork 时注入」。
+
+## 七、本期实现范围
+
+- 改造 `SettingsView.tsx` / `pi-model-config.ts`，删掉 `PROVIDERS` / `PROVIDER_CONFIG`，统一走 SDK。
+- key：keyring 读取移到 fork 时 + 改 key 时广播 `setRuntimeApiKey` + 删除每次交互读。
+- `PiRuntimePool` 新增「遍历所有 slot 广播」的 API。
+- 聊天路由不再依赖 `manifest.yaml` 硬编码 provider。
+
+## 八、后续 TODO
 
 - OpenAI / Anthropic 的 OAuth 登录。
-- 去掉每次交互前的 keyring 读 + `syncModelConfig` refresh，改成「变更时推一次」。
-- 核对 SDK 公开 API：`getBuiltinProviders` / `ModelRegistry` 从我们现有 `modelRuntime` / `services` 怎么拿到。
 
-## 八、待定 / 实现前需核对
+## 九、实现前待核对
 
-1. 国内 provider 的 id 与变体：Pi 分开列的 provider 就分开列、不去重/合并（例如 `minimax` 与 `minimax-cn` 是两个独立 provider）。具体 id 以 SDK 目录为准。
-2. 自定义 provider 在 `models.json` 里的认证方式精确写法（`composeModelProvider` 认不认 config 里的 apiKey，还是必须靠 `setRuntimeApiKey`）。
-3. SDK 公开导出路径：`getBuiltinProviders` / `ModelRegistry` 的 import 位置。
+1. SDK 公开 API：`getBuiltinProviders` / `ModelRegistry`（`getProviderDisplayName` / `getProviderAuthStatus`）从现有 `modelRuntime` / `services` 怎么拿到。
+2. 自定义 provider 在 `models.json` 的认证方式精确写法（`composeModelProvider` 认不认 config 里的 apiKey，还是必须靠 `setRuntimeApiKey`）。
+3. 国内 provider 精确 id 与变体（以 SDK 目录为准）。
+4. 内置展示清单最终用哪些 id（OpenAI / Anthropic / DeepSeek + 国产全放）。
 
-## 九、下一步
+## 十、下一步
 
-- 核对 SDK 公开 API → 改造 SettingsView / pi-model-config → 聊天路由（manifest 的硬编码 provider）。
+- 先核对第九节，然后按第七节顺序实现。
