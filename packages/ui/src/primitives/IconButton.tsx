@@ -1,7 +1,7 @@
 import { type ButtonHTMLAttributes } from 'react';
 import { Button, type ButtonSize } from './Button.js';
 
-export interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> {
+export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   label: string;
   size?: ButtonSize;
 }

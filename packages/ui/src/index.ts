@@ -22,3 +22,7 @@ export * from './patterns/ChatMessage.js';
 export * from './patterns/ToolCard.js';
 export * from './patterns/ModelEffortControl.js';
 export * from './patterns/ChatComposer.js';
+export * from './patterns/AgentNav.js';
+export * from './patterns/SessionList.js';
+export * from './patterns/StatusBar.js';
+export * from './patterns/Shell.js';
