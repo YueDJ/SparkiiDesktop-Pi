@@ -28,6 +28,8 @@ describe('SettingsView provider rendering', () => {
     expect(optionTexts).toContain('DeepSeek');
     expect(optionTexts).toContain('本地 Ollama');
     expect(optionTexts).not.toContain('Google');
+    expect(document.querySelector('.dot')).toBeNull();
+    expect(screen.queryByText('●')).toBeNull();
   });
 
   it('hides the base URL field for builtin providers and shows it for custom providers', async () => {

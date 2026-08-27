@@ -19,6 +19,8 @@ describe('AuditView', () => {
     expect(await screen.findByText('proposal.approved')).toBeTruthy();
     expect(screen.getAllByText('已执行').length).toBeGreaterThan(0);
     expect(screen.getAllByText('未执行').length).toBeGreaterThan(0);
+    expect(document.querySelector('.adot')).toBeNull();
+    expect(screen.queryByText('●')).toBeNull();
   });
 
   it('switches to the table view', async () => {

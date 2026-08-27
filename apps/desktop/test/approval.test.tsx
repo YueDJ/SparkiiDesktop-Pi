@@ -6,5 +6,6 @@ describe('ApprovalDialog', () => {
   it('renders pending proposal summary', () => {
     render(<ApprovalDialog proposal={{ id: 'p1', summary: '导出报告', risk: 'write', payloadHash: 'h' } as any} onDecide={() => {}} />);
     expect(screen.getByText('导出报告')).toBeTruthy();
+    expect(screen.queryByText('●')).toBeNull();
   });
 });

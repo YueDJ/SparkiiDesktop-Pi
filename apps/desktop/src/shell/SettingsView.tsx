@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Button, Select, SettingsLayout, SettingsRow, Switch, TextField } from '@sparkii/ui';
 import { THINKING_LEVELS, thinkingLevelLabel } from '../workbench/thinking-levels.js';
 
 export interface ProviderEntry {
@@ -143,118 +144,120 @@ export function SettingsView(props: SettingsViewProps) {
     setInfo('设置已保存');
   };
 
+  const nav = (
+    <>
+      {PANES.map((p) => (
+        <button key={p} type="button" className={`ui-agent ${pane === p ? 'on' : ''}`} onClick={() => setPane(p)}>{PANE_LABELS[p]}</button>
+      ))}
+    </>
+  );
+
   return (
-    <div className="grid-2" style={{ gridTemplateColumns: '200px 1fr', alignItems: 'start' }}>
-      <div className="card" style={{ padding: 10 }}>
-        {PANES.map((p) => (
-          <button key={p} type="button" className={`agent ${pane === p ? 'on' : ''}`} onClick={() => setPane(p)}>
-            <span className="dot dot-idle" />{PANE_LABELS[p]}
-          </button>
-        ))}
-      </div>
-      <div className="card" style={{ padding: '18px 20px' }}>
-        {pane === 'llm' && (
-          <>
-            <h3 style={{ margin: '0 0 4px' }}>大模型连接</h3>
-            <div className="muted" style={{ marginBottom: 6 }}>配置模型端点与任务路由；数据默认不出本机</div>
-            <div className="set-row">
-              <span>服务商</span>
-              <select className="set-field" data-testid="provider-select" value={providerId} onChange={(e) => switchProvider(e.target.value)}>
-                {entries.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-              </select>
-            </div>
-            {active?.kind === 'custom' && (
-              <>
-                <div className="set-row"><span>接口地址(Base URL)</span><input className="set-field" data-testid="base-url-input" value={customBaseUrl} onChange={(e) => setCustomBaseUrl(e.target.value)} /></div>
-                <div className="set-row">
-                  <span>API 类型</span>
-                  <select className="set-field" value={customApi} onChange={(e) => setCustomApi(e.target.value as 'openai-completions' | 'anthropic-messages')}>
-                    <option value="openai-completions">openai-completions</option>
-                    <option value="anthropic-messages">anthropic-messages</option>
-                  </select>
+    <SettingsLayout nav={nav}>
+      {pane === 'llm' && (
+        <>
+          <h3 className="settings-section-title">大模型连接</h3>
+          <div className="ui-muted settings-hint">配置模型端点与任务路由；数据默认不出本机</div>
+          <SettingsRow label="服务商">
+            <Select data-testid="provider-select" value={providerId} onChange={(e) => switchProvider(e.target.value)}>
+              {entries.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+            </Select>
+          </SettingsRow>
+          {active?.kind === 'custom' && (
+            <>
+              <SettingsRow label="接口地址(Base URL)">
+                <TextField data-testid="base-url-input" value={customBaseUrl} onChange={(e) => setCustomBaseUrl(e.target.value)} />
+              </SettingsRow>
+              <SettingsRow label="API 类型">
+                <Select value={customApi} onChange={(e) => setCustomApi(e.target.value as 'openai-completions' | 'anthropic-messages')}>
+                  <option value="openai-completions">openai-completions</option>
+                  <option value="anthropic-messages">anthropic-messages</option>
+                </Select>
+              </SettingsRow>
+            </>
+          )}
+          <SettingsRow label="API Key">
+            <TextField data-testid="api-key-input" type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="本地端点可留空" />
+          </SettingsRow>
+          <SettingsRow label="默认模型">
+            <Select data-testid="default-model-select" value={defaultModel} onChange={(e) => setDefaultModel(e.target.value)}>
+              <option value="">未设置（使用路由“默认”）</option>
+              {defaultModel && !models.includes(defaultModel) && <option value={defaultModel}>{defaultModel}</option>}
+              {models.map((m) => <option key={m} value={m}>{m}</option>)}
+            </Select>
+          </SettingsRow>
+          <SettingsRow label="默认思考强度">
+            <Select data-testid="default-thinking-select" value={defaultThinkingLevel} onChange={(e) => setDefaultThinkingLevel(e.target.value)}>
+              <option value="">跟随 SDK 默认（中）</option>
+              {THINKING_LEVELS.map((l) => <option key={l} value={l}>{thinkingLevelLabel(l)}</option>)}
+            </Select>
+          </SettingsRow>
+          <SettingsRow label="任务路由(按任务选模型)">
+            <div className="settings-routes">
+              {ROUTE_TASKS.map(({ key, label }) => (
+                <div key={key} className="settings-route-row">
+                  <span className="settings-route-label">{label}</span>
+                  <Select className="route-select" data-testid={`route-select-${key}`} value={routes[key] ?? ''} onChange={(e) => setRoutes((r) => ({ ...r, [key]: e.target.value }))}>
+                    <option value="">跟随默认模型</option>
+                    {models.map((m) => <option key={m} value={m}>{m}</option>)}
+                  </Select>
                 </div>
-              </>
-            )}
-            <div className="set-row"><span>API Key</span><input className="set-field" data-testid="api-key-input" type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="本地端点可留空" /></div>
-            <div className="set-row">
-              <span>默认模型</span>
-              <select className="set-field" data-testid="default-model-select" value={defaultModel} onChange={(e) => setDefaultModel(e.target.value)}>
-                <option value="">未设置（使用路由“默认”）</option>
-                {defaultModel && !models.includes(defaultModel) && <option value={defaultModel}>{defaultModel}</option>}
-                {models.map((m) => <option key={m} value={m}>{m}</option>)}
-              </select>
+              ))}
             </div>
-            <div className="set-row">
-              <span>默认思考强度</span>
-              <select className="set-field" data-testid="default-thinking-select" value={defaultThinkingLevel} onChange={(e) => setDefaultThinkingLevel(e.target.value)}>
-                <option value="">跟随 SDK 默认（中）</option>
-                {THINKING_LEVELS.map((l) => <option key={l} value={l}>{thinkingLevelLabel(l)}</option>)}
-              </select>
-            </div>
-            <div className="set-row">
-              <span>任务路由(按任务选模型)</span>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: 280 }}>
-                {ROUTE_TASKS.map(({ key, label }) => (
-                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span className="kv" style={{ width: 60 }}>{label}</span>
-                    <select className="set-field route-select" data-testid={`route-select-${key}`} style={{ flex: 1 }} value={routes[key] ?? ''} onChange={(e) => setRoutes((r) => ({ ...r, [key]: e.target.value }))}>
-                      <option value="">跟随默认模型</option>
-                      {models.map((m) => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
-              <button type="button" className="btn" onClick={fetchModels} disabled={fetching || testing}>{fetching ? '拉取中…' : '拉取模型列表（联网）'}</button>
-              <button type="button" className="btn" onClick={testConnection} disabled={testing || fetching}>{testing ? '测试中…' : '测试连接'}</button>
-              <button type="button" className="btn primary" onClick={save}>保存</button>
-            </div>
-            <h3 style={{ margin: '18px 0 4px' }}>连接状态 <span className="muted" style={{ fontSize: 11, fontWeight: 400 }}>{connStatus.text}</span></h3>
-            <div className="muted" style={{ marginBottom: 6 }}>测试连接会请求服务商 /models 端点，验证网络与 Key，不消耗 token</div>
-            <h3 style={{ margin: '18px 0 4px' }}>模型列表 <span className="muted" style={{ fontSize: 11, fontWeight: 400 }}>{info}</span></h3>
-            <div className="muted" style={{ marginBottom: 6 }}>拉取模型列表会联网读取服务商当前可用模型</div>
+          </SettingsRow>
+          <div className="settings-actions">
+            <Button onClick={fetchModels} disabled={fetching || testing}>{fetching ? '拉取中…' : '拉取模型列表（联网）'}</Button>
+            <Button onClick={testConnection} disabled={testing || fetching}>{testing ? '测试中…' : '测试连接'}</Button>
+            <Button variant="primary" onClick={save}>保存</Button>
+          </div>
+          <h3 className="settings-section-title settings-title-mt">连接状态 <span className={`ui-muted settings-conn-${connStatus.cls || 'muted'}`}>{connStatus.text}</span></h3>
+          <div className="ui-muted settings-hint">测试连接会请求服务商 /models 端点，验证网络与 Key，不消耗 token</div>
+          <h3 className="settings-section-title settings-title-mt">模型列表 <span className="ui-muted settings-info">{info}</span></h3>
+          <div className="ui-muted settings-hint">拉取模型列表会联网读取服务商当前可用模型</div>
+          <div className="settings-models">
             {models.map((m) => (
-              <div key={m} className="set-row">
-                <span>{m}</span>
-              </div>
+              <div key={m} className="settings-model">{m}</div>
             ))}
-          </>
-        )}
-        {pane === 'data' && (
-          <>
-            <h3 style={{ margin: '0 0 4px' }}>数据与隐私</h3>
-            <div className="set-row"><span>数据目录</span><input className="set-field" placeholder="本机数据目录" readOnly /></div>
-            <div className="set-row"><span>本地加密落盘</span><span className="switch on" /></div>
-            <div className="set-row"><span>审计记录(只追加)</span><span className="switch on" /></div>
-          </>
-        )}
-        {pane === 'runtime' && (
-          <>
-            <h3 style={{ margin: '0 0 4px' }}>智能体与运行</h3>
-            <div className="set-row"><span>并行智能体上限</span><select className="set-field" defaultValue="4"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
-            <div className="set-row"><span>超出上限时排队</span><span className="switch on" /></div>
-            <div className="set-row"><span>崩溃自动恢复</span><span className="switch on" /></div>
-            <div className="set-row"><span>日志级别</span><select className="set-field" defaultValue="信息"><option>信息</option><option>调试</option><option>警告</option></select></div>
-          </>
-        )}
-        {pane === 'approval' && (
-          <>
-            <h3 style={{ margin: '0 0 4px' }}>审批与安全</h3>
-            <div className="set-row"><span>审批默认超时(秒)</span><input className="set-field" style={{ width: 120 }} defaultValue="120" /></div>
-            <div className="set-row"><span>高风险操作二次确认</span><span className="switch on" /></div>
-            <div className="set-row"><span>超时自动拒绝</span><span className="switch on" /></div>
-            <div className="set-row"><span>当前角色</span><span className="kv">审核员(可批准:合同审核导出、状态变更)</span></div>
-          </>
-        )}
-        {pane === 'appearance' && (
-          <>
-            <h3 style={{ margin: '0 0 4px' }}>外观与语言</h3>
-            <div className="set-row"><span>主题</span><select className="set-field"><option>浅色</option><option>深色</option></select></div>
-            <div className="set-row"><span>界面语言</span><select className="set-field"><option>简体中文</option><option>English</option></select></div>
-          </>
-        )}
-      </div>
-    </div>
+          </div>
+        </>
+      )}
+      {pane === 'data' && (
+        <>
+          <h3 className="settings-section-title">数据与隐私</h3>
+          <SettingsRow label="数据目录"><TextField placeholder="本机数据目录" readOnly /></SettingsRow>
+          <SettingsRow label="本地加密落盘"><Switch checked onCheckedChange={() => {}} label="本地加密落盘" /></SettingsRow>
+          <SettingsRow label="审计记录(只追加)"><Switch checked onCheckedChange={() => {}} label="审计记录(只追加)" /></SettingsRow>
+        </>
+      )}
+      {pane === 'runtime' && (
+        <>
+          <h3 className="settings-section-title">智能体与运行</h3>
+          <SettingsRow label="并行智能体上限">
+            <Select defaultValue="4"><option>1</option><option>2</option><option>3</option><option>4</option></Select>
+          </SettingsRow>
+          <SettingsRow label="超出上限时排队"><Switch checked onCheckedChange={() => {}} label="超出上限时排队" /></SettingsRow>
+          <SettingsRow label="崩溃自动恢复"><Switch checked onCheckedChange={() => {}} label="崩溃自动恢复" /></SettingsRow>
+          <SettingsRow label="日志级别">
+            <Select defaultValue="信息"><option>信息</option><option>调试</option><option>警告</option></Select>
+          </SettingsRow>
+        </>
+      )}
+      {pane === 'approval' && (
+        <>
+          <h3 className="settings-section-title">审批与安全</h3>
+          <SettingsRow label="审批默认超时(秒)"><TextField className="settings-timeout" defaultValue="120" /></SettingsRow>
+          <SettingsRow label="高风险操作二次确认"><Switch checked onCheckedChange={() => {}} label="高风险操作二次确认" /></SettingsRow>
+          <SettingsRow label="超时自动拒绝"><Switch checked onCheckedChange={() => {}} label="超时自动拒绝" /></SettingsRow>
+          <SettingsRow label="当前角色"><span className="ui-kv">审核员(可批准:合同审核导出、状态变更)</span></SettingsRow>
+        </>
+      )}
+      {pane === 'appearance' && (
+        <>
+          <h3 className="settings-section-title">外观与语言</h3>
+          <SettingsRow label="主题"><Select><option>浅色</option><option>深色</option></Select></SettingsRow>
+          <SettingsRow label="界面语言"><Select><option>简体中文</option><option>English</option></Select></SettingsRow>
+        </>
+      )}
+    </SettingsLayout>
   );
 }

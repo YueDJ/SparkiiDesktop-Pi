@@ -20,6 +20,7 @@ describe('ApprovalCenter', () => {
     expect(screen.getByText(/中风险/)).toBeTruthy();
     fireEvent.click(screen.getByText('详情'));
     expect(onOpenDetail).toHaveBeenCalledWith(PROPOSAL);
+    expect(document.querySelector('.dot')).toBeNull();
   });
 });
 
