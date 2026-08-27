@@ -25,9 +25,9 @@ function fakeSession(): PiRuntimeSession & { emit: (event: any) => void } {
     setAutoCompaction: vi.fn(async () => {}),
     setSessionName: vi.fn(async () => {}),
     setApiKey: vi.fn(async () => {}),
+    removeApiKey: vi.fn(async () => {}),
     complete: vi.fn(async () => "标题"),
     listModels: vi.fn(async () => []),
-    testConnection: vi.fn(async () => ({ ok: true })),
     listProviders: vi.fn(async () => [
       { id: "deepseek", name: "DeepSeek", baseUrl: "https://api.deepseek.com", apiKeyAuth: true, oauthAuth: false },
     ]),
@@ -123,6 +123,10 @@ describe("createPiRuntime", () => {
     transport.emit(commandEnvelope("r2", { type: "set_api_key", provider: "deepseek", apiKey: "sk-x" }));
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(session.setApiKey).toHaveBeenCalledWith("deepseek", "sk-x");
+
+    transport.emit(commandEnvelope("r2b", { type: "remove_api_key", provider: "deepseek" }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(session.removeApiKey).toHaveBeenCalledWith("deepseek");
 
     transport.emit(commandEnvelope("r3", { type: "complete", provider: "deepseek", modelId: "m", text: "hi" }));
     await new Promise((resolve) => setTimeout(resolve, 0));

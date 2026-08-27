@@ -35,8 +35,8 @@ export interface SparkiiApi {
   saveSettings(settings: unknown): Promise<unknown>;
   getApiKey(provider: string): Promise<string | null>;
   listProviders(): Promise<ProviderEntryInfo[]>;
-  listModels(provider: string): Promise<{ ok: boolean; models?: string[]; error?: string }>;
-  testModel(provider: string, modelId: string): Promise<{ ok: boolean; latencyMs?: number; error?: string }>;
+  listModels(provider: string, apiKey?: string | null): Promise<{ ok: boolean; models?: string[]; httpStatus?: number; reason?: string; error?: string }>;
+  testConnection(provider: string, apiKey?: string | null): Promise<{ ok: boolean; latencyMs?: number; httpStatus?: number; reason?: string; error?: string }>;
   diagnostics(): Promise<{ logs: string; audit: string }>;
   on(channel: string, cb: (payload: unknown) => void): () => void;
 }

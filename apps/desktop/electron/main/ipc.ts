@@ -3,13 +3,14 @@ import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { listPiSessions, readPiSessionMessages, type PiProviderInfo, type SessionSaddle } from '@sparkii/agent-host';
-import { createBroker, runWorkflow, selectModel } from './workflow.js';
+import { createBroker, resolveModelTarget, runWorkflow, selectModel } from './workflow.js';
 import { resolveExportPath } from './export-path.js';
 import { loadSettings, saveSettings } from './settings.js';
 import { buildProviderList } from './provider-catalog.js';
 import { autoWorkspacePath } from './workspace.js';
 import { buildProfileSaddle } from './saddle.js';
 import { writePiModelsConfig } from './pi-model-config.js';
+import { probeProviderModels } from './provider-probe.js';
 import type { Runtime } from './runtime.js';
 import type { Logger } from './logger.js';
 
@@ -39,6 +40,21 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     if (key) await client.send({ type: 'set_api_key', provider: providerId, apiKey: key });
   }
 
+  async function providerProbeTarget(providerId: string, apiKeyOverride?: string | null) {
+    const settings = await loadSettings(rt.dataDir);
+    const custom = (settings.providers ?? []).find((p) => p.id === providerId);
+    const apiKey = apiKeyOverride ?? (await rt.keyFor(providerId));
+    if (custom) return { baseUrl: custom.baseUrl, api: custom.api, apiKey };
+    const runtimeProviders = await withProbeSlot(async (client) => {
+      const resp = await client.send({ type: 'list_providers' });
+      if (!resp.success) throw new Error(resp.error ?? 'list_providers failed');
+      return (resp.data ?? []) as PiProviderInfo[];
+    });
+    const base = runtimeProviders.find((p) => p.id === providerId);
+    if (!base) throw new Error(`unknown provider ${providerId}`);
+    return { baseUrl: base.baseUrl, api: undefined, apiKey };
+  }
+
   const messageText = (m: unknown): string => {
     const rec = (m ?? {}) as { role?: string; text?: string; content?: unknown };
     if (typeof rec.content === 'string') return rec.content;
@@ -52,7 +68,8 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     slot: Awaited<ReturnType<typeof rt.pool.acquire>>,
   ): Promise<void> {
     try {
-      const target = rt.profileOf(profileId).router.resolve('title') ?? rt.profileOf(profileId).router.resolve('default');
+      const settings = await loadSettings(rt.dataDir);
+      const target = resolveModelTarget(settings, 'title');
       if (!target) return;
       const resp = await slot.client.send({ type: 'get_messages' });
       const messages = (resp.data ?? []) as unknown[];
@@ -174,24 +191,10 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId }));
     const rec = rt.chatSessions.get(sessionId);
 
-    const selectModel = async (provider: string, modelId: string): Promise<void> => {
-      const apiKey = await rt.keyFor(provider);
-      if (apiKey) {
-        const keyResp = await slot.client.send({ type: 'set_api_key', provider, apiKey });
-        if (!keyResp.success) throw new Error(`cannot set api key for ${provider}: ${keyResp.error ?? 'unknown'}`);
-      }
-      const resp = await slot.client.send({ type: 'set_model', provider, modelId });
-      if (!resp.success) throw new Error(`cannot select model ${provider}/${modelId}: ${resp.error ?? 'unknown'}`);
-    };
-
     if (rec?.model) {
-      const [provider, modelId] = rec.model.split('/');
-      await selectModel(provider, modelId);
+      await selectModel(rt, 'chat', sessionId, rec.model);
     } else {
-      const settings = await loadSettings(rt.dataDir);
-      const provider = settings.activeProviderId ?? 'deepseek';
-      const modelId = settings.defaultModel ?? '';
-      if (provider && modelId) await selectModel(provider, modelId);
+      await selectModel(rt, 'chat', sessionId);
     }
     const win = getWindow();
     await new Promise<void>((resolve, reject) => {
@@ -368,31 +371,41 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     await saveSettings(rt.dataDir, rest);
     if (s.activeProviderId) {
       await rt.setKey(s.activeProviderId, apiKey ?? '');
+      await rt.pool.broadcast(
+        apiKey
+          ? { type: 'set_api_key', provider: s.activeProviderId, apiKey }
+          : { type: 'remove_api_key', provider: s.activeProviderId },
+      );
     }
     await writePiModelsConfig(rt.piAgentDir, s.providers ?? []);
     return { ok: true };
   });
-  ipcMain.handle('sparkii:listModels', async (_e, providerId: string) => {
+  ipcMain.handle('sparkii:listModels', async (_e, providerId: string, apiKey?: string | null) => {
     try {
-      const models = await withProbeSlot(async (client) => {
-        await injectProbeKey(client, providerId);
-        const resp = await client.send({ type: 'list_models', provider: providerId });
-        if (!resp.success) throw new Error(resp.error ?? 'list_models failed');
-        return ((resp.data ?? []) as Array<{ modelId: string }>).map((m) => m.modelId);
-      });
-      return { ok: true, models };
+      const target = await providerProbeTarget(providerId, apiKey);
+      const result = await probeProviderModels({ providerId, ...target });
+      return {
+        ok: result.ok,
+        models: result.models ?? [],
+        httpStatus: result.httpStatus,
+        reason: result.reason,
+        error: result.error,
+      };
     } catch (e) {
       return { ok: false, error: (e as Error).message };
     }
   });
-  ipcMain.handle('sparkii:testModel', async (_e, providerId: string, modelId: string) => {
+  ipcMain.handle('sparkii:testConnection', async (_e, providerId: string, apiKey?: string | null) => {
     try {
-      return await withProbeSlot(async (client) => {
-        await injectProbeKey(client, providerId);
-        const resp = await client.send({ type: 'test_connection', provider: providerId, modelId });
-        if (!resp.success) return { ok: false, error: resp.error ?? 'test_connection failed' };
-        return resp.data as { ok: boolean; latencyMs?: number; error?: string };
-      });
+      const target = await providerProbeTarget(providerId, apiKey);
+      const result = await probeProviderModels({ providerId, ...target });
+      return {
+        ok: result.ok,
+        latencyMs: result.latencyMs,
+        httpStatus: result.httpStatus,
+        reason: result.reason,
+        error: result.error,
+      };
     } catch (e) {
       return { ok: false, error: (e as Error).message };
     }

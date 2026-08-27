@@ -17,15 +17,13 @@ interface CustomProvider {
   api: 'openai-completions' | 'anthropic-messages';
 }
 
-interface ModelState { label: string; status: string; cls: '' | 'ok' | 'fail' | 'wait'; }
-
 export interface SettingsApi {
   getSettings?(): Promise<unknown>;
   saveSettings?(settings: unknown): Promise<unknown>;
   getApiKey?(provider: string): Promise<string | null>;
   listProviders?(): Promise<ProviderEntry[]>;
-  listModels?(provider: string): Promise<{ ok: boolean; models?: string[]; error?: string }>;
-  testModel?(provider: string, modelId: string): Promise<{ ok: boolean; latencyMs?: number; error?: string }>;
+  listModels?(provider: string, apiKey?: string | null): Promise<{ ok: boolean; models?: string[]; httpStatus?: number; reason?: string; error?: string }>;
+  testConnection?(provider: string, apiKey?: string | null): Promise<{ ok: boolean; latencyMs?: number; httpStatus?: number; reason?: string; error?: string }>;
 }
 
 export interface SettingsViewProps { api?: SettingsApi; }
@@ -36,7 +34,21 @@ const PANE_LABELS: Record<Pane, string> = {
   llm: '大模型连接', data: '数据与隐私', runtime: '智能体与运行', approval: '审批与安全', appearance: '外观与语言',
 };
 
-const ROUTE_TASKS = ['对话 chat', '抽取 extract', '报告 report', '默认 default'] as const;
+const ROUTE_TASKS = [
+  { key: 'chat', label: '对话' },
+  { key: 'extract', label: '抽取' },
+  { key: 'report', label: '报告' },
+  { key: 'default', label: '默认' },
+] as const;
+
+type ConnStatus = { cls: '' | 'ok' | 'fail' | 'wait'; text: string };
+
+function probeError(r: { reason?: string; error?: string }): string {
+  if (r.reason === 'unauthorized') return r.error ?? 'API Key 无效或未授权';
+  if (r.reason === 'unreachable') return `网络不可达：${r.error ?? '未知错误'}`;
+  if (r.reason === 'unsupported') return r.error ?? '该服务商未提供 /models 端点';
+  return r.error ?? '连接失败';
+}
 
 export function SettingsView(props: SettingsViewProps) {
   const { api } = props;
@@ -49,9 +61,11 @@ export function SettingsView(props: SettingsViewProps) {
   const [apiKey, setApiKey] = useState('');
   const [defaultModel, setDefaultModel] = useState('');
   const [routes, setRoutes] = useState<Record<string, string>>({});
+  const [models, setModels] = useState<string[]>([]);
   const [info, setInfo] = useState('尚未连接 IPC');
-  const [models, setModels] = useState<Record<string, ModelState>>({});
-  const [busy, setBusy] = useState(false);
+  const [connStatus, setConnStatus] = useState<ConnStatus>({ cls: '', text: '未测试' });
+  const [fetching, setFetching] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   const active = entries.find((e) => e.id === providerId);
 
@@ -71,13 +85,6 @@ export function SettingsView(props: SettingsViewProps) {
       .catch(() => setInfo('配置加载失败'));
   }, [api]);
 
-  const applyModels = (names: string[]) => {
-    const source = active?.name ?? providerId;
-    const out: Record<string, ModelState> = {};
-    for (const m of names) out[m] = { label: `${m} · ${source}`, status: '未测试', cls: '' };
-    setModels(out);
-  };
-
   const switchProvider = (id: string) => {
     setProviderId(id);
     const next = entries.find((e) => e.id === id);
@@ -87,49 +94,44 @@ export function SettingsView(props: SettingsViewProps) {
     }
     setApiKey('');
     api?.getApiKey?.(id).then((k) => setApiKey(k ?? '')).catch(() => setApiKey(''));
-    setModels({});
+    setModels([]);
+    setConnStatus({ cls: '', text: '未测试' });
     setInfo(`当前节点:${id} · 未拉取`);
   };
 
   const fetchModels = async () => {
-    if (!api?.listModels) { setInfo('IPC 未连接,无法拉取模型'); return; }
-    setBusy(true);
-    const r = await api.listModels(providerId);
+    if (!api?.listModels) { setInfo('IPC 未连接，无法拉取模型'); return; }
+    setFetching(true);
+    setModels([]);
+    setConnStatus({ cls: '', text: '未测试' });
+    const r = await api.listModels(providerId, apiKey);
     if (r.ok && r.models) {
-      applyModels(r.models);
-      setInfo(`当前节点:${providerId} · 已拉取 ${r.models.length} 个模型`);
+      setModels(r.models);
+      setInfo(`已联网拉取 ${r.models.length} 个模型`);
     } else {
-      setInfo(`拉取失败:${r.error ?? '未知错误'}`);
+      setModels([]);
+      setInfo(`拉取失败：${probeError(r)}`);
     }
-    setBusy(false);
+    setFetching(false);
   };
 
-  const testAll = async () => {
-    if (!api?.testModel) { setInfo('IPC 未连接,无法测试'); return; }
-    setBusy(true);
-    setModels((prev) => {
-      const next = { ...prev };
-      for (const k of Object.keys(next)) next[k] = { ...next[k], status: '连接中…', cls: 'wait' };
-      return next;
-    });
-    const modelId = modelNames[0] ?? defaultModel;
-    if (!modelId) { setInfo('请先拉取模型或设置默认模型'); setBusy(false); return; }
-    const r = await api.testModel(providerId, modelId);
-    setModels((prev) => {
-      const next = { ...prev };
-      for (const k of Object.keys(next)) {
-        next[k] = r.ok
-          ? { ...next[k], status: `已连接 · ${r.latencyMs ?? 0}ms`, cls: 'ok' }
-          : { ...next[k], status: '连接失败', cls: 'fail' };
-      }
-      return next;
-    });
-    setInfo(r.ok ? `测试完成:端点可达 · ${r.latencyMs ?? 0}ms` : `测试失败:${r.error ?? '未知错误'}`);
-    setBusy(false);
+  const testConnection = async () => {
+    if (!api?.testConnection) { setInfo('IPC 未连接，无法测试'); return; }
+    setTesting(true);
+    setConnStatus({ cls: 'wait', text: '连接中…' });
+    const r = await api.testConnection(providerId, apiKey);
+    if (r.ok) {
+      setConnStatus({ cls: 'ok', text: `已连接 · ${r.latencyMs ?? 0}ms` });
+      setInfo('测试完成：端点可达，Key 有效');
+    } else {
+      setConnStatus({ cls: 'fail', text: probeError(r) });
+      setInfo('测试失败');
+    }
+    setTesting(false);
   };
 
   const save = async () => {
-    if (!api?.saveSettings) { setInfo('IPC 未连接,无法保存'); return; }
+    if (!api?.saveSettings) { setInfo('IPC 未连接，无法保存'); return; }
     const nextCustom = active?.kind === 'custom'
       ? [...customProviders.filter((p) => p.id !== providerId), { id: providerId, name: active.name, baseUrl: customBaseUrl, api: customApi }]
       : customProviders;
@@ -137,8 +139,6 @@ export function SettingsView(props: SettingsViewProps) {
     setCustomProviders(nextCustom);
     setInfo('设置已保存');
   };
-
-  const modelNames = Object.keys(models);
 
   return (
     <div className="grid-2" style={{ gridTemplateColumns: '200px 1fr', alignItems: 'start' }}>
@@ -153,7 +153,7 @@ export function SettingsView(props: SettingsViewProps) {
         {pane === 'llm' && (
           <>
             <h3 style={{ margin: '0 0 4px' }}>大模型连接</h3>
-            <div className="muted" style={{ marginBottom: 6 }}>配置模型端点与任务路由;数据默认不出本机</div>
+            <div className="muted" style={{ marginBottom: 6 }}>配置模型端点与任务路由；数据默认不出本机</div>
             <div className="set-row">
               <span>服务商</span>
               <select className="set-field" data-testid="provider-select" value={providerId} onChange={(e) => switchProvider(e.target.value)}>
@@ -173,31 +173,40 @@ export function SettingsView(props: SettingsViewProps) {
               </>
             )}
             <div className="set-row"><span>API Key</span><input className="set-field" data-testid="api-key-input" type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="本地端点可留空" /></div>
-            <div className="set-row"><span>默认模型</span><input className="set-field" value={defaultModel} onChange={(e) => setDefaultModel(e.target.value)} placeholder="拉取模型后选择" /></div>
+            <div className="set-row">
+              <span>默认模型</span>
+              <select className="set-field" data-testid="default-model-select" value={defaultModel} onChange={(e) => setDefaultModel(e.target.value)}>
+                <option value="">未设置（使用路由“默认”）</option>
+                {defaultModel && !models.includes(defaultModel) && <option value={defaultModel}>{defaultModel}</option>}
+                {models.map((m) => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
             <div className="set-row">
               <span>任务路由(按任务选模型)</span>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: 280 }}>
-                {ROUTE_TASKS.map((label) => (
-                  <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span className="kv" style={{ width: 84 }}>{label}</span>
-                    <select className="set-field route-select" style={{ flex: 1 }} value={routes[label] ?? defaultModel ?? ''} onChange={(e) => setRoutes((r) => ({ ...r, [label]: e.target.value }))}>
-                      {modelNames.map((m) => <option key={m}>{m}</option>)}
+                {ROUTE_TASKS.map(({ key, label }) => (
+                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className="kv" style={{ width: 60 }}>{label}</span>
+                    <select className="set-field route-select" data-testid={`route-select-${key}`} style={{ flex: 1 }} value={routes[key] ?? ''} onChange={(e) => setRoutes((r) => ({ ...r, [key]: e.target.value }))}>
+                      <option value="">跟随默认模型</option>
+                      {models.map((m) => <option key={m} value={m}>{m}</option>)}
                     </select>
                   </div>
                 ))}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
-              <button type="button" className="btn" onClick={fetchModels} disabled={busy}>{busy ? '处理中…' : '拉取模型列表'}</button>
-              <button type="button" className="btn" onClick={testAll} disabled={busy || modelNames.length === 0}>{busy ? '测试中…' : '测试连接'}</button>
+              <button type="button" className="btn" onClick={fetchModels} disabled={fetching || testing}>{fetching ? '拉取中…' : '拉取模型列表（联网）'}</button>
+              <button type="button" className="btn" onClick={testConnection} disabled={testing || fetching}>{testing ? '测试中…' : '测试连接'}</button>
               <button type="button" className="btn primary" onClick={save}>保存</button>
             </div>
-            <h3 style={{ margin: '18px 0 4px' }}>模型状态 <span className="muted" style={{ fontSize: 11, fontWeight: 400 }}>{info}</span></h3>
-            <div className="muted" style={{ marginBottom: 6 }}>拉取后展示当前节点模型;测试连接验证端点可达</div>
-            {modelNames.map((m) => (
+            <h3 style={{ margin: '18px 0 4px' }}>连接状态 <span className="muted" style={{ fontSize: 11, fontWeight: 400 }}>{connStatus.text}</span></h3>
+            <div className="muted" style={{ marginBottom: 6 }}>测试连接会请求服务商 /models 端点，验证网络与 Key，不消耗 token</div>
+            <h3 style={{ margin: '18px 0 4px' }}>模型列表 <span className="muted" style={{ fontSize: 11, fontWeight: 400 }}>{info}</span></h3>
+            <div className="muted" style={{ marginBottom: 6 }}>拉取模型列表会联网读取服务商当前可用模型</div>
+            {models.map((m) => (
               <div key={m} className="set-row">
-                <span>{models[m].label}</span>
-                <span className={`mstat ${models[m].cls}`}>{models[m].status}</span>
+                <span>{m}</span>
               </div>
             ))}
           </>

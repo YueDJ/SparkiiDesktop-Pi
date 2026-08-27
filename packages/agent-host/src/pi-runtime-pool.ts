@@ -1,6 +1,6 @@
 import { PiRuntimeSupervisor } from "./pi-runtime-supervisor.js";
 import type { PiRuntimeClient, PiRuntimeHostHandle } from "./pi-runtime-transport.js";
-import type { SessionSaddle } from "./types.js";
+import type { RpcCommand, SessionSaddle } from "./types.js";
 
 export interface PiRuntimeSlot {
   client: PiRuntimeClient;
@@ -90,6 +90,13 @@ export class PiRuntimePool {
 
   activeCount(): number {
     return this.bySession.size;
+  }
+
+  /** Send one command to every live runtime process; individual failures are ignored. */
+  async broadcast(command: RpcCommand): Promise<void> {
+    await Promise.all(
+      this.slots.map((slot) => slot.client.send(command).catch(() => undefined)),
+    );
   }
 
   async stopAll(): Promise<void> {

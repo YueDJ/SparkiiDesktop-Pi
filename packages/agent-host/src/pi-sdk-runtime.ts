@@ -151,6 +151,9 @@ export async function createPiSdkSessionHost(
       setApiKey: async (provider, apiKey) => {
         await modelRuntime.setRuntimeApiKey(provider, apiKey);
       },
+      removeApiKey: async (provider) => {
+        await modelRuntime.removeRuntimeApiKey(provider);
+      },
       complete: async (provider, modelId, text) => {
         await syncModelConfig(provider);
         const model = modelRuntime.getModel(provider, modelId);
@@ -186,20 +189,6 @@ export async function createPiSdkSessionHost(
           provider: model.provider ?? provider ?? "",
           modelId: model.id,
         }));
-      },
-      testConnection: async (provider, modelId) => {
-        const start = Date.now();
-        await syncModelConfig(provider);
-        const model = modelRuntime.getModel(provider, modelId);
-        if (!model) return { ok: false, error: `unknown model ${provider}/${modelId}` };
-        try {
-          await modelRuntime.completeSimple(model, {
-            messages: [{ role: "user", content: "ping", timestamp: Date.now() }],
-          });
-          return { ok: true, latencyMs: Date.now() - start };
-        } catch (error) {
-          return { ok: false, error: error instanceof Error ? error.message : String(error) };
-        }
       },
       listProviders: async () =>
         modelRuntime.getProviders().map((p) => {

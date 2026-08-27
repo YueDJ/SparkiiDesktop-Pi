@@ -14,7 +14,7 @@ function makeApi(over: Record<string, unknown> = {}) {
       { id: 'ollama', name: '本地 Ollama', kind: 'custom', baseUrl: 'http://127.0.0.1:11434/v1', apiKeyAuth: false, oauthAuth: false, api: 'openai-completions' },
     ]),
     listModels: vi.fn().mockResolvedValue({ ok: true, models: ['qwen2.5', 'llama3.1'] }),
-    testModel: vi.fn().mockResolvedValue({ ok: true, latencyMs: 86 }),
+    testConnection: vi.fn().mockResolvedValue({ ok: true, latencyMs: 86 }),
     ...over,
   } as any;
 }

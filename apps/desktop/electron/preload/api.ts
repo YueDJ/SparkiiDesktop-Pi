@@ -35,8 +35,8 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
     saveSettings: (settings) => invoke('saveSettings', settings),
     getApiKey: (provider) => invoke('getApiKey', provider) as Promise<string | null>,
     listProviders: () => invoke('listProviders') as Promise<ProviderEntryInfo[]>,
-    listModels: (provider) => invoke('listModels', provider) as Promise<{ ok: boolean; models?: string[]; error?: string }>,
-    testModel: (provider, modelId) => invoke('testModel', provider, modelId) as Promise<{ ok: boolean; latencyMs?: number; error?: string }>,
+    listModels: (provider, apiKey) => invoke('listModels', provider, apiKey) as Promise<{ ok: boolean; models?: string[]; httpStatus?: number; reason?: string; error?: string }>,
+    testConnection: (provider, apiKey) => invoke('testConnection', provider, apiKey) as Promise<{ ok: boolean; latencyMs?: number; httpStatus?: number; reason?: string; error?: string }>,
     diagnostics: () => invoke('diagnostics') as Promise<{ logs: string; audit: string }>,
     on: (channel, cb) => {
       const listener = (_e: unknown, payload: unknown) => cb(payload);

@@ -13,3 +13,4 @@ out/
 *.sig
 apps/desktop/src/types/*.js
 apps/desktop/src/types/*.js.map
+/start.cmd

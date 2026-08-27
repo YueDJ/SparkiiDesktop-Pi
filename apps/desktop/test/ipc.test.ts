@@ -43,6 +43,7 @@ let dirs: string[] = [];
 afterEach(async () => {
   for (const dir of dirs) await rm(dir, { recursive: true, force: true });
   dirs = [];
+  vi.unstubAllGlobals();
 });
 
 async function makeRuntime(opts: {
@@ -61,6 +62,8 @@ async function makeRuntime(opts: {
     pool: {
       acquire: vi.fn(async () => ({ client: opts.client, supervisor: { onProposal: () => {} } })),
       release: vi.fn(async () => {}),
+      get: () => opts.client,
+      broadcast: vi.fn(async () => {}),
     },
     subject: { userId: 'tester', roles: ['admin'] },
     chatSessions: { get: () => opts.chatSession ?? null, create: vi.fn(), update: vi.fn(), delete: vi.fn() },
@@ -137,7 +140,7 @@ describe('ipc provider handlers', () => {
       await keyring.set(`apiKey:${providerId}`, key);
     });
     const client = { send: async () => ({ success: true }) };
-    await makeRuntime({ dataDir, piAgentDir, client, setKey });
+    const rt = await makeRuntime({ dataDir, piAgentDir, client, setKey });
 
     const handlers = await registeredHandlers();
     const save = handlers.get('sparkii:saveSettings');
@@ -156,6 +159,11 @@ describe('ipc provider handlers', () => {
     });
     expect(cfg.providers.deepseek).toBeUndefined();
     expect(await keyring.get('apiKey:ollama')).toBe('sk-ollama');
+    expect(rt.pool.broadcast as unknown as ReturnType<typeof vi.fn>).toHaveBeenCalledWith({
+      type: 'set_api_key',
+      provider: 'ollama',
+      apiKey: 'sk-ollama',
+    });
   });
 
   it('getApiKey returns the per-provider key and getSettings includes the active provider key', async () => {
@@ -178,6 +186,46 @@ describe('ipc provider handlers', () => {
     const settings = (await getSettings!(null)) as { activeProviderId: string; apiKey?: string };
     expect(settings.activeProviderId).toBe('deepseek');
     expect(settings.apiKey).toBe('sk-ds');
+  });
+
+  it('listModels uses the caller-provided key instead of the stored keyring key', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(
+      join(dataDir, 'settings.json'),
+      JSON.stringify({
+        activeProviderId: 'ollama',
+        providers: [
+          { id: 'ollama', name: '本地 Ollama', baseUrl: 'http://127.0.0.1:11434/v1', api: 'openai-completions' },
+        ],
+      }),
+      'utf8',
+    );
+    const client = { send: async () => ({ success: true }) };
+    const rt = await makeRuntime({ dataDir, piAgentDir, client });
+    (rt as unknown as { keyFor: (p: string) => Promise<string | null> }).keyFor = async () => 'sk-stored';
+
+    let headers: Record<string, string> | undefined;
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      headers = (init?.headers ?? {}) as Record<string, string>;
+      return {
+        status: 200,
+        ok: true,
+        text: async () => JSON.stringify({ data: [{ id: 'm1' }] }),
+      } as Response;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const handlers = await registeredHandlers();
+    const listModels = handlers.get('sparkii:listModels');
+    expect(listModels).toBeTypeOf('function');
+    const result = (await listModels!(null, 'ollama', 'sk-override')) as { ok: boolean; models?: string[] };
+
+    expect(result.ok).toBe(true);
+    expect(result.models).toEqual(['m1']);
+    expect(headers?.Authorization).toBe('Bearer sk-override');
   });
 
   it('promptSession routes to settings active provider and default model when the session has no model', async () => {

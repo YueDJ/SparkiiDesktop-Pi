@@ -10,7 +10,7 @@ import type { ModelTask } from '@sparkii/model-router';
 import type { Runtime } from './runtime.js';
 import { buildProfileSaddle } from './saddle.js';
 import { isReadOnlyBashCommand, riskOfCommand } from './general-executor.js';
-import { loadSettings } from './settings.js';
+import { loadSettings, type AppSettings } from './settings.js';
 
 const allTools = new Map<string, ToolDef>(
   [documentConnector, knowledgeConnector, reportConnector].flatMap((c) => c.tools.map((t) => [t.name, t] as const)),
@@ -67,13 +67,43 @@ function attachDiff(rt: Runtime, req: ProposalRequest & { requestId: string }): 
   return payload;
 }
 
-export async function selectModel(rt: Runtime, _task: ModelTask, sessionId: string): Promise<void> {
+export function resolveModelTarget(
+  settings: AppSettings,
+  task: ModelTask,
+): { provider: string; modelId: string } | null {
+  const provider = settings.activeProviderId ?? 'deepseek';
+  const routes = settings.routes ?? {};
+  const modelId = routes[task] ?? routes.default ?? settings.defaultModel ?? '';
+  if (!modelId) return null;
+  return { provider, modelId };
+}
+
+export async function selectModel(
+  rt: Runtime,
+  task: ModelTask,
+  sessionId: string,
+  override?: string | null,
+): Promise<void> {
   const client = rt.pool.get(sessionId);
   if (!client) throw new Error(`unknown session ${sessionId}`);
   const settings = await loadSettings(rt.dataDir);
-  const provider = settings.activeProviderId ?? 'deepseek';
-  const modelId = settings.defaultModel ?? '';
-  if (!modelId) return;
+  let provider: string;
+  let modelId: string;
+  if (override) {
+    const slash = override.indexOf('/');
+    if (slash >= 0) {
+      provider = override.slice(0, slash);
+      modelId = override.slice(slash + 1);
+    } else {
+      provider = settings.activeProviderId ?? 'deepseek';
+      modelId = override;
+    }
+  } else {
+    const target = resolveModelTarget(settings, task);
+    if (!target) return;
+    provider = target.provider;
+    modelId = target.modelId;
+  }
   const apiKey = await rt.keyFor(provider);
   if (apiKey) {
     const keyResp = await client.send({ type: 'set_api_key', provider, apiKey });

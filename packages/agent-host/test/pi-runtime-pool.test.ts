@@ -90,4 +90,18 @@ describe("PiRuntimePool", () => {
     expect(pool.get("known")).toBeTruthy();
     expect(pool.activeCount()).toBe(1);
   });
+
+  it("broadcasts a command to every live runtime process", async () => {
+    const handle = new FakeHandle();
+    const pool = new PiRuntimePool({ maxAgents: 1, makeSupervisor: () => handle });
+    await pool.acquire("a");
+    handle.ready();
+
+    await pool.broadcast({ type: "set_api_key", provider: "deepseek", apiKey: "sk-x" });
+
+    const command = handle.sent.find(
+      (e) => "command" in e && (e as { command: { type: string } }).command?.type === "set_api_key",
+    );
+    expect(command).toBeTruthy();
+  });
 });

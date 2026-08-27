@@ -29,9 +29,9 @@ export type RpcCommand =
   | { type: 'configure_session'; saddle: SessionSaddle }
   | { type: 'set_session_name'; name: string }
   | { type: 'set_api_key'; provider: string; apiKey: string }
+  | { type: 'remove_api_key'; provider: string }
   | { type: 'complete'; provider: string; modelId: string; text: string }
   | { type: 'list_models'; provider?: string }
-  | { type: 'test_connection'; provider: string; modelId: string }
   | { type: 'list_providers' };
 
 export interface RpcResponse { id?: string; type: 'response'; command: string; success: boolean; data?: unknown; error?: string }

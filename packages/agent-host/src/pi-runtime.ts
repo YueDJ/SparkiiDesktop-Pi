@@ -17,9 +17,9 @@ export interface PiRuntimeSession {
   setAutoCompaction(enabled: boolean): Promise<void>;
   setSessionName(name: string): Promise<void>;
   setApiKey(provider: string, apiKey: string): Promise<void>;
+  removeApiKey(provider: string): Promise<void>;
   complete(provider: string, modelId: string, text: string): Promise<string>;
   listModels(provider?: string): Promise<Array<{ provider: string; modelId: string }>>;
-  testConnection(provider: string, modelId: string): Promise<{ ok: boolean; latencyMs?: number; error?: string }>;
   listProviders(): Promise<PiProviderInfo[]>;
   subscribe(callback: (event: any) => void): () => void;
   getMessages(): unknown[];
@@ -125,12 +125,13 @@ async function handleCommand(host: PiRuntimeSessionHost, command: RpcCommand): P
     case "set_api_key":
       await session.setApiKey(command.provider, command.apiKey);
       return undefined;
+    case "remove_api_key":
+      await session.removeApiKey(command.provider);
+      return undefined;
     case "complete":
       return await session.complete(command.provider, command.modelId, command.text);
     case "list_models":
       return await session.listModels(command.provider);
-    case "test_connection":
-      return await session.testConnection(command.provider, command.modelId);
     case "list_providers":
       return await session.listProviders();
   }
