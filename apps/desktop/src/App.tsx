@@ -122,7 +122,7 @@ export function App() {
     }
   };
 
-  const refreshSessions = (agentId: string) => {
+  const refreshSessions = (agentId: string, activeId = activeGeneralSession) => {
     const profileId = agentId === 'contract' ? 'contract-review' : agentId;
     api.listChatSessions?.(profileId)?.then((list: any[]) => {
       const mapped: ShellSession[] = (list ?? []).map((s) => ({
@@ -130,9 +130,10 @@ export function App() {
         name: sessionDisplayName({ title: s.title, firstMessage: s.firstMessage, updatedAt: s.updatedAt }),
         state: '',
         time: s.updatedAt ? new Date(s.updatedAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '',
+        active: s.id === activeId,
       }));
       setSessions((prev) => ({ ...prev, [agentId]: mapped }));
-      const active = mapped.find((s) => s.id === activeGeneralSession);
+      const active = mapped.find((s) => s.id === activeId);
       if (active) setGeneralTitle(active.name);
     }).catch(() => {});
   };
@@ -142,12 +143,22 @@ export function App() {
       const res = await api.newChatSession?.('general');
       if (res?.sessionId) {
         setActiveGeneralSession(res.sessionId);
-        refreshSessions('general');
+        refreshSessions('general', res.sessionId);
       }
       return;
     }
     setWorkflow({ status: 'idle' });
     setState((s) => ({ ...s, documents: [] }));
+  };
+
+  const onOpenSession = (agentId: string, sessionId: string) => {
+    if (agentId !== 'general') {
+      navigate(agentId as ScreenId);
+      return;
+    }
+    setScreen('general');
+    setActiveGeneralSession(sessionId);
+    refreshSessions(agentId, sessionId);
   };
 
   const onRenameSession = (agentId: string, sessionId: string, title: string) => {
@@ -190,13 +201,6 @@ export function App() {
     contract: (
       <ContractSurface state={state} workflow={workflow} onAction={onAction} onRequestExport={() => setScreen('approvals')} />
     ),
-    general: (
-      <GeneralChatSurface
-        api={api}
-        sessionId={activeGeneralSession}
-        onNewSession={() => onNewSession('general')}
-      />
-    ),
     approvals: (
       <div>
         <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>审批中心</h3>
@@ -210,6 +214,14 @@ export function App() {
       <SettingsView api={api} />
     ),
   };
+
+  const generalSurface = (
+    <GeneralChatSurface
+      api={api}
+      sessionId={activeGeneralSession}
+      onNewSession={() => onNewSession('general')}
+    />
+  );
 
   const surfaceTitles: Partial<Record<ScreenId, string>> = {
     contract: '合同审核 · 会话#3',
@@ -231,10 +243,12 @@ export function App() {
         surfaceTitle={surfaceTitles[screen]}
         onNavigate={navigate}
         onNewSession={onNewSession}
+        onOpenSession={onOpenSession}
         onRenameSession={onRenameSession}
         onDeleteSession={onDeleteSession}
       >
-        {surfaces[screen]}
+        <div style={{ display: screen === 'general' ? 'block' : 'none' }}>{generalSurface}</div>
+        {screen !== 'general' && <div>{surfaces[screen]}</div>}
       </Shell>
       {detail && (riskInfo(detail.risk).level === 'high'
         ? <ApprovalModal proposal={detail} onDecide={decide} onClose={() => setDetail(null)} />

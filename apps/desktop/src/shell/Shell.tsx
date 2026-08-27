@@ -34,6 +34,7 @@ export interface ShellProps {
   surfaceActions?: ReactNode;
   onNavigate(screen: ScreenId): void;
   onNewSession(agentId: string): void;
+  onOpenSession?(agentId: string, sessionId: string): void;
   onRenameSession?(agentId: string, sessionId: string, title: string): void;
   onDeleteSession?(agentId: string, sessionId: string): void;
   children?: ReactNode;
@@ -50,7 +51,7 @@ const TITLES: Partial<Record<ScreenId, string>> = {
 type DrawerKind = 'session' | 'queue' | 'account' | null;
 
 export function Shell(props: ShellProps) {
-  const { active, agents, sessions, pendingApprovals, statusText, userName = 'admin', userRole = '审核员', surfaceTitle, surfaceActions, onNavigate, onNewSession, children } = props;
+  const { active, agents, sessions, pendingApprovals, statusText, userName = 'admin', userRole = '审核员', surfaceTitle, surfaceActions, onNavigate, onNewSession, onOpenSession, children } = props;
   const [drawer, setDrawer] = useState<DrawerKind>(null);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -166,7 +167,7 @@ export function Shell(props: ShellProps) {
           <button type="button" className="btn primary block" onClick={() => onNewSession(active)}>+ 新会话</button>
           <div className="appr-list">
             {activeSessions.map((s) => (
-              <div key={s.id} className="item" onClick={() => onNavigate(active)}>
+              <div key={s.id} className="item" onClick={() => (onOpenSession ? onOpenSession(active, s.id) : onNavigate(active))}>
                 <span className={`dot ${s.active ? 'dot-run' : 'dot-idle'}`} />
                 {renamingId === s.id ? (
                   <input

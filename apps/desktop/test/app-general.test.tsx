@@ -75,4 +75,46 @@ describe('App general agent', () => {
     await waitFor(() => expect(api.deleteChatSession).toHaveBeenCalledWith('g1'));
     await screen.findByText('新建会话');
   });
+
+  it('opens a selected session from the chat history list', async () => {
+    const { api } = makeApi();
+    api.listChatSessions.mockResolvedValue([
+      { id: 'g1', profileId: 'general', title: '旧会话', workspaceKind: 'auto', workspacePath: 'C:/ws/old', model: null, piSessionFile: null, createdAt: 0, updatedAt: 1 },
+      { id: 'g2', profileId: 'general', title: '另一个会话', workspaceKind: 'auto', workspacePath: 'C:/ws/new', model: null, piSessionFile: null, createdAt: 0, updatedAt: 2 },
+    ]);
+    api.openChatSession.mockImplementation(async (sessionId: string) => ({
+      messages: sessionId === 'g1' ? [{ role: 'user', text: '历史消息' }] : [],
+    }));
+
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+    fireEvent.click(screen.getByTestId('agent-card-general'));
+    await screen.findByText('新建会话');
+    fireEvent.click(screen.getByTitle('会话'));
+    fireEvent.click(await screen.findByText('旧会话'));
+
+    await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
+    expect(screen.getByText('历史消息')).toBeTruthy();
+  });
+
+  it('keeps a streaming reply when leaving and returning to general chat', async () => {
+    const { api, channels } = makeApi();
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+    fireEvent.click(screen.getByTestId('agent-card-general'));
+    await screen.findByText('新建会话');
+    fireEvent.click(screen.getByText('新建会话'));
+    await waitFor(() => expect(api.newChatSession).toHaveBeenCalledWith('general'));
+    await screen.findByTestId('composer-input');
+    fireEvent.change(screen.getByTestId('composer-input'), { target: { value: '你好' } });
+    fireEvent.keyDown(screen.getByTestId('composer-input'), { key: 'Enter', ctrlKey: true });
+    await waitFor(() => expect(api.promptSession).toHaveBeenCalledWith('g1', '你好'));
+    act(() => channels['chat-event']({ sessionId: 'g1', type: 'message', role: 'assistant', delta: '在的' }));
+    expect(screen.getByText(/在的/)).toBeTruthy();
+
+    fireEvent.click(screen.getByText('Sparkii'));
+    fireEvent.click(screen.getByTestId('agent-card-general'));
+    await screen.findByTestId('composer-input');
+    expect(screen.getByText(/在的/)).toBeTruthy();
+  });
 });

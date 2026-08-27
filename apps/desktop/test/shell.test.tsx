@@ -107,4 +107,17 @@ describe('Shell', () => {
     fireEvent.click(screen.getByTitle('删除 g1'));
     expect(props.onDeleteSession).toHaveBeenCalledWith('general', 'g1');
   });
+
+  it('opens a selected session through onOpenSession instead of re-navigating', () => {
+    const props = makeProps();
+    props.active = 'general';
+    props.agents = [...props.agents, { id: 'general', name: '通用智能体', status: 'idle' }];
+    props.sessions = { ...props.sessions, general: [{ id: 'g1', name: '旧会话', state: '', time: '今天' }] };
+    props.onOpenSession = vi.fn();
+    render(<Shell {...props} />);
+    fireEvent.click(screen.getByTitle('会话'));
+    fireEvent.click(screen.getByText('旧会话'));
+    expect(props.onOpenSession).toHaveBeenCalledWith('general', 'g1');
+    expect(props.onNavigate).not.toHaveBeenCalled();
+  });
 });
