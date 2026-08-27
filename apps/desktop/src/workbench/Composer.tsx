@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { thinkingLevelLabel } from './thinking-levels.js';
 
 export interface ComposerProps {
   busy: boolean;
@@ -6,6 +7,9 @@ export interface ComposerProps {
   defaultModel: string | null;
   model: string | null;
   onModelChange(model: string | null): void;
+  thinkingLevels: string[];
+  thinkingLevel: string | null;
+  onThinkingLevelChange(level: string | null): void;
   workspacePath: string | null;
   workspaceKind: 'auto' | 'user';
   onChooseWorkspace(): void;
@@ -44,6 +48,18 @@ export function Composer(props: ComposerProps) {
         >
           <option value="">默认（跟随配置）{props.defaultModel ? ` · ${props.defaultModel}` : ''}</option>
           {props.models.map((m) => <option key={m} value={m}>{m}</option>)}
+        </select>
+        <select
+          className="model-select"
+          data-testid="thinking-select"
+          value={props.thinkingLevel ?? ''}
+          onChange={(e) => props.onThinkingLevelChange(e.target.value || null)}
+        >
+          <option value="">默认（跟随配置）</option>
+          {props.thinkingLevels.map((l) => <option key={l} value={l}>{thinkingLevelLabel(l)}</option>)}
+          {props.thinkingLevel && !props.thinkingLevels.includes(props.thinkingLevel) && (
+            <option value={props.thinkingLevel}>{thinkingLevelLabel(props.thinkingLevel)}</option>
+          )}
         </select>
       </div>
       <div className="composer-row">

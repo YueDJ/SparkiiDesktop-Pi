@@ -11,6 +11,9 @@ function makeProps(over: Partial<ComposerProps> = {}): ComposerProps {
     defaultModel: 'deepseek-v4-flash',
     model: null,
     onModelChange: vi.fn(),
+    thinkingLevels: ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'],
+    thinkingLevel: null,
+    onThinkingLevelChange: vi.fn(),
     workspacePath: 'C:/ws/SparkiiXyZ9202608251710',
     workspaceKind: 'auto',
     onChooseWorkspace: vi.fn(),
@@ -47,6 +50,15 @@ describe('Composer', () => {
     expect(select.value).toBe('');
     fireEvent.change(select, { target: { value: 'deepseek-v4-pro' } });
     expect(props.onModelChange).toHaveBeenCalledWith('deepseek-v4-pro');
+  });
+
+  it('thinking select emits level changes', () => {
+    const props = makeProps();
+    render(<Composer {...props} />);
+    const select = screen.getByTestId('thinking-select') as HTMLSelectElement;
+    expect(select.value).toBe('');
+    fireEvent.change(select, { target: { value: 'high' } });
+    expect(props.onThinkingLevelChange).toHaveBeenCalledWith('high');
   });
 
   it('workspace row shows path, choose and clear actions', () => {

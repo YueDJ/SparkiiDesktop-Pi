@@ -32,12 +32,15 @@ export type RpcCommand =
   | { type: 'remove_api_key'; provider: string }
   | { type: 'complete'; provider: string; modelId: string; text: string }
   | { type: 'list_models'; provider?: string }
+  | { type: 'set_thinking_level'; level: string }
+  | { type: 'get_thinking_level' }
+  | { type: 'list_thinking_levels' }
   | { type: 'list_providers' };
 
 export interface RpcResponse { id?: string; type: 'response'; command: string; success: boolean; data?: unknown; error?: string }
 
 export type NormalizedEvent =
-  | { type: 'message'; role: 'user' | 'assistant'; delta?: string; text?: string }
+  | { type: 'message'; role: 'user' | 'assistant'; delta?: string; text?: string; thinkingDelta?: string; thinking?: string }
   | { type: 'tool_call'; toolName: string; input: unknown }
   | { type: 'tool_result'; toolName: string; result: unknown }
   | { type: 'agent_start' } | { type: 'agent_end' }

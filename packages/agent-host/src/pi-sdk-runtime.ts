@@ -154,6 +154,11 @@ export async function createPiSdkSessionHost(
       removeApiKey: async (provider) => {
         await modelRuntime.removeRuntimeApiKey(provider);
       },
+      setThinkingLevel: (level) => {
+        session.setThinkingLevel(level);
+      },
+      getThinkingLevel: () => session.thinkingLevel,
+      getAvailableThinkingLevels: () => session.getAvailableThinkingLevels(),
       complete: async (provider, modelId, text) => {
         await syncModelConfig(provider);
         const model = modelRuntime.getModel(provider, modelId);

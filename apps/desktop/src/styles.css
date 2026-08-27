@@ -266,5 +266,10 @@ table.tbl th { background: var(--field-bg, #F8FAFE); color: var(--color-textSeco
 .ws-path { flex: 1; font-size: 12px; color: #475569; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .model-select { font-size: 12px; padding: 4px 8px; border-radius: 8px; border: 1px solid #E2E8F0; background: #fff; }
 
+/* thinking process */
+.msg-assistant .thinking { margin: 0 0 8px; padding: 6px 10px; border: 1px solid #E2E8F0; border-radius: 8px; background: #F8FAFC; font-size: 13px; color: #64748B; }
+.msg-assistant .thinking summary { cursor: pointer; user-select: none; font-weight: 500; }
+.msg-assistant .thinking-body { margin-top: 6px; padding-top: 6px; border-top: 1px dashed #E2E8F0; }
+
 /* 会话抽屉行内操作 */
 .item .icon-btn.sm { width: 22px; height: 22px; font-size: 12px; }

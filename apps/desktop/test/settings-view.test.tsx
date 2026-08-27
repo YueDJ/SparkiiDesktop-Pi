@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { SettingsView } from '../src/shell/SettingsView.js';
 
 afterEach(cleanup);
@@ -52,5 +52,16 @@ describe('SettingsView provider rendering', () => {
 
     expect(await screen.findByDisplayValue('sk-ollama')).toBeTruthy();
     expect(getApiKey).toHaveBeenCalledWith('ollama');
+  });
+
+  it('saves the default thinking level', async () => {
+    const saveSettings = vi.fn().mockResolvedValue({});
+    render(<SettingsView api={makeApi({ saveSettings })} />);
+    await screen.findByText('已加载本机配置');
+    fireEvent.change(screen.getByTestId('default-thinking-select'), { target: { value: 'high' } });
+    fireEvent.click(screen.getByText('保存'));
+    await waitFor(() => expect(saveSettings).toHaveBeenCalled());
+    const arg = saveSettings.mock.calls[0][0] as Record<string, unknown>;
+    expect(arg.defaultThinkingLevel).toBe('high');
   });
 });

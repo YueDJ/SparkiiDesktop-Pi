@@ -7,6 +7,20 @@ describe('normalizeEvent', () => {
     const e = normalizeEvent({ type: 'message_update', role: 'assistant', textDelta: 'hi' });
     expect(e).toEqual({ type: 'message', role: 'assistant', delta: 'hi' });
   });
+  it('maps thinking deltas and extracts thinking from message_end', () => {
+    expect(normalizeEvent({ type: 'message_update', assistantMessageEvent: { type: 'thinking_delta', delta: '让我想想' } }))
+      .toEqual({ type: 'message', role: 'assistant', thinkingDelta: '让我想想' });
+    expect(normalizeEvent({
+      type: 'message_end',
+      message: {
+        role: 'assistant',
+        content: [
+          { type: 'thinking', thinking: '先分析' },
+          { type: 'text', text: '答案是 42' },
+        ],
+      },
+    })).toEqual({ type: 'message', role: 'assistant', text: '答案是 42', thinking: '先分析' });
+  });
   it('keeps unknown events as unknown', () => {
     expect(normalizeEvent({ type: 'future_thing', x: 1 }).type).toBe('unknown');
   });

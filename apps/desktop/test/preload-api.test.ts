@@ -5,7 +5,7 @@ describe('sparkii api shape', () => {
   it('exposes the expected method names', () => {
     const names = [
       'getLocalSubject', 'getProfile', 'chooseDocument', 'runWorkflow', 'prompt', 'listPendingApprovals', 'decideApproval', 'queryAudit', 'getSettings', 'saveSettings', 'getApiKey', 'listModels', 'testConnection', 'listProviders', 'diagnostics', 'on',
-      'newChatSession', 'openChatSession', 'listChatSessions', 'getChatSession', 'getChatMessages', 'promptSession', 'abortChat', 'setChatTitle', 'setChatModel', 'setChatWorkspace', 'chooseWorkspace', 'getModelOptions', 'deleteChatSession', 'listAgents',
+      'newChatSession', 'openChatSession', 'listChatSessions', 'getChatSession', 'getChatMessages', 'promptSession', 'abortChat', 'setChatTitle', 'setChatModel', 'setChatThinkingLevel', 'setChatWorkspace', 'chooseWorkspace', 'getModelOptions', 'listThinkingLevels', 'deleteChatSession', 'listAgents',
     ];
     const api = buildApi({ invoke: () => Promise.resolve(null), on: () => () => {}, removeListener: () => {} } as any);
     expect(Object.keys(api).sort()).toEqual([...names].sort());
@@ -23,11 +23,13 @@ describe('sparkii api shape', () => {
     void api.newChatSession('general');
     void api.listChatSessions();
     void api.getModelOptions();
+    void api.setChatThinkingLevel('s1', 'high');
+    void api.listThinkingLevels('deepseek', 'deepseek-v4-pro');
     void api.listAgents();
     void api.promptSession('s1', 'hi');
     expect(calls).toEqual([
       'sparkii:newChatSession', 'sparkii:listChatSessions', 'sparkii:getModelOptions',
-      'sparkii:listAgents', 'sparkii:promptSession',
+      'sparkii:setChatThinkingLevel', 'sparkii:listThinkingLevels', 'sparkii:listAgents', 'sparkii:promptSession',
     ]);
   });
 });

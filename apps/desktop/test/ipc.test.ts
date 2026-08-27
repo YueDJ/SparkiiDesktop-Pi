@@ -292,4 +292,83 @@ describe('ipc provider handlers', () => {
     await selectModel(rt, 'chat', 's1');
     expect(sent).toContainEqual({ type: 'set_model', provider: 'zai', modelId: 'glm-5' });
   });
+
+  it('listThinkingLevels probes a model and returns available thinking levels', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({ activeProviderId: 'deepseek' }), 'utf8');
+    const sent: any[] = [];
+    const client = {
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'list_thinking_levels') {
+          return { success: true, data: ['off', 'medium', 'high'] };
+        }
+        return { success: true };
+      },
+    };
+    await makeRuntime({ dataDir, piAgentDir, client });
+
+    const handlers = await registeredHandlers();
+    const listThinkingLevels = handlers.get('sparkii:listThinkingLevels');
+    const result = await listThinkingLevels!(null, 'deepseek', 'deepseek-v4-pro');
+    expect(result).toEqual(['off', 'medium', 'high']);
+    expect(sent).toContainEqual({ type: 'set_model', provider: 'deepseek', modelId: 'deepseek-v4-pro' });
+    expect(sent).toContainEqual({ type: 'list_thinking_levels' });
+  });
+
+  it('setChatThinkingLevel stores the session level and remembers it per model', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({ activeProviderId: 'deepseek' }), 'utf8');
+    const client = { send: async () => ({ success: true }) };
+    const update = vi.fn();
+    const rt = await makeRuntime({ dataDir, piAgentDir, client, chatSession: { profileId: 'contract-review', model: 'deepseek-v4-pro' } });
+    (rt as unknown as { chatSessions: { update: (id: string, p: unknown) => void } }).chatSessions.update = update;
+
+    const handlers = await registeredHandlers();
+    const setChatThinkingLevel = handlers.get('sparkii:setChatThinkingLevel');
+    await setChatThinkingLevel!(null, 's1', 'high');
+
+    expect(update).toHaveBeenCalledWith('s1', { thinkingLevel: 'high' });
+    const cfg = JSON.parse(await readFile(join(dataDir, 'settings.json'), 'utf8'));
+    expect(cfg.modelThinkingLevels).toEqual({ 'deepseek/deepseek-v4-pro': 'high' });
+  });
+
+  it('promptSession applies the session thinking level before prompt', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({ activeProviderId: 'deepseek', defaultModel: 'deepseek-v4-pro' }), 'utf8');
+    const sent: any[] = [];
+    const client = {
+      onEvent: (cb: (event: any) => void) => {
+        queueMicrotask(() => cb({ type: 'agent_end' }));
+        return () => {};
+      },
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') return { success: true, data: { sessionFile: null } };
+        return { success: true };
+      },
+    };
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'contract-review', model: 'deepseek-v4-pro', thinkingLevel: 'high' },
+    });
+
+    const handlers = await registeredHandlers();
+    const promptSession = handlers.get('sparkii:promptSession');
+    await promptSession!(null, 's1', '你好');
+
+    expect(sent).toContainEqual({ type: 'set_model', provider: 'deepseek', modelId: 'deepseek-v4-pro' });
+    expect(sent).toContainEqual({ type: 'set_thinking_level', level: 'high' });
+  });
 });

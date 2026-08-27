@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { listPiSessions, readPiSessionMessages, type PiProviderInfo, type SessionSaddle } from '@sparkii/agent-host';
-import { createBroker, resolveModelTarget, runWorkflow, selectModel } from './workflow.js';
+import { applyThinkingLevel, createBroker, resolveModelTarget, resolveSessionModel, resolveThinkingLevel, runWorkflow, selectModel } from './workflow.js';
 import { resolveExportPath } from './export-path.js';
 import { loadSettings, saveSettings } from './settings.js';
 import { buildProviderList } from './provider-catalog.js';
@@ -191,10 +191,12 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId }));
     const rec = rt.chatSessions.get(sessionId);
 
-    if (rec?.model) {
-      await selectModel(rt, 'chat', sessionId, rec.model);
-    } else {
-      await selectModel(rt, 'chat', sessionId);
+    const target = rec?.model
+      ? await selectModel(rt, 'chat', sessionId, rec.model)
+      : await selectModel(rt, 'chat', sessionId);
+    if (target) {
+      const settings = await loadSettings(rt.dataDir);
+      await applyThinkingLevel(slot.client, resolveThinkingLevel(settings, rec, target));
     }
     const win = getWindow();
     await new Promise<void>((resolve, reject) => {
@@ -251,6 +253,32 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     return { ok: true };
   });
 
+  ipcMain.handle('sparkii:setChatThinkingLevel', async (_e, sessionId: string, level: string | null) => {
+    const rec = rt.chatSessions.get(sessionId);
+    if (!rec) throw new Error('session not found');
+    rt.chatSessions.update(sessionId, { thinkingLevel: level });
+    if (level) {
+      const settings = await loadSettings(rt.dataDir);
+      const target = resolveSessionModel(settings, rec);
+      if (target) {
+        const next = { ...(settings.modelThinkingLevels ?? {}), [`${target.provider}/${target.modelId}`]: level };
+        await saveSettings(rt.dataDir, { ...settings, modelThinkingLevels: next });
+      }
+    }
+    return { ok: true };
+  });
+
+  ipcMain.handle('sparkii:listThinkingLevels', async (_e, providerId: string, modelId: string) => {
+    return withProbeSlot(async (client) => {
+      await injectProbeKey(client, providerId);
+      const modelResp = await client.send({ type: 'set_model', provider: providerId, modelId });
+      if (!modelResp.success) throw new Error(modelResp.error ?? 'set_model failed');
+      const resp = await client.send({ type: 'list_thinking_levels' });
+      if (!resp.success) throw new Error(resp.error ?? 'list_thinking_levels failed');
+      return (resp.data ?? []) as string[];
+    });
+  });
+
   ipcMain.handle('sparkii:setChatWorkspace', async (_e, sessionId: string, path: string | null) => {
     const rec = rt.chatSessions.get(sessionId);
     if (!rec) throw new Error('session not found');
@@ -285,7 +313,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       if (!resp.success) return [] as string[];
       return ((resp.data ?? []) as Array<{ modelId: string }>).map((m) => m.modelId);
     }).catch(() => [] as string[]);
-    return { defaultModel: settings.defaultModel ?? null, models };
+    return { defaultModel: settings.defaultModel ?? null, models, provider: providerId };
   });
 
   ipcMain.handle('sparkii:deleteChatSession', async (_e, sessionId: string) => {
