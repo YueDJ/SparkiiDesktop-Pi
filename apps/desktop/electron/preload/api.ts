@@ -1,4 +1,4 @@
-import type { SparkiiApi } from './api-types.js';
+import type { ProviderEntryInfo, SparkiiApi } from './api-types.js';
 
 export type IpcLike = {
   invoke(channel: string, ...args: unknown[]): Promise<unknown>;
@@ -33,6 +33,7 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
     queryAudit: (filter) => invoke('queryAudit', filter) as Promise<unknown[]>,
     getSettings: () => invoke('getSettings'),
     saveSettings: (settings) => invoke('saveSettings', settings),
+    listProviders: () => invoke('listProviders') as Promise<ProviderEntryInfo[]>,
     listModels: (provider) => invoke('listModels', provider) as Promise<{ ok: boolean; models?: string[]; error?: string }>,
     testModel: (provider, modelId) => invoke('testModel', provider, modelId) as Promise<{ ok: boolean; latencyMs?: number; error?: string }>,
     diagnostics: () => invoke('diagnostics') as Promise<{ logs: string; audit: string }>,

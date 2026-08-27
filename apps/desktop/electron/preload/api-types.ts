@@ -1,3 +1,13 @@
+export interface ProviderEntryInfo {
+  id: string;
+  name: string;
+  kind: 'builtin' | 'custom';
+  baseUrl: string;
+  apiKeyAuth: boolean;
+  oauthAuth: boolean;
+  api?: 'openai-completions' | 'anthropic-messages';
+}
+
 export interface SparkiiApi {
   getLocalSubject(): Promise<{ userId: string; roles: string[] }>;
   getProfile(): Promise<unknown>;
@@ -23,6 +33,7 @@ export interface SparkiiApi {
   queryAudit(filter: object): Promise<unknown[]>;
   getSettings(): Promise<unknown>;
   saveSettings(settings: unknown): Promise<unknown>;
+  listProviders(): Promise<ProviderEntryInfo[]>;
   listModels(provider: string): Promise<{ ok: boolean; models?: string[]; error?: string }>;
   testModel(provider: string, modelId: string): Promise<{ ok: boolean; latencyMs?: number; error?: string }>;
   diagnostics(): Promise<{ logs: string; audit: string }>;
