@@ -75,7 +75,6 @@ export async function createPiSdkSessionHost(
     authPath: join(agentDir, "auth.json"),
     modelsPath: join(agentDir, "models.json"),
   });
-  const apiKey = process.env.SPARKII_PI_API_KEY;
 
   // 每次真正用模型前，让本进程重新读一次 models.json（不联网），
   // 使 baseUrl/服务商等 provider 配置变更能在下一条消息时热生效（与 key 的懒加载口径一致）。
@@ -140,7 +139,6 @@ export async function createPiSdkSessionHost(
       abort: () => session.abort(),
       setModel: async (provider, modelId) => {
         await syncModelConfig(provider);
-        if (apiKey) await modelRuntime.setRuntimeApiKey(provider, apiKey);
         const model = modelRuntime.getModel(provider, modelId);
         if (!model) throw new Error(`unknown model ${provider}/${modelId}`);
         await session.setModel(model);
