@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Menu, MenuItem } from '../primitives/Menu.js';
 
 export interface ModelEffortProps {
@@ -28,6 +28,7 @@ function levelLabel(level: string): string {
 type Submenu = 'root' | 'model' | 'thinking';
 
 export function ModelEffortControl(props: ModelEffortProps) {
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const [open, setOpen] = useState(false);
   const [sub, setSub] = useState<Submenu>('root');
   const currentModel = props.model ?? props.defaultModel ?? '默认';
@@ -35,12 +36,12 @@ export function ModelEffortControl(props: ModelEffortProps) {
   const close = () => { setOpen(false); setSub('root'); };
 
   return (
-    <div className="ui-model-effort">
+    <div ref={wrapperRef} className="ui-model-effort">
       <button type="button" className="ui-btn ui-btn--md ui-model-effort-trigger" data-testid="model-effort-trigger" onClick={() => setOpen((v) => !v)}>
         {currentModel} · {currentLevel}
       </button>
       {open && (
-        <Menu open onClose={close}>
+        <Menu open onClose={close} containerRef={wrapperRef}>
           {sub === 'root' ? (
             <>
               <MenuItem label="模型" hint={currentModel} onSelect={() => setSub('model')} />
