@@ -2,12 +2,14 @@ import { ipcMain, dialog, app, type BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { listPiSessions, readPiSessionMessages, type SessionSaddle } from '@sparkii/agent-host';
+import { listPiSessions, readPiSessionMessages, type PiProviderInfo, type SessionSaddle } from '@sparkii/agent-host';
 import { createBroker, runWorkflow, selectModel } from './workflow.js';
 import { resolveExportPath } from './export-path.js';
 import { loadSettings, saveSettings } from './settings.js';
+import { buildProviderList } from './provider-catalog.js';
 import { autoWorkspacePath } from './workspace.js';
 import { buildProfileSaddle } from './saddle.js';
+import { writePiModelsConfig } from './pi-model-config.js';
 import type { Runtime } from './runtime.js';
 import type { Logger } from './logger.js';
 
@@ -345,12 +347,22 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   });
   ipcMain.handle('sparkii:queryAudit', (_e, filter: object) => rt.audit.query(filter));
   ipcMain.handle('sparkii:getSettings', () => loadSettings(rt.dataDir, rt.keyring));
+  ipcMain.handle('sparkii:listProviders', async () => {
+    const settings = await loadSettings(rt.dataDir, rt.keyring);
+    const runtimeProviders = await withProbeSlot(async (client) => {
+      const resp = await client.send({ type: 'list_providers' });
+      if (!resp.success) throw new Error(resp.error ?? 'list_providers failed');
+      return (resp.data ?? []) as PiProviderInfo[];
+    });
+    return buildProviderList(runtimeProviders, settings.providers ?? []);
+  });
   ipcMain.handle('sparkii:saveSettings', async (_e, settings: unknown) => {
     const s = settings as Parameters<typeof saveSettings>[1];
     await saveSettings(rt.dataDir, s, rt.keyring);
     if (s.activeProviderId && s.apiKey) {
       await rt.setKey(s.activeProviderId, s.apiKey);
     }
+    await writePiModelsConfig(rt.piAgentDir, s.providers ?? []);
     return { ok: true };
   });
   ipcMain.handle('sparkii:listModels', async (_e, providerId: string) => {
