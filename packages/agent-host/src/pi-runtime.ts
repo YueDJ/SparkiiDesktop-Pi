@@ -1,5 +1,5 @@
 import { normalizeEvent } from "./rpc-client.js";
-import type { RpcCommand, RpcResponse, SessionSaddle } from "./types.js";
+import type { PiProviderInfo, RpcCommand, RpcResponse, SessionSaddle } from "./types.js";
 import {
   eventEnvelope,
   readyEnvelope,
@@ -20,6 +20,7 @@ export interface PiRuntimeSession {
   complete(provider: string, modelId: string, text: string): Promise<string>;
   listModels(provider?: string): Promise<Array<{ provider: string; modelId: string }>>;
   testConnection(provider: string, modelId: string): Promise<{ ok: boolean; latencyMs?: number; error?: string }>;
+  listProviders(): Promise<PiProviderInfo[]>;
   subscribe(callback: (event: any) => void): () => void;
   getMessages(): unknown[];
   getState(): Record<string, unknown>;
@@ -130,5 +131,7 @@ async function handleCommand(host: PiRuntimeSessionHost, command: RpcCommand): P
       return await session.listModels(command.provider);
     case "test_connection":
       return await session.testConnection(command.provider, command.modelId);
+    case "list_providers":
+      return await session.listProviders();
   }
 }

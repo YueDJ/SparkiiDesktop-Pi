@@ -203,6 +203,17 @@ export async function createPiSdkSessionHost(
           return { ok: false, error: error instanceof Error ? error.message : String(error) };
         }
       },
+      listProviders: async () =>
+        modelRuntime.getProviders().map((p) => {
+          const provider = p as unknown as { id: string; name: string; baseUrl?: string; auth?: { apiKey?: unknown; oauth?: unknown } };
+          return {
+            id: provider.id,
+            name: provider.name,
+            baseUrl: provider.baseUrl ?? '',
+            apiKeyAuth: Boolean(provider.auth?.apiKey),
+            oauthAuth: Boolean(provider.auth?.oauth),
+          };
+        }),
       subscribe: (callback) => session.subscribe(callback),
       getMessages: () => session.messages,
       getState: () => ({
