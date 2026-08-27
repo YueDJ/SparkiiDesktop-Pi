@@ -1,10 +1,11 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Keyring } from './keyring.js';
+import type { CustomProvider } from './provider-catalog.js';
 
 export interface AppSettings {
-  provider?: string;
-  baseUrl?: string;
+  activeProviderId?: string;
+  providers?: CustomProvider[];
   defaultModel?: string;
   routes?: Record<string, string>;
   maxAgents?: number;
@@ -13,7 +14,10 @@ export interface AppSettings {
   language?: string;
 }
 
-const API_KEY_NAME = 'apiKey';
+export type { CustomProvider } from './provider-catalog.js';
+
+const LEGACY_API_KEY_NAME = 'apiKey';
+const apiKeyName = (providerId: string): string => `apiKey:${providerId}`;
 
 export async function loadSettings(
   dataDir: string,
@@ -25,7 +29,7 @@ export async function loadSettings(
   } catch {
     // 首次运行无文件
   }
-  const apiKey = keyring ? await keyring.get(API_KEY_NAME) : undefined;
+  const apiKey = keyring ? await keyring.get(LEGACY_API_KEY_NAME) : undefined;
   return { ...base, ...(apiKey ? { apiKey } : {}) };
 }
 
@@ -38,6 +42,14 @@ export async function saveSettings(
   await mkdir(dataDir, { recursive: true });
   await writeFile(join(dataDir, 'settings.json'), JSON.stringify(rest, null, 2), 'utf8');
   if (keyring) {
-    await keyring.set(API_KEY_NAME, apiKey ?? '');
+    await keyring.set(LEGACY_API_KEY_NAME, apiKey ?? '');
   }
+}
+
+export async function loadApiKey(keyring: Keyring, providerId: string): Promise<string | null> {
+  return keyring.get(apiKeyName(providerId));
+}
+
+export async function saveApiKey(keyring: Keyring, providerId: string, key: string): Promise<void> {
+  await keyring.set(apiKeyName(providerId), key);
 }
