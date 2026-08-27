@@ -14,3 +14,6 @@ export * from './primitives/EmptyState.js';
 export * from './primitives/Toolbar.js';
 export * from './primitives/Divider.js';
 export * from './primitives/Toast.js';
+export * from './primitives/Drawer.js';
+export * from './primitives/Modal.js';
+export * from './primitives/Menu.js';
