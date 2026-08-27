@@ -158,6 +158,28 @@ describe('ipc provider handlers', () => {
     expect(await keyring.get('apiKey:ollama')).toBe('sk-ollama');
   });
 
+  it('getApiKey returns the per-provider key and getSettings includes the active provider key', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({ activeProviderId: 'deepseek' }), 'utf8');
+    const client = { send: async () => ({ success: true }) };
+    const rt = await makeRuntime({ dataDir, piAgentDir, client });
+    (rt as unknown as { keyFor: (p: string) => Promise<string | null> }).keyFor = async (p: string) =>
+      p === 'deepseek' ? 'sk-ds' : null;
+
+    const handlers = await registeredHandlers();
+    const getApiKey = handlers.get('sparkii:getApiKey');
+    expect(await getApiKey!(null, 'deepseek')).toBe('sk-ds');
+    expect(await getApiKey!(null, 'zai')).toBeNull();
+
+    const getSettings = handlers.get('sparkii:getSettings');
+    const settings = (await getSettings!(null)) as { activeProviderId: string; apiKey?: string };
+    expect(settings.activeProviderId).toBe('deepseek');
+    expect(settings.apiKey).toBe('sk-ds');
+  });
+
   it('promptSession routes to settings active provider and default model when the session has no model', async () => {
     const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
     dirs.push(dataDir);

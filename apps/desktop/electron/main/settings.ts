@@ -16,34 +16,22 @@ export interface AppSettings {
 
 export type { CustomProvider } from './provider-catalog.js';
 
-const LEGACY_API_KEY_NAME = 'apiKey';
 const apiKeyName = (providerId: string): string => `apiKey:${providerId}`;
 
-export async function loadSettings(
-  dataDir: string,
-  keyring?: Keyring,
-): Promise<AppSettings & { apiKey?: string }> {
-  let base: AppSettings = {};
+export async function loadSettings(dataDir: string): Promise<AppSettings> {
   try {
-    base = JSON.parse(await readFile(join(dataDir, 'settings.json'), 'utf8')) as AppSettings;
+    return JSON.parse(await readFile(join(dataDir, 'settings.json'), 'utf8')) as AppSettings;
   } catch {
-    // 首次运行无文件
+    return {};
   }
-  const apiKey = keyring ? await keyring.get(LEGACY_API_KEY_NAME) : undefined;
-  return { ...base, ...(apiKey ? { apiKey } : {}) };
 }
 
 export async function saveSettings(
   dataDir: string,
-  settings: AppSettings & { apiKey?: string },
-  keyring?: Keyring,
+  settings: AppSettings,
 ): Promise<void> {
-  const { apiKey, ...rest } = settings;
   await mkdir(dataDir, { recursive: true });
-  await writeFile(join(dataDir, 'settings.json'), JSON.stringify(rest, null, 2), 'utf8');
-  if (keyring) {
-    await keyring.set(LEGACY_API_KEY_NAME, apiKey ?? '');
-  }
+  await writeFile(join(dataDir, 'settings.json'), JSON.stringify(settings, null, 2), 'utf8');
 }
 
 export async function loadApiKey(keyring: Keyring, providerId: string): Promise<string | null> {

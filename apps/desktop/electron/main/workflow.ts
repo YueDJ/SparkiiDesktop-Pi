@@ -70,7 +70,7 @@ function attachDiff(rt: Runtime, req: ProposalRequest & { requestId: string }): 
 export async function selectModel(rt: Runtime, _task: ModelTask, sessionId: string): Promise<void> {
   const client = rt.pool.get(sessionId);
   if (!client) throw new Error(`unknown session ${sessionId}`);
-  const settings = await loadSettings(rt.dataDir, rt.keyring);
+  const settings = await loadSettings(rt.dataDir);
   const provider = settings.activeProviderId ?? 'deepseek';
   const modelId = settings.defaultModel ?? '';
   if (!modelId) return;

@@ -22,6 +22,7 @@ interface ModelState { label: string; status: string; cls: '' | 'ok' | 'fail' | 
 export interface SettingsApi {
   getSettings?(): Promise<unknown>;
   saveSettings?(settings: unknown): Promise<unknown>;
+  getApiKey?(provider: string): Promise<string | null>;
   listProviders?(): Promise<ProviderEntry[]>;
   listModels?(provider: string): Promise<{ ok: boolean; models?: string[]; error?: string }>;
   testModel?(provider: string, modelId: string): Promise<{ ok: boolean; latencyMs?: number; error?: string }>;
@@ -84,6 +85,8 @@ export function SettingsView(props: SettingsViewProps) {
       setCustomBaseUrl(next.baseUrl);
       setCustomApi(next.api ?? 'openai-completions');
     }
+    setApiKey('');
+    api?.getApiKey?.(id).then((k) => setApiKey(k ?? '')).catch(() => setApiKey(''));
     setModels({});
     setInfo(`当前节点:${id} · 未拉取`);
   };

@@ -46,20 +46,6 @@ describe('settings store', () => {
     expect(loaded.maxAgents).toBe(2);
   });
 
-  it('stores apiKey in keyring, not in settings.json', async () => {
-    const d = await makeDir();
-    const keyring = new Keyring(join(d, 'keyring'), fakeSafeStorage());
-    await saveSettings(
-      d,
-      { provider: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', apiKey: 'sk-secret' } as any,
-      keyring,
-    );
-    const raw = await readFile(join(d, 'settings.json'), 'utf8');
-    expect(raw).not.toContain('sk-secret');
-    const loaded = await loadSettings(d, keyring) as any;
-    expect(loaded.apiKey).toBe('sk-secret');
-  });
-
   it('persists activeProviderId and providers without writing keys to settings.json', async () => {
     const d = await makeDir();
     await saveSettings(
@@ -70,7 +56,6 @@ describe('settings store', () => {
           { id: 'ollama', name: '本地 Ollama', baseUrl: 'http://127.0.0.1:11434/v1', api: 'openai-completions' },
           { id: 'claude-compat', name: 'Claude 兼容', baseUrl: 'https://example.com', api: 'anthropic-messages' },
         ],
-        apiKey: 'sk-secret',
       },
     );
     const raw = await readFile(join(d, 'settings.json'), 'utf8');

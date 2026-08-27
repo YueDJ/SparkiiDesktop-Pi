@@ -33,6 +33,7 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
     queryAudit: (filter) => invoke('queryAudit', filter) as Promise<unknown[]>,
     getSettings: () => invoke('getSettings'),
     saveSettings: (settings) => invoke('saveSettings', settings),
+    getApiKey: (provider) => invoke('getApiKey', provider) as Promise<string | null>,
     listProviders: () => invoke('listProviders') as Promise<ProviderEntryInfo[]>,
     listModels: (provider) => invoke('listModels', provider) as Promise<{ ok: boolean; models?: string[]; error?: string }>,
     testModel: (provider, modelId) => invoke('testModel', provider, modelId) as Promise<{ ok: boolean; latencyMs?: number; error?: string }>,

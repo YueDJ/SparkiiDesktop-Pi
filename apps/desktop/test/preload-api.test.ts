@@ -4,7 +4,7 @@ import { buildApi } from '../electron/preload/api.js';
 describe('sparkii api shape', () => {
   it('exposes the expected method names', () => {
     const names = [
-      'getLocalSubject', 'getProfile', 'chooseDocument', 'runWorkflow', 'prompt', 'listPendingApprovals', 'decideApproval', 'queryAudit', 'getSettings', 'saveSettings', 'listModels', 'testModel', 'listProviders', 'diagnostics', 'on',
+      'getLocalSubject', 'getProfile', 'chooseDocument', 'runWorkflow', 'prompt', 'listPendingApprovals', 'decideApproval', 'queryAudit', 'getSettings', 'saveSettings', 'getApiKey', 'listModels', 'testModel', 'listProviders', 'diagnostics', 'on',
       'newChatSession', 'openChatSession', 'listChatSessions', 'getChatSession', 'getChatMessages', 'promptSession', 'abortChat', 'setChatTitle', 'setChatModel', 'setChatWorkspace', 'chooseWorkspace', 'getModelOptions', 'deleteChatSession', 'listAgents',
     ];
     const api = buildApi({ invoke: () => Promise.resolve(null), on: () => () => {}, removeListener: () => {} } as any);

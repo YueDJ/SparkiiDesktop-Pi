@@ -188,7 +188,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       const [provider, modelId] = rec.model.split('/');
       await selectModel(provider, modelId);
     } else {
-      const settings = await loadSettings(rt.dataDir, rt.keyring);
+      const settings = await loadSettings(rt.dataDir);
       const provider = settings.activeProviderId ?? 'deepseek';
       const modelId = settings.defaultModel ?? '';
       if (provider && modelId) await selectModel(provider, modelId);
@@ -274,7 +274,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   });
 
   ipcMain.handle('sparkii:getModelOptions', async () => {
-    const settings = await loadSettings(rt.dataDir, rt.keyring);
+    const settings = await loadSettings(rt.dataDir);
     const providerId = settings.activeProviderId ?? 'deepseek';
     const models = await withProbeSlot(async (client) => {
       await injectProbeKey(client, providerId);
@@ -347,9 +347,14 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     return out;
   });
   ipcMain.handle('sparkii:queryAudit', (_e, filter: object) => rt.audit.query(filter));
-  ipcMain.handle('sparkii:getSettings', () => loadSettings(rt.dataDir, rt.keyring));
+  ipcMain.handle('sparkii:getSettings', async () => {
+    const settings = await loadSettings(rt.dataDir);
+    const apiKey = settings.activeProviderId ? await rt.keyFor(settings.activeProviderId) : null;
+    return { ...settings, ...(apiKey ? { apiKey } : {}) };
+  });
+  ipcMain.handle('sparkii:getApiKey', (_e, providerId: string) => rt.keyFor(providerId));
   ipcMain.handle('sparkii:listProviders', async () => {
-    const settings = await loadSettings(rt.dataDir, rt.keyring);
+    const settings = await loadSettings(rt.dataDir);
     const runtimeProviders = await withProbeSlot(async (client) => {
       const resp = await client.send({ type: 'list_providers' });
       if (!resp.success) throw new Error(resp.error ?? 'list_providers failed');
@@ -358,10 +363,11 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     return buildProviderList(runtimeProviders, settings.providers ?? []);
   });
   ipcMain.handle('sparkii:saveSettings', async (_e, settings: unknown) => {
-    const s = settings as Parameters<typeof saveSettings>[1];
-    await saveSettings(rt.dataDir, s, rt.keyring);
-    if (s.activeProviderId && s.apiKey) {
-      await rt.setKey(s.activeProviderId, s.apiKey);
+    const s = settings as Parameters<typeof saveSettings>[1] & { apiKey?: string };
+    const { apiKey, ...rest } = s;
+    await saveSettings(rt.dataDir, rest);
+    if (s.activeProviderId) {
+      await rt.setKey(s.activeProviderId, apiKey ?? '');
     }
     await writePiModelsConfig(rt.piAgentDir, s.providers ?? []);
     return { ok: true };
