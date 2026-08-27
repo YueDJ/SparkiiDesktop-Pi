@@ -6,7 +6,7 @@ import { Markdown } from '../workbench/Markdown.js';
 import { THINKING_LEVELS } from '../workbench/thinking-levels.js';
 
 export type ChatEntry =
-  | { kind: 'message'; id: string; role: 'user' | 'assistant'; text: string; streaming: boolean }
+  | { kind: 'message'; id: string; role: 'user' | 'assistant'; text: string; thinking?: string; streaming: boolean }
   | { kind: 'tool'; id: string; toolName: string; input: unknown; result?: unknown; awaitingApproval?: boolean };
 
 function findLastUnresolvedTool(entries: ChatEntry[], toolName: string): number {
@@ -18,23 +18,32 @@ function findLastUnresolvedTool(entries: ChatEntry[], toolName: string): number 
 }
 
 export function applyChatEvent(entries: ChatEntry[], ev: unknown): ChatEntry[] {
-  const raw = ev as { type?: string; role?: string; delta?: string; text?: string; toolName?: string; input?: unknown; result?: unknown };
+  const raw = ev as { type?: string; role?: string; delta?: string; text?: string; thinkingDelta?: string; thinking?: string; toolName?: string; input?: unknown; result?: unknown };
   if (raw.type === 'message') {
     if (raw.role === 'user') return entries;
     const last = entries[entries.length - 1];
-    if (typeof raw.delta === 'string') {
-      if (last?.kind === 'message' && last.role === 'assistant' && last.streaming) {
-        return [...entries.slice(0, -1), { ...last, text: last.text + raw.delta }];
-      }
-      return [...entries, { kind: 'message', id: `m${Date.now()}-${Math.random()}`, role: 'assistant', text: raw.delta, streaming: true }];
+    const isActive = last?.kind === 'message' && last.role === 'assistant' && last.streaming;
+    const base = isActive
+      ? (last as Extract<ChatEntry, { kind: 'message' }>)
+      : { kind: 'message' as const, id: `m${Date.now()}-${Math.random()}`, role: 'assistant' as const, text: '', streaming: true };
+
+    if (typeof raw.thinkingDelta === 'string') {
+      const next = { ...base, thinking: (base.thinking ?? '') + raw.thinkingDelta };
+      return isActive ? [...entries.slice(0, -1), next] : [...entries, next];
     }
-    if (typeof raw.text === 'string') {
-      if (last?.kind === 'message' && last.role === 'assistant' && last.streaming) {
-        return [...entries.slice(0, -1), { ...last, text: raw.text, streaming: false }];
-      }
-      return [...entries, { kind: 'message', id: `m${Date.now()}-${Math.random()}`, role: 'assistant', text: raw.text, streaming: false }];
-    }
-    return entries;
+
+    const finalThinking = typeof raw.thinking === 'string' ? raw.thinking : undefined;
+    const finalText = typeof raw.text === 'string' ? raw.text : undefined;
+    const delta = typeof raw.delta === 'string' ? raw.delta : undefined;
+    if (finalThinking === undefined && finalText === undefined && delta === undefined) return entries;
+
+    const next = {
+      ...base,
+      thinking: finalThinking !== undefined ? finalThinking : base.thinking,
+      text: finalText !== undefined ? finalText : delta !== undefined ? base.text + delta : base.text,
+      streaming: delta !== undefined,
+    };
+    return isActive ? [...entries.slice(0, -1), next] : [...entries, next];
   }
   if (raw.type === 'tool_call') {
     return [...entries, { kind: 'tool', id: `t${Date.now()}-${Math.random()}`, toolName: String(raw.toolName ?? ''), input: raw.input }];
@@ -56,12 +65,16 @@ export function normalizeMessages(messages: unknown[]): ChatEntry[] {
   for (const m of messages) {
     const rec = m as { role?: string; text?: string; content?: unknown };
     const role = rec.role === 'user' ? 'user' : rec.role === 'assistant' ? 'assistant' : null;
+    const blocks = Array.isArray(rec.content)
+      ? (rec.content as Array<{ type?: string; text?: string; thinking?: string }>)
+      : [];
     const text = typeof rec.text === 'string'
       ? rec.text
-      : Array.isArray(rec.content)
-        ? rec.content.map((c) => (c as { text?: string })?.text ?? '').join('')
-        : '';
-    if (role && text) out.push({ kind: 'message', id: `m${n++}`, role, text, streaming: false });
+      : blocks.filter((c) => c.type === 'text').map((c) => c.text ?? '').join('');
+    const thinking = blocks.filter((c) => c.type === 'thinking').map((c) => c.thinking ?? '').join('') || undefined;
+    if (role && (text || thinking)) {
+      out.push({ kind: 'message', id: `m${n++}`, role, text, thinking, streaming: false });
+    }
   }
   return out;
 }
@@ -206,6 +219,12 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
         {entries.map((e) => (
           e.kind === 'message' ? (
             <div key={e.id} className={`msg msg-${e.role}`}>
+              {e.thinking ? (
+                <details className="thinking">
+                  <summary>思考过程</summary>
+                  <div className="thinking-body"><Markdown text={e.thinking} /></div>
+                </details>
+              ) : null}
               {e.role === 'assistant' ? <Markdown text={e.text} /> : <span className="msg-text">{e.text}</span>}
               {e.streaming && <span className="caret" aria-hidden="true" />}
             </div>

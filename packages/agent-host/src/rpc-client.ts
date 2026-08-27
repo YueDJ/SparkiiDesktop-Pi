@@ -8,14 +8,19 @@ export function normalizeEvent(raw: any): NormalizedEvent {
     case 'message_update': {
       const aev = raw.assistantMessageEvent;
       if (aev?.type === 'text_delta') return { type: 'message', role: 'assistant', delta: aev.delta };
+      if (aev?.type === 'thinking_delta') return { type: 'message', role: 'assistant', thinkingDelta: aev.delta };
       if (raw.role != null) return { type: 'message', role: raw.role, delta: raw.textDelta ?? raw.text };
       return { type: 'unknown', raw };
     }
     case 'message_end': {
       const role = raw.message?.role ?? raw.role;
       const content = raw.message?.content ?? raw.content;
-      const text = Array.isArray(content) ? (content.map((c: any) => c?.text ?? '').join('') || undefined) : raw.text;
-      return { type: 'message', role, text };
+      const blocks = Array.isArray(content) ? content as Array<{ type?: string; text?: string; thinking?: string }> : [];
+      const text = Array.isArray(content)
+        ? (blocks.filter((c) => c.type === 'text').map((c) => c.text ?? '').join('') || undefined)
+        : raw.text;
+      const thinking = blocks.filter((c) => c.type === 'thinking').map((c) => c.thinking ?? '').join('') || undefined;
+      return { type: 'message', role, text, thinking };
     }
     case 'tool_call': return { type: 'tool_call', toolName: raw.toolName, input: raw.input };
     case 'tool_result': return { type: 'tool_result', toolName: raw.toolName, result: raw.result };

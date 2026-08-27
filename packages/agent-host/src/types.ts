@@ -40,7 +40,7 @@ export type RpcCommand =
 export interface RpcResponse { id?: string; type: 'response'; command: string; success: boolean; data?: unknown; error?: string }
 
 export type NormalizedEvent =
-  | { type: 'message'; role: 'user' | 'assistant'; delta?: string; text?: string }
+  | { type: 'message'; role: 'user' | 'assistant'; delta?: string; text?: string; thinkingDelta?: string; thinking?: string }
   | { type: 'tool_call'; toolName: string; input: unknown }
   | { type: 'tool_result'; toolName: string; result: unknown }
   | { type: 'agent_start' } | { type: 'agent_end' }

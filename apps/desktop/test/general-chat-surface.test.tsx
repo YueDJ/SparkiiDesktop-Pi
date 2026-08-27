@@ -50,6 +50,20 @@ describe('normalizeMessages', () => {
     const out = normalizeMessages([{ role: 'user', text: 'a' }, { role: 'assistant', content: [{ type: 'text', text: 'b' }] }]);
     expect(out.map((e) => (e.kind === 'message' ? e.role : null))).toEqual(['user', 'assistant']);
   });
+  it('extracts thinking content from assistant messages', () => {
+    const out = normalizeMessages([{ role: 'assistant', content: [{ type: 'thinking', thinking: '想想' }, { type: 'text', text: '回答' }] }]);
+    expect(out).toEqual([{ kind: 'message', id: 'm0', role: 'assistant', text: '回答', thinking: '想想', streaming: false }]);
+  });
+});
+
+describe('applyChatEvent thinking', () => {
+  it('streams thinking deltas then finalizes thinking and text', () => {
+    let entries: ChatEntry[] = [];
+    entries = applyChatEvent(entries, { type: 'message', role: 'assistant', thinkingDelta: '想' });
+    entries = applyChatEvent(entries, { type: 'message', role: 'assistant', thinkingDelta: '考' });
+    entries = applyChatEvent(entries, { type: 'message', role: 'assistant', text: '答案', thinking: '思考' });
+    expect(entries).toEqual([{ kind: 'message', id: entries[0].id, role: 'assistant', text: '答案', thinking: '思考', streaming: false }]);
+  });
 });
 
 describe('GeneralChatSurface', () => {
@@ -88,5 +102,15 @@ describe('GeneralChatSurface', () => {
     await screen.findByText('hi');
     fireEvent.change(screen.getByTestId('thinking-select'), { target: { value: 'high' } });
     expect(api.setChatThinkingLevel).toHaveBeenCalledWith('s1', 'high');
+  });
+
+  it('shows the thinking process while streaming', async () => {
+    const { api, channels } = makeApi();
+    render(<GeneralChatSurface api={api} sessionId="s1" onNewSession={vi.fn()} />);
+    await screen.findByText('hi');
+    act(() => channels['chat-event']({ sessionId: 's1', type: 'message', role: 'assistant', thinkingDelta: '让我想想' }));
+    act(() => channels['chat-event']({ sessionId: 's1', type: 'message', role: 'assistant', text: '答案是 42', thinking: '让我想想' }));
+    expect(screen.getByText('让我想想')).toBeTruthy();
+    expect(screen.getByText(/答案是 42/)).toBeTruthy();
   });
 });
