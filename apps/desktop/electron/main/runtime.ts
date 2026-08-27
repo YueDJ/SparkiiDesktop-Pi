@@ -12,6 +12,7 @@ import { createUtilityHostHandle, createForkHostHandle } from "../pi-runtime/tra
 import { registerConnectorHandlers } from "./connector-registry.js";
 import { ChatSessionStore } from "./chat-session-store.js";
 import { Keyring } from "./keyring.js";
+import { loadApiKey, saveApiKey } from "./settings.js";
 import { registerGeneralExecutor } from "./general-executor.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -29,6 +30,30 @@ export interface Runtime {
   pool: PiRuntimePool; subject: Subject;
   chatSessions: ChatSessionStore; dataDir: string; keyring: Keyring; piAgentDir: string;
   profileOf(id: string): ProfileRuntime;
+  keyFor(providerId: string): Promise<string | null>;
+  setKey(providerId: string, key: string): Promise<void>;
+}
+
+export interface KeyStore {
+  keyFor(providerId: string): Promise<string | null>;
+  setKey(providerId: string, key: string): Promise<void>;
+}
+
+export function createKeyStore(keyring: Keyring): KeyStore {
+  const keyCache = new Map<string, string>();
+  return {
+    async keyFor(providerId: string): Promise<string | null> {
+      const cached = keyCache.get(providerId);
+      if (cached !== undefined) return cached;
+      const key = await loadApiKey(keyring, providerId);
+      if (key !== null) keyCache.set(providerId, key);
+      return key;
+    },
+    async setKey(providerId: string, key: string): Promise<void> {
+      await saveApiKey(keyring, providerId, key);
+      keyCache.set(providerId, key);
+    },
+  };
 }
 
 function resolvePiRuntimeEntry(): string {
@@ -71,11 +96,7 @@ export async function assemble(opts: {
   const contract = profiles.get("contract-review");
   if (contract) await knowledgeConnector.init({ corpus: contract.profile.agent.knowledge });
   const entry = resolvePiRuntimeEntry();
-  const apiKey = await keyring.get("apiKey");
-  const env = {
-    PI_CODING_AGENT_DIR: piAgentDir,
-    ...(apiKey ? { SPARKII_PI_API_KEY: apiKey } : {}),
-  };
+  const env = { PI_CODING_AGENT_DIR: piAgentDir };
   const pool = new PiRuntimePool({
     maxAgents: Number(process.env.SPARKII_MAX_AGENTS ?? 4),
     makeSupervisor: () =>
@@ -83,6 +104,7 @@ export async function assemble(opts: {
         ? createForkHostHandle(entry, env)
         : createUtilityHostHandle(entry, env),
   });
+  const keyStore = createKeyStore(keyring);
   return {
     profiles, gate, executor, audit, pool,
     subject: { userId: userInfo().username, roles: ["admin", "reviewer"] },
@@ -92,5 +114,7 @@ export async function assemble(opts: {
       if (!pr) throw new Error(`unknown profile ${id}`);
       return pr;
     },
+    keyFor: keyStore.keyFor,
+    setKey: keyStore.setKey,
   };
 }
