@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { THINKING_LEVELS, thinkingLevelLabel } from '../workbench/thinking-levels.js';
 
 export interface ProviderEntry {
   id: string;
@@ -60,6 +61,7 @@ export function SettingsView(props: SettingsViewProps) {
   const [customApi, setCustomApi] = useState<'openai-completions' | 'anthropic-messages'>('openai-completions');
   const [apiKey, setApiKey] = useState('');
   const [defaultModel, setDefaultModel] = useState('');
+  const [defaultThinkingLevel, setDefaultThinkingLevel] = useState('');
   const [routes, setRoutes] = useState<Record<string, string>>({});
   const [models, setModels] = useState<string[]>([]);
   const [info, setInfo] = useState('尚未连接 IPC');
@@ -79,6 +81,7 @@ export function SettingsView(props: SettingsViewProps) {
         setCustomProviders(Array.isArray(s.providers) ? (s.providers as CustomProvider[]) : []);
         if (typeof s.apiKey === 'string') setApiKey(s.apiKey);
         if (typeof s.defaultModel === 'string') setDefaultModel(s.defaultModel);
+        if (typeof s.defaultThinkingLevel === 'string') setDefaultThinkingLevel(s.defaultThinkingLevel);
         if (s.routes && typeof s.routes === 'object') setRoutes(s.routes as Record<string, string>);
         setInfo('已加载本机配置');
       })
@@ -135,7 +138,7 @@ export function SettingsView(props: SettingsViewProps) {
     const nextCustom = active?.kind === 'custom'
       ? [...customProviders.filter((p) => p.id !== providerId), { id: providerId, name: active.name, baseUrl: customBaseUrl, api: customApi }]
       : customProviders;
-    await api.saveSettings({ activeProviderId: providerId, providers: nextCustom, defaultModel, routes, apiKey });
+    await api.saveSettings({ activeProviderId: providerId, providers: nextCustom, defaultModel, defaultThinkingLevel, routes, apiKey });
     setCustomProviders(nextCustom);
     setInfo('设置已保存');
   };
@@ -179,6 +182,13 @@ export function SettingsView(props: SettingsViewProps) {
                 <option value="">未设置（使用路由“默认”）</option>
                 {defaultModel && !models.includes(defaultModel) && <option value={defaultModel}>{defaultModel}</option>}
                 {models.map((m) => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+            <div className="set-row">
+              <span>默认思考强度</span>
+              <select className="set-field" data-testid="default-thinking-select" value={defaultThinkingLevel} onChange={(e) => setDefaultThinkingLevel(e.target.value)}>
+                <option value="">跟随 SDK 默认（中）</option>
+                {THINKING_LEVELS.map((l) => <option key={l} value={l}>{thinkingLevelLabel(l)}</option>)}
               </select>
             </div>
             <div className="set-row">
