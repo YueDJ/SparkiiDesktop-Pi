@@ -1,0 +1,14 @@
+{
+  "name": "@sparkii/ui",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": { "typecheck": "tsc --noEmit -p tsconfig.json" },
+  "dependencies": { "@sparkii/theme": "workspace:*" },
+  "peerDependencies": { "react": "^19.2.8", "react-dom": "^19.2.8" },
+  "devDependencies": {
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "typescript": "^6.0.3"
+  }
+}

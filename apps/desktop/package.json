@@ -24,6 +24,7 @@
     "@sparkii/identity": "workspace:*",
     "@sparkii/model-router": "workspace:*",
     "@sparkii/theme": "workspace:*",
+    "@sparkii/ui": "workspace:*",
     "better-sqlite3": "^13.0.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
