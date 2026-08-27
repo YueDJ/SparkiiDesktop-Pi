@@ -156,13 +156,13 @@ export function SettingsView(props: SettingsViewProps) {
             <div className="muted" style={{ marginBottom: 6 }}>配置模型端点与任务路由;数据默认不出本机</div>
             <div className="set-row">
               <span>服务商</span>
-              <select className="set-field" value={providerId} onChange={(e) => switchProvider(e.target.value)}>
+              <select className="set-field" data-testid="provider-select" value={providerId} onChange={(e) => switchProvider(e.target.value)}>
                 {entries.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
               </select>
             </div>
             {active?.kind === 'custom' && (
               <>
-                <div className="set-row"><span>接口地址(Base URL)</span><input className="set-field" value={customBaseUrl} onChange={(e) => setCustomBaseUrl(e.target.value)} /></div>
+                <div className="set-row"><span>接口地址(Base URL)</span><input className="set-field" data-testid="base-url-input" value={customBaseUrl} onChange={(e) => setCustomBaseUrl(e.target.value)} /></div>
                 <div className="set-row">
                   <span>API 类型</span>
                   <select className="set-field" value={customApi} onChange={(e) => setCustomApi(e.target.value as 'openai-completions' | 'anthropic-messages')}>
@@ -172,7 +172,7 @@ export function SettingsView(props: SettingsViewProps) {
                 </div>
               </>
             )}
-            <div className="set-row"><span>API Key</span><input className="set-field" type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="本地端点可留空" /></div>
+            <div className="set-row"><span>API Key</span><input className="set-field" data-testid="api-key-input" type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="本地端点可留空" /></div>
             <div className="set-row"><span>默认模型</span><input className="set-field" value={defaultModel} onChange={(e) => setDefaultModel(e.target.value)} placeholder="拉取模型后选择" /></div>
             <div className="set-row">
               <span>任务路由(按任务选模型)</span>
