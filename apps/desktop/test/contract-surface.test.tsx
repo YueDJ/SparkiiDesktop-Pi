@@ -54,8 +54,9 @@ describe('ContractSurface', () => {
   });
 
   it('marks the active workflow step', () => {
-    renderSurface({ status: 'running', step: 'compare' });
-    const stepEl = screen.getByText('比对').closest('.step');
+    const { container } = renderSurface({ status: 'running', step: 'compare' });
+    expect(container.querySelector('.ui-workflow-steps')).toBeTruthy();
+    const stepEl = screen.getByText('比对').closest('.ui-workflow-step');
     expect(stepEl?.getAttribute('data-state')).toBe('active');
   });
 });

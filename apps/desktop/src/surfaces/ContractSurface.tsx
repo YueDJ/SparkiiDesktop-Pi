@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Button, Card, RiskBadge, Tabs, WorkflowSteps, type WorkflowStep } from '@sparkii/ui';
 import { widgetRegistry } from '../composer/registry.js';
 import { WorkflowStatus, type WorkflowStatusState } from '../workbench/WorkflowStatus.js';
 import { formatReport, parseRiskFindings, stepStatus } from './contract.js';
@@ -16,7 +17,11 @@ export function ContractSurface(props: ContractSurfaceProps) {
   const FileUpload = widgetRegistry['file-upload'];
   const ActionButton = widgetRegistry['action-button'];
 
-  const steps = stepStatus(workflow);
+  const steps: WorkflowStep[] = stepStatus(workflow).map((s) => ({
+    id: s.id,
+    label: s.label,
+    state: s.state === 'pending' ? 'idle' : s.state,
+  }));
   const rawCompare = (state.workflow as Record<string, unknown> | undefined)?.['result'] as Record<string, unknown> | undefined;
   const findings = parseRiskFindings(rawCompare?.['compare']);
   const report = formatReport(rawCompare?.['report']);
@@ -26,86 +31,74 @@ export function ContractSurface(props: ContractSurfaceProps) {
   return (
     <div>
       <WorkflowStatus state={workflow} />
-      <div className="steps">
-        {steps.map((s) => (
-          <span key={s.id} className={`step ${s.state}`} data-state={s.state}>
-            <span className="n">{s.state === 'done' ? '✓' : s.id === 'upload' ? '1' : '•'}</span>{s.label}
-            {s.id !== steps[steps.length - 1].id && <span className="sep">→</span>}
-          </span>
-        ))}
-      </div>
+      <WorkflowSteps steps={steps} />
 
       {workflow.status === 'idle' && (
-        <div className="card" style={{ marginBottom: 14 }}>
-          <h3 style={{ margin: '0 0 10px', fontSize: 14 }}>上传合同并开始审核</h3>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <Card className="contract-idle-card">
+          <h3 className="contract-card-title">上传合同并开始审核</h3>
+          <div className="contract-actions">
             <FileUpload id="upload" bind="documents" state={state} onAction={onAction} />
             <ActionButton id="review" action="run-workflow:contract-review" state={state} onAction={onAction} />
           </div>
-        </div>
+        </Card>
       )}
 
       <div className="split-pane">
-        <div className="card" style={{ padding: 0 }}>
-          <div className="tabs" style={{ padding: '0 8px' }}>
-            <button type="button" className={`tab ${tab === 'report' ? 'on' : ''}`} onClick={() => setTab('report')}>报告</button>
-            <button type="button" className={`tab ${tab === 'original' ? 'on' : ''}`} onClick={() => setTab('original')}>原文</button>
-          </div>
+        <Card className="contract-pane">
+          <Tabs tabs={[{ id: 'report', label: '报告' }, { id: 'original', label: '原文' }]} active={tab} onChange={(id) => setTab(id as 'report' | 'original')} />
           {tab === 'report' ? (
-            <div style={{ padding: '4px 18px 16px' }}>
+            <div className="contract-pane-body">
               {report ? (
                 <>
                   <b>{report.title}</b>
-                  <div style={{ height: 8 }} />
+                  <div className="contract-gap" />
                   {report.blocks.map((b, i) => (
-                    <div key={i} style={{ marginBottom: 10 }}>
-                      {b.heading && <b style={{ display: 'block', marginBottom: 4 }}>{b.heading}</b>}
-                      <div className="muted" style={{ whiteSpace: 'pre-wrap' }}>{b.body}</div>
+                    <div key={i} className="contract-block">
+                      {b.heading && <b className="contract-block-heading">{b.heading}</b>}
+                      <div className="ui-muted contract-pre-wrap">{b.body}</div>
                     </div>
                   ))}
                 </>
               ) : (
-                <div className="muted" style={{ padding: '12px 0' }}>报告将在审核完成后生成</div>
+                <div className="ui-muted contract-pad">报告将在审核完成后生成</div>
               )}
             </div>
           ) : (
-            <div style={{ padding: '4px 18px 16px' }}>
+            <div className="contract-pane-body">
               {docPath ? (
                 <>
-                  <div className="muted" style={{ marginBottom: 8 }}>{docPath}</div>
-                  <div className="card" style={{ padding: '18px', textAlign: 'center' }}>原文预览将在后续版本提供</div>
+                  <div className="ui-muted contract-mb-sm">{docPath}</div>
+                  <Card className="contract-placeholder">原文预览将在后续版本提供</Card>
                 </>
               ) : (
-                <div className="muted" style={{ padding: '12px 0' }}>尚未选择合同文件</div>
+                <div className="ui-muted contract-pad">尚未选择合同文件</div>
               )}
             </div>
           )}
-        </div>
+        </Card>
 
-        <div className="card" style={{ padding: 0, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderBottom: '1px solid var(--color-border, #EAF0F6)' }}>
+        <Card className="contract-risk-pane">
+          <div className="contract-risk-head">
             <b>风险发现</b>
-            <button type="button" className="btn primary sm" onClick={onRequestExport}>导出报告 · 需审批</button>
+            <Button variant="primary" size="sm" onClick={onRequestExport}>导出报告 · 需审批</Button>
           </div>
-          <div style={{ padding: '12px 14px' }}>
+          <div className="contract-risk-body">
             {findings.length === 0 ? (
-              <div className="muted">运行审核后,风险发现会显示在这里</div>
+              <div className="ui-muted">运行审核后,风险发现会显示在这里</div>
             ) : (
               findings.map((f) => (
-                <div key={f.id} className="item" style={{ border: '1px solid var(--color-border, #EAF0F6)', borderRadius: 10, marginBottom: 8, padding: '9px 8px' }}>
-                  <span className={`risk-b risk-${f.level}`}>
-                    {f.level === 'high' ? '高风险' : f.level === 'mid' ? '中风险' : '低风险'}
-                  </span>
+                <div key={f.id} className="contract-finding">
+                  <RiskBadge risk={f.level === 'high' ? '高风险' : f.level === 'mid' ? '中风险' : '低风险'} />
                   <span>{f.title}</span>
-                  {f.advice && <span className="muted" style={{ marginLeft: 'auto' }}>{f.advice}</span>}
+                  {f.advice && <span className="ui-muted contract-advice">{f.advice}</span>}
                 </div>
               ))
             )}
           </div>
-          <div style={{ marginTop: 'auto', padding: '10px 14px', borderTop: '1px dashed var(--color-border, #EAF0F6)', fontSize: 12, color: 'var(--color-textMuted, #94A3B8)' }}>
+          <div className="contract-risk-footer">
             {workflow.status === 'done' ? '已审计 ✓ · 导出需经审批' : '活动:等待开始…'}
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );
