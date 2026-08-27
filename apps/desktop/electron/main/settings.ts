@@ -8,6 +8,8 @@ export interface AppSettings {
   providers?: CustomProvider[];
   defaultModel?: string;
   routes?: Record<string, string>;
+  defaultThinkingLevel?: string;
+  modelThinkingLevels?: Record<string, string>;
   maxAgents?: number;
   approvalTimeoutMs?: number;
   theme?: 'light' | 'dark';

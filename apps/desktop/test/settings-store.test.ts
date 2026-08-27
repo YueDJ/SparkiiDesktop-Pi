@@ -78,4 +78,15 @@ describe('settings store', () => {
     expect(await loadApiKey(keyring, 'deepseek')).toBe('sk-deepseek');
     expect(await loadApiKey(keyring, 'ollama')).toBeNull();
   });
+
+  it('roundtrips thinking level defaults', async () => {
+    const d = await makeDir();
+    await saveSettings(d, {
+      defaultThinkingLevel: 'high',
+      modelThinkingLevels: { 'deepseek/deepseek-v4-pro': 'max' },
+    });
+    const loaded = await loadSettings(d);
+    expect(loaded.defaultThinkingLevel).toBe('high');
+    expect(loaded.modelThinkingLevels).toEqual({ 'deepseek/deepseek-v4-pro': 'max' });
+  });
 });
