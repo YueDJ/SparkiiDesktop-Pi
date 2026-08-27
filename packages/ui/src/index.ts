@@ -17,3 +17,4 @@ export * from './primitives/Toast.js';
 export * from './primitives/Drawer.js';
 export * from './primitives/Modal.js';
 export * from './primitives/Menu.js';
+export * from './icons/index.js';
