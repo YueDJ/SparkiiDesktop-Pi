@@ -95,6 +95,7 @@ createProvider({
 ## 七、已记录 TODO（后续阶段）
 
 - OpenAI / Anthropic 的 OAuth 登录（第一期不做）。
+- 性能优化（后续）：key 与 provider 配置改为「主进程内存缓存 + 保存时失效/广播」，避免每次用前都读 keyring（含解密）和 refresh models.json（open + parse）；内置 provider 因无覆盖值可跳过 models.json 重读。
 
 ## 八、待定 / 实现前需核对
 
