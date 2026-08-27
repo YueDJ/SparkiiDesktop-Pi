@@ -27,8 +27,8 @@ export function ChatComposer({ busy, workspacePath, workspaceKind, onChooseWorks
         <div className="ui-composer-workspace">
           <span>工作区</span>
           <span className="ui-composer-path" data-testid="workspace-path" title={workspacePath ?? ''}>{workspacePath ?? '（首次写操作时生成）'}</span>
-          <Button size="sm" onClick={onChooseWorkspace}>选择文件夹</Button>
-          {workspaceKind === 'user' && <Button size="sm" data-testid="workspace-clear" onClick={onClearWorkspace}>清除</Button>}
+          <Button onClick={onChooseWorkspace}>选择文件夹</Button>
+          {workspaceKind === 'user' && <Button data-testid="workspace-clear" onClick={onClearWorkspace}>清除</Button>}
         </div>
         <ModelEffortControl {...modelProps} />
       </div>

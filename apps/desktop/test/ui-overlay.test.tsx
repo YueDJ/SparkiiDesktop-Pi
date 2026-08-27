@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { Drawer, Modal, Menu, MenuItem } from '@sparkii/ui';
+import { Drawer, Menu, MenuItem } from '@sparkii/ui';
 
 describe('ui overlays and menu', () => {
   it('drawer closes on backdrop and close button', () => {

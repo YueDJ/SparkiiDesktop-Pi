@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import { RiskBadge, ApprovalItem, SettingsRow, SettingsLayout } from '@sparkii/ui';
+import { RiskBadge, ApprovalItem, SettingsLayout } from '@sparkii/ui';
 
 afterEach(cleanup);
 
