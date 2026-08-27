@@ -26,12 +26,13 @@
 
 1. Pi SDK 是唯一事实来源：provider 的 `baseUrl / auth / models` 全由 Pi SDK 管理，我们不维护一张并行的 provider 表，也不发明自己的格式。
 2. 内置 provider：不覆盖 URL、前端完全不展示 URL，只填 API key；URL / 认证 / 模型目录来自 SDK 内置目录。
-3. 内置展示清单：OpenAI、Anthropic、DeepSeek + Pi 里所有国产 provider（通义千问 Qwen、智谱 GLM / Z.ai、Kimi / 月之暗面、MiniMax、小米 MiMo 等，全部放）；不放 Groq、xAI、Google。Pi 分开列的 provider 就分开列、不去重 / 合并（`minimax` 与 `minimax-cn` 是两个独立 provider）。
-4. 自定义 provider：URL 写进 `models.json`（Pi 自己的配置文件）、API key 走 `setRuntimeApiKey`；URL / API 类型 / 认证方式可定义、可修改。
-5. API key 的存储与更新：
-   - 持久化：存我们加密的 `keyring`（Electron `safeStorage`，Windows 走 DPAPI）。
-   - 改 key 三步闭环：写 keyring（持久化）→ 对在跑的每个 Pi 进程各调一次 SDK 的 `setRuntimeApiKey`（热更新）→ 之后新 fork 的进程在启动时注入新 key。
-   - 没改 key 时：key 常驻各进程内存，不做任何读取 / 注入。
+3. 内置展示清单：OpenAI、Anthropic、DeepSeek + Pi 里所有国产 provider（通义千问 Qwen、智谱 GLM / Z.ai、Kimi / 月之暗面、MiniMax、小米 MiMo、蚂蚁 Ling 等，全部放）；不放 Groq、xAI、Google。Pi 分开列的 provider 就分开列、不去重 / 合并（`minimax` 与 `minimax-cn` 是两个独立 provider）。
+4. 自定义 provider：URL 写进 `models.json`（Pi 自己的配置文件）、API key 走 `setRuntimeApiKey`；URL / API 类型 / 认证方式可定义、可修改。API 类型为 `openai-completions`（OpenAI 兼容）与 `anthropic-messages`（Anthropic 兼容）两种；本地模型（vLLM、Ollama）是 OpenAI 兼容的本地端点，作为自定义 provider 的一种。
+5. API key 的存储与更新（每个 provider 独立一个 key）：
+   - 持久化：存我们加密的 `keyring`（Electron `safeStorage`，Windows 走 DPAPI），每个 provider 一个条目，name = `apiKey:<providerId>`。
+   - `Keyring` 类不变（name→value）；新增 `loadApiKey(providerId)` / `saveApiKey(providerId, key)` 辅助函数。
+   - 主进程维护 `Map<providerId, key>` 内存缓存：首次用读一次并缓存，之后走缓存；改 key 时写 keyring + 更新缓存。
+   - 改 key 生命周期：写 keyring(`apiKey:<id>`) → 更新缓存 → 该 provider 下次被用前从缓存 `setRuntimeApiKey` 注入（可选：同时广播给在跑的 slot）。
    - `setRuntimeApiKey` 是 Pi SDK 原生方法（`ModelRuntime.setRuntimeApiKey`），不是我们发明的。
 6. OpenAI / Anthropic 的 OAuth 登录：第一期不做，记为后续 TODO。
 
@@ -76,9 +77,8 @@
 ## 九、实现前待核对
 
 1. SDK 公开 API：`getBuiltinProviders` / `ModelRegistry`（`getProviderDisplayName` / `getProviderAuthStatus`）从现有 `modelRuntime` / `services` 怎么拿到。
-2. 自定义 provider 在 `models.json` 的认证方式精确写法（`composeModelProvider` 认不认 config 里的 apiKey，还是必须靠 `setRuntimeApiKey`）。
-3. 国内 provider 精确 id 与变体（以 SDK 目录为准）。
-4. 内置展示清单最终用哪些 id（OpenAI / Anthropic / DeepSeek + 国产全放）。
+2. 本地无 key 的 provider（vLLM / Ollama）在 `models.json` 的认证方式精确写法：是否需要写 `apiKey: ""` 或注入空 key，才能让 `composeModelProvider` 组成 provider。
+3. 国内 provider 精确 id 与变体（含 `ant-ling`，以 SDK 目录为准）。
 
 ## 十、下一步
 

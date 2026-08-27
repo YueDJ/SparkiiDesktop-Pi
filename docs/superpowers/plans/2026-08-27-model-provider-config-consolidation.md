@@ -19,7 +19,7 @@
 - `ModelRuntime.create({ authPath, modelsPath })` 启动时读 `auth.json` 与 `models.json`。
 - `ModelRegistry`（`new ModelRegistry(modelRuntime)`）提供 `getProvider` / `getProviderDisplayName` / `getProviderAuthStatus` / `getAvailable` / `getAll` / `hasConfiguredAuth` / `refresh`；`pi-coding-agent` 导出 `ModelRegistry`，`pi-ai` 导出 `getBuiltinProviders`（别名 `getProviders`）。
 - `setRuntimeApiKey` 是 SDK 原生方法（内存热更新），不是本项目发明。
-- 内置 provider 共 40 个；国产为：`deepseek`、`kimi-coding`、`minimax`、`minimax-cn`、`moonshotai`、`moonshotai-cn`、`qwen-token-plan`、`qwen-token-plan-cn`、`qwen-token-plan-individual`、`xiaomi`、`xiaomi-token-plan-ams`、`xiaomi-token-plan-cn`、`xiaomi-token-plan-sgp`、`zai`、`zai-coding-cn`。白名单再补 `openai`、`anthropic`。
+- 内置 provider 共 40 个；国产为：`deepseek`、`kimi-coding`、`minimax`、`minimax-cn`、`moonshotai`、`moonshotai-cn`、`qwen-token-plan`、`qwen-token-plan-cn`、`qwen-token-plan-individual`、`xiaomi`、`xiaomi-token-plan-ams`、`xiaomi-token-plan-cn`、`xiaomi-token-plan-sgp`、`zai`、`zai-coding-cn`、`ant-ling`。白名单再补 `openai`、`anthropic`。
 
 ## Global Constraints
 
@@ -30,11 +30,13 @@
 - esbuild 打包时 electron 与 better-sqlite3 保持 external。
 - 单测/类型检查/lint 全绿才能提交。
 
-## 设计假设（执行前请向用户确认，不阻塞动工）
+## 设计假设（已与用户确认）
 
-- 单 key：沿用现状，只维护一个全局 API key（keyring 名 `apiKey`），应用到「当前选中的 provider」。多 provider 各自独立 key 留作后续 TODO。
+- 每个 provider 独立一个 key：keyring name = `apiKey:<providerId>`；主进程 `Map<providerId, key>` 缓存，首次用读一次、改 key 时写回并更新缓存。
 - 自定义 provider 不落 key 到 models.json：`models.json` 只写 `{ baseUrl, api }`，key 走 `setRuntimeApiKey`（避免明文 key 落盘）。
 - 自定义 provider 的模型列表：`models.json` 不写 `models`，由 `list_models` 的 `refresh({ allowNetwork: true })` 联网拉取。
+- 自定义 API 类型：`openai-completions` / `anthropic-messages`；本地模型（vLLM、Ollama）是 `openai-completions` 的本地端点。
+- 白名单：OpenAI、Anthropic、DeepSeek + 全部国产（含 `ant-ling`）。
 
 ## File Structure
 
@@ -147,7 +149,7 @@ Expected: FAIL（模块不存在）
 
 - [ ] **Step 3: 最小实现**
 
-`provider-catalog.ts`：`BUILTIN_PROVIDER_IDS` 用 SDK 核实结果里的 17 个 id；`buildProviderList` 用 `Map(runtimeProviders.map(p=>[p.id,p]))` 取内置 name/baseUrl/auth，过滤出白名单 id + 自定义 id，自定义项以 `customProviders` 的 name/baseUrl/api 覆盖。
+`provider-catalog.ts`：`BUILTIN_PROVIDER_IDS` 用 SDK 核实结果里的 18 个 id（含 `ant-ling`）；`buildProviderList` 用 `Map(runtimeProviders.map(p=>[p.id,p]))` 取内置 name/baseUrl/auth，过滤出白名单 id + 自定义 id，自定义项以 `customProviders` 的 name/baseUrl/api 覆盖。
 
 - [ ] **Step 4: 跑测试确认通过**
 
@@ -184,11 +186,11 @@ export interface AppSettings {
   language?: string;
 }
 ```
-- `saveSettings` 不再把 `apiKey` 写入 settings.json（仍写 keyring）；`loadSettings` 保留 keyring 读取。
+- 新增 `loadApiKey(keyring, providerId)` / `saveApiKey(keyring, providerId, key)`，keyring name = `apiKey:<providerId>`；settings.json 不存任何 key。
 
 - [ ] **Step 1: 写失败测试**
 
-在 `settings-store.test.ts` 增加：保存含 `activeProviderId`、`providers` 的 settings，断言 settings.json 里没有 `apiKey`，重新 load 后字段往返一致，且 `apiKey` 从 keyring 读回。
+在 `settings-store.test.ts` 增加：保存含 `activeProviderId`、`providers` 的 settings，断言 settings.json 里没有 key，重新 load 后字段往返一致；`saveApiKey('deepseek', key)` 后 `loadApiKey('deepseek')` 返回该 key。
 
 - [ ] **Step 2: 跑测试确认失败**
 
@@ -253,49 +255,41 @@ git commit -m "refactor(desktop): write only custom providers to models.json"
 
 ---
 
-### Task 5: key 生命周期改造（fork 注入 + 改 key 广播 + 去每次交互读）
+### Task 5: key 生命周期改造（per-provider 缓存 + 使用前注入）
 
 **Files:**
-- Modify: `packages/agent-host/src/pi-runtime-pool.ts`
 - Modify: `apps/desktop/electron/main/runtime.ts`
 - Modify: `apps/desktop/electron/main/ipc.ts`
 - Modify: `apps/desktop/electron/main/workflow.ts`
 
 **Interfaces:**
-- Produces: `PiRuntimePool.broadcast(fn: (slot: PiRuntimeSlot) => Promise<void>): Promise<void>`；`Runtime.apiKey()`（返回当前缓存的 key）。
+- Produces: `Runtime.keyFor(providerId): Promise<string | null>`；`Runtime.setKey(providerId, key): Promise<void>`。
 
-- [ ] **Step 1: 写失败测试（pool.broadcast）**
+- [ ] **Step 1: 写失败测试（runtime key 缓存）**
 
-`packages/agent-host/test/pi-runtime-pool.test.ts`（若无则新建）：用 fake supervisor 建 2 个 slot，`broadcast` 断言每个 slot 的 client 都被调用一次。
+`apps/desktop/test/runtime-key.test.ts`（若无则新建）：用 fake keyring 断言 `keyFor('deepseek')` 读 keyring `apiKey:deepseek` 并返回；第二次 `keyFor('deepseek')` 不再读 keyring（缓存命中）；`setKey('deepseek','new')` 后 `keyFor` 返回 `new`。
 
 - [ ] **Step 2: 跑测试确认失败**
 
-Run: `npx vitest run packages/agent-host/test/pi-runtime-pool.test.ts`
+Run: `npx vitest run apps/desktop/test/runtime-key.test.ts`
 Expected: FAIL
 
-- [ ] **Step 3: 实现 broadcast + key 注入**
+- [ ] **Step 3: 实现 keyFor / setKey + 注入**
 
-`pi-runtime-pool.ts` 增加：
-```ts
-async broadcast(fn: (slot: PiRuntimeSlot) => Promise<void>): Promise<void> {
-  await Promise.allSettled(this.slots.map((s) => fn({ client: s.client, supervisor: s.supervisor })));
-}
-```
+`runtime.ts`：删掉 fork-env `SPARKII_PI_API_KEY`；`makeSupervisor` 只传 `PI_CODING_AGENT_DIR`；新增 `const keyCache = new Map<string,string>()`、`keyFor(providerId)`（读 keyring `apiKey:<providerId>` 并缓存）、`setKey(providerId,key)`（写 keyring + 更新缓存），并在 `assemble` 返回的 Runtime 上暴露。
 
-`runtime.ts`：删掉 app 启动时固化 `SPARKII_PI_API_KEY` 的 env；改为在 `makeSupervisor` 里只传 `PI_CODING_AGENT_DIR`。新增 `let cachedApiKey: string | null` 与 `async apiKey()`（读 keyring 并缓存）。`assemble` 返回的 Runtime 增加 `apiKey` 方法。
-
-`ipc.ts`：`saveSettings` 检测 key 是否变化，变化则 `await rt.apiKey()` 刷新缓存，并 `await rt.pool.broadcast((slot) => slot.client.send({ type: 'set_api_key', provider: activeProviderId, apiKey }))`；`promptSession` / `withProbeSlot` / `workflow.ts` 里删掉每次 `keyring.get`，改用 `rt.apiKey()` 取缓存值（在 slot 绑定处注入一次即可）。
+`ipc.ts` / `workflow.ts`：`promptSession` / `withProbeSlot` / `selectModel` 把 `rt.keyring.get('apiKey')` 改成 `rt.keyFor(providerId)`；`saveSettings` 调 `rt.setKey(activeProviderId, apiKey)`。
 
 - [ ] **Step 4: 跑测试 + typecheck 确认通过**
 
-Run: `npx vitest run packages/agent-host/test/pi-runtime-pool.test.ts`、`npx vitest run apps/desktop/test/...`、`pnpm typecheck`
+Run: `npx vitest run apps/desktop/test/runtime-key.test.ts`、`pnpm typecheck`
 Expected: PASS / exit 0
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add packages/agent-host/src/pi-runtime-pool.ts apps/desktop/electron/main/runtime.ts apps/desktop/electron/main/ipc.ts apps/desktop/electron/main/workflow.ts
-git commit -m "refactor(desktop): inject key at fork and broadcast on change"
+git add apps/desktop/electron/main/runtime.ts apps/desktop/electron/main/ipc.ts apps/desktop/electron/main/workflow.ts
+git commit -m "refactor(desktop): per-provider key cache and inject-on-use"
 ```
 
 ---
@@ -427,8 +421,8 @@ git commit -am "chore: finalize provider config consolidation"
 - 占位符扫描：无 TBD/TODO 占位；「设计假设」里的三个点是明确决策而非占位。
 - 类型一致：`PiProviderInfo`、`ProviderEntry`、`CustomProvider`、`AppSettings` 在各任务中命名一致。
 
-## 待用户确认后动工
+## 已确认的决策
 
-1. 单 key（全局一个 key）还是按 provider 各存一个 key？
-2. 白名单是否要补 `ant-ling`（蚂蚁的国产 provider，Pi 内置有）？
-3. 自定义 provider 的 API 类型是否就 `openai-completions` / `anthropic-messages` 两种？
+1. 每个 provider 独立一个 key（keyring name = `apiKey:<providerId>`），主进程 `Map<providerId,key>` 缓存。
+2. 白名单 = OpenAI、Anthropic、DeepSeek + 全部国产（含 `ant-ling`）。
+3. 自定义 API 类型 = `openai-completions` / `anthropic-messages`；本地 vLLM / Ollama 是 OpenAI 兼容的本地端点。
