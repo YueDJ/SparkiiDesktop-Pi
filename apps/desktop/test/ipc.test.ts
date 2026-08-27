@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Keyring } from '../electron/main/keyring.js';
 import { registerIpc } from '../electron/main/ipc.js';
+import { selectModel } from '../electron/main/workflow.js';
 import type { Runtime } from '../electron/main/runtime.js';
 
 vi.mock('electron', () => {
@@ -47,8 +48,10 @@ afterEach(async () => {
 async function makeRuntime(opts: {
   dataDir: string;
   piAgentDir: string;
-  client: { send: (command: any) => Promise<any> };
+  client: { send: (command: any) => Promise<any>; onEvent?: (cb: (event: any) => void) => () => void };
   setKey?: (providerId: string, key: string) => Promise<void>;
+  chatSession?: { profileId: string; model: string | null; piSessionFile?: string | null };
+  profile?: unknown;
 }): Promise<Runtime> {
   const rt = {
     profiles: new Map(),
@@ -60,13 +63,16 @@ async function makeRuntime(opts: {
       release: vi.fn(async () => {}),
     },
     subject: { userId: 'tester', roles: ['admin'] },
-    chatSessions: { get: () => null, create: vi.fn(), update: vi.fn(), delete: vi.fn() },
+    chatSessions: { get: () => opts.chatSession ?? null, create: vi.fn(), update: vi.fn(), delete: vi.fn() },
     dataDir: opts.dataDir,
     keyring: null as any,
     piAgentDir: opts.piAgentDir,
-    profileOf: () => {
-      throw new Error('no profile');
-    },
+    profileOf: () =>
+      opts.profile ?? ({
+        dir: join(opts.dataDir, 'profiles', 'contract-review'),
+        profile: { agent: { tools: [], prompts: { system: 'test' } } },
+        router: { resolve: () => undefined },
+      } as any),
     keyFor: async () => null,
     setKey: opts.setKey ?? (async () => {}),
   } as unknown as Runtime;
@@ -150,5 +156,70 @@ describe('ipc provider handlers', () => {
     });
     expect(cfg.providers.deepseek).toBeUndefined();
     expect(await keyring.get('apiKey:ollama')).toBe('sk-ollama');
+  });
+
+  it('promptSession routes to settings active provider and default model when the session has no model', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(
+      join(dataDir, 'settings.json'),
+      JSON.stringify({ activeProviderId: 'zai', defaultModel: 'glm-5' }),
+      'utf8',
+    );
+
+    const sent: any[] = [];
+    const client = {
+      onEvent: (cb: (event: any) => void) => {
+        queueMicrotask(() => cb({ type: 'agent_end' }));
+        return () => {};
+      },
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') return { success: true, data: { sessionFile: null } };
+        return { success: true };
+      },
+    };
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'contract-review', model: null },
+    });
+
+    const handlers = await registeredHandlers();
+    const promptSession = handlers.get('sparkii:promptSession');
+    expect(promptSession).toBeTypeOf('function');
+    await promptSession!(null, 's1', '你好');
+
+    expect(sent).toContainEqual({ type: 'set_model', provider: 'zai', modelId: 'glm-5' });
+  });
+
+  it('workflow selectModel routes to settings active provider and default model', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    await writeFile(
+      join(dataDir, 'settings.json'),
+      JSON.stringify({ activeProviderId: 'zai', defaultModel: 'glm-5' }),
+      'utf8',
+    );
+    const sent: any[] = [];
+    const rt = {
+      dataDir,
+      keyring: null as any,
+      pool: {
+        get: () => ({
+          send: async (command: any) => {
+            sent.push(command);
+            return { success: true };
+          },
+        }),
+      },
+      keyFor: async () => null,
+    } as any;
+
+    await selectModel(rt, 'chat', 's1');
+    expect(sent).toContainEqual({ type: 'set_model', provider: 'zai', modelId: 'glm-5' });
   });
 });

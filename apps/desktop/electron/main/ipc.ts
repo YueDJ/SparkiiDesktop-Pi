@@ -173,7 +173,6 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     const { slot, profileId } = open;
     slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId }));
     const rec = rt.chatSessions.get(sessionId);
-    const pr = rt.profileOf(profileId);
 
     const selectModel = async (provider: string, modelId: string): Promise<void> => {
       const apiKey = await rt.keyFor(provider);
@@ -189,8 +188,10 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       const [provider, modelId] = rec.model.split('/');
       await selectModel(provider, modelId);
     } else {
-      const target = pr.router.resolve('coding') ?? pr.router.resolve('default');
-      if (target) await selectModel(target.provider, target.modelId);
+      const settings = await loadSettings(rt.dataDir, rt.keyring);
+      const provider = settings.activeProviderId ?? 'deepseek';
+      const modelId = settings.defaultModel ?? '';
+      if (provider && modelId) await selectModel(provider, modelId);
     }
     const win = getWindow();
     await new Promise<void>((resolve, reject) => {
