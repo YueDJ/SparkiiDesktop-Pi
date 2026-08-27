@@ -24,7 +24,7 @@ Sparkii Desktop 当前已有明确的视觉方向和 token 起点，但实现层
 ### 已确认决策
 
 1. 视觉基线：继续以现有 `DESIGN.md` 为唯一权威，只收敛、补齐，不做方向性换肤。
-2. composer：高级控制（工作区、模型、思考强度）始终可见；模型与思考强度参考 Codex 的 composer 底部控制栏形式，做成紧凑 dropdown，并统一所有控件尺寸和排布。
+2. composer：高级控制（工作区、模型、思考强度）始终可见；模型与思考强度参考 Codex，做成一个组合控制按钮，点开后是“模型 / 思考强度”两行菜单，每行右侧箭头进入对应设置；统一所有控件尺寸和排布。
 3. 迁移范围：采用渐进式统一底座，但本轮覆盖所有现有界面，不再保留局部修补的旧实现。
 
 ## 2. 非目标
@@ -155,7 +155,7 @@ packages/ui/
       TextField.tsx
       TextArea.tsx
       Select.tsx
-      Dropdown.tsx
+      Menu.tsx
       Switch.tsx
       Tabs.tsx
       Drawer.tsx
@@ -176,6 +176,7 @@ packages/ui/
       ChatMessage.tsx
       ToolCard.tsx
       ChatComposer.tsx
+      ModelEffortControl.tsx
       WorkflowSteps.tsx
       ApprovalItem.tsx
       AuditTimeline.tsx
@@ -207,7 +208,7 @@ packages/ui/
 - `Tag`：低信息密度标签。
 - `Card`：表面容器，可控制 padding 和边框。
 - `TextField` / `TextArea` / `Select`：统一高度、focus ring、错误态。
-- `Dropdown`：触发按钮 + 弹出菜单，用于模型、思考强度等紧凑选择，支持键盘导航、Esc 关闭、当前项标记。
+- `Menu` / `MenuItem`：弹出菜单和菜单行，支持键盘导航、Esc 关闭、当前项标记、右侧箭头进入子菜单。
 - `Switch`：统一开关。
 - `Tabs`：统一页签交互。
 - `Drawer` / `Modal`：统一遮罩、动画、关闭和焦点管理。
@@ -225,7 +226,8 @@ packages/ui/
 - `StatusBar`：底部状态与队列入口。
 - `ChatMessage`：用户/助手消息、Markdown、思考过程、流式光标。
 - `ToolCard`：内联工具卡片，等待审批 / 运行 / 完成状态。
-- `ChatComposer`：工作区、模型、思考强度、输入框、发送/停止。
+- `ChatComposer`：工作区、输入框、发送/停止。
+- `ModelEffortControl`：Codex 风格的“模型 / 思考强度”组合控制，单触发按钮 + 两行菜单 + 各自设置菜单。
 - `WorkflowSteps`：任务流步骤。
 - `ApprovalItem` / `ApprovalCenter` / `ApprovalPanel` / `ApprovalModal`：审批三态呈现。
 - `AuditTimeline` / `AuditTable`：审计视图。
@@ -297,7 +299,7 @@ packages/ui/
 
 ## 7. ChatComposer 具体设计
 
-目标：高级控制始终可见，但参考 Codex 的 composer 组织方式，把输入区作为主视觉焦点，模型与思考强度放到输入区下方的紧凑控制栏中，消除大小不均衡。
+目标：高级控制始终可见，但参考 Codex 的 composer 组织方式，把输入区作为主视觉焦点，工作区上下文和“模型 / 思考强度”组合控制放到输入区下方的紧凑控制栏中，消除大小不均衡。
 
 结构：
 
@@ -306,24 +308,33 @@ packages/ui/
 │ textarea（min-height 64px）              [发送/停止] │
 │ ────────────────────────────────────────────────── │
 │ [工作区] /path/to/workspace  [选择文件夹] [清除]     │
-│                              [模型 ▾] [思考强度 ▾]  │
+│                              [模型名 · 思考强度 ▾]   │
 └─────────────────────────────────────────────────────┘
 ```
 
 控制栏布局：
 
 - 左侧承载工作区上下文：`工作区` 标签、当前路径、`选择文件夹`、`清除`；路径过长时省略，完整内容通过 title 提示。
-- 右侧承载模型选择器和思考强度选择器，两个控件紧邻、同高、视觉权重一致。
-- 模型选择器显示当前模型名；思考强度选择器显示当前档位。两者都使用紧凑 dropdown/popover，而不是两个占满行的原生 `<select>`。
+- 右侧只放一个 `ModelEffortControl` 组合按钮，显示当前模型名和思考强度档位，视觉上与左侧工作区控件同高。
+- 点击该组合按钮后弹出两行菜单：
+
+```text
+模型      当前模型名      ›
+思考强度   当前档位        ›
+```
+
+- “模型”行点击后进入模型设置，列出可用模型和“默认（跟随配置）”。
+- “思考强度”行点击后进入思考强度设置，列出当前模型支持的档位，并说明不支持的档位会自动降级。
+- 每一行右侧使用统一箭头，不把模型和思考强度拆成两个独立的下拉按钮。
 
 约束：
 
 - 输入区、控制栏使用统一的 8px 间距，中间以细分隔线区分。
-- `选择文件夹`、`清除`、模型选择器、思考强度选择器高度统一为 `md`。
+- `选择文件夹`、`清除`、`ModelEffortControl` 高度统一为 `md`。
 - 发送/停止按钮高度为 `lg`，与 textarea 底边对齐；运行中时发送按钮切换为停止按钮，不额外增加按钮位。
 - textarea 占满可用宽度，发送按钮固定最小宽度。
-- 模型和思考强度菜单支持键盘操作、Esc 关闭、当前项标记，并复用统一的 popover 焦点管理。
-- 窄宽度下控制栏允许工作区行折行，模型/思考强度仍保持在控制栏右侧；所有控件高度不变。
+- `ModelEffortControl` 及其两层菜单支持键盘操作、Esc 关闭、当前项标记，并复用统一的 popover 焦点管理；模型和思考强度菜单是同一入口下的两个菜单行，而不是两个独立按钮。
+- 窄宽度下控制栏允许工作区行折行，`ModelEffortControl` 仍保持在控制栏右侧；所有控件高度不变。
 - 组件由基础组件组合而成，不重新发明按钮、输入框或弹层。
 
 ## 8. 冗余装饰清理策略
