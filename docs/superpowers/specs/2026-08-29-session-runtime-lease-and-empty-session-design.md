@@ -79,6 +79,7 @@
 | 审批未决 | 审批等待发生在 tool execute 内，Pi 不会 settle；不额外阻止 release |
 | 释放方式 | `pool.release(sessionId)`，发送 `new_session`，进程回池复用，不 kill |
 | Grace period | 默认 60 秒，可配置 |
+| 释放路径 | 所有会话统一走 `agent_settled -> 60s grace timer -> release`，不因离开 surface 单独提前释放 |
 | 运行时状态 | 移除 Sparkii 自定义状态机，只保留 `lease` 存在与否 |
 
 ## 6. 目标架构
@@ -98,7 +99,6 @@ Electron IPC
   ├─ openChatSession(sessionId)
   ├─ promptSession(sessionId, text, options?)
   ├─ getChatState(sessionId)
-  ├─ closeChatSession(sessionId)
   ├─ listChatSessions(profileId?)
   ├─ deleteChatSession(sessionId)
   ├─ releaseSessionSlot(sessionId)
@@ -134,16 +134,14 @@ export interface SessionLease {
   profileId: string;
   slot: PiRuntimeSlot;
   offEvents?: () => void;
-  idleTimer?: NodeJS.Timeout;
-  releaseWhenIdle?: boolean;
 }
 ```
 
 约束：
 
 - 一个 `sessionId` 最多对应一个 lease。
-- `releaseWhenIdle` 用于“用户在 streaming 时关闭 surface”的场景。
 - lease 不保存 Pi 事件状态，只保存 Sparkii 需要的资源信息。
+- idle timer 单独放在 `idleTimers` map，不混入 lease。
 
 ### 7.2 `DraftPromptContext`
 
@@ -305,17 +303,16 @@ promptSession(
 
 只用于 committed session。
 
-### 9.5 `closeChatSession`
+### 9.5 `releaseSessionSlot`
 
 ```ts
-closeChatSession(sessionId: string): Promise<{ ok: boolean }>
+releaseSessionSlot(sessionId: string): Promise<{ ok: boolean }>
 ```
 
-语义：
+手动释放当前 lease，用于运行中心或应用退出等显式用户/系统动作。
 
-- 无 lease：直接返回成功。
-- 有 lease 且空闲：立即 release。
-- 有 lease 且 streaming：标记 `releaseWhenIdle = true`，等 `agent_settled` 后释放。
+注意：正常离开会话 surface 不调用这个接口，也不提前释放；统一交给
+`agent_settled -> 60s grace timer -> release`。
 
 ### 9.6 `deleteChatSession`
 
@@ -396,12 +393,18 @@ grace timer 尚未到期，用户发送新 prompt
 
 如果已经 release，则按历史会话再次 acquire。
 
-### 10.4 应用退出
+### 10.4 离开会话 surface
+
+用户切换页面、打开其他会话或回到首页时，不立即释放 lease。
+
+如果会话还在运行，等它自然 `agent_settled`；如果已经 settled，则复用之前已经启动的
+grace timer。
+
+### 10.5 应用退出
 
 应用退出前：
 
-- 空闲 lease 直接 release；
-- 正在运行的 lease 按需 abort 后 release；
+- 对仍占用的 lease 执行最终 release 或 abort 后 release；
 - `pool.stopAll()` 负责最终回收进程。
 
 ## 11. 审批交互
@@ -462,10 +465,9 @@ timeoutMs: 300000
 - `promptDraftSession` 失败时清理 slot 和索引。
 - `openChatSession` 不触发 `pool.acquire`。
 - `getChatState` 对无 lease 会话不触发 `pool.acquire`。
-- `closeChatSession` 对空闲会话立即 release。
-- `closeChatSession` 对 streaming 会话设置 `releaseWhenIdle`。
 - 收到 `agent_settled` 后启动 idle timer，超时后 release。
 - 收到新 prompt 时取消 idle timer。
+- 用户离开会话 surface 不会立即 release，也不会改变统一的 grace timer 路径。
 
 ### 14.3 UI 测试
 
@@ -483,6 +485,7 @@ timeoutMs: 300000
 - 审批未决不会导致 Pi settle，因此不会误释放。
 - 没有引入大型 `SessionCoordinator` 状态机。
 - 主进程只保留 `leases` 和 `idleTimers`。
+- 所有自动释放都走同一条 `agent_settled -> 60s grace timer` 路径。
 
 ## 16. 落地顺序建议
 
