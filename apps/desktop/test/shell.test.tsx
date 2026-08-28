@@ -89,9 +89,9 @@ describe('Shell', () => {
   it('queue panel opens from the status bar with running and queued agents', () => {
     render(<Shell {...makeProps()} />);
     fireEvent.click(screen.getByText('运行 1/4 · 1 排队'));
-    expect(screen.getByText('运行队列')).toBeTruthy();
+    expect(screen.getByText('运行中心')).toBeTruthy();
     expect(screen.getAllByText('合同审核').length).toBeGreaterThan(0);
-    expect(screen.getByText('舆情监控 · 第 1 位')).toBeTruthy();
+    expect(screen.getByText('舆情监控 · 舆情监控 · 第 1 位')).toBeTruthy();
   });
 
   it('closes a drawer when clicking outside it', () => {
