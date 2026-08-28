@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it, expect, vi } from "vitest";
@@ -25,5 +25,15 @@ describe("resolveToolDefinitions", () => {
     const read = defs[0];
     const result = await (read as any).execute("t1", { path: join(ws, "a.txt") }, undefined, undefined, {});
     expect((result as any).content?.[0]?.text).toBe(WORKSPACE_NOT_CREATED);
+  });
+
+  it("resolves relative read paths against workspaceRoot instead of anchor cwd", async () => {
+    const ws = mkdtempSync(join(tmpdir(), "ws-"));
+    writeFileSync(join(ws, "a.txt"), "hello workspace", "utf8");
+    const anchor = mkdtempSync(join(tmpdir(), "anchor-"));
+    const defs = resolveToolDefinitions(["read"], { cwd: anchor, workspaceRoot: ws, propose });
+    const read = defs[0];
+    const result = await (read as any).execute("t1", { path: "a.txt" }, undefined, undefined, {});
+    expect((result as any).content?.[0]?.text).toContain("hello workspace");
   });
 });

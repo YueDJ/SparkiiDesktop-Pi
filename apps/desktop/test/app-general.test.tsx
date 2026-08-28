@@ -56,7 +56,7 @@ describe('App general agent', () => {
     await waitFor(() => expect(api.newChatSession).toHaveBeenCalledWith('general'));
     await screen.findByTestId('composer-input');
     fireEvent.change(screen.getByTestId('composer-input'), { target: { value: '你好' } });
-    fireEvent.keyDown(screen.getByTestId('composer-input'), { key: 'Enter', ctrlKey: true });
+    fireEvent.keyDown(screen.getByTestId('composer-input'), { key: 'Enter' });
     await waitFor(() => expect(api.promptSession).toHaveBeenCalledWith('g1', '你好'));
     act(() => channels['chat-event']({ sessionId: 'g1', type: 'message', role: 'assistant', delta: '在的' }));
     expect(screen.getByText(/在的/)).toBeTruthy();
@@ -107,7 +107,7 @@ describe('App general agent', () => {
     await waitFor(() => expect(api.newChatSession).toHaveBeenCalledWith('general'));
     await screen.findByTestId('composer-input');
     fireEvent.change(screen.getByTestId('composer-input'), { target: { value: '你好' } });
-    fireEvent.keyDown(screen.getByTestId('composer-input'), { key: 'Enter', ctrlKey: true });
+    fireEvent.keyDown(screen.getByTestId('composer-input'), { key: 'Enter' });
     await waitFor(() => expect(api.promptSession).toHaveBeenCalledWith('g1', '你好'));
     act(() => channels['chat-event']({ sessionId: 'g1', type: 'message', role: 'assistant', delta: '在的' }));
     expect(screen.getByText(/在的/)).toBeTruthy();

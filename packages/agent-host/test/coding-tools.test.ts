@@ -50,4 +50,16 @@ describe("createCodingToolDefinitions", () => {
     await expect((write as any).execute("t1", { path: join(tmpdir(), "outside.txt"), content: "x" }, undefined, undefined, toolCtx)).rejects.toThrow(/不在工作区/);
     expect(c.proposes).not.toHaveBeenCalled();
   });
+
+  it("resolves relative write paths against workspaceRoot instead of anchor cwd", async () => {
+    const anchor = mkdtempSync(join(tmpdir(), "anchor-"));
+    const c = ctx({ cwd: anchor });
+    const defs = createCodingToolDefinitions(c);
+    const write = defs.find((d) => d.name === "write")!;
+    await (write as any).execute("t1", { path: "a.txt", content: "x" }, undefined, undefined, toolCtx);
+    expect(c.proposes).toHaveBeenCalledWith(expect.objectContaining({
+      toolName: "write",
+      payload: expect.objectContaining({ path: join(c.workspaceRoot, "a.txt") }),
+    }));
+  });
 });

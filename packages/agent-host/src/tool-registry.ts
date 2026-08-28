@@ -26,7 +26,7 @@ const CONNECTOR_TOOLS = new Map<string, ToolDef>(
   [documentConnector, knowledgeConnector, reportConnector].flatMap((c) => c.tools.map((t) => [t.name, t] as const)),
 );
 
-function withWorkspaceGuard(def: ToolDefinition, root: string): ToolDefinition {
+function withWorkspaceGuard(def: ToolDefinition, root: string, pathCwd: string): ToolDefinition {
   const original = def.execute.bind(def);
   return {
     ...def,
@@ -35,7 +35,7 @@ function withWorkspaceGuard(def: ToolDefinition, root: string): ToolDefinition {
         return { content: [{ type: "text", text: WORKSPACE_NOT_CREATED }], details: {} };
       }
       const path: unknown = params?.path;
-      if (typeof path === "string" && !isPathInside(root, resolve(ctx?.cwd ?? root, path))) {
+      if (typeof path === "string" && !isPathInside(root, resolve(pathCwd, path))) {
         return { content: [{ type: "text", text: `拒绝访问:${path} 不在工作区内` }], details: {} };
       }
       return original(toolCallId, params, signal, onUpdate, ctx);
@@ -44,7 +44,8 @@ function withWorkspaceGuard(def: ToolDefinition, root: string): ToolDefinition {
 }
 
 export function resolveToolDefinitions(toolNames: string[], ctx: RegistryContext): ToolDefinition[] {
-  const codingByName = new Map(createCodingToolDefinitions({ cwd: ctx.cwd, workspaceRoot: ctx.workspaceRoot ?? ctx.cwd, propose: ctx.propose }).map((d) => [d.name, d]));
+  const pathCwd = ctx.workspaceRoot ?? ctx.cwd;
+  const codingByName = new Map(createCodingToolDefinitions({ cwd: pathCwd, workspaceRoot: ctx.workspaceRoot ?? pathCwd, propose: ctx.propose }).map((d) => [d.name, d]));
   const out: ToolDefinition[] = [];
   for (const name of toolNames) {
     if (name === "bash" || name === "edit" || name === "write") {
@@ -55,8 +56,8 @@ export function resolveToolDefinitions(toolNames: string[], ctx: RegistryContext
     }
     if (name === "read" || name === "ls" || name === "grep" || name === "find") {
       const factory = { read: createReadToolDefinition, ls: createLsToolDefinition, grep: createGrepToolDefinition, find: createFindToolDefinition }[name];
-      const def = factory(ctx.cwd) as ToolDefinition;
-      out.push(ctx.workspaceRoot ? withWorkspaceGuard(def, ctx.workspaceRoot) : def);
+      const def = factory(pathCwd) as ToolDefinition;
+      out.push(ctx.workspaceRoot ? withWorkspaceGuard(def, ctx.workspaceRoot, pathCwd) : def);
       continue;
     }
     const connector = CONNECTOR_TOOLS.get(name);

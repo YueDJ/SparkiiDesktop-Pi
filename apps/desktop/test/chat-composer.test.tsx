@@ -23,12 +23,12 @@ function makeProps(over: Partial<ComposerProps> = {}): ComposerProps {
 }
 
 describe('Composer', () => {
-  it('sends on Ctrl+Enter and clears the input', () => {
+  it('sends on Enter and clears the input', () => {
     const props = makeProps();
     render(<Composer {...props} />);
     const input = screen.getByTestId('composer-input') as HTMLTextAreaElement;
     fireEvent.change(input, { target: { value: 'hello' } });
-    fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true });
+    fireEvent.keyDown(input, { key: 'Enter' });
     expect(props.onSend).toHaveBeenCalledWith('hello', []);
     expect(input.value).toBe('');
   });

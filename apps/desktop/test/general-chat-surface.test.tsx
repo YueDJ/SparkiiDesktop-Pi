@@ -81,7 +81,7 @@ describe('GeneralChatSurface', () => {
     await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('s1'));
     expect(screen.getByText('hi')).toBeTruthy();
     fireEvent.change(screen.getByTestId('composer-input'), { target: { value: '请创建 hello.txt' } });
-    fireEvent.keyDown(screen.getByTestId('composer-input'), { key: 'Enter', ctrlKey: true });
+    fireEvent.keyDown(screen.getByTestId('composer-input'), { key: 'Enter' });
     expect(api.promptSession).toHaveBeenCalledWith('s1', '请创建 hello.txt');
     act(() => channels['chat-event']({ sessionId: 's1', type: 'message', role: 'assistant', delta: '收到' }));
     expect(screen.getByText(/收到/)).toBeTruthy();

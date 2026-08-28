@@ -23,7 +23,11 @@ function guardPath(ctx: CodingToolsContext, absolutePath: string): void {
 }
 
 export function createCodingToolDefinitions(ctx: CodingToolsContext): Array<ToolDefinition<any, any, any>> {
-  const bash = createBashToolDefinition(ctx.cwd, {
+  // 会话锚点 cwd 只用于承载 Pi 进程与历史；工具的相对路径和执行
+  // 必须落在用户可见的工作区根内。
+  const pathCwd = ctx.workspaceRoot;
+
+  const bash = createBashToolDefinition(pathCwd, {
     operations: {
       exec: async (command: string, cwd: string, opts: { onData: (data: Buffer) => void }) => {
         const decision = await ctx.propose({
@@ -45,7 +49,7 @@ export function createCodingToolDefinitions(ctx: CodingToolsContext): Array<Tool
     },
   });
 
-  const edit = createEditToolDefinition(ctx.cwd, {
+  const edit = createEditToolDefinition(pathCwd, {
     operations: {
       readFile: async (absolutePath: string) => {
         guardPath(ctx, absolutePath);
@@ -70,7 +74,7 @@ export function createCodingToolDefinitions(ctx: CodingToolsContext): Array<Tool
     },
   });
 
-  const write = createWriteToolDefinition(ctx.cwd, {
+  const write = createWriteToolDefinition(pathCwd, {
     operations: {
       mkdir: async (dir: string) => {
         guardPath(ctx, dir);

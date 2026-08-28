@@ -67,8 +67,8 @@ export async function createPiSdkSessionHost(
     }
   });
 
-  const cwd = options.cwd ?? process.env.SPARKII_PI_CWD ?? process.cwd();
-  const currentWorkspaceRoot = options.workspaceRoot ?? process.env.SPARKII_WORKSPACE_ROOT ?? cwd;
+  const fallbackCwd = options.cwd ?? process.env.SPARKII_PI_CWD ?? process.cwd();
+  const fallbackWorkspaceRoot = options.workspaceRoot ?? process.env.SPARKII_WORKSPACE_ROOT ?? fallbackCwd;
   const agentDir = resolveAgentDir(options.agentDir);
   const sessionDir = join(agentDir, "sessions");
   const modelRuntime = await ModelRuntime.create({
@@ -113,17 +113,19 @@ export async function createPiSdkSessionHost(
   };
 
   const runtime = await createAgentSessionRuntime(createRuntime, {
-    cwd,
+    cwd: fallbackCwd,
     agentDir,
-    sessionManager: SessionManager.create(cwd, sessionDir),
+    sessionManager: SessionManager.create(fallbackCwd, sessionDir),
   });
 
   function adaptSession(): PiRuntimeSession {
     const session: any = runtime.session;
+    const sessionCwd = pendingSaddle?.cwd ?? fallbackCwd;
+    const workspaceRoot = pendingSaddle?.workspaceRoot ?? fallbackWorkspaceRoot;
     const saddleTools: ToolDefinition[] = pendingSaddle
       ? resolveToolDefinitions(pendingSaddle.tools, {
-          cwd,
-          workspaceRoot: pendingSaddle.workspaceRoot ?? currentWorkspaceRoot,
+          cwd: sessionCwd,
+          workspaceRoot,
           propose: async (request) =>
             new Promise<ProposalDecision>((resolve, reject) => {
               pendingProposals.set(request.requestId, { resolve, reject });
