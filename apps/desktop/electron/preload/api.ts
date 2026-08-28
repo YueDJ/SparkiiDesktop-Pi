@@ -16,7 +16,7 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
     runWorkflow: (id, input) => invoke('runWorkflow', id, input) as Promise<{ ok: boolean }>,
     prompt: (text) => invoke('prompt', text) as Promise<{ ok: boolean }>,
     newChatSession: (profileId) => invoke('newChatSession', profileId) as Promise<{ sessionId: string; workspacePath: string; model: string | null }>,
-    openChatSession: (sessionId) => invoke('openChatSession', sessionId) as Promise<{ messages: unknown[] }>,
+    openChatSession: (sessionId) => invoke('openChatSession', sessionId) as Promise<{ messages: unknown[]; entries?: unknown[] }>,
     listChatSessions: (profileId) => invoke('listChatSessions', profileId) as Promise<unknown[]>,
     getChatSession: (sessionId) => invoke('getChatSession', sessionId),
     getChatMessages: (sessionId) => invoke('getChatMessages', sessionId) as Promise<unknown[]>,

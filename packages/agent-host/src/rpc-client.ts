@@ -33,16 +33,33 @@ export function normalizeEvent(raw: any): NormalizedEvent {
       const thinking = blocks.filter((c) => c.type === 'thinking').map((c) => c.thinking ?? '').join('') || undefined;
       return { type: 'message', role, text, thinking };
     }
-    case 'tool_call': return { type: 'tool_call', toolName: raw.toolName, input: raw.input };
-    case 'tool_result': return { type: 'tool_result', toolName: raw.toolName, result: raw.result };
+    case 'tool_call': return { type: 'tool_call', toolName: raw.toolName, input: raw.input, toolCallId: raw.toolCallId };
+    case 'tool_result': return { type: 'tool_result', toolName: raw.toolName, result: raw.result, toolCallId: raw.toolCallId };
     case 'agent_start': return { type: 'agent_start' };
-    case 'agent_end': return { type: 'agent_end' };
-    case 'compaction_start': return { type: 'compaction_start' };
-    case 'compaction_end': return { type: 'compaction_end' };
+    case 'agent_end': return { type: 'agent_end', willRetry: raw.willRetry, messages: raw.messages };
+    case 'agent_settled': return { type: 'agent_settled' };
+    case 'turn_start': return { type: 'turn_start' };
+    case 'turn_end': return { type: 'turn_end' };
+    case 'compaction_start': return { type: 'compaction_start', reason: raw.reason };
+    case 'compaction_end': return {
+      type: 'compaction_end',
+      reason: raw.reason,
+      result: raw.result,
+      aborted: raw.aborted,
+      willRetry: raw.willRetry,
+      errorMessage: raw.errorMessage,
+    };
+    case 'auto_retry_start': return { type: 'auto_retry_start', attempt: raw.attempt, maxAttempts: raw.maxAttempts, delayMs: raw.delayMs, errorMessage: raw.errorMessage };
+    case 'auto_retry_end': return { type: 'auto_retry_end', success: raw.success, attempt: raw.attempt, finalError: raw.finalError };
+    case 'summarization_retry_scheduled': return { type: 'summarization_retry_scheduled', attempt: raw.attempt, maxAttempts: raw.maxAttempts, delayMs: raw.delayMs, errorMessage: raw.errorMessage };
+    case 'summarization_retry_attempt_start': return { type: 'summarization_retry_attempt_start', source: raw.source, reason: raw.reason };
+    case 'summarization_retry_finished': return { type: 'summarization_retry_finished' };
+    case 'session_info_changed': return { type: 'session_info_changed', name: raw.name };
+    case 'thinking_level_changed': return { type: 'thinking_level_changed', level: raw.level };
     case "tool_execution_start":
-      return { type: "tool_call", toolName: raw.toolName, input: raw.input ?? raw.params };
+      return { type: "tool_call", toolName: raw.toolName, input: raw.input ?? raw.params, toolCallId: raw.toolCallId };
     case "tool_execution_end":
-      return { type: "tool_result", toolName: raw.toolName, result: raw.result ?? raw.details };
+      return { type: "tool_result", toolName: raw.toolName, result: raw.result ?? raw.details, toolCallId: raw.toolCallId };
     case "queue_update":
       return {
         type: "queue_update",
@@ -53,6 +70,9 @@ export function normalizeEvent(raw: any): NormalizedEvent {
       const message = raw.entry?.message;
       if (message?.role === 'user') {
         return { type: 'message', role: 'user', text: messageText(message) };
+      }
+      if (raw.entry?.type === 'custom_message') {
+        return { type: 'entry_appended', entry: raw.entry };
       }
       return { type: 'unknown', raw };
     }

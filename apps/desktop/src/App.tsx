@@ -229,6 +229,7 @@ export function App() {
     <GeneralChatSurface
       api={api}
       sessionId={activeGeneralSession}
+      active={screen === 'general'}
       onNewSession={() => onNewSession('general')}
     />
   );

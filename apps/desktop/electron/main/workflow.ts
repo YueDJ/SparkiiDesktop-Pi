@@ -73,7 +73,7 @@ export function resolveModelTarget(
 ): { provider: string; modelId: string } | null {
   const provider = settings.activeProviderId ?? 'deepseek';
   const routes = settings.routes ?? {};
-  const modelId = routes[task] ?? routes.default ?? settings.defaultModel ?? '';
+  const modelId = routes[task] || routes.default || settings.defaultModel || '';
   if (!modelId) return null;
   return { provider, modelId };
 }

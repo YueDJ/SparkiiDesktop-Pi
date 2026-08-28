@@ -3,12 +3,13 @@ import type { SparkiiApi } from '../types/sparkii-api.js';
 import { Button, ChatMessage, type ComposerAttachment } from '@sparkii/ui';
 import { Composer } from '../workbench/Composer.js';
 import { ToolCard } from '../workbench/ToolCard.js';
+import { LifecycleCard } from '../workbench/LifecycleCard.js';
 import { Markdown } from '../workbench/Markdown.js';
 import { THINKING_LEVELS } from '../workbench/thinking-levels.js';
+import * as Timeline from '../workbench/pi-timeline.js';
+import type { ChatEntry } from '../workbench/pi-timeline.js';
 
-export type ChatEntry =
-  | { kind: 'message'; id: string; role: 'user' | 'assistant'; text: string; thinking?: string; streaming: boolean }
-  | { kind: 'tool'; id: string; toolName: string; input: unknown; result?: unknown; awaitingApproval?: boolean };
+export { applyChatEvent, normalizeMessages, type ChatEntry } from '../workbench/pi-timeline.js';
 
 type QueueName = 'steering' | 'followUp';
 type QueueMap = Record<QueueName, string[]>;
@@ -168,79 +169,10 @@ function DraftQueue({ drafts, onRemove, onRestore }: DraftQueueProps) {
   );
 }
 
-function findLastUnresolvedTool(entries: ChatEntry[], toolName: string): number {
-  for (let i = entries.length - 1; i >= 0; i--) {
-    const e = entries[i];
-    if (e.kind === 'tool' && e.toolName === toolName && e.result === undefined) return i;
-  }
-  return -1;
-}
-
-export function applyChatEvent(entries: ChatEntry[], ev: unknown): ChatEntry[] {
-  const raw = ev as { type?: string; role?: string; delta?: string; text?: string; thinkingDelta?: string; thinking?: string; toolName?: string; input?: unknown; result?: unknown };
-  if (raw.type === 'message') {
-    if (raw.role === 'user') return entries;
-    const last = entries[entries.length - 1];
-    const isActive = last?.kind === 'message' && last.role === 'assistant' && last.streaming;
-    const base = isActive
-      ? (last as Extract<ChatEntry, { kind: 'message' }>)
-      : { kind: 'message' as const, id: `m${Date.now()}-${Math.random()}`, role: 'assistant' as const, text: '', streaming: true };
-
-    if (typeof raw.thinkingDelta === 'string') {
-      const next = { ...base, thinking: (base.thinking ?? '') + raw.thinkingDelta };
-      return isActive ? [...entries.slice(0, -1), next] : [...entries, next];
-    }
-
-    const finalThinking = typeof raw.thinking === 'string' ? raw.thinking : undefined;
-    const finalText = typeof raw.text === 'string' ? raw.text : undefined;
-    const delta = typeof raw.delta === 'string' ? raw.delta : undefined;
-    if (finalThinking === undefined && finalText === undefined && delta === undefined) return entries;
-
-    const next = {
-      ...base,
-      thinking: finalThinking !== undefined ? finalThinking : base.thinking,
-      text: finalText !== undefined ? finalText : delta !== undefined ? base.text + delta : base.text,
-      streaming: delta !== undefined,
-    };
-    return isActive ? [...entries.slice(0, -1), next] : [...entries, next];
-  }
-  if (raw.type === 'tool_call') {
-    return [...entries, { kind: 'tool', id: `t${Date.now()}-${Math.random()}`, toolName: String(raw.toolName ?? ''), input: raw.input }];
-  }
-  if (raw.type === 'tool_result' && raw.toolName) {
-    const idx = findLastUnresolvedTool(entries, raw.toolName);
-    if (idx < 0) return entries;
-    const next = [...entries];
-    const target = next[idx] as Extract<ChatEntry, { kind: 'tool' }>;
-    next[idx] = { ...target, result: raw.result, awaitingApproval: false };
-    return next;
-  }
-  return entries;
-}
-
-export function normalizeMessages(messages: unknown[]): ChatEntry[] {
-  const out: ChatEntry[] = [];
-  let n = 0;
-  for (const m of messages) {
-    const rec = m as { role?: string; text?: string; content?: unknown };
-    const role = rec.role === 'user' ? 'user' : rec.role === 'assistant' ? 'assistant' : null;
-    const blocks = Array.isArray(rec.content)
-      ? (rec.content as Array<{ type?: string; text?: string; thinking?: string }>)
-      : [];
-    const text = typeof rec.text === 'string'
-      ? rec.text
-      : blocks.filter((c) => c.type === 'text').map((c) => c.text ?? '').join('');
-    const thinking = blocks.filter((c) => c.type === 'thinking').map((c) => c.thinking ?? '').join('') || undefined;
-    if (role && (text || thinking)) {
-      out.push({ kind: 'message', id: `m${n++}`, role, text, thinking, streaming: false });
-    }
-  }
-  return out;
-}
-
 export interface GeneralChatSurfaceProps {
   api: SparkiiApi;
   sessionId: string | null;
+  active?: boolean;
   onNewSession(): void;
 }
 
@@ -260,7 +192,7 @@ function resolveThinkingTarget(
 }
 
 export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
-  const { api, sessionId, onNewSession } = props;
+  const { api, sessionId, active = true, onNewSession } = props;
   const [entries, setEntries] = useState<ChatEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [stopping, setStopping] = useState(false);
@@ -274,8 +206,25 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
   const [thinkingLevels, setThinkingLevels] = useState<string[]>([...THINKING_LEVELS]);
   const [thinkingLevel, setThinkingLevel] = useState<string | null>(null);
   const [workspacePath, setWorkspacePath] = useState<string | null>(null);
+  const [contextUsage, setContextUsage] = useState<{ tokens?: number | null; contextWindow?: number; percent?: number | null } | null>(null);
+  const [isCompacting, setIsCompacting] = useState(false);
   const lastIdlePromptRef = useRef('');
   const suppressUserEventRef = useRef(false);
+  const providerRef = useRef(provider);
+  const modelRef = useRef(model);
+
+  useEffect(() => { providerRef.current = provider; }, [provider]);
+  useEffect(() => { modelRef.current = model; }, [model]);
+
+  const refreshContext = () => {
+    if (!sessionId) return;
+    api.getChatState(sessionId).then((state: any) => {
+      setContextUsage(state?.contextUsage ?? null);
+      setIsCompacting(Boolean(state?.isCompacting));
+    }).catch(() => {
+      // 上下文状态读取失败时保持上次可用值，不打断聊天流程
+    });
+  };
 
   const refreshThinkingLevels = (m: string | null, prov = provider, def = defaultModel) => {
     const target = resolveThinkingTarget(m, prov, def);
@@ -285,13 +234,47 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
       .catch(() => setThinkingLevels([...THINKING_LEVELS]));
   };
 
-  const refreshMeta = () => {
+  const refreshMeta = (availableModels: string[], activeProvider: string, defaultModelId: string | null) => {
     if (!sessionId) return;
     api.getChatSession(sessionId).then((rec: any) => {
       if (rec?.workspacePath) setWorkspacePath(rec.workspacePath);
       if (rec?.thinkingLevel !== undefined) setThinkingLevel(rec.thinkingLevel ?? null);
-      if (rec?.model) { setModel(rec.model); refreshThinkingLevels(rec.model); }
-    });
+      const storedModel = typeof rec?.model === 'string' ? rec.model : null;
+      const modelId = storedModel?.includes('/') ? storedModel.split('/')[1] : storedModel;
+      const modelIsKnown = availableModels.length === 0
+        || (storedModel !== null && (availableModels.includes(storedModel) || (modelId !== undefined && availableModels.includes(modelId))));
+      if (storedModel && modelIsKnown) {
+        setModel(storedModel);
+        refreshThinkingLevels(storedModel, activeProvider, defaultModelId);
+        return;
+      }
+      if (storedModel) {
+        void api.setChatModel(sessionId, null).catch(() => {});
+      }
+      setModel(null);
+      refreshThinkingLevels(null, activeProvider, defaultModelId);
+    }).catch((e: any) => setError(String(e?.message ?? e)));
+  };
+
+  const refreshModelOptions = () => {
+    api.getModelOptions().then((r: any) => {
+      const previousProvider = providerRef.current;
+      const nextProvider = r.provider ?? 'deepseek';
+      const nextModels = r.models ?? [];
+      const nextDefault = r.defaultModel ?? null;
+      const providerChanged = Boolean(previousProvider && previousProvider !== nextProvider);
+      setModels(nextModels);
+      setDefaultModel(nextDefault);
+      setProvider(nextProvider);
+      if (providerChanged && sessionId) {
+        setModel(null);
+        api.setChatModel(sessionId, null)
+          .catch(() => {})
+          .finally(() => refreshMeta(nextModels, nextProvider, nextDefault));
+      } else {
+        refreshMeta(nextModels, nextProvider, nextDefault);
+      }
+    }).catch((e: any) => setError(String(e?.message ?? e)));
   };
 
   useEffect(() => {
@@ -305,24 +288,21 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
     setThinkingLevel(null);
     setThinkingLevels([...THINKING_LEVELS]);
     setProvider('deepseek');
+    setContextUsage(null);
+    setIsCompacting(false);
     if (!sessionId) return;
     api.getChatState(sessionId).then((state: any) => {
       setQueues({
         steering: state?.steering ?? [],
         followUp: state?.followUp ?? [],
       });
+      setContextUsage(state?.contextUsage ?? null);
+      setIsCompacting(Boolean(state?.isCompacting));
       if (state?.streaming) setBusy(true);
     }).catch((e: any) => setError(String(e?.message ?? e)));
-    api.openChatSession(sessionId).then(({ messages }: any) => {
-      setEntries(normalizeMessages(messages ?? []));
+    api.openChatSession(sessionId).then(({ messages, entries }: any) => {
+      setEntries(entries?.length ? Timeline.normalizeSessionEntries(entries) : Timeline.normalizeMessages(messages ?? []));
     }).catch((e: any) => setError(String(e?.message ?? e)));
-    api.getModelOptions().then((r: any) => {
-      setModels(r.models ?? []);
-      setDefaultModel(r.defaultModel ?? null);
-      setProvider(r.provider ?? 'deepseek');
-      refreshThinkingLevels(model ?? r.defaultModel ?? null, r.provider ?? 'deepseek', r.defaultModel ?? null);
-    });
-    refreshMeta();
     const off1 = api.on('chat-event', (p: any) => {
       if (p?.sessionId !== sessionId) return;
       if (p?.type === 'queue_update') {
@@ -335,15 +315,13 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
       if (p?.type === 'agent_end') {
         setBusy(false);
         setStopping(false);
-        setEntries((xs) => xs.map((e) =>
-          e.kind === 'message' && e.role === 'assistant' && e.streaming
-            ? { ...e, streaming: false }
-            : e,
-        ));
+        setEntries((xs) => Timeline.applyChatEvent(xs, p));
+        refreshContext();
         return;
       }
       if (p?.type === 'runtime_error') {
         setError(typeof p?.message === 'string' ? p.message : 'Pi 运行时错误');
+        setEntries((xs) => Timeline.applyChatEvent(xs, p));
         return;
       }
       if (p?.type === 'message' && p?.role === 'user') {
@@ -362,12 +340,15 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
         }]);
         return;
       }
-      setEntries((xs) => applyChatEvent(xs, p));
+      setEntries((xs) => Timeline.applyChatEvent(xs, p));
+      if (p?.type === 'compaction_start' || p?.type === 'compaction_end' || p?.type === 'agent_settled') {
+        refreshContext();
+      }
     });
     const off2 = api.on('approval', (p: any) => {
       if (p?.sessionId !== sessionId || !p?.toolName) return;
       setEntries((xs) => {
-        const idx = findLastUnresolvedTool(xs, p.toolName);
+        const idx = Timeline.findLastUnresolvedTool(xs, p.toolName);
         if (idx < 0) return xs;
         const next = [...xs];
         next[idx] = { ...(next[idx] as Extract<ChatEntry, { kind: 'tool' }>), awaitingApproval: true };
@@ -376,6 +357,11 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
     });
     return () => { off1(); off2(); };
   }, [api, sessionId]);
+
+  useEffect(() => {
+    if (!active || !sessionId) return;
+    refreshModelOptions();
+  }, [active, sessionId]);
 
   const getLocalPath = (file: File): string => api.getPathForFile(file);
 
@@ -459,7 +445,7 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
   const chooseWorkspace = () => {
     api.chooseWorkspace().then(({ path }: any) => {
       if (path && sessionId) {
-        api.setChatWorkspace(sessionId, path).then(refreshMeta);
+        api.setChatWorkspace(sessionId, path).then(() => refreshMeta(models, provider, defaultModel));
       }
     });
   };
@@ -482,6 +468,8 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
             e.role === 'assistant'
               ? <ChatMessage key={e.id} role="assistant" text={e.text} thinking={e.thinking} streaming={e.streaming}><Markdown text={e.text} /></ChatMessage>
               : <ChatMessage key={e.id} role="user" text={e.text} />
+          ) : e.kind === 'event' ? (
+            <LifecycleCard key={e.id} entry={e} />
           ) : (
             <ToolCard key={e.id} toolName={e.toolName} input={e.input} result={e.result} awaitingApproval={e.awaitingApproval} />
           )
@@ -530,6 +518,8 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
         thinkingLevels={thinkingLevels}
         thinkingLevel={thinkingLevel}
         onThinkingLevelChange={onThinkingLevelChange}
+        contextUsage={contextUsage}
+        isCompacting={isCompacting}
         workspacePath={workspacePath}
         getLocalPath={getLocalPath}
         onChooseWorkspace={chooseWorkspace}

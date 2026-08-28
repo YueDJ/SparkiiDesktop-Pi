@@ -294,6 +294,48 @@ describe('ipc provider handlers', () => {
     expect(client.onEvent).toHaveBeenCalled();
   });
 
+  it('newChatSession creates the Pi session with the app model and thinking level', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(
+      join(dataDir, 'settings.json'),
+      JSON.stringify({ activeProviderId: 'deepseek', defaultModel: 'deepseek-v4-flash', defaultThinkingLevel: 'off' }),
+      'utf8',
+    );
+
+    const sent: any[] = [];
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's-new', sessionFile: null } };
+        }
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({ dataDir, piAgentDir, client });
+    (rt as any).chatSessions.create = vi.fn();
+
+    const handlers = await registeredHandlers();
+    const newChatSession = handlers.get('sparkii:newChatSession');
+    await newChatSession!(null, 'general');
+
+    expect(rt.pool.acquire).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        saddle: expect.objectContaining({
+          model: { provider: 'deepseek', modelId: 'deepseek-v4-flash' },
+          thinkingLevel: 'off',
+        }),
+      }),
+    );
+    expect(sent).toContainEqual({ type: 'new_session' });
+    expect(sent).not.toContainEqual({ type: 'set_model', provider: 'deepseek', modelId: 'deepseek-v4-flash' });
+  });
+
   it('newChatSession rejects when the runtime pool has reached maxAgents', async () => {
     const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
     dirs.push(dataDir);
@@ -442,6 +484,88 @@ describe('ipc provider handlers', () => {
     await promptSession!(null, 's1', '你好');
 
     expect(sent).toContainEqual({ type: 'set_model', provider: 'deepseek', modelId: 'deepseek-v4-pro' });
+    expect(sent).toContainEqual({ type: 'set_thinking_level', level: 'high' });
+  });
+
+  it('setChatModel applies the selected model to the open Pi session', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(
+      join(dataDir, 'settings.json'),
+      JSON.stringify({ activeProviderId: 'deepseek', defaultModel: 'deepseek-v4-flash' }),
+      'utf8',
+    );
+
+    const sent: any[] = [];
+    const client = {
+      onEvent: (cb: (event: any) => void) => {
+        queueMicrotask(() => cb({ type: 'agent_end' }));
+        return () => {};
+      },
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') return { success: true, data: { sessionFile: null } };
+        return { success: true };
+      },
+    };
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'contract-review', model: null },
+    });
+
+    const handlers = await registeredHandlers();
+    const promptSession = handlers.get('sparkii:promptSession');
+    await promptSession!(null, 's1', '你好');
+    sent.length = 0;
+
+    const setChatModel = handlers.get('sparkii:setChatModel');
+    await setChatModel!(null, 's1', 'deepseek-v4-pro');
+
+    expect(sent).toContainEqual({ type: 'set_model', provider: 'deepseek', modelId: 'deepseek-v4-pro' });
+  });
+
+  it('setChatThinkingLevel applies the selected level to the open Pi session', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(
+      join(dataDir, 'settings.json'),
+      JSON.stringify({ activeProviderId: 'deepseek', defaultModel: 'deepseek-v4-flash' }),
+      'utf8',
+    );
+
+    const sent: any[] = [];
+    const client = {
+      onEvent: (cb: (event: any) => void) => {
+        queueMicrotask(() => cb({ type: 'agent_end' }));
+        return () => {};
+      },
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') return { success: true, data: { sessionFile: null } };
+        return { success: true };
+      },
+    };
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'contract-review', model: null },
+    });
+
+    const handlers = await registeredHandlers();
+    const promptSession = handlers.get('sparkii:promptSession');
+    await promptSession!(null, 's1', '你好');
+    sent.length = 0;
+
+    const setChatThinkingLevel = handlers.get('sparkii:setChatThinkingLevel');
+    await setChatThinkingLevel!(null, 's1', 'high');
+
     expect(sent).toContainEqual({ type: 'set_thinking_level', level: 'high' });
   });
 

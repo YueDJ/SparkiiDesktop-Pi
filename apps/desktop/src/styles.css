@@ -104,6 +104,16 @@ table.tbl th { background: var(--color-controlBg); color: var(--color-textSecond
 .chat-list { flex: 1; overflow-y: auto; padding: var(--spacing-md); display: flex; flex-direction: column; gap: var(--spacing-sm); }
 .chat-hint { text-align: center; margin-top: var(--spacing-lg); }
 .chat-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: var(--spacing-sm); text-align: center; }
+.pi-lifecycle-card { align-self: center; max-width: min(680px, 92%); width: fit-content; min-width: 260px; border: 1px solid var(--color-border); border-radius: var(--radius-card); background: var(--color-controlBg); padding: var(--spacing-xs) var(--spacing-sm); display: flex; flex-direction: column; gap: var(--spacing-xs); box-shadow: var(--shadow-card); font-size: var(--font-size-sm); }
+.pi-lifecycle-card--running { border-left: 3px solid var(--color-primary); }
+.pi-lifecycle-card--ok { border-left: 3px solid var(--color-ok); }
+.pi-lifecycle-card--warn { border-left: 3px solid var(--color-warn); background: var(--color-warnBg); }
+.pi-lifecycle-card--error { border-left: 3px solid var(--color-risk); background: var(--color-riskBg); }
+.pi-lifecycle-card-head { display: flex; align-items: center; gap: var(--spacing-xs); min-width: 0; }
+.pi-lifecycle-card-icon { width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-control); background: var(--color-surface); color: var(--color-textSecondary); flex: none; font-family: var(--font-mono); }
+.pi-lifecycle-card-label { color: var(--color-text); font-weight: var(--font-weight-semibold); flex: none; }
+.pi-lifecycle-card-status { margin-left: auto; }
+.pi-lifecycle-card-detail { color: var(--color-textSecondary); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 180px; overflow-y: auto; }
 .chat-error { margin: 0 var(--spacing-md) var(--spacing-xs); padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-control); background: var(--color-riskBg); color: var(--color-risk); font-size: var(--font-size-sm); }
 
 .chat-queue-area { display: flex; flex-direction: column; gap: var(--spacing-xs); padding: 0 var(--spacing-md) var(--spacing-xs); }

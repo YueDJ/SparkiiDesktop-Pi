@@ -1,4 +1,4 @@
-import { ChatComposer, type ComposerAttachment } from '@sparkii/ui';
+import { ChatComposer, type ComposerAttachment, type ContextUsage } from '@sparkii/ui';
 
 export interface ComposerProps {
   busy: boolean;
@@ -10,6 +10,8 @@ export interface ComposerProps {
   thinkingLevels: string[];
   thinkingLevel: string | null;
   onThinkingLevelChange(level: string | null): void;
+  contextUsage: ContextUsage | null;
+  isCompacting: boolean;
   workspacePath: string | null;
   getLocalPath?(file: File): string;
   onChooseWorkspace(): void;
@@ -34,6 +36,8 @@ export function Composer(props: ComposerProps) {
         onModelChange: props.onModelChange,
         onThinkingLevelChange: props.onThinkingLevelChange,
       }}
+      contextUsage={props.contextUsage}
+      isCompacting={props.isCompacting}
       onSend={props.onSend}
       onStop={props.onStop}
     />

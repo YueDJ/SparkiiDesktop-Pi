@@ -16,6 +16,12 @@ describe('resolveSessionModel', () => {
       { model: null },
     )).toEqual({ provider: 'zai', modelId: 'glm-5' });
   });
+  it('falls back to defaultModel when the chat route is an empty string', () => {
+    expect(resolveSessionModel(
+      { activeProviderId: 'deepseek', defaultModel: 'kimi-for-coding', routes: { chat: '' } },
+      { model: null },
+    )).toEqual({ provider: 'deepseek', modelId: 'kimi-for-coding' });
+  });
 });
 
 describe('resolveThinkingLevel', () => {
