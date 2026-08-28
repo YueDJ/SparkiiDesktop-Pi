@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import {
   parseSessionEntries,
   SessionManager,
+  type SessionEntry,
   type SessionInfo,
 } from "@earendil-works/pi-coding-agent";
 
@@ -35,4 +36,9 @@ export function readPiSessionMessages(filePath: string): Array<{ role: string; c
   return entries
     .filter((entry): entry is Extract<typeof entry, { type: "message" }> => entry.type === "message")
     .map((entry) => entry.message as { role: string; content: unknown });
+}
+
+export function readPiSessionEntries(filePath: string): SessionEntry[] {
+  const entries = parseSessionEntries(readFileSync(filePath, "utf8"));
+  return entries.filter((entry): entry is SessionEntry => entry.type !== "session");
 }

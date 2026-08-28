@@ -137,10 +137,20 @@ export async function createPiSdkSessionHost(
         extensionFactories: [systemPromptExtensionFactory(() => pendingSaddle?.systemPrompt)],
       },
     });
+    let initialModel;
+    if (saddle?.model) {
+      await syncModelConfig(saddle.model.provider);
+      initialModel = modelRuntime.getModel(saddle.model.provider, saddle.model.modelId);
+      if (!initialModel) {
+        throw new Error(`unknown model ${saddle.model.provider}/${saddle.model.modelId}`);
+      }
+    }
     const result = await createAgentSessionFromServices({
       services,
       sessionManager,
       sessionStartEvent,
+      model: initialModel,
+      thinkingLevel: saddle?.thinkingLevel as any,
     });
     return {
       ...result,
@@ -264,10 +274,12 @@ export async function createPiSdkSessionHost(
         return () => runtimeErrorListeners.delete(callback);
       },
       getMessages: () => session.messages,
+      getSessionEntries: () => session.sessionManager.getBranch(),
       getState: () => ({
         streaming: session.isStreaming,
         isStreaming: session.isStreaming,
         isCompacting: session.isCompacting,
+        contextUsage: session.getContextUsage?.(),
         sessionId: session.sessionId,
         sessionFile: session.sessionFile,
         steeringMode: session.steeringMode,

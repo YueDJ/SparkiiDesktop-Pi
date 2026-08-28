@@ -89,6 +89,55 @@ describe('GeneralChatSurface', () => {
     expect(screen.getByText(/收到/)).toBeTruthy();
   });
 
+  it('restores full Pi history entries and renders a compaction card', async () => {
+    const { api } = makeApi();
+    api.openChatSession = vi.fn().mockResolvedValue({
+      messages: [{ role: 'user', text: 'hi' }],
+      entries: [
+        { type: 'message', message: { role: 'user', content: 'hi' } },
+        { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', id: 'call_1', name: 'bash', arguments: { command: 'ls' } }] } },
+        { type: 'message', message: { role: 'toolResult', toolCallId: 'call_1', toolName: 'bash', content: [{ type: 'text', text: 'out' }] } },
+        { type: 'compaction', summary: '已压缩较早内容', firstKeptEntryId: 'call_1', tokensBefore: 150000 },
+      ],
+    });
+    render(<GeneralChatSurface api={api} sessionId="s1" onNewSession={vi.fn()} />);
+    await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('s1'));
+    expect(await screen.findByText('bash')).toBeTruthy();
+    expect(screen.getByText('上下文压缩')).toBeTruthy();
+    expect(screen.getByText(/150000 tokens/)).toBeTruthy();
+  });
+
+  it('shows the Pi context usage bar from getChatState', async () => {
+    const { api } = makeApi();
+    api.getChatState = vi.fn().mockResolvedValue({
+      streaming: false,
+      steering: [],
+      followUp: [],
+      isCompacting: false,
+      contextUsage: { tokens: 12300, contextWindow: 200000, percent: 6 },
+    });
+    render(<GeneralChatSurface api={api} sessionId="s1" onNewSession={vi.fn()} />);
+    expect(await screen.findByTestId('context-bar')).toBeTruthy();
+    expect(screen.getByText(/6%/)).toBeTruthy();
+    expect(screen.getByText(/12,300/)).toBeTruthy();
+  });
+
+  it('refreshes model options and clears the session override when the surface becomes active after a provider change', async () => {
+    const { api } = makeApi();
+    api.getModelOptions = vi.fn()
+      .mockResolvedValueOnce({ defaultModel: 'k3', models: ['k3'], provider: 'kimi' })
+      .mockResolvedValue({ defaultModel: 'deepseek-v4-pro', models: ['deepseek-v4-pro'], provider: 'deepseek' });
+    const view = render(<GeneralChatSurface api={api} sessionId="s1" active onNewSession={vi.fn()} />);
+    await screen.findByText('hi');
+    expect(await screen.findByText('k3')).toBeTruthy();
+
+    view.rerender(<GeneralChatSurface api={api} sessionId="s1" active={false} onNewSession={vi.fn()} />);
+    view.rerender(<GeneralChatSurface api={api} sessionId="s1" active onNewSession={vi.fn()} />);
+
+    await waitFor(() => expect(api.setChatModel).toHaveBeenCalledWith('s1', null));
+    expect(await screen.findByText('deepseek-v4-pro')).toBeTruthy();
+  });
+
   it('marks a tool card awaiting approval from approval events', async () => {
     const { api, channels } = makeApi();
     render(<GeneralChatSurface api={api} sessionId="s1" onNewSession={vi.fn()} />);

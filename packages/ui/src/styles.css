@@ -126,6 +126,12 @@ button { font: inherit; color: inherit; }
 .ui-composer-file-remove:hover { color: var(--color-risk); background: var(--color-riskBg); }
 .ui-composer-toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-xs); padding: 0 var(--spacing-xs) var(--spacing-xs) var(--spacing-sm); }
 .ui-composer-toolbar-left, .ui-composer-toolbar-right { display: flex; align-items: center; gap: var(--spacing-xs); min-width: 0; }
+.ui-composer-context { flex: 1; min-width: 110px; max-width: 280px; display: flex; align-items: center; justify-content: center; gap: var(--spacing-xs); height: var(--control-height-sm); border-radius: var(--radius-pill); background: var(--color-controlBg); color: var(--color-textSecondary); font-size: var(--font-size-xs); padding: 0 var(--spacing-sm); white-space: nowrap; }
+.ui-composer-context-track { position: relative; width: 72px; height: 5px; border-radius: 999px; background: var(--color-controlBorder); overflow: hidden; flex: none; }
+.ui-composer-context-track > span { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--color-primary); transition: width var(--motion-fast) var(--motion-ease); }
+.ui-composer-context-text { font-variant-numeric: tabular-nums; }
+.ui-composer-context-empty, .ui-composer-context-compacting { color: var(--color-textMuted); }
+.ui-composer-context--compacting { background: var(--color-warnBg); color: var(--color-warn); }
 .ui-composer-plus { border: none; background: none; color: var(--color-textSecondary); border-radius: var(--radius-pill); width: var(--control-height-sm); height: var(--control-height-sm); cursor: pointer; }
 .ui-composer-plus:hover { background: var(--color-controlBg); color: var(--color-text); }
 .ui-composer-send { width: var(--control-height-md); height: var(--control-height-md); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; border: none; background: var(--color-primary); color: var(--color-onPrimary); cursor: pointer; flex: none; transition: background var(--motion-fast) var(--motion-ease), opacity var(--motion-fast) var(--motion-ease); }

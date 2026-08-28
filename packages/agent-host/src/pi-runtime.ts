@@ -30,6 +30,7 @@ export interface PiRuntimeSession {
   subscribe(callback: (event: any) => void): () => void;
   onRuntimeError(callback: (error: { message: string; command?: string; stack?: string }) => void): () => void;
   getMessages(): unknown[];
+  getSessionEntries(): unknown[];
   getState(): Record<string, unknown>;
   dispose(): void;
 }
@@ -137,6 +138,8 @@ async function handleCommand(host: PiRuntimeSessionHost, command: RpcCommand): P
       return session.getState();
     case "get_messages":
       return session.getMessages();
+    case "get_session_entries":
+      return session.getSessionEntries();
     case "set_model":
       await session.setModel(command.provider, command.modelId);
       return undefined;

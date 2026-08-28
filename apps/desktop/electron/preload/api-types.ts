@@ -20,6 +20,8 @@ export interface ChatQueueState {
   streaming: boolean;
   steering: string[];
   followUp: string[];
+  isCompacting?: boolean;
+  contextUsage?: { tokens?: number | null; contextWindow?: number; percent?: number | null } | null;
 }
 
 export interface SparkiiApi {
@@ -29,7 +31,7 @@ export interface SparkiiApi {
   runWorkflow(id: string, input: Record<string, unknown>): Promise<{ ok: boolean }>;
   prompt(text: string): Promise<{ ok: boolean }>;
   newChatSession(profileId: string): Promise<{ sessionId: string; workspacePath: string; model: string | null }>;
-  openChatSession(sessionId: string): Promise<{ messages: unknown[] }>;
+  openChatSession(sessionId: string): Promise<{ messages: unknown[]; entries?: unknown[] }>;
   listChatSessions(profileId?: string): Promise<unknown[]>;
   getChatSession(sessionId: string): Promise<unknown>;
   getChatMessages(sessionId: string): Promise<unknown[]>;

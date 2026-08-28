@@ -14,6 +14,7 @@ function makeHost() {
     subscribe: vi.fn(() => () => {}),
     onRuntimeError: vi.fn(() => () => {}),
     getMessages: vi.fn(() => [{ role: "user", text: "hi" }]),
+    getSessionEntries: vi.fn(() => [{ type: "message", message: { role: "user", content: "hi" } }]),
     getState: vi.fn(() => ({ sessionId: "s1", sessionFile: "/tmp/s.json" })),
     dispose: vi.fn(),
   } as unknown as PiRuntimeSession;
@@ -55,6 +56,23 @@ describe("pi runtime command data", () => {
     await new Promise((r) => setTimeout(r, 0));
     const resp = posted.find((e) => "response" in e && e.id === "2");
     expect((resp as any)?.response?.data).toEqual([{ role: "user", text: "hi" }]);
+  });
+
+  it("returns the active branch for get_session_entries", async () => {
+    const { host, session } = makeHost();
+    const posted: PiRuntimeEnvelope[] = [];
+    let handler: (e: PiRuntimeEnvelope) => void = () => {};
+    const transport = {
+      postMessage: (e: PiRuntimeEnvelope) => posted.push(e),
+      onMessage: (cb: (e: PiRuntimeEnvelope) => void) => { handler = cb; return () => {}; },
+    };
+    createPiRuntime({ host, transport });
+    handler(commandEnvelope("2b", { type: "get_session_entries" }));
+    await new Promise((r) => setTimeout(r, 0));
+    const resp = posted.find((e) => "response" in e && e.id === "2b");
+    expect((resp as any)?.response?.success).toBe(true);
+    expect(session.getSessionEntries).toHaveBeenCalled();
+    expect((resp as any)?.response?.data).toEqual([{ type: "message", message: { role: "user", content: "hi" } }]);
   });
 
   it("dispatches configure_session to the host", async () => {

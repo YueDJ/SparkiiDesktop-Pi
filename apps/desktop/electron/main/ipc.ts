@@ -2,7 +2,7 @@ import { ipcMain, dialog, app, type BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { listPiSessions, readPiSessionMessages, type PiProviderInfo, type SessionSaddle } from '@sparkii/agent-host';
+import { listPiSessions, readPiSessionEntries, readPiSessionMessages, type PiProviderInfo, type SessionSaddle } from '@sparkii/agent-host';
 import { applyThinkingLevel, createBroker, resolveModelTarget, resolveSessionModel, resolveThinkingLevel, runWorkflow, selectModel } from './workflow.js';
 import { resolveExportPath } from './export-path.js';
 import { loadSettings, saveSettings } from './settings.js';
@@ -22,6 +22,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     { slot: Awaited<ReturnType<typeof rt.pool.acquire>>; profileId: string; offEvents?: () => void }
   >();
   const titledSessions = new Set<string>();
+  const appliedModelBySession = new Map<string, { provider: string; modelId: string }>();
 
   const anchorDir = (sessionId: string) => join(rt.dataDir, 'sessions', sessionId);
 
@@ -104,12 +105,16 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   const chatStateData = (data: unknown): {
     isStreaming?: boolean;
     streaming?: boolean;
+    isCompacting?: boolean;
+    contextUsage?: { tokens?: number | null; contextWindow?: number; percent?: number | null } | null;
     sessionFile?: string;
     steering?: string[];
     followUp?: string[];
   } => (data ?? {}) as {
     isStreaming?: boolean;
     streaming?: boolean;
+    isCompacting?: boolean;
+    contextUsage?: { tokens?: number | null; contextWindow?: number; percent?: number | null } | null;
     sessionFile?: string;
     steering?: string[];
     followUp?: string[];
@@ -195,12 +200,16 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     if (rt.pool.activeCount() >= maxAgents) {
       throw new Error(`已达到最大并发会话数 ${maxAgents}，请先关闭一个空闲会话`);
     }
+    const target = resolveSessionModel(settings, null);
+    const thinkingLevel = resolveThinkingLevel(settings, null, target);
     const tempKey = `new:${randomUUID()}`;
     const slot = await rt.pool.acquire(tempKey, {
-      saddle: buildProfileSaddle(rt.profileOf(profileId), anchorDir(tempKey), workspacePath),
+      saddle: buildProfileSaddle(rt.profileOf(profileId), anchorDir(tempKey), workspacePath, target ?? undefined, thinkingLevel),
     });
     let sessionId: string | undefined;
     try {
+      const freshResp = await slot.client.send({ type: 'new_session' });
+      if (!freshResp.success) throw new Error(freshResp.error ?? 'new_session failed');
       const state = await slot.client.send({ type: 'get_state' });
       if (!state.success) throw new Error(state.error ?? 'get_state failed');
       sessionId = (state.data as { sessionId?: string } | undefined)?.sessionId;
@@ -218,6 +227,14 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
         workspacePath,
         piSessionFile: sessionFile ?? null,
       });
+      if (target) {
+        const apiKey = await rt.keyFor(target.provider);
+        if (apiKey) {
+          const keyResp = await slot.client.send({ type: 'set_api_key', provider: target.provider, apiKey });
+          if (!keyResp.success) throw new Error(keyResp.error ?? 'set_api_key failed');
+        }
+        appliedModelBySession.set(sessionId, target);
+      }
       return { sessionId, workspacePath, model: null };
     } catch (e) {
       if (sessionId) {
@@ -233,8 +250,14 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   ipcMain.handle('sparkii:openChatSession', async (_e, sessionId: string) => {
     const open = openSessions.get(sessionId);
     if (open) {
-      const resp = await open.slot.client.send({ type: 'get_messages' });
-      return { messages: (resp.data ?? []) as unknown[] };
+      const [messagesResp, entriesResp] = await Promise.all([
+        open.slot.client.send({ type: 'get_messages' }),
+        open.slot.client.send({ type: 'get_session_entries' }),
+      ]);
+      return {
+        messages: (messagesResp.data ?? []) as unknown[],
+        entries: (entriesResp.data ?? []) as unknown[],
+      };
     }
     const rec = rt.chatSessions.get(sessionId) ?? (await listPiSessions(join(rt.piAgentDir, 'sessions'))).find((s) => s.id === sessionId);
     if (!rec) throw new Error('session not found');
@@ -242,7 +265,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       ?? (rec as { path?: string }).path;
     if (!file) return { messages: [] };
     try {
-      return { messages: readPiSessionMessages(file) };
+      return { messages: readPiSessionMessages(file), entries: readPiSessionEntries(file) };
     } catch (e) {
       // 空会话或尚未落盘的会话（首条 assistant 才写 jsonl）没有文件，返回空消息。
       if ((e as NodeJS.ErrnoException).code === 'ENOENT') return { messages: [] };
@@ -293,9 +316,14 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     const rec = rt.chatSessions.get(sessionId);
 
     const target = rec?.model
-      ? await selectModel(rt, 'chat', sessionId, rec.model)
-      : await selectModel(rt, 'chat', sessionId);
+      ? resolveSessionModel(await loadSettings(rt.dataDir), rec)
+      : resolveSessionModel(await loadSettings(rt.dataDir), null);
     if (target) {
+      const applied = appliedModelBySession.get(sessionId);
+      if (!applied || applied.provider !== target.provider || applied.modelId !== target.modelId) {
+        await selectModel(rt, 'chat', sessionId, `${target.provider}/${target.modelId}`);
+        appliedModelBySession.set(sessionId, target);
+      }
       const settings = await loadSettings(rt.dataDir);
       await applyThinkingLevel(open.slot.client, resolveThinkingLevel(settings, rec, target));
     }
@@ -349,6 +377,8 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       streaming: data.isStreaming ?? data.streaming ?? false,
       steering: data.steering ?? [],
       followUp: data.followUp ?? [],
+      isCompacting: data.isCompacting ?? false,
+      contextUsage: data.contextUsage ?? null,
     };
   });
 
@@ -383,7 +413,27 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     return { ok: true };
   });
 
-  ipcMain.handle('sparkii:setChatModel', (_e, sessionId: string, model: string | null) => {
+  ipcMain.handle('sparkii:setChatModel', async (_e, sessionId: string, model: string | null) => {
+    const open = openSessions.get(sessionId);
+    if (open) {
+      pipeSessionEvents(sessionId, open);
+      const settings = await loadSettings(rt.dataDir);
+      const target = resolveSessionModel(settings, { model });
+      if (target) {
+        const applied = appliedModelBySession.get(sessionId);
+        const changed = !applied || applied.provider !== target.provider || applied.modelId !== target.modelId;
+        if (changed) {
+          await selectModel(rt, 'chat', sessionId, `${target.provider}/${target.modelId}`);
+          appliedModelBySession.set(sessionId, target);
+          getWindow()?.webContents.send('sparkii:event:chat-event', {
+            type: 'model_change',
+            sessionId,
+            provider: target.provider,
+            modelId: target.modelId,
+          });
+        }
+      }
+    }
     rt.chatSessions.update(sessionId, { model });
     return { ok: true };
   });
@@ -392,6 +442,12 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     const rec = rt.chatSessions.get(sessionId);
     if (!rec) throw new Error('session not found');
     rt.chatSessions.update(sessionId, { thinkingLevel: level });
+    const open = openSessions.get(sessionId);
+    if (open && level) {
+      pipeSessionEvents(sessionId, open);
+      const resp = await open.slot.client.send({ type: 'set_thinking_level', level });
+      if (!resp.success) throw new Error(resp.error ?? 'set_thinking_level failed');
+    }
     if (level) {
       const settings = await loadSettings(rt.dataDir);
       const target = resolveSessionModel(settings, rec);
@@ -461,6 +517,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       open.offEvents?.();
       await rt.pool.release(sessionId);
       openSessions.delete(sessionId);
+      appliedModelBySession.delete(sessionId);
     }
     rt.chatSessions.delete(sessionId);
     return { ok: true };
