@@ -173,7 +173,9 @@ export interface GeneralChatSurfaceProps {
   api: SparkiiApi;
   sessionId: string | null;
   active?: boolean;
+  draft?: boolean;
   onNewSession(): void;
+  onSessionCommitted?(sessionId: string): void;
 }
 
 function resolveThinkingTarget(
@@ -192,7 +194,7 @@ function resolveThinkingTarget(
 }
 
 export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
-  const { api, sessionId, active = true, onNewSession } = props;
+  const { api, sessionId, active = true, draft = false, onNewSession, onSessionCommitted } = props;
   const [entries, setEntries] = useState<ChatEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [stopping, setStopping] = useState(false);
@@ -266,6 +268,11 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
       setModels(nextModels);
       setDefaultModel(nextDefault);
       setProvider(nextProvider);
+      if (!sessionId) {
+        setThinkingLevel(null);
+        setThinkingLevels([...THINKING_LEVELS]);
+        return;
+      }
       if (providerChanged && sessionId) {
         setModel(null);
         api.setChatModel(sessionId, null)
@@ -359,19 +366,34 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
   }, [api, sessionId]);
 
   useEffect(() => {
-    if (!active || !sessionId) return;
+    if (!active) return;
     refreshModelOptions();
-  }, [active, sessionId]);
+  }, [active, sessionId, draft]);
 
   const getLocalPath = (file: File): string => api.getPathForFile(file);
 
   const send = (text: string, attachments: ComposerAttachment[] = []) => {
-    if (!sessionId) return;
     const display = attachments.length ? `${attachments.map((a) => `📎 ${a.name}`).join(' ')}\n${text}` : text;
     const prompt = attachments.length
       ? `请基于以下我提供的文件进行分析:\n${attachments.map((a) => `- ${a.path}`).join('\n')}\n\n${text}`
       : text;
     setError('');
+    if (!sessionId && draft) {
+      if (busy) return;
+      setBusy(true);
+      api.promptDraftSession('general', prompt, {
+        workspacePath,
+        model,
+        thinkingLevel,
+      }).then((res) => {
+        if (res?.sessionId) onSessionCommitted?.(res.sessionId);
+      }).catch((e: any) => {
+        setError(String(e?.message ?? e));
+        setBusy(false);
+      });
+      return;
+    }
+    if (!sessionId) return;
     if (busy) {
       api.promptSession(sessionId, prompt, { behavior: 'followUp' })
         .catch((e: any) => setError(String(e?.message ?? e)));
@@ -444,13 +466,16 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
 
   const chooseWorkspace = () => {
     api.chooseWorkspace().then(({ path }: any) => {
-      if (path && sessionId) {
-        api.setChatWorkspace(sessionId, path).then(() => refreshMeta(models, provider, defaultModel));
+      if (path) {
+        setWorkspacePath(path);
+        if (sessionId) {
+          api.setChatWorkspace(sessionId, path).then(() => refreshMeta(models, provider, defaultModel));
+        }
       }
     });
   };
 
-  if (!sessionId) {
+  if (!sessionId && !draft) {
     return (
       <div className="chat-empty">
         <h3>通用智能体</h3>

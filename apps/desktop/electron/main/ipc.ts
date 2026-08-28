@@ -26,8 +26,27 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   >();
   const titledSessions = new Set<string>();
   const appliedModelBySession = new Map<string, { provider: string; modelId: string }>();
+  const idleTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  const sessionIdleReleaseMs = 60_000;
 
   const anchorDir = (sessionId: string) => join(rt.dataDir, 'sessions', sessionId);
+
+  function cancelIdleRelease(sessionId: string): void {
+    const timer = idleTimers.get(sessionId);
+    if (timer) {
+      clearTimeout(timer);
+      idleTimers.delete(sessionId);
+    }
+  }
+
+  function scheduleIdleRelease(sessionId: string): void {
+    cancelIdleRelease(sessionId);
+    const timer = setTimeout(() => {
+      idleTimers.delete(sessionId);
+      void releaseSessionSlotInternal(sessionId).catch(() => {});
+    }, sessionIdleReleaseMs);
+    idleTimers.set(sessionId, timer);
+  }
 
   function buildSaddle(profileId: string, sessionId: string): SessionSaddle {
     return buildProfileSaddle(rt.profileOf(profileId), anchorDir(sessionId), rt.chatSessions.get(sessionId)?.workspacePath);
@@ -157,6 +176,11 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     const win = getWindow();
     entry.offEvents = entry.slot.client.onEvent((ev) => {
       win?.webContents.send('sparkii:event:chat-event', { ...ev, sessionId });
+      if (ev.type === 'agent_settled') {
+        scheduleIdleRelease(sessionId);
+      } else {
+        cancelIdleRelease(sessionId);
+      }
       if (ev.type === 'agent_end' && !titledSessions.has(sessionId)) {
         titledSessions.add(sessionId);
         void maybeGenerateTitle(sessionId, entry.profileId, entry.slot).catch(() => {});
@@ -264,6 +288,82 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     }
   });
 
+  ipcMain.handle('sparkii:promptDraftSession', async (
+    _e,
+    profileId: string,
+    text: string,
+    context: { workspacePath?: string | null; model?: string | null; thinkingLevel?: string | null } = {},
+  ) => {
+    const now = new Date();
+    const workspacePath = context.workspacePath ?? autoWorkspacePath(app.getPath('desktop'), now);
+    const settings = await loadSettings(rt.dataDir);
+    const rawMaxAgents = Number(settings.maxAgents ?? process.env.SPARKII_MAX_AGENTS ?? 4);
+    const maxAgents = Number.isFinite(rawMaxAgents) && rawMaxAgents > 0 ? Math.floor(rawMaxAgents) : 4;
+    rt.pool.setMaxAgents?.(maxAgents);
+    if (rt.pool.activeCount() >= maxAgents && settings.queueEnabled === false) {
+      throw new Error(`已达到最大并发会话数 ${maxAgents}，请先释放一个槽位`);
+    }
+
+    const target = context.model
+      ? resolveSessionModel(settings, { model: context.model })
+      : resolveSessionModel(settings, null);
+    const thinkingLevel = context.thinkingLevel ?? resolveThinkingLevel(settings, null, target);
+    const tempKey = `new:${randomUUID()}`;
+    const slot = await rt.pool.acquire(tempKey, {
+      saddle: buildProfileSaddle(rt.profileOf(profileId), anchorDir(tempKey), workspacePath, target ?? undefined, thinkingLevel),
+      meta: {
+        profileId,
+        profileName: (rt.profileOf(profileId).profile as { manifest?: { displayName?: string } })?.manifest?.displayName ?? profileId,
+        label: '新会话',
+      },
+    });
+
+    let sessionId: string | undefined;
+    try {
+      const freshResp = await slot.client.send({ type: 'new_session' });
+      if (!freshResp.success) throw new Error(freshResp.error ?? 'new_session failed');
+      const state = await slot.client.send({ type: 'get_state' });
+      if (!state.success) throw new Error(state.error ?? 'get_state failed');
+      sessionId = (state.data as { sessionId?: string } | undefined)?.sessionId;
+      const sessionFile = (state.data as { sessionFile?: string } | undefined)?.sessionFile;
+      if (!sessionId) throw new Error('runtime did not provide a session id');
+      rt.pool.renameSession(tempKey, sessionId);
+      const entry = { slot, profileId };
+      openSessions.set(sessionId, entry);
+      pipeSessionEvents(sessionId, entry);
+      await mkdir(anchorDir(sessionId), { recursive: true });
+      rt.chatSessions.create({
+        id: sessionId,
+        profileId,
+        workspaceKind: 'auto',
+        workspacePath,
+        model: context.model ?? null,
+        thinkingLevel: context.thinkingLevel ?? null,
+        piSessionFile: sessionFile ?? null,
+      });
+      if (target) {
+        const apiKey = await rt.keyFor(target.provider);
+        if (apiKey) {
+          const keyResp = await slot.client.send({ type: 'set_api_key', provider: target.provider, apiKey });
+          if (!keyResp.success) throw new Error(keyResp.error ?? 'set_api_key failed');
+        }
+        await selectModel(rt, 'chat', sessionId, `${target.provider}/${target.modelId}`);
+      }
+      const promptResp = await slot.client.send({ type: 'prompt', message: text });
+      if (!promptResp.success) throw new Error(promptResp.error ?? 'prompt failed');
+      return { ok: true, sessionId, behavior: 'prompt' as const };
+    } catch (e) {
+      if (sessionId) {
+        openSessions.delete(sessionId);
+        await rt.pool.release(sessionId);
+        rt.chatSessions.delete(sessionId);
+      } else {
+        await rt.pool.release(tempKey);
+      }
+      throw e;
+    }
+  });
+
   ipcMain.handle('sparkii:openChatSession', async (_e, sessionId: string) => {
     const open = openSessions.get(sessionId);
     if (open) {
@@ -302,16 +402,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
         piFile: s.path,
       };
     });
-    const seen = new Set(mapped.map((m) => m.id));
-    const stored = rt.chatSessions.list(profileId).map((rec) => ({
-      id: rec.id,
-      title: undefined,
-      profileId: rec.profileId,
-      updatedAt: rec.updatedAt,
-      piFile: rec.piSessionFile ?? undefined,
-    }));
-    const merged = [...mapped, ...stored.filter((m) => !seen.has(m.id))];
-    return profileId ? merged.filter((m) => m.profileId === profileId || m.profileId === undefined) : merged;
+    return profileId ? mapped.filter((m) => m.profileId === profileId || m.profileId === undefined) : mapped;
   });
   ipcMain.handle('sparkii:getChatSession', (_e, sessionId: string) => rt.chatSessions.get(sessionId) ?? null);
   ipcMain.handle('sparkii:getChatMessages', async (_e, sessionId: string) => {
@@ -327,6 +418,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     text: string,
     options?: { behavior?: 'steer' | 'followUp' },
   ) => {
+    cancelIdleRelease(sessionId);
     const open = await ensureOpenSession(sessionId);
     pipeSessionEvents(sessionId, open);
     open.slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId: open.profileId }));
@@ -385,7 +477,16 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   });
 
   ipcMain.handle('sparkii:getChatState', async (_e, sessionId: string) => {
-    const open = await ensureOpenSession(sessionId);
+    const open = openSessions.get(sessionId);
+    if (!open) {
+      return {
+        streaming: false,
+        steering: [],
+        followUp: [],
+        isCompacting: false,
+        contextUsage: null,
+      };
+    }
     pipeSessionEvents(sessionId, open);
     const resp = await open.slot.client.send({ type: 'get_state' });
     if (!resp.success) throw new Error(resp.error ?? 'get_state failed');
@@ -525,6 +626,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   });
 
   ipcMain.handle('sparkii:deleteChatSession', async (_e, sessionId: string) => {
+    cancelIdleRelease(sessionId);
     const open = openSessions.get(sessionId);
     if (open) {
       const state = await open.slot.client.send({ type: 'get_state' });
@@ -547,8 +649,9 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     return { ok: true };
   });
 
-  ipcMain.handle('sparkii:releaseSessionSlot', async (_e, sessionId: string) => {
+  async function releaseSessionSlotInternal(sessionId: string): Promise<void> {
     if (!rt.pool.get(sessionId)) throw new Error('session is not occupying a runtime slot');
+    cancelIdleRelease(sessionId);
     const open = openSessions.get(sessionId);
     if (open) {
       const state = await open.slot.client.send({ type: 'get_state' });
@@ -564,6 +667,10 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     } else {
       await rt.pool.release(sessionId);
     }
+  }
+
+  ipcMain.handle('sparkii:releaseSessionSlot', async (_e, sessionId: string) => {
+    await releaseSessionSlotInternal(sessionId);
     return { ok: true };
   });
 

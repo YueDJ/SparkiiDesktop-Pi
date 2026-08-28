@@ -189,21 +189,10 @@ export function App() {
 
   const onNewSession = async (agentId: string) => {
     if (agentId === 'general') {
-      try {
-        const res = await api.newChatSession?.('general');
-        if (res?.sessionId) {
-          setGlobalError('');
-          setActiveGeneralSession(res.sessionId);
-          refreshSessions('general', res.sessionId);
-        }
-      } catch (e) {
-        const message = String((e as Error)?.message ?? e);
-        if (message === 'RUNTIME_QUEUE_CANCELLED') {
-          setGlobalError('');
-        } else {
-          setGlobalError(message);
-        }
-      }
+      setGlobalError('');
+      setActiveGeneralSession(null);
+      setGeneralTitle('');
+      setScreen('general');
       return;
     }
     setWorkflow({ status: 'idle' });
@@ -300,6 +289,11 @@ export function App() {
       api={api}
       sessionId={activeGeneralSession}
       active={screen === 'general'}
+      draft={screen === 'general' && activeGeneralSession === null}
+      onSessionCommitted={(sessionId) => {
+        setActiveGeneralSession(sessionId);
+        refreshSessions('general', sessionId);
+      }}
       onNewSession={() => onNewSession('general')}
     />
   );
