@@ -155,7 +155,12 @@ export function ChatComposer({ busy, workspacePath, onChooseWorkspace, getLocalP
           placeholder="随心输入"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send(); } }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              send();
+            }
+          }}
         />
 
         <div className="ui-composer-toolbar">
