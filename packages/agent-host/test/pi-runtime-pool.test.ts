@@ -127,4 +127,26 @@ describe("PiRuntimePool", () => {
     await pool.release("a");
     expect(pool.snapshot()).toMatchObject({ active: 0, queued: 0 });
   });
+
+  it("wakes a queued session with its original saddle and meta", async () => {
+    const handle = new FakeHandle();
+    const pool = new PiRuntimePool({ maxAgents: 1, makeSupervisor: () => handle });
+    await pool.acquire("a");
+    handle.ready();
+
+    const pending = pool.acquire("b", {
+      saddle: { tools: ["read"] },
+      meta: { profileId: "general", profileName: "通用智能体", label: "会话#2" },
+    });
+    await pool.release("a");
+    await pending;
+
+    const configure = handle.sent.find((e) => "command" in e && (e as any).command?.type === "configure_session");
+    expect((configure as any)?.command?.saddle).toEqual({ tools: ["read"] });
+    expect(pool.snapshot().slots[0]).toMatchObject({
+      profileId: "general",
+      profileName: "通用智能体",
+      label: "会话#2",
+    });
+  });
 });
