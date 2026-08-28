@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { PiRuntimePool } from "../src/pi-runtime-pool.js";
+import type { RuntimePoolSnapshot } from "../src/runtime-pool.js";
 import { readyEnvelope, responseEnvelope, type PiRuntimeHostHandle, type PiRuntimeEnvelope } from "../src/pi-runtime-transport.js";
 
 class FakeHandle implements PiRuntimeHostHandle {
@@ -103,5 +104,27 @@ describe("PiRuntimePool", () => {
       (e) => "command" in e && (e as { command: { type: string } }).command?.type === "set_api_key",
     );
     expect(command).toBeTruthy();
+  });
+
+  it("emits a snapshot after acquire, release and rename", async () => {
+    const handle = new FakeHandle();
+    const pool = new PiRuntimePool({ maxAgents: 1, makeSupervisor: () => handle });
+    const snapshots: RuntimePoolSnapshot[] = [];
+    pool.subscribe((s) => snapshots.push(s));
+
+    await pool.acquire("a", { meta: { profileId: "general", profileName: "通用智能体", label: "会话#1" } });
+    handle.ready();
+
+    expect(pool.snapshot()).toMatchObject({ active: 1, queued: 0, maxAgents: 1 });
+    expect(pool.snapshot().slots[0]).toMatchObject({
+      sessionId: "a",
+      profileId: "general",
+      profileName: "通用智能体",
+      label: "会话#1",
+    });
+    expect(snapshots.length).toBeGreaterThan(0);
+
+    await pool.release("a");
+    expect(pool.snapshot()).toMatchObject({ active: 0, queued: 0 });
   });
 });

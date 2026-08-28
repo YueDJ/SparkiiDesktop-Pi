@@ -5,6 +5,7 @@ export * from "./edit-diff.js";
 export * from "./pi-runtime-transport.js";
 export * from "./pi-runtime-supervisor.js";
 export * from "./pi-runtime-pool.js";
+export * from "./runtime-pool.js";
 export * from "./pi-runtime.js";
 export * from "./pi-runtime-tools.js";
 export * from "./pi-sdk-runtime.js";

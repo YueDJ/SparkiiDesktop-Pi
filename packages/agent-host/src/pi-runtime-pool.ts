@@ -1,6 +1,12 @@
+import { randomUUID } from "node:crypto";
 import { PiRuntimeSupervisor } from "./pi-runtime-supervisor.js";
 import type { PiRuntimeClient, PiRuntimeHostHandle } from "./pi-runtime-transport.js";
 import type { RpcCommand, SessionSaddle } from "./types.js";
+import type {
+  RuntimeAcquireMeta,
+  RuntimePoolSnapshot,
+  RuntimeSessionStatus,
+} from "./runtime-pool.js";
 
 export interface PiRuntimeSlot {
   client: PiRuntimeClient;
@@ -8,13 +14,20 @@ export interface PiRuntimeSlot {
 }
 
 interface Slot {
+  id: string;
   supervisor: PiRuntimeSupervisor;
   client: PiRuntimeClient;
   sessionId: string | null;
+  meta?: RuntimeAcquireMeta;
+  status: RuntimeSessionStatus;
+  startedAt: number;
+  offEvent?: () => void;
 }
 
 interface Pending {
+  id: string;
   sessionId: string;
+  options: AcquireOptions;
   resolve: (slot: PiRuntimeSlot) => void;
   reject: (e: Error) => void;
 }
@@ -22,14 +35,66 @@ interface Pending {
 export interface AcquireOptions {
   resumeSessionFile?: string;
   saddle?: SessionSaddle;
+  meta?: RuntimeAcquireMeta;
 }
 
 export class PiRuntimePool {
   private slots: Slot[] = [];
   private pending: Pending[] = [];
   private bySession = new Map<string, PiRuntimeClient>();
+  private listeners = new Set<(snapshot: RuntimePoolSnapshot) => void>();
 
   constructor(private opts: { maxAgents: number; makeSupervisor: () => PiRuntimeHostHandle }) {}
+
+  subscribe(listener: (snapshot: RuntimePoolSnapshot) => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  snapshot(): RuntimePoolSnapshot {
+    return {
+      maxAgents: this.opts.maxAgents,
+      active: this.slots.filter((s) => s.sessionId !== null).length,
+      queued: this.pending.length,
+      slots: this.slots
+        .filter((s) => s.sessionId !== null)
+        .map((s) => ({
+          slotId: s.id,
+          sessionId: s.sessionId as string,
+          profileId: s.meta?.profileId ?? "",
+          profileName: s.meta?.profileName ?? s.meta?.profileId ?? "",
+          label: s.meta?.label ?? (s.sessionId as string),
+          status: s.status,
+          startedAt: s.startedAt,
+        })),
+      queue: this.pending.map((p, i) => ({
+        queueId: p.id,
+        profileId: p.options.meta?.profileId ?? "",
+        profileName: p.options.meta?.profileName ?? p.options.meta?.profileId ?? "",
+        label: p.options.meta?.label ?? p.sessionId,
+        position: i + 1,
+      })),
+    };
+  }
+
+  setMaxAgents(maxAgents: number): void {
+    this.opts.maxAgents = Math.max(1, Math.floor(maxAgents));
+    this.emitSnapshot();
+  }
+
+  cancelPending(queueId: string): boolean {
+    const idx = this.pending.findIndex((p) => p.id === queueId);
+    if (idx < 0) return false;
+    const [pending] = this.pending.splice(idx, 1);
+    pending.reject(new Error("RUNTIME_QUEUE_CANCELLED"));
+    this.emitSnapshot();
+    return true;
+  }
+
+  private emitSnapshot(): void {
+    const next = this.snapshot();
+    for (const listener of this.listeners) listener(next);
+  }
 
   async acquire(sessionId: string, opts: AcquireOptions = {}): Promise<PiRuntimeSlot> {
     const free = this.slots.find((s) => s.sessionId === null);
@@ -37,18 +102,31 @@ export class PiRuntimePool {
     if (this.slots.length < this.opts.maxAgents) {
       const supervisor = new PiRuntimeSupervisor(this.opts.makeSupervisor);
       const client = await supervisor.start();
-      const slot: Slot = { supervisor, client, sessionId: null };
+      const slot: Slot = {
+        id: randomUUID(),
+        supervisor,
+        client,
+        sessionId: null,
+        status: "occupied-idle",
+        startedAt: 0,
+      };
+      slot.offEvent = client.onEvent((event) => this.applyEvent(slot, event));
       this.slots.push(slot);
       return this.bind(slot, sessionId, opts);
     }
     return new Promise<PiRuntimeSlot>((resolve, reject) => {
-      this.pending.push({ sessionId, resolve, reject });
+      this.pending.push({ id: randomUUID(), sessionId, options: opts, resolve, reject });
+      this.emitSnapshot();
     });
   }
 
   private async bind(slot: Slot, sessionId: string, opts: AcquireOptions): Promise<PiRuntimeSlot> {
     slot.sessionId = sessionId;
+    slot.meta = opts.meta;
+    slot.status = "starting";
+    slot.startedAt = Date.now();
     this.bySession.set(sessionId, slot.client);
+    this.emitSnapshot();
     try {
       if (opts.saddle) {
         const r = await slot.client.send({ type: "configure_session", saddle: opts.saddle });
@@ -61,9 +139,28 @@ export class PiRuntimePool {
     } catch (e) {
       this.bySession.delete(sessionId);
       slot.sessionId = null;
+      slot.meta = undefined;
+      slot.status = "occupied-idle";
+      slot.startedAt = 0;
+      this.emitSnapshot();
       throw e;
     }
+    slot.status = "occupied-idle";
+    this.emitSnapshot();
     return { client: slot.client, supervisor: slot.supervisor };
+  }
+
+  private applyEvent(slot: Slot, event: { type: string }): void {
+    const next: RuntimeSessionStatus =
+      event.type === "agent_start" || event.type === "turn_start" || event.type === "compaction_start"
+        ? "streaming"
+        : event.type === "agent_end" || event.type === "agent_settled" || event.type === "turn_end" || event.type === "runtime_error" || event.type === "compaction_end"
+          ? "occupied-idle"
+          : slot.status;
+    if (slot.sessionId !== null && next !== slot.status) {
+      slot.status = next;
+      this.emitSnapshot();
+    }
   }
 
   get(sessionId: string): PiRuntimeClient | undefined {
@@ -76,6 +173,7 @@ export class PiRuntimePool {
     slot.sessionId = to;
     this.bySession.delete(from);
     this.bySession.set(to, slot.client);
+    this.emitSnapshot();
   }
 
   async release(sessionId: string): Promise<void> {
@@ -84,8 +182,12 @@ export class PiRuntimePool {
     this.bySession.delete(sessionId);
     try { await slot.client.send({ type: "new_session" }); } catch { /* 子进程已退出则忽略 */ }
     slot.sessionId = null;
+    slot.meta = undefined;
+    slot.status = "occupied-idle";
+    slot.startedAt = 0;
     const next = this.pending.shift();
-    if (next) void this.bind(slot, next.sessionId, {}).then(next.resolve, next.reject);
+    if (next) void this.bind(slot, next.sessionId, next.options).then(next.resolve, next.reject);
+    this.emitSnapshot();
   }
 
   activeCount(): number {
@@ -105,5 +207,6 @@ export class PiRuntimePool {
     this.bySession.clear();
     for (const p of this.pending) p.reject(new Error("pool stopped"));
     this.pending = [];
+    this.emitSnapshot();
   }
 }
