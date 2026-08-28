@@ -11,6 +11,7 @@ export interface AppSettings {
   defaultThinkingLevel?: string;
   modelThinkingLevels?: Record<string, string>;
   maxAgents?: number;
+  queueEnabled?: boolean;
   approvalTimeoutMs?: number;
   theme?: 'light' | 'dark';
   language?: string;

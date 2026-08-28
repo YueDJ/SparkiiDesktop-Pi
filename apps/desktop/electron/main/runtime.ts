@@ -12,6 +12,7 @@ import { createUtilityHostHandle, createForkHostHandle } from "../pi-runtime/tra
 import { registerConnectorHandlers } from "./connector-registry.js";
 import { ChatSessionStore } from "./chat-session-store.js";
 import { Keyring } from "./keyring.js";
+import { loadSettings } from "./settings.js";
 import { loadApiKey, saveApiKey } from "./settings.js";
 import { registerGeneralExecutor } from "./general-executor.js";
 
@@ -97,8 +98,11 @@ export async function assemble(opts: {
   if (contract) await knowledgeConnector.init({ corpus: contract.profile.agent.knowledge });
   const entry = resolvePiRuntimeEntry();
   const env = { PI_CODING_AGENT_DIR: piAgentDir };
+  const settings = await loadSettings(opts.dataDir);
+  const rawMaxAgents = Number(settings.maxAgents ?? process.env.SPARKII_MAX_AGENTS ?? 4);
+  const maxAgents = Number.isFinite(rawMaxAgents) && rawMaxAgents > 0 ? Math.floor(rawMaxAgents) : 4;
   const pool = new PiRuntimePool({
-    maxAgents: Number(process.env.SPARKII_MAX_AGENTS ?? 4),
+    maxAgents,
     makeSupervisor: () =>
       process.env.SPARKII_PI_USE_FORK === "1"
         ? createForkHostHandle(entry, env)

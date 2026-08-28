@@ -1,3 +1,5 @@
+import type { RuntimePoolSnapshot } from '@sparkii/agent-host';
+
 export interface ProviderEntryInfo {
   id: string;
   name: string;
@@ -48,6 +50,9 @@ export interface SparkiiApi {
   getModelOptions(): Promise<{ defaultModel: string | null; models: string[]; provider: string }>;
   listThinkingLevels(providerId: string, modelId: string): Promise<string[]>;
   deleteChatSession(sessionId: string): Promise<{ ok: boolean }>;
+  getRuntimePool(): Promise<RuntimePoolSnapshot>;
+  cancelQueuedSession(queueId: string): Promise<{ ok: boolean }>;
+  releaseSessionSlot(sessionId: string): Promise<{ ok: boolean }>;
   listAgents(): Promise<Array<{ id: string; name: string }>>;
   listPendingApprovals(): Promise<unknown[]>;
   decideApproval(id: string, approved: boolean, note?: string): Promise<unknown>;

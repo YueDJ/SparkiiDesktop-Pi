@@ -12,6 +12,7 @@ describe('sparkii api shape', () => {
     const names = [
       'getLocalSubject', 'getProfile', 'chooseDocument', 'runWorkflow', 'prompt', 'listPendingApprovals', 'decideApproval', 'queryAudit', 'getSettings', 'saveSettings', 'getApiKey', 'listModels', 'testConnection', 'listProviders', 'diagnostics', 'on',
       'newChatSession', 'openChatSession', 'listChatSessions', 'getChatSession', 'getChatMessages', 'promptSession', 'abortChat', 'getChatState', 'queueMutate', 'setChatTitle', 'setChatModel', 'setChatThinkingLevel', 'setChatWorkspace', 'chooseWorkspace', 'getModelOptions', 'listThinkingLevels', 'deleteChatSession', 'listAgents',
+      'getRuntimePool', 'cancelQueuedSession', 'releaseSessionSlot',
       'getPathForFile',
     ];
     const api = buildApi({ invoke: () => Promise.resolve(null), on: () => () => {}, removeListener: () => {} } as any);

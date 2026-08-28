@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
-import { AgentNav, StatusBar, Shell } from '@sparkii/ui';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { AgentNav, RuntimeCenter, StatusBar, Shell } from '@sparkii/ui';
 
 afterEach(cleanup);
 
@@ -12,8 +12,31 @@ describe('ui shell patterns', () => {
   });
 
   it('status bar shows running and queued counts', () => {
-    render(<StatusBar statusText="就绪" runningCount={1} queueCount={2} maxAgents={4} onOpenQueue={vi.fn()} />);
+    render(<StatusBar statusText="就绪" runtimePool={{ active: 1, queued: 2, maxAgents: 4, sessions: [], queue: [] }} onOpenQueue={vi.fn()} />);
     expect(screen.getByText(/运行 1\/4 · 2 排队/)).toBeTruthy();
+  });
+
+  it('runtime center renders running and queued items and invokes actions', () => {
+    const onStop = vi.fn();
+    render(
+      <RuntimeCenter
+        snapshot={{
+          active: 1,
+          queued: 1,
+          maxAgents: 4,
+          sessions: [{ sessionId: 's1', profileId: 'general', profileName: '通用智能体', label: '会话#1', status: 'running' }],
+          queue: [{ queueId: 'q1', profileId: 'contract-review', profileName: '合同审核', label: '新会话', position: 1 }],
+        }}
+        onStop={onStop}
+        onRelease={vi.fn()}
+        onCancelQueue={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('运行 1/4 · 排队 1 · 空闲 3')).toBeTruthy();
+    fireEvent.click(screen.getByText('停止'));
+    fireEvent.click(screen.getByText('确认停止'));
+    expect(onStop).toHaveBeenCalledWith('s1');
+    expect(screen.getByText('合同审核 · 新会话 · 第 1 位')).toBeTruthy();
   });
 
   it('shell renders topbar, rail, status bar and surface', () => {

@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Shell, type ScreenId, type ShellAgent, type ShellSession } from './shell/Shell.js';
+import type { RuntimePoolSummary } from '@sparkii/ui';
 import { SettingsView } from './shell/SettingsView.js';
 import { ApprovalCenter } from './trust/ApprovalCenter.js';
 import { ApprovalPanel } from './trust/ApprovalPanel.js';
@@ -15,6 +16,37 @@ export function sessionDisplayName(s: { title?: string; firstMessage?: string; u
   return s.updatedAt
     ? new Date(s.updatedAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
     : '会话';
+}
+
+function mapRuntimePool(raw: any, pendingApprovals: any[]): RuntimePoolSummary {
+  const pendingSessionIds = new Set(pendingApprovals.map((p: any) => p.sessionId));
+  return {
+    active: Number(raw?.active ?? 0),
+    queued: Number(raw?.queued ?? 0),
+    maxAgents: Number(raw?.maxAgents ?? 4),
+    sessions: (raw?.slots ?? []).map((s: any) => ({
+      sessionId: s.sessionId,
+      profileId: s.profileId,
+      profileName: s.profileName || s.profileId,
+      label: s.label || s.sessionId,
+      status: pendingSessionIds.has(s.sessionId)
+        ? 'waiting-approval'
+        : s.status === 'streaming' || s.status === 'starting'
+          ? 'running'
+          : 'idle',
+    })),
+    queue: (raw?.queue ?? []).map((q: any) => ({
+      queueId: q.queueId,
+      profileId: q.profileId,
+      profileName: q.profileName || q.profileId,
+      label: q.label || q.queueId,
+      position: q.position,
+    })),
+  };
+}
+
+function profileIdForAgent(id: ScreenId): string {
+  return id === 'contract' ? 'contract-review' : id;
 }
 
 export function App() {
@@ -33,6 +65,13 @@ export function App() {
   const [globalError, setGlobalError] = useState('');
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [approvalFocusId, setApprovalFocusId] = useState<string | null>(null);
+  const [runtimePool, setRuntimePool] = useState<RuntimePoolSummary>({
+    active: 0,
+    queued: 0,
+    maxAgents: 4,
+    sessions: [],
+    queue: [],
+  });
 
   useEffect(() => api.on('state', (s) => setState(s as Record<string, unknown>)), [api]);
   useEffect(() => api.on('approval', (p) => {
@@ -61,6 +100,11 @@ export function App() {
       if (p.sessionId === activeGeneralSession) setGeneralTitle(p.title);
     }
   }), [api, activeGeneralSession]);
+  useEffect(() => {
+    const off = api.on('runtime-pool', (p: any) => setRuntimePool(mapRuntimePool(p, pending)));
+    api.getRuntimePool?.().then((p: any) => setRuntimePool(mapRuntimePool(p, pending))).catch(() => {});
+    return off;
+  }, [api, pending]);
 
   const refreshApprovals = () => api.listPendingApprovals().then((xs) => setPending(xs as any[]));
 
@@ -153,7 +197,12 @@ export function App() {
           refreshSessions('general', res.sessionId);
         }
       } catch (e) {
-        setGlobalError(String((e as Error)?.message ?? e));
+        const message = String((e as Error)?.message ?? e);
+        if (message === 'RUNTIME_QUEUE_CANCELLED') {
+          setGlobalError('');
+        } else {
+          setGlobalError(message);
+        }
       }
       return;
     }
@@ -182,6 +231,27 @@ export function App() {
     });
   };
 
+  const derivedAgents = agents.map((a) => {
+    const profileId = profileIdForAgent(a.id);
+    const running = runtimePool.sessions.some((s) => s.profileId === profileId);
+    const queued = runtimePool.queue.some((q) => q.profileId === profileId);
+    return { ...a, status: running ? 'running' : queued ? 'queued' : 'idle' } as ShellAgent;
+  });
+
+  const stopRuntimeSession = async (sessionId: string) => {
+    await api.abortChat(sessionId);
+  };
+
+  const releaseRuntimeSession = async (sessionId: string) => {
+    await api.releaseSessionSlot(sessionId);
+    if (sessionId === activeGeneralSession) setActiveGeneralSession(null);
+    refreshSessions('general');
+  };
+
+  const cancelQueuedSession = async (queueId: string) => {
+    await api.cancelQueuedSession(queueId);
+  };
+
   const statusText = workflow.status === 'running'
     ? `正在执行:${workflow.step ?? '…'}`
     : workflow.status === 'done' ? '审核完成 · 报告待复核'
@@ -206,7 +276,7 @@ export function App() {
 
   const surfaces: Partial<Record<ScreenId, ReactNode>> = {
     home: (
-      <HomeView userName={userName} agents={agents} pendingApprovals={pending} onNavigate={navigate} />
+      <HomeView userName={userName} agents={derivedAgents} pendingApprovals={pending} onNavigate={navigate} />
     ),
     contract: (
       <ContractSurface state={state} workflow={workflow} onAction={onAction} onRequestExport={() => setScreen('approvals')} />
@@ -246,10 +316,11 @@ export function App() {
       {globalError && <div className="chat-error" role="alert" style={{ margin: 'var(--spacing-sm)' }}>{globalError}</div>}
       <Shell
         active={screen}
-        agents={agents}
+        agents={derivedAgents}
         sessions={sessions}
         pendingApprovals={pending.length}
         statusText={statusText}
+        runtimePool={runtimePool}
         userName={userName}
         userRole={roles.length ? roles.join(' · ') : '审核员'}
         surfaceTitle={surfaceTitles[screen]}
@@ -258,6 +329,9 @@ export function App() {
         onOpenSession={onOpenSession}
         onRenameSession={onRenameSession}
         onDeleteSession={onDeleteSession}
+        onStopSession={stopRuntimeSession}
+        onReleaseSession={releaseRuntimeSession}
+        onCancelQueuedSession={cancelQueuedSession}
       >
         <div style={{ display: screen === 'general' ? 'block' : 'none', height: screen === 'general' ? '100%' : 'auto' }}>{generalSurface}</div>
         {screen !== 'general' && <div>{surfaces[screen]}</div>}

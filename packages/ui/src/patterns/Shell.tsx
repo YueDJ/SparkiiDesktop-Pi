@@ -6,6 +6,7 @@ import { Drawer } from '../primitives/Drawer.js';
 import { AgentNav } from './AgentNav.js';
 import { SessionList, type SessionListItem } from './SessionList.js';
 import { StatusBar } from './StatusBar.js';
+import { RuntimeCenter, type RuntimePoolSummary } from './RuntimeCenter.js';
 import { SessionsIcon, PlusIcon, GearIcon, MoonIcon, SunIcon, UserIcon, ShieldIcon, AuditIcon } from '../icons/index.js';
 
 export type ScreenId = 'home' | 'contract' | 'chat' | 'dashboard' | 'general' | 'approvals' | 'audit' | 'settings';
@@ -32,6 +33,7 @@ export interface ShellProps {
   sessions: Record<string, ShellSession[]>;
   pendingApprovals: number;
   statusText: string;
+  runtimePool?: RuntimePoolSummary;
   userName?: string;
   userRole?: string;
   surfaceTitle?: string;
@@ -41,6 +43,9 @@ export interface ShellProps {
   onOpenSession?(agentId: string, sessionId: string): void;
   onRenameSession?(agentId: string, sessionId: string, title: string): void;
   onDeleteSession?(agentId: string, sessionId: string): void;
+  onStopSession?(sessionId: string): Promise<void> | void;
+  onReleaseSession?(sessionId: string): Promise<void> | void;
+  onCancelQueuedSession?(queueId: string): Promise<void> | void;
   children?: ReactNode;
 }
 
@@ -64,7 +69,7 @@ function setTheme(dark: boolean): void {
 }
 
 export function Shell(props: ShellProps) {
-  const { active, agents, sessions, pendingApprovals, statusText, userName = 'admin', userRole = '审核员', surfaceTitle, surfaceActions, onNavigate, onNewSession, onOpenSession, children } = props;
+  const { active, agents, sessions, pendingApprovals, statusText, runtimePool, userName = 'admin', userRole = '审核员', surfaceTitle, surfaceActions, onNavigate, onNewSession, onOpenSession, children } = props;
   const [drawer, setDrawer] = useState<DrawerKind>(null);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -75,6 +80,17 @@ export function Shell(props: ShellProps) {
   const queueCount = agents.filter((a) => a.status === 'queued').length;
   const title = activeAgent?.name ?? TITLES[active] ?? '工作台';
   const activeSessions = sessions[active] ?? [];
+  const fallbackRuntimePool: RuntimePoolSummary = runtimePool ?? {
+    active: runningCount,
+    queued: queueCount,
+    maxAgents: MAX_AGENTS,
+    sessions: agents
+      .filter((a) => a.status === 'running')
+      .map((a) => ({ sessionId: a.id, profileId: a.id, profileName: a.name, label: a.name, status: 'running' as const })),
+    queue: agents
+      .filter((a) => a.status === 'queued')
+      .map((a, i) => ({ queueId: a.id, profileId: a.id, profileName: a.name, label: a.name, position: a.queuePosition ?? i + 1 })),
+  };
 
   const toggleTheme = () => {
     const next = !dark;
@@ -139,7 +155,7 @@ export function Shell(props: ShellProps) {
         </main>
       </div>
 
-      <StatusBar statusText={statusText} runningCount={runningCount} queueCount={queueCount} maxAgents={MAX_AGENTS} onOpenQueue={() => openDrawer('queue')} />
+      <StatusBar statusText={statusText} runtimePool={fallbackRuntimePool} onOpenQueue={() => openDrawer('queue')} />
 
       <Drawer open={drawer === 'session'} title="会话" onClose={closeDrawer}>
         <SessionList
@@ -156,24 +172,13 @@ export function Shell(props: ShellProps) {
         />
       </Drawer>
 
-      <Drawer open={drawer === 'queue'} title="运行队列" onClose={closeDrawer}>
-        <div className="ui-rail-label">运行中</div>
-        {runningCount === 0
-          ? <div className="ui-muted">暂无运行中的智能体</div>
-          : agents.filter((a) => a.status === 'running').map((a) => (
-            <div key={a.id} className="ui-item"><span className="ui-dot ui-dot--running" />{a.name}</div>
-          ))}
-        <div className="ui-rail-label">排队中</div>
-        {queueCount === 0
-          ? <div className="ui-muted">暂无排队任务</div>
-          : agents.filter((a) => a.status === 'queued').map((a) => (
-            <div key={a.id} className="ui-item">
-              <span className="ui-dot ui-dot--queued" />
-              <span>{a.name} · 第 {a.queuePosition ?? 1} 位</span>
-              <span className="ui-muted">取消</span>
-            </div>
-          ))}
-        <p className="ui-muted">轮到时会通知你</p>
+      <Drawer open={drawer === 'queue'} title="运行中心" onClose={closeDrawer}>
+        <RuntimeCenter
+          snapshot={fallbackRuntimePool}
+          onStop={(id) => props.onStopSession?.(id) ?? Promise.resolve()}
+          onRelease={(id) => props.onReleaseSession?.(id) ?? Promise.resolve()}
+          onCancelQueue={(id) => props.onCancelQueuedSession?.(id) ?? Promise.resolve()}
+        />
       </Drawer>
 
       <Drawer open={drawer === 'account'} title="账号" onClose={closeDrawer}>

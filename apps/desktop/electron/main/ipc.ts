@@ -17,6 +17,9 @@ import type { Logger } from './logger.js';
 
 export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, logger: Logger) {
   const broker = createBroker(rt, getWindow);
+  rt.pool.subscribe?.((snapshot) => {
+    getWindow()?.webContents.send('sparkii:event:runtime-pool', snapshot);
+  });
   const openSessions = new Map<
     string,
     { slot: Awaited<ReturnType<typeof rt.pool.acquire>>; profileId: string; offEvents?: () => void }
@@ -32,7 +35,9 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
 
   async function withProbeSlot<T>(fn: (client: Awaited<ReturnType<typeof rt.pool.acquire>>['client']) => Promise<T>): Promise<T> {
     const key = `probe:${randomUUID()}`;
-    const slot = await rt.pool.acquire(key, {});
+    const slot = await rt.pool.acquire(key, {
+      meta: { profileId: 'internal', profileName: '内部探测', label: '内部探测', internal: true },
+    });
     try {
       return await fn(slot.client);
     } finally {
@@ -133,6 +138,11 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     const slot = await rt.pool.acquire(sessionId, {
       saddle: buildSaddle(rec.profileId, sessionId),
       resumeSessionFile: rec.piSessionFile ?? undefined,
+      meta: {
+        profileId: rec.profileId,
+        profileName: (rt.profileOf(rec.profileId).profile as { manifest?: { displayName?: string } })?.manifest?.displayName ?? rec.profileId,
+        label: sessionId.slice(0, 8),
+      },
     });
     open = { slot, profileId: rec.profileId };
     openSessions.set(sessionId, open);
@@ -196,15 +206,22 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     const now = new Date();
     const workspacePath = autoWorkspacePath(app.getPath('desktop'), now);
     const settings = await loadSettings(rt.dataDir);
-    const maxAgents = Number(settings.maxAgents ?? process.env.SPARKII_MAX_AGENTS ?? 4);
-    if (rt.pool.activeCount() >= maxAgents) {
-      throw new Error(`已达到最大并发会话数 ${maxAgents}，请先关闭一个空闲会话`);
+    const rawMaxAgents = Number(settings.maxAgents ?? process.env.SPARKII_MAX_AGENTS ?? 4);
+    const maxAgents = Number.isFinite(rawMaxAgents) && rawMaxAgents > 0 ? Math.floor(rawMaxAgents) : 4;
+    rt.pool.setMaxAgents?.(maxAgents);
+    if (rt.pool.activeCount() >= maxAgents && settings.queueEnabled === false) {
+      throw new Error(`已达到最大并发会话数 ${maxAgents}，请先释放一个槽位`);
     }
     const target = resolveSessionModel(settings, null);
     const thinkingLevel = resolveThinkingLevel(settings, null, target);
     const tempKey = `new:${randomUUID()}`;
     const slot = await rt.pool.acquire(tempKey, {
       saddle: buildProfileSaddle(rt.profileOf(profileId), anchorDir(tempKey), workspacePath, target ?? undefined, thinkingLevel),
+      meta: {
+        profileId,
+        profileName: (rt.profileOf(profileId).profile as { manifest?: { displayName?: string } })?.manifest?.displayName ?? profileId,
+        label: '新会话',
+      },
     });
     let sessionId: string | undefined;
     try {
@@ -520,6 +537,33 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       appliedModelBySession.delete(sessionId);
     }
     rt.chatSessions.delete(sessionId);
+    return { ok: true };
+  });
+
+  ipcMain.handle('sparkii:getRuntimePool', () => rt.pool.snapshot());
+
+  ipcMain.handle('sparkii:cancelQueuedSession', (_e, queueId: string) => {
+    if (!rt.pool.cancelPending(queueId)) throw new Error('queue item not found');
+    return { ok: true };
+  });
+
+  ipcMain.handle('sparkii:releaseSessionSlot', async (_e, sessionId: string) => {
+    if (!rt.pool.get(sessionId)) throw new Error('session is not occupying a runtime slot');
+    const open = openSessions.get(sessionId);
+    if (open) {
+      const state = await open.slot.client.send({ type: 'get_state' });
+      if ((state.data as { sessionFile?: string } | undefined)?.sessionFile) {
+        rt.chatSessions.update(sessionId, {
+          piSessionFile: (state.data as { sessionFile: string }).sessionFile,
+        });
+      }
+      open.offEvents?.();
+      await rt.pool.release(sessionId);
+      openSessions.delete(sessionId);
+      appliedModelBySession.delete(sessionId);
+    } else {
+      await rt.pool.release(sessionId);
+    }
     return { ok: true };
   });
 
