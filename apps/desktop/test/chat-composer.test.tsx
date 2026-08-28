@@ -15,9 +15,7 @@ function makeProps(over: Partial<ComposerProps> = {}): ComposerProps {
     thinkingLevel: null,
     onThinkingLevelChange: vi.fn(),
     workspacePath: 'C:/ws/SparkiiXyZ9202608251710',
-    workspaceKind: 'auto',
     onChooseWorkspace: vi.fn(),
-    onClearWorkspace: vi.fn(),
     onSend: vi.fn(),
     onStop: vi.fn(),
     ...over,
@@ -31,7 +29,7 @@ describe('Composer', () => {
     const input = screen.getByTestId('composer-input') as HTMLTextAreaElement;
     fireEvent.change(input, { target: { value: 'hello' } });
     fireEvent.keyDown(input, { key: 'Enter', ctrlKey: true });
-    expect(props.onSend).toHaveBeenCalledWith('hello');
+    expect(props.onSend).toHaveBeenCalledWith('hello', []);
     expect(input.value).toBe('');
   });
 
@@ -62,13 +60,11 @@ describe('Composer', () => {
     expect(props.onThinkingLevelChange).toHaveBeenCalledWith('high');
   });
 
-  it('workspace row shows path, choose and clear actions', () => {
-    const props = makeProps({ workspaceKind: 'user' });
+  it('workspace chip shows the path and opens the chooser', () => {
+    const props = makeProps();
     render(<Composer {...props} />);
     expect(screen.getByTestId('workspace-path').textContent).toContain('SparkiiXyZ9');
-    fireEvent.click(screen.getByText('选择文件夹'));
+    fireEvent.click(screen.getByTestId('composer-workspace'));
     expect(props.onChooseWorkspace).toHaveBeenCalled();
-    fireEvent.click(screen.getByTestId('workspace-clear'));
-    expect(props.onClearWorkspace).toHaveBeenCalled();
   });
 });

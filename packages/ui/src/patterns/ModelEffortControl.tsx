@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { Menu, MenuItem } from '../primitives/Menu.js';
+import { ChevronDownIcon } from '../icons/index.js';
 
 export interface ModelEffortProps {
   model: string | null;
@@ -37,11 +38,13 @@ export function ModelEffortControl(props: ModelEffortProps) {
 
   return (
     <div ref={wrapperRef} className="ui-model-effort">
-      <button type="button" className="ui-btn ui-btn--md ui-model-effort-trigger" data-testid="model-effort-trigger" onClick={() => setOpen((v) => !v)}>
-        {currentModel} · {currentLevel}
+      <button type="button" className="ui-model-effort-trigger" data-testid="model-effort-trigger" onClick={() => setOpen((v) => !v)}>
+        <span className="ui-model-effort-model">{currentModel}</span>
+        <span className="ui-model-effort-level">{currentLevel}</span>
+        <ChevronDownIcon className="ui-model-effort-caret" />
       </button>
       {open && (
-        <Menu open onClose={close} containerRef={wrapperRef}>
+        <Menu open onClose={close} containerRef={wrapperRef} placement="top">
           {sub === 'root' ? (
             <>
               <MenuItem label="模型" hint={currentModel} onSelect={() => setSub('model')} />

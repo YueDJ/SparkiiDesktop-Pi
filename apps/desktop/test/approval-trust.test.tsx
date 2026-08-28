@@ -27,19 +27,27 @@ describe('ApprovalCenter', () => {
 describe('ApprovalPanel', () => {
   it('shows operation, target, source, risk and decides with note', () => {
     const onDecide = vi.fn();
-    render(<ApprovalPanel proposal={PROPOSAL} onDecide={onDecide} onClose={() => {}} />);
+    render(<ApprovalPanel proposals={[PROPOSAL]} currentSessionId="session-1234" onDecide={onDecide} onClose={() => {}} />);
     expect(screen.getByText('导出审核报告')).toBeTruthy();
     expect(screen.getByText(/本地文件目录/)).toBeTruthy();
-    expect(screen.getByText(/来源:会话 session-/)).toBeTruthy();
+    expect(screen.getByText('当前会话')).toBeTruthy();
     fireEvent.change(screen.getByPlaceholderText('审批意见(可选)'), { target: { value: '同意' } });
     fireEvent.click(screen.getByText('批准'));
     expect(onDecide).toHaveBeenCalledWith('p1', true, '同意');
   });
 
   it('reveals frozen payload on demand', () => {
-    render(<ApprovalPanel proposal={PROPOSAL} onDecide={vi.fn()} onClose={() => {}} />);
+    render(<ApprovalPanel proposals={[PROPOSAL]} onDecide={vi.fn()} onClose={() => {}} />);
     fireEvent.click(screen.getByText(/冻结参数/));
     expect(screen.getByText(/"title": "报告"/)).toBeTruthy();
+  });
+
+  it('groups approvals by session and lists all pending items', () => {
+    const other = { ...PROPOSAL, id: 'p2', summary: '写入文件', sessionId: 'session-9999' };
+    render(<ApprovalPanel proposals={[PROPOSAL, other]} currentSessionId="session-1234" onDecide={vi.fn()} onClose={() => {}} />);
+    expect(screen.getByText('当前会话')).toBeTruthy();
+    expect(screen.getByText('其他会话')).toBeTruthy();
+    expect(screen.getAllByTestId('approval-queue-item')).toHaveLength(2);
   });
 });
 
