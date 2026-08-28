@@ -3,8 +3,6 @@ import { Shell, type ScreenId, type ShellAgent, type ShellSession } from './shel
 import { SettingsView } from './shell/SettingsView.js';
 import { ApprovalCenter } from './trust/ApprovalCenter.js';
 import { ApprovalPanel } from './trust/ApprovalPanel.js';
-import { ApprovalModal } from './trust/ApprovalModal.js';
-import { riskInfo, type ApprovalProposalLike } from './trust/types.js';
 import { AuditView } from './audit/AuditView.js';
 import type { WorkflowStatusState } from './workbench/WorkflowStatus.js';
 import { ContractSurface } from './surfaces/ContractSurface.js';
@@ -28,18 +26,23 @@ export function App() {
   const [workflow, setWorkflow] = useState<WorkflowStatusState>({ status: 'idle' });
   const [screen, setScreen] = useState<ScreenId>('home');
   const [roles, setRoles] = useState<string[]>([]);
-  const [detail, setDetail] = useState<ApprovalProposalLike | null>(null);
   const [agents, setAgents] = useState<ShellAgent[]>([{ id: 'contract', name: '合同审核', status: 'idle' }]);
   const [sessions, setSessions] = useState<Record<string, ShellSession[]>>({});
   const [activeGeneralSession, setActiveGeneralSession] = useState<string | null>(null);
   const [generalTitle, setGeneralTitle] = useState('');
+  const [approvalOpen, setApprovalOpen] = useState(false);
+  const [approvalFocusId, setApprovalFocusId] = useState<string | null>(null);
 
   useEffect(() => api.on('state', (s) => setState(s as Record<string, unknown>)), [api]);
   useEffect(() => api.on('approval', (p) => {
     setPending((xs) => [...xs, p]);
-    // 审批是需要人工接管的时刻:新提案到达时自动弹出详情(P2/P1)
-    setDetail((cur) => cur ?? (p as ApprovalProposalLike));
+    // 审批是需要人工接管的时刻:新提案到达时自动弹出右侧审批抽屉,并聚焦该提案
+    setApprovalFocusId((p as { id: string }).id);
+    setApprovalOpen(true);
   }), [api]);
+  useEffect(() => {
+    if (pending.length === 0 && approvalOpen) setApprovalOpen(false);
+  }, [pending.length, approvalOpen]);
   useEffect(() => api.on('workflow', (e: any) => {
     if (e.type === 'step_started') setWorkflow({ status: 'running', step: e.stepId });
     else if (e.type === 'workflow_completed') setWorkflow({ status: 'done' });
@@ -81,8 +84,9 @@ export function App() {
   }, [api]);
 
   const decide = (id: string, ok: boolean, note?: string) => {
+    // 先本地移除,避免抽屉等待服务器往返;失败时 refreshApprovals 恢复
+    setPending((xs) => xs.filter((p) => p.id !== id));
     api.decideApproval(id, ok, note).then(() => {
-      setDetail(null);
       refreshApprovals();
       setAuditVersion((v) => v + 1);
     });
@@ -204,7 +208,7 @@ export function App() {
     approvals: (
       <div>
         <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>审批中心</h3>
-        <ApprovalCenter proposals={pending} onOpenDetail={setDetail} />
+        <ApprovalCenter proposals={pending} onOpenDetail={(p) => { setApprovalFocusId(p.id); setApprovalOpen(true); }} />
       </div>
     ),
     audit: (
@@ -247,12 +251,18 @@ export function App() {
         onRenameSession={onRenameSession}
         onDeleteSession={onDeleteSession}
       >
-        <div style={{ display: screen === 'general' ? 'block' : 'none' }}>{generalSurface}</div>
+        <div style={{ display: screen === 'general' ? 'block' : 'none', height: screen === 'general' ? '100%' : 'auto' }}>{generalSurface}</div>
         {screen !== 'general' && <div>{surfaces[screen]}</div>}
       </Shell>
-      {detail && (riskInfo(detail.risk).level === 'high'
-        ? <ApprovalModal proposal={detail} onDecide={decide} onClose={() => setDetail(null)} />
-        : <ApprovalPanel proposal={detail} onDecide={decide} onClose={() => setDetail(null)} />)}
+      {approvalOpen && (
+        <ApprovalPanel
+          proposals={pending}
+          currentSessionId={activeGeneralSession}
+          focusId={approvalFocusId}
+          onDecide={decide}
+          onClose={() => setApprovalOpen(false)}
+        />
+      )}
     </>
   );
 }

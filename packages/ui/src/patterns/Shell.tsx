@@ -130,7 +130,7 @@ export function Shell(props: ShellProps) {
               {surfaceActions && <span className="ui-surface-head-right">{surfaceActions}</span>}
             </div>
           )}
-          {children}
+          <div className="ui-surface-body">{children}</div>
         </main>
       </div>
 

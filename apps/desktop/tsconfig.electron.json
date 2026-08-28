@@ -3,6 +3,7 @@
   "compilerOptions": {
     "outDir": "dist-electron",
     "rootDir": "electron",
+    "lib": ["ES2022", "DOM"],
     "types": ["node"],
     "declaration": false,
     "sourceMap": true

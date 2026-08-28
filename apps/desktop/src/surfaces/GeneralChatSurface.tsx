@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { SparkiiApi } from '../types/sparkii-api.js';
-import { Button, ChatMessage } from '@sparkii/ui';
+import { Button, ChatMessage, type ComposerAttachment } from '@sparkii/ui';
 import { Composer } from '../workbench/Composer.js';
 import { ToolCard } from '../workbench/ToolCard.js';
 import { Markdown } from '../workbench/Markdown.js';
@@ -113,7 +113,6 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
   const [thinkingLevels, setThinkingLevels] = useState<string[]>([...THINKING_LEVELS]);
   const [thinkingLevel, setThinkingLevel] = useState<string | null>(null);
   const [workspacePath, setWorkspacePath] = useState<string | null>(null);
-  const [workspaceKind, setWorkspaceKind] = useState<'auto' | 'user'>('auto');
 
   const refreshThinkingLevels = (m: string | null, prov = provider, def = defaultModel) => {
     const target = resolveThinkingTarget(m, prov, def);
@@ -127,7 +126,6 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
     if (!sessionId) return;
     api.getChatSession(sessionId).then((rec: any) => {
       if (rec?.workspacePath) setWorkspacePath(rec.workspacePath);
-      if (rec?.workspaceKind === 'user') setWorkspaceKind('user');
       if (rec?.thinkingLevel !== undefined) setThinkingLevel(rec.thinkingLevel ?? null);
       if (rec?.model) { setModel(rec.model); refreshThinkingLevels(rec.model); }
     });
@@ -169,12 +167,18 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
     return () => { off1(); off2(); };
   }, [api, sessionId]);
 
-  const send = (text: string) => {
+  const getLocalPath = (file: File): string => api.getPathForFile(file);
+
+  const send = (text: string, attachments: ComposerAttachment[] = []) => {
     if (!sessionId) return;
-    setEntries((xs) => [...xs, { kind: 'message', id: `u${Date.now()}`, role: 'user', text, streaming: false }]);
+    const display = attachments.length ? `${attachments.map((a) => `📎 ${a.name}`).join(' ')}\n${text}` : text;
+    const prompt = attachments.length
+      ? `请基于以下我提供的文件进行分析:\n${attachments.map((a) => `- ${a.path}`).join('\n')}\n\n${text}`
+      : text;
+    setEntries((xs) => [...xs, { kind: 'message', id: `u${Date.now()}`, role: 'user', text: display, streaming: false }]);
     setBusy(true);
     setError('');
-    api.promptSession(sessionId, text).catch((e: any) => setError(String(e?.message ?? e))).finally(() => setBusy(false));
+    api.promptSession(sessionId, prompt).catch((e: any) => setError(String(e?.message ?? e))).finally(() => setBusy(false));
   };
 
   const stop = () => {
@@ -198,10 +202,6 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
         api.setChatWorkspace(sessionId, path).then(refreshMeta);
       }
     });
-  };
-
-  const clearWorkspace = () => {
-    if (sessionId) api.setChatWorkspace(sessionId, null).then(refreshMeta);
   };
 
   if (!sessionId) {
@@ -239,9 +239,8 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
         thinkingLevel={thinkingLevel}
         onThinkingLevelChange={onThinkingLevelChange}
         workspacePath={workspacePath}
-        workspaceKind={workspaceKind}
+        getLocalPath={getLocalPath}
         onChooseWorkspace={chooseWorkspace}
-        onClearWorkspace={clearWorkspace}
         onSend={send}
         onStop={stop}
       />

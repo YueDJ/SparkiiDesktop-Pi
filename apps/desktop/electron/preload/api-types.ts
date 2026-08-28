@@ -26,6 +26,7 @@ export interface SparkiiApi {
   setChatThinkingLevel(sessionId: string, level: string | null): Promise<{ ok: boolean }>;
   setChatWorkspace(sessionId: string, path: string | null): Promise<{ ok: boolean }>;
   chooseWorkspace(): Promise<{ path?: string }>;
+  getPathForFile(file: File): string;
   getModelOptions(): Promise<{ defaultModel: string | null; models: string[]; provider: string }>;
   listThinkingLevels(providerId: string, modelId: string): Promise<string[]>;
   deleteChatSession(sessionId: string): Promise<{ ok: boolean }>;

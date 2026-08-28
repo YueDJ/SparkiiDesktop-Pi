@@ -1,4 +1,4 @@
-import { ChatComposer } from '@sparkii/ui';
+import { ChatComposer, type ComposerAttachment } from '@sparkii/ui';
 
 export interface ComposerProps {
   busy: boolean;
@@ -10,10 +10,9 @@ export interface ComposerProps {
   thinkingLevel: string | null;
   onThinkingLevelChange(level: string | null): void;
   workspacePath: string | null;
-  workspaceKind: 'auto' | 'user';
+  getLocalPath?(file: File): string;
   onChooseWorkspace(): void;
-  onClearWorkspace(): void;
-  onSend(text: string): void;
+  onSend(text: string, attachments: ComposerAttachment[]): void;
   onStop(): void;
 }
 
@@ -22,9 +21,8 @@ export function Composer(props: ComposerProps) {
     <ChatComposer
       busy={props.busy}
       workspacePath={props.workspacePath}
-      workspaceKind={props.workspaceKind}
+      getLocalPath={props.getLocalPath}
       onChooseWorkspace={props.onChooseWorkspace}
-      onClearWorkspace={props.onClearWorkspace}
       modelProps={{
         model: props.model,
         defaultModel: props.defaultModel,

@@ -39,6 +39,38 @@ export function SendIcon(p: IconProps) {
   );
 }
 
+export function ArrowUpIcon(p: IconProps) {
+  return (
+    <svg {...base} {...p}>
+      <line x1="12" y1="19" x2="12" y2="5" /><polyline points="5 12 12 5 19 12" />
+    </svg>
+  );
+}
+
+export function FolderIcon(p: IconProps) {
+  return (
+    <svg {...base} {...p}>
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+export function TerminalIcon(p: IconProps) {
+  return (
+    <svg {...base} {...p}>
+      <polyline points="4 17 10 11 4 5" /><line x1="12" y1="19" x2="20" y2="19" />
+    </svg>
+  );
+}
+
+export function BranchIcon(p: IconProps) {
+  return (
+    <svg {...base} {...p}>
+      <line x1="6" y1="3" x2="6" y2="15" /><circle cx="18" cy="6" r="3" /><circle cx="6" cy="18" r="3" /><path d="M18 9a9 9 0 0 1-9 9" />
+    </svg>
+  );
+}
+
 export function StopIcon(p: IconProps) {
   return (
     <svg {...base} fill="currentColor" stroke="none" {...p}>

@@ -18,13 +18,13 @@ const base = (over: Partial<ApprovalProposalLike> = {}): ApprovalProposalLike =>
 
 describe('approval diff rendering', () => {
   it('panel shows DiffView when payload.diff exists', () => {
-    render(<ApprovalPanel proposal={base()} onDecide={vi.fn()} onClose={vi.fn()} />);
+    render(<ApprovalPanel proposals={[base()]} onDecide={vi.fn()} onClose={vi.fn()} />);
     fireEvent.click(screen.getByText(/冻结参数/));
     expect(screen.getByTestId('diff-view')).toBeTruthy();
   });
 
   it('panel hides DiffView without diff', () => {
-    render(<ApprovalPanel proposal={base({ payload: { path: 'a.txt' } })} onDecide={vi.fn()} onClose={vi.fn()} />);
+    render(<ApprovalPanel proposals={[base({ payload: { path: 'a.txt' } })]} onDecide={vi.fn()} onClose={vi.fn()} />);
     fireEvent.click(screen.getByText(/冻结参数/));
     expect(screen.queryByTestId('diff-view')).toBeNull();
   });

@@ -1,4 +1,5 @@
 import type { ProviderEntryInfo, SparkiiApi } from './api-types.js';
+import { webUtils } from 'electron';
 
 export type IpcLike = {
   invoke(channel: string, ...args: unknown[]): Promise<unknown>;
@@ -26,6 +27,7 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
     setChatThinkingLevel: (sessionId, level) => invoke('setChatThinkingLevel', sessionId, level) as Promise<{ ok: boolean }>,
     setChatWorkspace: (sessionId, path) => invoke('setChatWorkspace', sessionId, path) as Promise<{ ok: boolean }>,
     chooseWorkspace: () => invoke('chooseWorkspace') as Promise<{ path?: string }>,
+    getPathForFile: (file) => webUtils.getPathForFile(file),
     getModelOptions: () => invoke('getModelOptions') as Promise<{ defaultModel: string | null; models: string[]; provider: string }>,
     listThinkingLevels: (providerId, modelId) => invoke('listThinkingLevels', providerId, modelId) as Promise<string[]>,
     deleteChatSession: (sessionId) => invoke('deleteChatSession', sessionId) as Promise<{ ok: boolean }>,
