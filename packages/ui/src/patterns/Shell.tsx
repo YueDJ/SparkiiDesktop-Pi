@@ -86,10 +86,10 @@ export function Shell(props: ShellProps) {
     maxAgents: MAX_AGENTS,
     sessions: agents
       .filter((a) => a.status === 'running')
-      .map((a) => ({ sessionId: a.id, profileName: a.name, label: a.name, status: 'running' as const })),
+      .map((a) => ({ sessionId: a.id, profileId: a.id, profileName: a.name, label: a.name, status: 'running' as const })),
     queue: agents
       .filter((a) => a.status === 'queued')
-      .map((a, i) => ({ queueId: a.id, profileName: a.name, label: a.name, position: a.queuePosition ?? i + 1 })),
+      .map((a, i) => ({ queueId: a.id, profileId: a.id, profileName: a.name, label: a.name, position: a.queuePosition ?? i + 1 })),
   };
 
   const toggleTheme = () => {

@@ -85,7 +85,7 @@ export function SettingsView(props: SettingsViewProps) {
         if (typeof s.apiKey === 'string') setApiKey(s.apiKey);
         if (typeof s.defaultModel === 'string') setDefaultModel(s.defaultModel);
         if (typeof s.defaultThinkingLevel === 'string') setDefaultThinkingLevel(s.defaultThinkingLevel);
-        if (typeof s.maxAgents === 'number') setMaxAgents(s.maxAgents);
+        if (typeof s.maxAgents === 'number' && Number.isFinite(s.maxAgents)) setMaxAgents(s.maxAgents);
         if (typeof s.queueEnabled === 'boolean') setQueueEnabled(s.queueEnabled);
         if (s.routes && typeof s.routes === 'object') setRoutes(s.routes as Record<string, string>);
         setInfo('已加载本机配置');

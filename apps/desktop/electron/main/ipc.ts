@@ -204,7 +204,8 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     const now = new Date();
     const workspacePath = autoWorkspacePath(app.getPath('desktop'), now);
     const settings = await loadSettings(rt.dataDir);
-    const maxAgents = Number(settings.maxAgents ?? process.env.SPARKII_MAX_AGENTS ?? 4);
+    const rawMaxAgents = Number(settings.maxAgents ?? process.env.SPARKII_MAX_AGENTS ?? 4);
+    const maxAgents = Number.isFinite(rawMaxAgents) && rawMaxAgents > 0 ? Math.floor(rawMaxAgents) : 4;
     rt.pool.setMaxAgents?.(maxAgents);
     if (rt.pool.activeCount() >= maxAgents && settings.queueEnabled === false) {
       throw new Error(`已达到最大并发会话数 ${maxAgents}，请先释放一个槽位`);

@@ -6,6 +6,7 @@ export type RuntimeCenterStatus = 'running' | 'waiting-approval' | 'idle';
 
 export interface RuntimeCenterSession {
   sessionId: string;
+  profileId: string;
   profileName: string;
   label: string;
   status: RuntimeCenterStatus;
@@ -13,6 +14,7 @@ export interface RuntimeCenterSession {
 
 export interface RuntimeCenterQueueItem {
   queueId: string;
+  profileId: string;
   profileName: string;
   label: string;
   position: number;

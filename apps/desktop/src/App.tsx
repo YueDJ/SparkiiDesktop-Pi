@@ -26,6 +26,7 @@ function mapRuntimePool(raw: any, pendingApprovals: any[]): RuntimePoolSummary {
     maxAgents: Number(raw?.maxAgents ?? 4),
     sessions: (raw?.slots ?? []).map((s: any) => ({
       sessionId: s.sessionId,
+      profileId: s.profileId,
       profileName: s.profileName || s.profileId,
       label: s.label || s.sessionId,
       status: pendingSessionIds.has(s.sessionId)
@@ -36,6 +37,7 @@ function mapRuntimePool(raw: any, pendingApprovals: any[]): RuntimePoolSummary {
     })),
     queue: (raw?.queue ?? []).map((q: any) => ({
       queueId: q.queueId,
+      profileId: q.profileId,
       profileName: q.profileName || q.profileId,
       label: q.label || q.queueId,
       position: q.position,
@@ -195,7 +197,12 @@ export function App() {
           refreshSessions('general', res.sessionId);
         }
       } catch (e) {
-        setGlobalError(String((e as Error)?.message ?? e));
+        const message = String((e as Error)?.message ?? e);
+        if (message === 'RUNTIME_QUEUE_CANCELLED') {
+          setGlobalError('');
+        } else {
+          setGlobalError(message);
+        }
       }
       return;
     }
@@ -226,8 +233,8 @@ export function App() {
 
   const derivedAgents = agents.map((a) => {
     const profileId = profileIdForAgent(a.id);
-    const running = runtimePool.sessions.some((s) => s.profileName === profileId);
-    const queued = runtimePool.queue.some((q) => q.profileName === profileId);
+    const running = runtimePool.sessions.some((s) => s.profileId === profileId);
+    const queued = runtimePool.queue.some((q) => q.profileId === profileId);
     return { ...a, status: running ? 'running' : queued ? 'queued' : 'idle' } as ShellAgent;
   });
 

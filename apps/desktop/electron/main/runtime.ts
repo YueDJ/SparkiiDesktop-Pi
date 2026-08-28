@@ -99,7 +99,8 @@ export async function assemble(opts: {
   const entry = resolvePiRuntimeEntry();
   const env = { PI_CODING_AGENT_DIR: piAgentDir };
   const settings = await loadSettings(opts.dataDir);
-  const maxAgents = Math.max(1, Math.floor(Number(settings.maxAgents ?? process.env.SPARKII_MAX_AGENTS ?? 4)));
+  const rawMaxAgents = Number(settings.maxAgents ?? process.env.SPARKII_MAX_AGENTS ?? 4);
+  const maxAgents = Number.isFinite(rawMaxAgents) && rawMaxAgents > 0 ? Math.floor(rawMaxAgents) : 4;
   const pool = new PiRuntimePool({
     maxAgents,
     makeSupervisor: () =>

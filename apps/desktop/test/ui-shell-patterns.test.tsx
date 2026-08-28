@@ -24,8 +24,8 @@ describe('ui shell patterns', () => {
           active: 1,
           queued: 1,
           maxAgents: 4,
-          sessions: [{ sessionId: 's1', profileName: '通用智能体', label: '会话#1', status: 'running' }],
-          queue: [{ queueId: 'q1', profileName: '合同审核', label: '新会话', position: 1 }],
+          sessions: [{ sessionId: 's1', profileId: 'general', profileName: '通用智能体', label: '会话#1', status: 'running' }],
+          queue: [{ queueId: 'q1', profileId: 'contract-review', profileName: '合同审核', label: '新会话', position: 1 }],
         }}
         onStop={onStop}
         onRelease={vi.fn()}
