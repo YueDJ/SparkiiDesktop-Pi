@@ -54,10 +54,10 @@ export class PiRuntimePool {
   snapshot(): RuntimePoolSnapshot {
     return {
       maxAgents: this.opts.maxAgents,
-      active: this.slots.filter((s) => s.sessionId !== null).length,
-      queued: this.pending.length,
+      active: this.slots.filter((s) => s.sessionId !== null && !s.meta?.internal).length,
+      queued: this.pending.filter((p) => !p.options.meta?.internal).length,
       slots: this.slots
-        .filter((s) => s.sessionId !== null)
+        .filter((s) => s.sessionId !== null && !s.meta?.internal)
         .map((s) => ({
           slotId: s.id,
           sessionId: s.sessionId as string,
@@ -67,7 +67,9 @@ export class PiRuntimePool {
           status: s.status,
           startedAt: s.startedAt,
         })),
-      queue: this.pending.map((p, i) => ({
+      queue: this.pending
+        .filter((p) => !p.options.meta?.internal)
+        .map((p, i) => ({
         queueId: p.id,
         profileId: p.options.meta?.profileId ?? "",
         profileName: p.options.meta?.profileName ?? p.options.meta?.profileId ?? "",

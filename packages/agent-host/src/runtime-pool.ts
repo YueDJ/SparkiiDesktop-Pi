@@ -8,6 +8,7 @@ export interface RuntimeAcquireMeta {
   profileId: string;
   profileName?: string;
   label?: string;
+  internal?: boolean;
 }
 
 export interface RuntimeSlotView {

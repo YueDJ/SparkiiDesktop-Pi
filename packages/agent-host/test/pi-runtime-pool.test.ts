@@ -149,4 +149,23 @@ describe("PiRuntimePool", () => {
       label: "会话#2",
     });
   });
+
+  it("hides internal probe slots and queue items from the snapshot", async () => {
+    const handle = new FakeHandle();
+    const pool = new PiRuntimePool({ maxAgents: 1, makeSupervisor: () => handle });
+
+    await pool.acquire("user-session", { meta: { profileId: "general", profileName: "通用智能体", label: "会话#1" } });
+    handle.ready();
+    const probe = pool.acquire("probe:test", {
+      meta: { profileId: "internal", profileName: "内部探测", label: "内部探测", internal: true },
+    });
+
+    expect(pool.activeCount()).toBe(1);
+    expect(pool.snapshot()).toMatchObject({ active: 1, queued: 0, slots: [{ sessionId: "user-session" }] });
+
+    await pool.release("user-session");
+    await probe;
+    expect(pool.activeCount()).toBe(1);
+    expect(pool.snapshot()).toMatchObject({ active: 0, queued: 0, slots: [] });
+  });
 });

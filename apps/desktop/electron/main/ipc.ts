@@ -35,7 +35,9 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
 
   async function withProbeSlot<T>(fn: (client: Awaited<ReturnType<typeof rt.pool.acquire>>['client']) => Promise<T>): Promise<T> {
     const key = `probe:${randomUUID()}`;
-    const slot = await rt.pool.acquire(key, {});
+    const slot = await rt.pool.acquire(key, {
+      meta: { profileId: 'internal', profileName: '内部探测', label: '内部探测', internal: true },
+    });
     try {
       return await fn(slot.client);
     } finally {
