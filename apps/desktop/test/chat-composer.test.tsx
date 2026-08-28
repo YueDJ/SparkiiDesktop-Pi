@@ -33,12 +33,22 @@ describe('Composer', () => {
     expect(input.value).toBe('');
   });
 
-  it('shows stop instead of send while busy', () => {
+  it('turns the single action button into stop while busy with an empty draft', () => {
     const props = makeProps({ busy: true });
     render(<Composer {...props} />);
     fireEvent.click(screen.getByTestId('composer-send'));
     expect(props.onStop).toHaveBeenCalled();
     expect(props.onSend).not.toHaveBeenCalled();
+  });
+
+  it('keeps the single action button as send while busy when the draft has text', () => {
+    const props = makeProps({ busy: true });
+    render(<Composer {...props} />);
+    const input = screen.getByTestId('composer-input') as HTMLTextAreaElement;
+    fireEvent.change(input, { target: { value: '追加一条' } });
+    fireEvent.click(screen.getByTestId('composer-send'));
+    expect(props.onSend).toHaveBeenCalledWith('追加一条', []);
+    expect(props.onStop).not.toHaveBeenCalled();
   });
 
   it('model effort trigger shows default model and drills into model list', () => {

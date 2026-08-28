@@ -30,6 +30,24 @@ describe('normalizeEvent', () => {
     expect(normalizeEvent({ type: "tool_execution_end", toolName: "read", details: { ok: true } }))
       .toEqual({ type: "tool_result", toolName: "read", result: { ok: true } });
   });
+  it("maps queue_update events", () => {
+    expect(normalizeEvent({ type: "queue_update", steering: ["先做这个"], followUp: ["做完后整理"] }))
+      .toEqual({ type: "queue_update", steering: ["先做这个"], followUp: ["做完后整理"] });
+  });
+  it("maps user entry_appended events into user messages", () => {
+    expect(normalizeEvent({
+      type: "entry_appended",
+      entry: {
+        type: "message",
+        message: {
+          role: "user",
+          content: [
+            { type: "text", text: "先检查一下结果" },
+          ],
+        },
+      },
+    })).toEqual({ type: "message", role: "user", text: "先检查一下结果" });
+  });
 });
 
 describe('PiRpcClient', () => {

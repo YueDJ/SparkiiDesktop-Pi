@@ -14,11 +14,15 @@ import {
 
 function fakeSession(): PiRuntimeSession & { emit: (event: any) => void } {
   const listeners = new Set<(event: any) => void>();
+  const runtimeErrorListeners = new Set<(error: any) => void>();
   return {
     emit: (event) => listeners.forEach((cb) => cb(event)),
     prompt: vi.fn(async () => {}),
     steer: vi.fn(async () => {}),
     followUp: vi.fn(async () => {}),
+    clearQueue: vi.fn(async () => ({ steering: ["先做这个"], followUp: ["做完后整理"] })),
+    setSteeringMode: vi.fn(async () => {}),
+    setFollowUpMode: vi.fn(async () => {}),
     abort: vi.fn(async () => {}),
     setModel: vi.fn(async () => {}),
     setAutoRetry: vi.fn(async () => {}),
@@ -35,6 +39,7 @@ function fakeSession(): PiRuntimeSession & { emit: (event: any) => void } {
       { id: "deepseek", name: "DeepSeek", baseUrl: "https://api.deepseek.com", apiKeyAuth: true, oauthAuth: false },
     ]),
     subscribe: (cb) => { listeners.add(cb); return () => listeners.delete(cb); },
+    onRuntimeError: (cb: (error: any) => void) => { runtimeErrorListeners.add(cb); return () => runtimeErrorListeners.delete(cb); },
     getMessages: () => [{ role: "user", text: "hi" }],
     getState: () => ({ streaming: false }),
     dispose: vi.fn(),
@@ -76,6 +81,35 @@ describe("createPiRuntime", () => {
     expect(sent).toContainEqual(emitted);
     onMainEvent();
     dispose();
+  });
+
+  it("forwards runtime errors through the event transport", async () => {
+    let runtimeErrorCb: ((error: any) => void) | undefined;
+    const session = fakeSession();
+    session.onRuntimeError = vi.fn((cb: (error: any) => void) => {
+      runtimeErrorCb = cb;
+      return () => {};
+    });
+    const host: PiRuntimeSessionHost = {
+      current: () => session,
+      newSession: vi.fn(async () => {}),
+      switchSession: vi.fn(async () => {}),
+      configureSaddle: vi.fn(async () => {}),
+    };
+    const sent: PiRuntimeEnvelope[] = [];
+    const transport = {
+      postMessage: (env: PiRuntimeEnvelope) => sent.push(env),
+      onMessage: () => () => {},
+    };
+    createPiRuntime({ host, transport: transport as any });
+
+    runtimeErrorCb?.({ message: "api rate limit", command: "prompt", stack: "stack" });
+    expect(sent).toContainEqual(eventEnvelope({
+      type: "runtime_error",
+      message: "api rate limit",
+      command: "prompt",
+      stack: "stack",
+    }));
   });
 
   it("re-subscribes after switchSession", async () => {
@@ -203,5 +237,41 @@ describe("createPiRuntime", () => {
       id: "t3", type: "response", command: "list_thinking_levels", success: true,
       data: ["off", "minimal", "low", "medium", "high", "xhigh", "max"],
     }));
+  });
+
+  it("routes queue commands and returns cleared queue data", async () => {
+    const session = fakeSession();
+    const host: PiRuntimeSessionHost = {
+      current: () => session,
+      newSession: vi.fn(async () => {}),
+      switchSession: vi.fn(async () => {}),
+      configureSaddle: vi.fn(async () => {}),
+    };
+    const sent: PiRuntimeEnvelope[] = [];
+    const transport = {
+      postMessage: (env: PiRuntimeEnvelope) => sent.push(env),
+      onMessage: (cb: (env: PiRuntimeEnvelope) => void) => {
+        transport.emit = cb;
+        return () => {};
+      },
+      emit: (_env: PiRuntimeEnvelope) => {},
+    };
+    createPiRuntime({ host, transport });
+
+    transport.emit(commandEnvelope("q1", { type: "clear_queue" }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(session.clearQueue).toHaveBeenCalled();
+    expect(sent).toContainEqual(responseEnvelope("q1", {
+      id: "q1", type: "response", command: "clear_queue", success: true,
+      data: { steering: ["先做这个"], followUp: ["做完后整理"] },
+    }));
+
+    transport.emit(commandEnvelope("q2", { type: "set_steering_mode", mode: "one-at-a-time" }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(session.setSteeringMode).toHaveBeenCalledWith("one-at-a-time");
+
+    transport.emit(commandEnvelope("q3", { type: "set_follow_up_mode", mode: "all" }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(session.setFollowUpMode).toHaveBeenCalledWith("all");
   });
 });

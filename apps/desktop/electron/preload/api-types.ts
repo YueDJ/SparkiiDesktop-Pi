@@ -8,6 +8,20 @@ export interface ProviderEntryInfo {
   api?: 'openai-completions' | 'anthropic-messages';
 }
 
+export type ChatQueueName = 'steering' | 'followUp';
+
+export type ChatQueueMutation =
+  | { action: 'edit'; queue: ChatQueueName; index: number; text: string }
+  | { action: 'delete'; queue: ChatQueueName; index: number }
+  | { action: 'move'; queue: ChatQueueName; fromIndex: number; toIndex: number }
+  | { action: 'transfer'; queue: ChatQueueName; index: number; targetQueue: ChatQueueName };
+
+export interface ChatQueueState {
+  streaming: boolean;
+  steering: string[];
+  followUp: string[];
+}
+
 export interface SparkiiApi {
   getLocalSubject(): Promise<{ userId: string; roles: string[] }>;
   getProfile(): Promise<unknown>;
@@ -19,8 +33,10 @@ export interface SparkiiApi {
   listChatSessions(profileId?: string): Promise<unknown[]>;
   getChatSession(sessionId: string): Promise<unknown>;
   getChatMessages(sessionId: string): Promise<unknown[]>;
-  promptSession(sessionId: string, text: string): Promise<{ ok: boolean }>;
-  abortChat(sessionId: string): Promise<{ ok: boolean }>;
+  promptSession(sessionId: string, text: string, options?: { behavior?: 'steer' | 'followUp' }): Promise<{ ok: boolean; behavior?: 'prompt' | 'steer' | 'followUp' }>;
+  abortChat(sessionId: string): Promise<{ ok: boolean; cleared?: { steering: string[]; followUp: string[] } }>;
+  getChatState(sessionId: string): Promise<ChatQueueState>;
+  queueMutate(sessionId: string, mutation: ChatQueueMutation): Promise<{ ok: boolean; steering: string[]; followUp: string[] }>;
   setChatTitle(sessionId: string, title: string): Promise<{ ok: boolean }>;
   setChatModel(sessionId: string, model: string | null): Promise<{ ok: boolean }>;
   setChatThinkingLevel(sessionId: string, level: string | null): Promise<{ ok: boolean }>;

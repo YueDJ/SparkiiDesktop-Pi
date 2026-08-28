@@ -106,6 +106,23 @@ table.tbl th { background: var(--color-controlBg); color: var(--color-textSecond
 .chat-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: var(--spacing-sm); text-align: center; }
 .chat-error { margin: 0 var(--spacing-md) var(--spacing-xs); padding: var(--spacing-xs) var(--spacing-sm); border-radius: var(--radius-control); background: var(--color-riskBg); color: var(--color-risk); font-size: var(--font-size-sm); }
 
+.chat-queue-area { display: flex; flex-direction: column; gap: var(--spacing-xs); padding: 0 var(--spacing-md) var(--spacing-xs); }
+.chat-queue-group, .chat-draft-queue { border: 1px solid var(--color-border); border-radius: var(--radius-card); background: var(--color-surface); padding: var(--spacing-xs) var(--spacing-sm); }
+.chat-queue-title { margin: 0 0 var(--spacing-xs); color: var(--color-textMuted); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); text-transform: uppercase; letter-spacing: .06em; }
+.chat-queue-items { display: flex; flex-direction: column; gap: var(--spacing-xs); }
+.chat-queue-item { display: flex; align-items: center; gap: var(--spacing-xs); padding: var(--spacing-xs); border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-bg); min-height: var(--control-height-sm); }
+.chat-queue-item--over { border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-primaryBg); }
+.chat-queue-drag { color: var(--color-textMuted); cursor: grab; flex: none; font-size: var(--font-size-md); }
+.chat-queue-text { flex: 1; min-width: 0; overflow-wrap: anywhere; white-space: pre-wrap; font-size: var(--font-size-sm); }
+.chat-queue-actions { display: inline-flex; align-items: center; gap: var(--spacing-xs); flex: none; }
+.chat-queue-icon-btn, .chat-queue-action { border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-textSecondary); border-radius: var(--radius-control); padding: 2px 7px; font-size: var(--font-size-xs); cursor: pointer; }
+.chat-queue-icon-btn:hover, .chat-queue-action:hover { color: var(--color-primary); border-color: var(--color-primary); }
+.chat-queue-guide, .chat-queue-return { border: none; background: var(--color-primaryBg); color: var(--color-primary); border-radius: var(--radius-pill); padding: 2px 8px; font-size: var(--font-size-xs); cursor: pointer; }
+.chat-queue-guide:hover, .chat-queue-return:hover { background: var(--color-primary); color: var(--color-onPrimary); }
+.chat-queue-edit { display: inline-flex; align-items: center; gap: var(--spacing-xs); flex: 1; min-width: 0; }
+.chat-queue-editor { flex: 1; min-width: 0; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-surface); color: var(--color-text); padding: var(--spacing-xs); font: var(--font-size-sm)/1.4 var(--font-body); resize: vertical; }
+.chat-draft-item { background: var(--color-warnBg, #fff7e6); }
+
 /* 合同左右分栏 */
 .split-pane { display: grid; grid-template-columns: 1.45fr 1fr; gap: var(--spacing-md); }
 

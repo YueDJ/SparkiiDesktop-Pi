@@ -1,11 +1,17 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { buildApi } from '../electron/preload/api.js';
+
+vi.mock('electron', () => ({
+  webUtils: {
+    getPathForFile: () => 'C:/mock/file',
+  },
+}));
 
 describe('sparkii api shape', () => {
   it('exposes the expected method names', () => {
     const names = [
       'getLocalSubject', 'getProfile', 'chooseDocument', 'runWorkflow', 'prompt', 'listPendingApprovals', 'decideApproval', 'queryAudit', 'getSettings', 'saveSettings', 'getApiKey', 'listModels', 'testConnection', 'listProviders', 'diagnostics', 'on',
-      'newChatSession', 'openChatSession', 'listChatSessions', 'getChatSession', 'getChatMessages', 'promptSession', 'abortChat', 'setChatTitle', 'setChatModel', 'setChatThinkingLevel', 'setChatWorkspace', 'chooseWorkspace', 'getModelOptions', 'listThinkingLevels', 'deleteChatSession', 'listAgents',
+      'newChatSession', 'openChatSession', 'listChatSessions', 'getChatSession', 'getChatMessages', 'promptSession', 'abortChat', 'getChatState', 'queueMutate', 'setChatTitle', 'setChatModel', 'setChatThinkingLevel', 'setChatWorkspace', 'chooseWorkspace', 'getModelOptions', 'listThinkingLevels', 'deleteChatSession', 'listAgents',
       'getPathForFile',
     ];
     const api = buildApi({ invoke: () => Promise.resolve(null), on: () => () => {}, removeListener: () => {} } as any);

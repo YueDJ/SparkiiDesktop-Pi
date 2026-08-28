@@ -40,6 +40,43 @@ export function resolveAgentDir(explicit?: string): string {
   return explicit ?? process.env.PI_CODING_AGENT_DIR ?? getAgentDir();
 }
 
+export function readQueueSnapshot(session: {
+  getSteeringMessages?: () => readonly string[];
+  getFollowUpMessages?: () => readonly string[];
+}): { steering: string[]; followUp: string[] } {
+  return {
+    steering: [...(session.getSteeringMessages?.() ?? [])],
+    followUp: [...(session.getFollowUpMessages?.() ?? [])],
+  };
+}
+
+export function clearSessionQueue(session: {
+  clearQueue?: () => { steering: readonly string[]; followUp: readonly string[] };
+}): { steering: string[]; followUp: string[] } {
+  const cleared = session.clearQueue?.();
+  return {
+    steering: cleared?.steering ? [...cleared.steering] : [],
+    followUp: cleared?.followUp ? [...cleared.followUp] : [],
+  };
+}
+
+export function startPromptWithoutBlocking(
+  session: { prompt: (text: string, options?: any) => Promise<unknown> },
+  text: string,
+  options?: { streamingBehavior?: "steer" | "followUp" },
+  onError?: (error: { message: string; command?: string; stack?: string }, command?: string) => void,
+): Promise<void> {
+  void session.prompt(text, options).catch((error) => {
+    const normalized = error instanceof Error ? error : new Error(String(error));
+    onError?.({
+      message: normalized.message,
+      command: "prompt",
+      stack: normalized.stack,
+    }, "prompt");
+  });
+  return Promise.resolve();
+}
+
 function systemPromptExtensionFactory(getSystemPrompt: () => string | undefined) {
   return (pi: ExtensionAPI) => {
     pi.on("before_agent_start", () => {
@@ -120,6 +157,7 @@ export async function createPiSdkSessionHost(
 
   function adaptSession(): PiRuntimeSession {
     const session: any = runtime.session;
+    const runtimeErrorListeners = new Set<(error: { message: string; command?: string; stack?: string }) => void>();
     const sessionCwd = pendingSaddle?.cwd ?? fallbackCwd;
     const workspaceRoot = pendingSaddle?.workspaceRoot ?? fallbackWorkspaceRoot;
     const saddleTools: ToolDefinition[] = pendingSaddle
@@ -135,9 +173,21 @@ export async function createPiSdkSessionHost(
       : [];
     session.agent.state.tools = saddleTools;
     return {
-      prompt: (text, promptOptions) => session.prompt(text, promptOptions),
+      prompt: (text, promptOptions) => startPromptWithoutBlocking(
+        session,
+        text,
+        promptOptions,
+        (error) => runtimeErrorListeners.forEach((listener) => listener(error)),
+      ),
       steer: (text) => session.steer(text),
       followUp: (text) => session.followUp(text),
+      clearQueue: async () => clearSessionQueue(session),
+      setSteeringMode: async (mode) => {
+        session.setSteeringMode(mode);
+      },
+      setFollowUpMode: async (mode) => {
+        session.setFollowUpMode(mode);
+      },
       abort: () => session.abort(),
       setModel: async (provider, modelId) => {
         await syncModelConfig(provider);
@@ -209,11 +259,21 @@ export async function createPiSdkSessionHost(
           };
         }),
       subscribe: (callback) => session.subscribe(callback),
+      onRuntimeError: (callback) => {
+        runtimeErrorListeners.add(callback);
+        return () => runtimeErrorListeners.delete(callback);
+      },
       getMessages: () => session.messages,
       getState: () => ({
         streaming: session.isStreaming,
+        isStreaming: session.isStreaming,
+        isCompacting: session.isCompacting,
         sessionId: session.sessionId,
         sessionFile: session.sessionFile,
+        steeringMode: session.steeringMode,
+        followUpMode: session.followUpMode,
+        pendingMessageCount: session.pendingMessageCount,
+        ...readQueueSnapshot(session),
       }),
       dispose: () => session.dispose(),
     };

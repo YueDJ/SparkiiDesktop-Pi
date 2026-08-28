@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import { Keyring } from '../electron/main/keyring.js';
 import { createKeyStore } from '../electron/main/runtime.js';
 
+vi.mock('electron', () => ({ safeStorage: {} }));
+
 function fakeSafeStorage() {
   return {
     isEncryptionAvailable: () => true,

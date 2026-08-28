@@ -30,6 +30,7 @@ export function App() {
   const [sessions, setSessions] = useState<Record<string, ShellSession[]>>({});
   const [activeGeneralSession, setActiveGeneralSession] = useState<string | null>(null);
   const [generalTitle, setGeneralTitle] = useState('');
+  const [globalError, setGlobalError] = useState('');
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [approvalFocusId, setApprovalFocusId] = useState<string | null>(null);
 
@@ -144,10 +145,15 @@ export function App() {
 
   const onNewSession = async (agentId: string) => {
     if (agentId === 'general') {
-      const res = await api.newChatSession?.('general');
-      if (res?.sessionId) {
-        setActiveGeneralSession(res.sessionId);
-        refreshSessions('general', res.sessionId);
+      try {
+        const res = await api.newChatSession?.('general');
+        if (res?.sessionId) {
+          setGlobalError('');
+          setActiveGeneralSession(res.sessionId);
+          refreshSessions('general', res.sessionId);
+        }
+      } catch (e) {
+        setGlobalError(String((e as Error)?.message ?? e));
       }
       return;
     }
@@ -236,6 +242,7 @@ export function App() {
 
   return (
     <>
+      {globalError && <div className="chat-error" role="alert" style={{ margin: 'var(--spacing-sm)' }}>{globalError}</div>}
       <Shell
         active={screen}
         agents={agents}

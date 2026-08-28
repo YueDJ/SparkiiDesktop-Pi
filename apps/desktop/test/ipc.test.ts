@@ -62,11 +62,13 @@ async function makeRuntime(opts: {
     pool: {
       acquire: vi.fn(async () => ({ client: opts.client, supervisor: { onProposal: () => {} } })),
       release: vi.fn(async () => {}),
+      renameSession: vi.fn(),
+      activeCount: vi.fn(() => 0),
       get: () => opts.client,
       broadcast: vi.fn(async () => {}),
     },
     subject: { userId: 'tester', roles: ['admin'] },
-    chatSessions: { get: () => opts.chatSession ?? null, create: vi.fn(), update: vi.fn(), delete: vi.fn() },
+    chatSessions: { get: () => opts.chatSession ?? null, list: vi.fn(() => []), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
     dataDir: opts.dataDir,
     keyring: null as any,
     piAgentDir: opts.piAgentDir,
@@ -266,6 +268,77 @@ describe('ipc provider handlers', () => {
     expect(sent).toContainEqual({ type: 'set_model', provider: 'zai', modelId: 'glm-5' });
   });
 
+  it('newChatSession returns a session id and pipes runtime events', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's-new', sessionFile: null } };
+        }
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({ dataDir, piAgentDir, client });
+    (rt as any).chatSessions.create = vi.fn();
+
+    const handlers = await registeredHandlers();
+    const newChatSession = handlers.get('sparkii:newChatSession');
+    const result = await newChatSession!(null, 'general');
+
+    expect(result).toMatchObject({ sessionId: 's-new' });
+    expect(client.onEvent).toHaveBeenCalled();
+  });
+
+  it('newChatSession rejects when the runtime pool has reached maxAgents', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({ maxAgents: 4 }), 'utf8');
+
+    const client = { send: async () => ({ success: true }) };
+    const rt = await makeRuntime({ dataDir, piAgentDir, client });
+    (rt.pool as unknown as { activeCount: () => number }).activeCount = () => 4;
+
+    const handlers = await registeredHandlers();
+    const newChatSession = handlers.get('sparkii:newChatSession');
+    await expect(newChatSession!(null, 'general')).rejects.toThrow('已达到最大并发会话数 4');
+  });
+
+  it('listChatSessions includes empty sessions from the local store', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    const client = { send: async () => ({ success: true }) };
+    const rt = await makeRuntime({ dataDir, piAgentDir, client });
+    const emptySession = {
+      id: 'empty-1',
+      profileId: 'general',
+      workspaceKind: 'auto',
+      workspacePath: 'C:/ws/empty',
+      model: null,
+      thinkingLevel: null,
+      piSessionFile: null,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    (rt.chatSessions as unknown as { list: (profileId?: string) => unknown[] }).list = () => [emptySession];
+
+    const handlers = await registeredHandlers();
+    const listChatSessions = handlers.get('sparkii:listChatSessions');
+    const result = await listChatSessions!(null, 'general');
+    expect(result).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'empty-1', profileId: 'general' }),
+    ]));
+  });
+
   it('workflow selectModel routes to settings active provider and default model', async () => {
     const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
     dirs.push(dataDir);
@@ -370,5 +443,167 @@ describe('ipc provider handlers', () => {
 
     expect(sent).toContainEqual({ type: 'set_model', provider: 'deepseek', modelId: 'deepseek-v4-pro' });
     expect(sent).toContainEqual({ type: 'set_thinking_level', level: 'high' });
+  });
+
+  it('queues a follow_up by default while the Pi session is streaming', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(
+      join(dataDir, 'settings.json'),
+      JSON.stringify({ activeProviderId: 'deepseek', defaultModel: 'deepseek-v4-pro' }),
+      'utf8',
+    );
+
+    const sent: any[] = [];
+    const client = {
+      onEvent: (cb: (event: any) => void) => {
+        queueMicrotask(() => cb({ type: 'agent_end' }));
+        return () => {};
+      },
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') {
+          return { success: true, data: { isStreaming: true, sessionFile: null } };
+        }
+        return { success: true };
+      },
+    };
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'contract-review', model: 'deepseek-v4-pro' },
+    });
+
+    const handlers = await registeredHandlers();
+    const promptSession = handlers.get('sparkii:promptSession');
+    const result = await promptSession!(null, 's1', '继续做');
+
+    expect(sent).toContainEqual({ type: 'follow_up', message: '继续做' });
+    expect(sent).not.toContainEqual({ type: 'prompt', message: '继续做' });
+    expect(result).toMatchObject({ ok: true, behavior: 'followUp' });
+  });
+
+  it('abortChat clears the queue before aborting and returns the cleared items', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(
+      join(dataDir, 'settings.json'),
+      JSON.stringify({ activeProviderId: 'deepseek', defaultModel: 'deepseek-v4-pro' }),
+      'utf8',
+    );
+
+    const sent: any[] = [];
+    const client = {
+      onEvent: (cb: (event: any) => void) => {
+        queueMicrotask(() => cb({ type: 'agent_end' }));
+        return () => {};
+      },
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') {
+          return {
+            success: true,
+            data: {
+              isStreaming: false,
+              sessionFile: null,
+              steering: ['先做这个'],
+              followUp: ['做完后整理'],
+            },
+          };
+        }
+        return { success: true };
+      },
+    };
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'contract-review', model: 'deepseek-v4-pro' },
+    });
+
+    const handlers = await registeredHandlers();
+    const promptSession = handlers.get('sparkii:promptSession');
+    await promptSession!(null, 's1', '开始');
+
+    const abortChat = handlers.get('sparkii:abortChat');
+    const result = await abortChat!(null, 's1');
+
+    const clearIndex = sent.findIndex((c) => c.type === 'clear_queue');
+    const abortIndex = sent.findIndex((c) => c.type === 'abort');
+    expect(clearIndex).toBeGreaterThanOrEqual(0);
+    expect(abortIndex).toBeGreaterThan(clearIndex);
+    expect(result).toEqual({
+      ok: true,
+      cleared: { steering: ['先做这个'], followUp: ['做完后整理'] },
+    });
+  });
+
+  it('queueMutate rebuilds both queues from the current Pi snapshot', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(
+      join(dataDir, 'settings.json'),
+      JSON.stringify({ activeProviderId: 'deepseek', defaultModel: 'deepseek-v4-pro' }),
+      'utf8',
+    );
+
+    const sent: any[] = [];
+    const client = {
+      onEvent: (cb: (event: any) => void) => {
+        queueMicrotask(() => cb({ type: 'agent_end' }));
+        return () => {};
+      },
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') {
+          return {
+            success: true,
+            data: {
+              isStreaming: true,
+              sessionFile: null,
+              steering: ['先做这个'],
+              followUp: ['做完后整理', '再跑一遍测试'],
+            },
+          };
+        }
+        return { success: true };
+      },
+    };
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'contract-review', model: 'deepseek-v4-pro' },
+    });
+
+    const handlers = await registeredHandlers();
+    const promptSession = handlers.get('sparkii:promptSession');
+    await promptSession!(null, 's1', '开始');
+
+    const queueMutate = handlers.get('sparkii:queueMutate');
+    const result = await queueMutate!(null, 's1', {
+      action: 'transfer',
+      queue: 'followUp',
+      index: 0,
+      targetQueue: 'steering',
+    });
+
+    const clearIndex = sent.findIndex((c) => c.type === 'clear_queue');
+    const rebuild = sent.slice(clearIndex + 1);
+    expect(rebuild).toContainEqual({ type: 'steer', message: '先做这个' });
+    expect(rebuild).toContainEqual({ type: 'steer', message: '做完后整理' });
+    expect(rebuild).toContainEqual({ type: 'follow_up', message: '再跑一遍测试' });
+    expect(result).toEqual({
+      ok: true,
+      steering: ['先做这个', '做完后整理'],
+      followUp: ['再跑一遍测试'],
+    });
   });
 });

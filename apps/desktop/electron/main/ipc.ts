@@ -11,12 +11,16 @@ import { autoWorkspacePath } from './workspace.js';
 import { buildProfileSaddle } from './saddle.js';
 import { writePiModelsConfig } from './pi-model-config.js';
 import { probeProviderModels } from './provider-probe.js';
+import { mutateQueues, type QueueMutation, type QueueSnapshot } from './queue-mutation.js';
 import type { Runtime } from './runtime.js';
 import type { Logger } from './logger.js';
 
 export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, logger: Logger) {
   const broker = createBroker(rt, getWindow);
-  const openSessions = new Map<string, { slot: Awaited<ReturnType<typeof rt.pool.acquire>>; profileId: string }>();
+  const openSessions = new Map<
+    string,
+    { slot: Awaited<ReturnType<typeof rt.pool.acquire>>; profileId: string; offEvents?: () => void }
+  >();
   const titledSessions = new Set<string>();
 
   const anchorDir = (sessionId: string) => join(rt.dataDir, 'sessions', sessionId);
@@ -97,9 +101,100 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     }
   }
 
+  const chatStateData = (data: unknown): {
+    isStreaming?: boolean;
+    streaming?: boolean;
+    sessionFile?: string;
+    steering?: string[];
+    followUp?: string[];
+  } => (data ?? {}) as {
+    isStreaming?: boolean;
+    streaming?: boolean;
+    sessionFile?: string;
+    steering?: string[];
+    followUp?: string[];
+  };
+
+  async function ensureOpenSession(sessionId: string): Promise<{
+    slot: Awaited<ReturnType<typeof rt.pool.acquire>>;
+    profileId: string;
+    offEvents?: () => void;
+  }> {
+    let open = openSessions.get(sessionId);
+    if (open) return open;
+
+    const rec = rt.chatSessions.get(sessionId);
+    if (!rec) throw new Error('session not found');
+    const slot = await rt.pool.acquire(sessionId, {
+      saddle: buildSaddle(rec.profileId, sessionId),
+      resumeSessionFile: rec.piSessionFile ?? undefined,
+    });
+    open = { slot, profileId: rec.profileId };
+    openSessions.set(sessionId, open);
+    return open;
+  }
+
+  function pipeSessionEvents(
+    sessionId: string,
+    entry: { slot: Awaited<ReturnType<typeof rt.pool.acquire>>; profileId: string; offEvents?: () => void },
+  ): void {
+    if (entry.offEvents) return;
+    const win = getWindow();
+    entry.offEvents = entry.slot.client.onEvent((ev) => {
+      win?.webContents.send('sparkii:event:chat-event', { ...ev, sessionId });
+      if (ev.type === 'agent_end' && !titledSessions.has(sessionId)) {
+        titledSessions.add(sessionId);
+        void maybeGenerateTitle(sessionId, entry.profileId, entry.slot).catch(() => {});
+      }
+    });
+  }
+
+  async function readQueues(entry: { slot: Awaited<ReturnType<typeof rt.pool.acquire>> }): Promise<QueueSnapshot> {
+    const state = await entry.slot.client.send({ type: 'get_state' });
+    if (!state.success) throw new Error(state.error ?? 'get_state failed');
+    const data = chatStateData(state.data);
+    return {
+      steering: Array.isArray(data.steering) ? data.steering : [],
+      followUp: Array.isArray(data.followUp) ? data.followUp : [],
+    };
+  }
+
+  async function rebuildQueues(
+    client: Awaited<ReturnType<typeof rt.pool.acquire>>['client'],
+    snapshot: QueueSnapshot,
+  ): Promise<void> {
+    for (const message of snapshot.steering) {
+      await client.send({ type: 'steer', message });
+    }
+    for (const message of snapshot.followUp) {
+      await client.send({ type: 'follow_up', message });
+    }
+  }
+
+  async function waitForIdle(
+    client: Awaited<ReturnType<typeof rt.pool.acquire>>['client'],
+    timeoutMs = 30_000,
+  ): Promise<void> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const state = await client.send({ type: 'get_state' });
+      if (!state.success) throw new Error(state.error ?? 'get_state failed');
+      const data = chatStateData(state.data);
+      const streaming = data.isStreaming ?? data.streaming ?? false;
+      if (!streaming) return;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    throw new Error('stop timeout');
+  }
+
   ipcMain.handle('sparkii:newChatSession', async (_e, profileId: string) => {
     const now = new Date();
     const workspacePath = autoWorkspacePath(app.getPath('desktop'), now);
+    const settings = await loadSettings(rt.dataDir);
+    const maxAgents = Number(settings.maxAgents ?? process.env.SPARKII_MAX_AGENTS ?? 4);
+    if (rt.pool.activeCount() >= maxAgents) {
+      throw new Error(`已达到最大并发会话数 ${maxAgents}，请先关闭一个空闲会话`);
+    }
     const tempKey = `new:${randomUUID()}`;
     const slot = await rt.pool.acquire(tempKey, {
       saddle: buildProfileSaddle(rt.profileOf(profileId), anchorDir(tempKey), workspacePath),
@@ -112,7 +207,9 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       const sessionFile = (state.data as { sessionFile?: string } | undefined)?.sessionFile;
       if (!sessionId) throw new Error('runtime did not provide a session id');
       rt.pool.renameSession(tempKey, sessionId);
-      openSessions.set(sessionId, { slot, profileId });
+      const entry = { slot, profileId };
+      openSessions.set(sessionId, entry);
+      pipeSessionEvents(sessionId, entry);
       await mkdir(anchorDir(sessionId), { recursive: true });
       rt.chatSessions.create({
         id: sessionId,
@@ -165,7 +262,16 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
         piFile: s.path,
       };
     });
-    return profileId ? mapped.filter((m) => m.profileId === profileId || m.profileId === undefined) : mapped;
+    const seen = new Set(mapped.map((m) => m.id));
+    const stored = rt.chatSessions.list(profileId).map((rec) => ({
+      id: rec.id,
+      title: undefined,
+      profileId: rec.profileId,
+      updatedAt: rec.updatedAt,
+      piFile: rec.piSessionFile ?? undefined,
+    }));
+    const merged = [...mapped, ...stored.filter((m) => !seen.has(m.id))];
+    return profileId ? merged.filter((m) => m.profileId === profileId || m.profileId === undefined) : merged;
   });
   ipcMain.handle('sparkii:getChatSession', (_e, sessionId: string) => rt.chatSessions.get(sessionId) ?? null);
   ipcMain.handle('sparkii:getChatMessages', async (_e, sessionId: string) => {
@@ -175,20 +281,15 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     return (resp.data ?? []) as unknown[];
   });
 
-  ipcMain.handle('sparkii:promptSession', async (_e, sessionId: string, text: string) => {
-    let open = openSessions.get(sessionId);
-    if (!open) {
-      const rec = rt.chatSessions.get(sessionId);
-      if (!rec) throw new Error('session not found');
-      const slot = await rt.pool.acquire(sessionId, {
-        saddle: buildSaddle(rec.profileId, sessionId),
-        resumeSessionFile: rec.piSessionFile ?? undefined,
-      });
-      open = { slot, profileId: rec.profileId };
-      openSessions.set(sessionId, open);
-    }
-    const { slot, profileId } = open;
-    slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId }));
+  ipcMain.handle('sparkii:promptSession', async (
+    _e,
+    sessionId: string,
+    text: string,
+    options?: { behavior?: 'steer' | 'followUp' },
+  ) => {
+    const open = await ensureOpenSession(sessionId);
+    pipeSessionEvents(sessionId, open);
+    open.slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId: open.profileId }));
     const rec = rt.chatSessions.get(sessionId);
 
     const target = rec?.model
@@ -196,37 +297,71 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       : await selectModel(rt, 'chat', sessionId);
     if (target) {
       const settings = await loadSettings(rt.dataDir);
-      await applyThinkingLevel(slot.client, resolveThinkingLevel(settings, rec, target));
+      await applyThinkingLevel(open.slot.client, resolveThinkingLevel(settings, rec, target));
     }
-    const win = getWindow();
-    await new Promise<void>((resolve, reject) => {
-      let off = () => {};
-      const timer = setTimeout(() => { off(); reject(new Error('prompt timeout')); }, 300_000);
-      off = slot.client.onEvent((ev) => {
-        win?.webContents.send('sparkii:event:chat-event', { ...ev, sessionId });
-        if (ev.type === 'agent_end') {
-          clearTimeout(timer); off(); resolve();
-          if (!titledSessions.has(sessionId)) {
-            titledSessions.add(sessionId);
-            void maybeGenerateTitle(sessionId, profileId, slot).catch(() => {});
-          }
-        }
-      });
-      slot.client.send({ type: 'prompt', message: text }).then((resp) => {
-        if (!resp.success) { clearTimeout(timer); off(); reject(new Error(resp.error ?? 'prompt failed')); }
-      });
-    });
-    const state = await slot.client.send({ type: 'get_state' });
-    if ((state.data as { sessionFile?: string } | undefined)?.sessionFile) {
-      rt.chatSessions.update(sessionId, { piSessionFile: (state.data as { sessionFile: string }).sessionFile });
+
+    const stateResp = await open.slot.client.send({ type: 'get_state' });
+    if (!stateResp.success) throw new Error(stateResp.error ?? 'get_state failed');
+    const state = chatStateData(stateResp.data);
+    const isStreaming = state.isStreaming ?? state.streaming ?? false;
+    const behavior = options?.behavior ?? (isStreaming ? 'followUp' : 'prompt');
+
+    if (behavior === 'steer') {
+      const resp = await open.slot.client.send({ type: 'steer', message: text });
+      if (!resp.success) throw new Error(resp.error ?? 'steer failed');
+    } else if (behavior === 'followUp') {
+      const resp = await open.slot.client.send({ type: 'follow_up', message: text });
+      if (!resp.success) throw new Error(resp.error ?? 'follow_up failed');
+    } else {
+      const resp = await open.slot.client.send({ type: 'prompt', message: text });
+      if (!resp.success) throw new Error(resp.error ?? 'prompt failed');
     }
-    return { ok: true };
+
+    const after = await open.slot.client.send({ type: 'get_state' });
+    if ((after.data as { sessionFile?: string } | undefined)?.sessionFile) {
+      rt.chatSessions.update(sessionId, {
+        piSessionFile: (after.data as { sessionFile: string }).sessionFile,
+      });
+    }
+    return { ok: true, behavior: behavior === 'prompt' ? 'prompt' : behavior };
   });
 
   ipcMain.handle('sparkii:abortChat', async (_e, sessionId: string) => {
-    const open = openSessions.get(sessionId);
-    if (open) await open.slot.client.send({ type: 'abort' });
-    return { ok: true };
+    const open = await ensureOpenSession(sessionId);
+    pipeSessionEvents(sessionId, open);
+    const cleared = await readQueues(open);
+
+    const clearResp = await open.slot.client.send({ type: 'clear_queue' });
+    if (!clearResp.success) throw new Error(clearResp.error ?? 'clear_queue failed');
+    const abortResp = await open.slot.client.send({ type: 'abort' });
+    if (!abortResp.success) throw new Error(abortResp.error ?? 'abort failed');
+    await waitForIdle(open.slot.client);
+    return { ok: true, cleared };
+  });
+
+  ipcMain.handle('sparkii:getChatState', async (_e, sessionId: string) => {
+    const open = await ensureOpenSession(sessionId);
+    pipeSessionEvents(sessionId, open);
+    const resp = await open.slot.client.send({ type: 'get_state' });
+    if (!resp.success) throw new Error(resp.error ?? 'get_state failed');
+    const data = chatStateData(resp.data);
+    return {
+      streaming: data.isStreaming ?? data.streaming ?? false,
+      steering: data.steering ?? [],
+      followUp: data.followUp ?? [],
+    };
+  });
+
+  ipcMain.handle('sparkii:queueMutate', async (_e, sessionId: string, mutation: QueueMutation) => {
+    const open = await ensureOpenSession(sessionId);
+    pipeSessionEvents(sessionId, open);
+    const snapshot = await readQueues(open);
+    const next = mutateQueues(snapshot, mutation);
+
+    const clearResp = await open.slot.client.send({ type: 'clear_queue' });
+    if (!clearResp.success) throw new Error(clearResp.error ?? 'clear_queue failed');
+    await rebuildQueues(open.slot.client, next);
+    return { ok: true, steering: next.steering, followUp: next.followUp };
   });
 
   ipcMain.handle('sparkii:setChatTitle', (_e, sessionId: string, title: string) => {
@@ -323,6 +458,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       if ((state.data as { sessionFile?: string } | undefined)?.sessionFile) {
         rt.chatSessions.update(sessionId, { piSessionFile: (state.data as { sessionFile: string }).sessionFile });
       }
+      open.offEvents?.();
       await rt.pool.release(sessionId);
       openSessions.delete(sessionId);
     }

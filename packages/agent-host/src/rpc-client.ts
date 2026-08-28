@@ -4,6 +4,17 @@ import type { RpcCommand, RpcResponse, NormalizedEvent } from './types.js';
 export type { RpcCommand, RpcResponse, NormalizedEvent } from './types.js';
 
 export function normalizeEvent(raw: any): NormalizedEvent {
+  const messageText = (message: any): string => {
+    const content = message?.content;
+    if (typeof content === 'string') return content;
+    if (Array.isArray(content)) {
+      return content
+        .map((block: any) => block?.text ?? '')
+        .join('');
+    }
+    return typeof message?.text === 'string' ? message.text : '';
+  };
+
   switch (raw.type) {
     case 'message_update': {
       const aev = raw.assistantMessageEvent;
@@ -32,6 +43,19 @@ export function normalizeEvent(raw: any): NormalizedEvent {
       return { type: "tool_call", toolName: raw.toolName, input: raw.input ?? raw.params };
     case "tool_execution_end":
       return { type: "tool_result", toolName: raw.toolName, result: raw.result ?? raw.details };
+    case "queue_update":
+      return {
+        type: "queue_update",
+        steering: Array.isArray(raw.steering) ? raw.steering : [],
+        followUp: Array.isArray(raw.followUp) ? raw.followUp : [],
+      };
+    case "entry_appended": {
+      const message = raw.entry?.message;
+      if (message?.role === 'user') {
+        return { type: 'message', role: 'user', text: messageText(message) };
+      }
+      return { type: 'unknown', raw };
+    }
     default: return { type: 'unknown', raw };
   }
 }

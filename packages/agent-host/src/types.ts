@@ -18,6 +18,9 @@ export type RpcCommand =
   | { type: 'prompt'; message: string; streamingBehavior?: 'steer' | 'followUp' }
   | { type: 'steer'; message: string }
   | { type: 'follow_up'; message: string }
+  | { type: 'clear_queue' }
+  | { type: 'set_steering_mode'; mode: 'all' | 'one-at-a-time' }
+  | { type: 'set_follow_up_mode'; mode: 'all' | 'one-at-a-time' }
   | { type: 'abort' }
   | { type: 'new_session' }
   | { type: 'get_state' }
@@ -43,6 +46,8 @@ export type NormalizedEvent =
   | { type: 'message'; role: 'user' | 'assistant'; delta?: string; text?: string; thinkingDelta?: string; thinking?: string }
   | { type: 'tool_call'; toolName: string; input: unknown }
   | { type: 'tool_result'; toolName: string; result: unknown }
+  | { type: 'queue_update'; steering: string[]; followUp: string[] }
+  | { type: 'runtime_error'; message: string; command?: string; stack?: string }
   | { type: 'agent_start' } | { type: 'agent_end' }
   | { type: 'compaction_start' } | { type: 'compaction_end' }
   | { type: 'unknown'; raw: unknown };

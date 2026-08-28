@@ -13,6 +13,7 @@ export interface ComposerAttachment {
 
 export interface ChatComposerProps {
   busy: boolean;
+  stopping?: boolean;
   workspacePath: string | null;
   onChooseWorkspace(): void;
   getLocalPath?(file: File): string;
@@ -59,7 +60,7 @@ const KIND_GLYPH: Record<Exclude<AttachmentKind, 'image'>, string> = {
   word: 'W', sheet: 'X', pdf: 'PDF', code: '{ }', file: '',
 };
 
-export function ChatComposer({ busy, workspacePath, onChooseWorkspace, getLocalPath, modelProps, onSend, onStop }: ChatComposerProps) {
+export function ChatComposer({ busy, stopping = false, workspacePath, onChooseWorkspace, getLocalPath, modelProps, onSend, onStop }: ChatComposerProps) {
   const [draft, setDraft] = useState('');
   const [files, setFiles] = useState<ComposerAttachment[]>([]);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -76,7 +77,7 @@ export function ChatComposer({ busy, workspacePath, onChooseWorkspace, getLocalP
 
   const send = () => {
     const text = draft.trim();
-    if (!text || busy) return;
+    if (!text) return;
     onSend(text, files);
     setDraft('');
     setFiles((xs) => { xs.forEach((f) => { if (f.previewUrl) URL.revokeObjectURL(f.previewUrl); }); return []; });
@@ -106,6 +107,10 @@ export function ChatComposer({ busy, workspacePath, onChooseWorkspace, getLocalP
   };
 
   const sourceLabel = files.length ? dirname(files[0].path) : '';
+  const hasDraft = Boolean(draft.trim());
+  const canStop = busy && !hasDraft;
+  const canSend = hasDraft;
+  const actionDisabled = stopping || (!canStop && !canSend);
 
   return (
     <div className="ui-composer">
@@ -177,11 +182,11 @@ export function ChatComposer({ busy, workspacePath, onChooseWorkspace, getLocalP
               type="button"
               className="ui-composer-send"
               data-testid="composer-send"
-              aria-label={busy ? '停止' : '发送'}
-              disabled={!busy && !draft.trim()}
-              onClick={busy ? onStop : send}
+              aria-label={canStop ? (stopping ? '停止中' : '停止') : '发送'}
+              disabled={actionDisabled}
+              onClick={canStop ? onStop : send}
             >
-              {busy ? <StopIcon /> : <ArrowUpIcon />}
+              {canStop ? <StopIcon /> : <ArrowUpIcon />}
             </button>
           </div>
         </div>
