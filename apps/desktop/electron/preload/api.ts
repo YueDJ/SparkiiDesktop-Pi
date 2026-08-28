@@ -1,4 +1,5 @@
-import type { ProviderEntryInfo, RuntimePoolSnapshot, SparkiiApi } from './api-types.js';
+import type { ProviderEntryInfo, SparkiiApi } from './api-types.js';
+import type { RuntimePoolSnapshot } from '@sparkii/agent-host';
 import { webUtils } from 'electron';
 
 export type IpcLike = {

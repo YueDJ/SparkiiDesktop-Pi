@@ -231,14 +231,19 @@ export function App() {
     return { ...a, status: running ? 'running' : queued ? 'queued' : 'idle' } as ShellAgent;
   });
 
-  const stopRuntimeSession = (sessionId: string) => api.abortChat(sessionId);
+  const stopRuntimeSession = async (sessionId: string) => {
+    await api.abortChat(sessionId);
+  };
 
-  const releaseRuntimeSession = (sessionId: string) => api.releaseSessionSlot(sessionId).then(() => {
+  const releaseRuntimeSession = async (sessionId: string) => {
+    await api.releaseSessionSlot(sessionId);
     if (sessionId === activeGeneralSession) setActiveGeneralSession(null);
     refreshSessions('general');
-  });
+  };
 
-  const cancelQueuedSession = (queueId: string) => api.cancelQueuedSession(queueId);
+  const cancelQueuedSession = async (queueId: string) => {
+    await api.cancelQueuedSession(queueId);
+  };
 
   const statusText = workflow.status === 'running'
     ? `正在执行:${workflow.step ?? '…'}`
