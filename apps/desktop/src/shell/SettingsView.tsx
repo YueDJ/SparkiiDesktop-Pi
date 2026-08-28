@@ -69,6 +69,8 @@ export function SettingsView(props: SettingsViewProps) {
   const [connStatus, setConnStatus] = useState<ConnStatus>({ cls: '', text: '未测试' });
   const [fetching, setFetching] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [maxAgents, setMaxAgents] = useState(4);
+  const [queueEnabled, setQueueEnabled] = useState(true);
 
   const active = entries.find((e) => e.id === providerId);
 
@@ -83,6 +85,8 @@ export function SettingsView(props: SettingsViewProps) {
         if (typeof s.apiKey === 'string') setApiKey(s.apiKey);
         if (typeof s.defaultModel === 'string') setDefaultModel(s.defaultModel);
         if (typeof s.defaultThinkingLevel === 'string') setDefaultThinkingLevel(s.defaultThinkingLevel);
+        if (typeof s.maxAgents === 'number') setMaxAgents(s.maxAgents);
+        if (typeof s.queueEnabled === 'boolean') setQueueEnabled(s.queueEnabled);
         if (s.routes && typeof s.routes === 'object') setRoutes(s.routes as Record<string, string>);
         setInfo('已加载本机配置');
       })
@@ -139,7 +143,7 @@ export function SettingsView(props: SettingsViewProps) {
     const nextCustom = active?.kind === 'custom'
       ? [...customProviders.filter((p) => p.id !== providerId), { id: providerId, name: active.name, baseUrl: customBaseUrl, api: customApi }]
       : customProviders;
-    await api.saveSettings({ activeProviderId: providerId, providers: nextCustom, defaultModel, defaultThinkingLevel, routes, apiKey });
+    await api.saveSettings({ activeProviderId: providerId, providers: nextCustom, defaultModel, defaultThinkingLevel, routes, apiKey, maxAgents, queueEnabled });
     setCustomProviders(nextCustom);
     setInfo('设置已保存');
   };
@@ -233,13 +237,18 @@ export function SettingsView(props: SettingsViewProps) {
         <>
           <h3 className="settings-section-title">智能体与运行</h3>
           <SettingsRow label="并行智能体上限">
-            <Select defaultValue="4"><option>1</option><option>2</option><option>3</option><option>4</option></Select>
+            <Select value={String(maxAgents)} onChange={(e) => setMaxAgents(Number(e.target.value))}>
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => <option key={n} value={n}>{n}</option>)}
+            </Select>
           </SettingsRow>
-          <SettingsRow label="超出上限时排队"><Switch checked onCheckedChange={() => {}} label="超出上限时排队" /></SettingsRow>
+          <SettingsRow label="超出上限时排队"><Switch checked={queueEnabled} onCheckedChange={setQueueEnabled} label="超出上限时排队" /></SettingsRow>
           <SettingsRow label="崩溃自动恢复"><Switch checked onCheckedChange={() => {}} label="崩溃自动恢复" /></SettingsRow>
           <SettingsRow label="日志级别">
             <Select defaultValue="信息"><option>信息</option><option>调试</option><option>警告</option></Select>
           </SettingsRow>
+          <div className="settings-actions">
+            <Button variant="primary" onClick={save}>保存</Button>
+          </div>
         </>
       )}
       {pane === 'approval' && (

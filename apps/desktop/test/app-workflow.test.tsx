@@ -37,6 +37,10 @@ function makeApi() {
     prompt: vi.fn().mockResolvedValue({ ok: true }),
     decideApproval: vi.fn(),
     queryAudit: vi.fn().mockResolvedValue([]),
+    getRuntimePool: vi.fn().mockResolvedValue({ maxAgents: 4, active: 0, queued: 1, slots: [], queue: [{ queueId: 'q1', profileId: 'general', profileName: 'general', label: '新会话', position: 1 }] }),
+    abortChat: vi.fn().mockResolvedValue({ ok: true }),
+    releaseSessionSlot: vi.fn().mockResolvedValue({ ok: true }),
+    cancelQueuedSession: vi.fn().mockResolvedValue({ ok: true }),
   };
   (window as any).sparkii = api;
   return { api, channels };
@@ -56,5 +60,19 @@ describe('App workflow feedback', () => {
     expect(screen.getByText('审核中：load')).toBeTruthy();
     act(() => channels['workflow']({ type: 'workflow_completed' }));
     expect(screen.getByText('审核完成')).toBeTruthy();
+  });
+
+  it('derives agent status from the runtime pool snapshot', async () => {
+    const { channels } = makeApi();
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+    act(() => channels['runtime-pool']({
+      maxAgents: 4,
+      active: 1,
+      queued: 1,
+      slots: [{ slotId: 'slot-1', sessionId: 's1', profileId: 'general', profileName: 'general', label: '会话#1', status: 'streaming', startedAt: 1 }],
+      queue: [{ queueId: 'q1', profileId: 'contract-review', profileName: 'contract-review', label: '新会话', position: 1 }],
+    }));
+    expect(screen.getByText(/运行 1\/4 · 1 排队/)).toBeTruthy();
   });
 });
