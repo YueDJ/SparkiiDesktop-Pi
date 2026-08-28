@@ -12,6 +12,7 @@ function makeHost() {
     setAutoRetry: vi.fn(async () => {}),
     setAutoCompaction: vi.fn(async () => {}),
     subscribe: vi.fn(() => () => {}),
+    onRuntimeError: vi.fn(() => () => {}),
     getMessages: vi.fn(() => [{ role: "user", text: "hi" }]),
     getState: vi.fn(() => ({ sessionId: "s1", sessionFile: "/tmp/s.json" })),
     dispose: vi.fn(),

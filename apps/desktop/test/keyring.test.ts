@@ -1,8 +1,10 @@
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { Keyring } from '../electron/main/keyring.js';
+
+vi.mock('electron', () => ({ safeStorage: {} }));
 
 describe('Keyring', () => {
   it('roundtrips encrypted secret', async () => {

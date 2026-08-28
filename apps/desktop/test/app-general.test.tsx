@@ -34,8 +34,11 @@ function makeApi() {
     listChatSessions: vi.fn().mockResolvedValue([{ id: 'g1', profileId: 'general', title: '会话 08-25 17:10', workspaceKind: 'auto', workspacePath: 'C:/ws/SparkiiXyZ9202608251710', model: null, piSessionFile: null, createdAt: 0, updatedAt: 0 }]),
     getChatSession: vi.fn().mockResolvedValue({ workspacePath: 'C:/ws/SparkiiXyZ9202608251710', workspaceKind: 'auto' }),
     openChatSession: vi.fn().mockResolvedValue({ messages: [] }),
+    getChatState: vi.fn().mockResolvedValue({ streaming: false, steering: [], followUp: [] }),
     getModelOptions: vi.fn().mockResolvedValue({ defaultModel: null, models: [] }),
     promptSession: vi.fn().mockResolvedValue({ ok: true }),
+    abortChat: vi.fn().mockResolvedValue({ ok: true, cleared: { steering: [], followUp: [] } }),
+    queueMutate: vi.fn().mockResolvedValue({ ok: true, steering: [], followUp: [] }),
     setChatTitle: vi.fn().mockResolvedValue({ ok: true }),
     deleteChatSession: vi.fn().mockResolvedValue({ ok: true }),
     decideApproval: vi.fn(),
@@ -60,6 +63,28 @@ describe('App general agent', () => {
     await waitFor(() => expect(api.promptSession).toHaveBeenCalledWith('g1', '你好'));
     act(() => channels['chat-event']({ sessionId: 'g1', type: 'message', role: 'assistant', delta: '在的' }));
     expect(screen.getByText(/在的/)).toBeTruthy();
+  });
+
+  it('creates a general chat session from the surface plus button', async () => {
+    const { api } = makeApi();
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+
+    fireEvent.click(screen.getByTestId('agent-card-general'));
+    fireEvent.click(screen.getByRole('button', { name: '新会话' }));
+    await waitFor(() => expect(api.newChatSession).toHaveBeenCalledWith('general'));
+    await screen.findByTestId('composer-input');
+  });
+
+  it('shows an error when creating a general session fails', async () => {
+    const { api } = makeApi();
+    api.newChatSession.mockRejectedValueOnce(new Error('session create failed'));
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+
+    fireEvent.click(screen.getByTestId('agent-card-general'));
+    fireEvent.click(screen.getByRole('button', { name: '新会话' }));
+    expect((await screen.findByRole('alert')).textContent).toContain('session create failed');
   });
 
   it('deletes the active session and returns to empty state', async () => {

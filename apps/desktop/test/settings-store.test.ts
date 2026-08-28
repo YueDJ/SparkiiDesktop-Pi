@@ -1,9 +1,11 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { loadApiKey, loadSettings, saveApiKey, saveSettings } from '../electron/main/settings.js';
 import { Keyring } from '../electron/main/keyring.js';
+
+vi.mock('electron', () => ({ safeStorage: {} }));
 
 function fakeSafeStorage() {
   return {

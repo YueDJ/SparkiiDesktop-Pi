@@ -11,6 +11,9 @@ export interface PiRuntimeSession {
   prompt(text: string, options?: { streamingBehavior?: "steer" | "followUp" }): Promise<void>;
   steer(text: string): Promise<void>;
   followUp(text: string): Promise<void>;
+  clearQueue(): Promise<unknown>;
+  setSteeringMode(mode: "all" | "one-at-a-time"): Promise<void>;
+  setFollowUpMode(mode: "all" | "one-at-a-time"): Promise<void>;
   abort(): Promise<void>;
   setModel(provider: string, modelId: string): Promise<void>;
   setAutoRetry(enabled: boolean): Promise<void>;
@@ -25,6 +28,7 @@ export interface PiRuntimeSession {
   listModels(provider?: string): Promise<Array<{ provider: string; modelId: string }>>;
   listProviders(): Promise<PiProviderInfo[]>;
   subscribe(callback: (event: any) => void): () => void;
+  onRuntimeError(callback: (error: { message: string; command?: string; stack?: string }) => void): () => void;
   getMessages(): unknown[];
   getState(): Record<string, unknown>;
   dispose(): void;
@@ -49,11 +53,28 @@ export function createPiRuntime(opts: {
   let unsubscribe = opts.host.current().subscribe((event) => {
     opts.transport.postMessage(eventEnvelope(normalizeEvent(event)));
   });
+  let unsubscribeRuntimeError = opts.host.current().onRuntimeError((error) => {
+    opts.transport.postMessage(eventEnvelope({
+      type: "runtime_error",
+      message: error.message,
+      command: error.command,
+      stack: error.stack,
+    }));
+  });
 
   const resubscribe = (): void => {
     unsubscribe();
+    unsubscribeRuntimeError();
     unsubscribe = opts.host.current().subscribe((event) => {
       opts.transport.postMessage(eventEnvelope(normalizeEvent(event)));
+    });
+    unsubscribeRuntimeError = opts.host.current().onRuntimeError((error) => {
+      opts.transport.postMessage(eventEnvelope({
+        type: "runtime_error",
+        message: error.message,
+        command: error.command,
+        stack: error.stack,
+      }));
     });
   };
 
@@ -81,6 +102,7 @@ export function createPiRuntime(opts: {
 
   return () => {
     unsubscribe();
+    unsubscribeRuntimeError();
     opts.host.current().dispose();
   };
 }
@@ -96,6 +118,14 @@ async function handleCommand(host: PiRuntimeSessionHost, command: RpcCommand): P
       return undefined;
     case "follow_up":
       await session.followUp(command.message);
+      return undefined;
+    case "clear_queue":
+      return await session.clearQueue();
+    case "set_steering_mode":
+      await session.setSteeringMode(command.mode);
+      return undefined;
+    case "set_follow_up_mode":
+      await session.setFollowUpMode(command.mode);
       return undefined;
     case "abort":
       await session.abort();

@@ -131,6 +131,9 @@ button { font: inherit; color: inherit; }
 .ui-composer-send { width: var(--control-height-md); height: var(--control-height-md); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; border: none; background: var(--color-primary); color: var(--color-onPrimary); cursor: pointer; flex: none; transition: background var(--motion-fast) var(--motion-ease), opacity var(--motion-fast) var(--motion-ease); }
 .ui-composer-send:hover:not(:disabled) { background: var(--color-primaryHover); }
 .ui-composer-send:disabled { opacity: .35; cursor: not-allowed; }
+.ui-composer-stop { border: 1px solid var(--color-risk); background: var(--color-surface); color: var(--color-risk); border-radius: var(--radius-pill); padding: 3px 10px; font-size: var(--font-size-xs); cursor: pointer; }
+.ui-composer-stop:disabled { opacity: .5; cursor: not-allowed; }
+.ui-composer-stop:not(:disabled):hover { background: var(--color-riskBg); }
 .ui-model-effort { position: relative; }
 .ui-model-effort-trigger { display: inline-flex; align-items: center; gap: 5px; border: none; background: none; color: var(--color-text); padding: 4px 8px; border-radius: var(--radius-control); cursor: pointer; min-width: 0; }
 .ui-model-effort-trigger:hover { background: var(--color-controlBg); }
@@ -159,7 +162,7 @@ button { font: inherit; color: inherit; }
 .ui-topbar-left, .ui-topbar-right { display: flex; align-items: center; gap: var(--spacing-xs); }
 .ui-topbar-title { font-weight: var(--font-weight-semibold); }
 .ui-trust-line { color: var(--color-textSecondary); font-size: var(--font-size-sm); }
-.ui-surface-head { display: flex; align-items: center; gap: var(--spacing-xs); margin-bottom: var(--spacing-md); flex: none; position: relative; z-index: 2; }
+.ui-surface-head { display: flex; align-items: center; gap: var(--spacing-xs); margin-bottom: var(--spacing-md); flex: none; position: relative; z-index: 1001; }
 .ui-surface-head-right { margin-left: auto; }
 .ui-rail-label { font-size: var(--font-size-xs); color: var(--color-textMuted); margin: var(--spacing-xs) 0; }
 .ui-item { display: flex; align-items: center; gap: var(--spacing-xs); padding: var(--spacing-xs) var(--spacing-sm); font-size: var(--font-size-md); }

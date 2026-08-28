@@ -11,8 +11,10 @@ function makeApi() {
     openChatSession: vi.fn().mockResolvedValue({ messages: [{ role: 'user', text: 'hi' }] }),
     getChatSession: vi.fn().mockResolvedValue({ workspacePath: 'C:/ws/SparkiiXyZ9202608251710', workspaceKind: 'auto' }),
     getChatMessages: vi.fn().mockResolvedValue([]),
+    getChatState: vi.fn().mockResolvedValue({ streaming: false, steering: [], followUp: [] }),
     promptSession: vi.fn().mockResolvedValue({ ok: true }),
-    abortChat: vi.fn().mockResolvedValue({ ok: true }),
+    abortChat: vi.fn().mockResolvedValue({ ok: true, cleared: { steering: [], followUp: [] } }),
+    queueMutate: vi.fn().mockResolvedValue({ ok: true, steering: [], followUp: [] }),
     setChatModel: vi.fn().mockResolvedValue({ ok: true }),
     setChatThinkingLevel: vi.fn().mockResolvedValue({ ok: true }),
     listThinkingLevels: vi.fn().mockResolvedValue(['off', 'medium', 'high']),
@@ -79,7 +81,7 @@ describe('GeneralChatSurface', () => {
     const { api, channels } = makeApi();
     render(<GeneralChatSurface api={api} sessionId="s1" onNewSession={vi.fn()} />);
     await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('s1'));
-    expect(screen.getByText('hi')).toBeTruthy();
+    await screen.findByText('hi');
     fireEvent.change(screen.getByTestId('composer-input'), { target: { value: '请创建 hello.txt' } });
     fireEvent.keyDown(screen.getByTestId('composer-input'), { key: 'Enter' });
     expect(api.promptSession).toHaveBeenCalledWith('s1', '请创建 hello.txt');
@@ -114,5 +116,70 @@ describe('GeneralChatSurface', () => {
     act(() => channels['chat-event']({ sessionId: 's1', type: 'message', role: 'assistant', text: '答案是 42', thinking: '让我想想' }));
     expect(screen.getByText('让我想想')).toBeTruthy();
     expect(screen.getByText(/答案是 42/)).toBeTruthy();
+  });
+
+  it('renders Pi queue updates and promotes a follow-up item to steering', async () => {
+    const { api, channels } = makeApi();
+    render(<GeneralChatSurface api={api} sessionId="s1" onNewSession={vi.fn()} />);
+    await screen.findByText('hi');
+
+    act(() => channels['chat-event']({
+      sessionId: 's1',
+      type: 'queue_update',
+      steering: [],
+      followUp: ['做完后整理'],
+    }));
+    expect(screen.getByText('做完后整理')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '引导' }));
+    expect(api.queueMutate).toHaveBeenCalledWith('s1', {
+      action: 'transfer',
+      queue: 'followUp',
+      index: 0,
+      targetQueue: 'steering',
+    });
+  });
+
+  it('renders a user message appended by Pi for steering or follow-up', async () => {
+    const { api, channels } = makeApi();
+    render(<GeneralChatSurface api={api} sessionId="s1" onNewSession={vi.fn()} />);
+    await screen.findByText('hi');
+
+    act(() => channels['chat-event']({
+      sessionId: 's1',
+      type: 'message',
+      role: 'user',
+      text: '先检查一下结果',
+    }));
+    expect(screen.getByText('先检查一下结果')).toBeTruthy();
+  });
+
+  it('shows runtime errors pushed by Pi', async () => {
+    const { api, channels } = makeApi();
+    render(<GeneralChatSurface api={api} sessionId="s1" onNewSession={vi.fn()} />);
+    await screen.findByText('hi');
+
+    act(() => channels['chat-event']({
+      sessionId: 's1',
+      type: 'runtime_error',
+      message: 'api rate limit',
+      command: 'prompt',
+    }));
+    expect(screen.getByRole('alert').textContent).toContain('api rate limit');
+  });
+
+  it('does not duplicate the local user message when Pi echoes the idle prompt', async () => {
+    const { api, channels } = makeApi();
+    render(<GeneralChatSurface api={api} sessionId="s1" onNewSession={vi.fn()} />);
+    await screen.findByText('hi');
+
+    fireEvent.change(screen.getByTestId('composer-input'), { target: { value: '请创建 hello.txt' } });
+    fireEvent.keyDown(screen.getByTestId('composer-input'), { key: 'Enter' });
+    act(() => channels['chat-event']({
+      sessionId: 's1',
+      type: 'message',
+      role: 'user',
+      text: '请创建 hello.txt',
+    }));
+    expect(screen.getAllByText('请创建 hello.txt')).toHaveLength(1);
   });
 });

@@ -68,6 +68,24 @@ describe('Shell', () => {
     expect(screen.queryByText('会话#1 进行中')).toBeNull();
   });
 
+  it('starts a new session and closes the drawer from the drawer button', () => {
+    const props = makeProps();
+    render(<Shell {...props} />);
+    fireEvent.click(screen.getByTitle('会话'));
+    fireEvent.click(screen.getByText('+ 新会话'));
+    expect(props.onNewSession).toHaveBeenCalledWith('contract');
+    expect(screen.queryByText('+ 新会话')).toBeNull();
+  });
+
+  it('starts a new session and closes the drawer from the surface plus', () => {
+    const props = makeProps();
+    render(<Shell {...props} />);
+    fireEvent.click(screen.getByTitle('会话'));
+    fireEvent.click(screen.getByTitle('新会话'));
+    expect(props.onNewSession).toHaveBeenCalledWith('contract');
+    expect(screen.queryByText('+ 新会话')).toBeNull();
+  });
+
   it('queue panel opens from the status bar with running and queued agents', () => {
     render(<Shell {...makeProps()} />);
     fireEvent.click(screen.getByText('运行 1/4 · 1 排队'));

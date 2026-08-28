@@ -2,6 +2,7 @@ import { ChatComposer, type ComposerAttachment } from '@sparkii/ui';
 
 export interface ComposerProps {
   busy: boolean;
+  stopping?: boolean;
   models: string[];
   defaultModel: string | null;
   model: string | null;
@@ -20,6 +21,7 @@ export function Composer(props: ComposerProps) {
   return (
     <ChatComposer
       busy={props.busy}
+      stopping={props.stopping}
       workspacePath={props.workspacePath}
       getLocalPath={props.getLocalPath}
       onChooseWorkspace={props.onChooseWorkspace}

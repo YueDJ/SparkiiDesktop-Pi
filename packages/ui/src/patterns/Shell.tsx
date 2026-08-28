@@ -85,6 +85,11 @@ export function Shell(props: ShellProps) {
   const closeDrawer = () => setDrawer(null);
   const openDrawer = (kind: Exclude<DrawerKind, null>) => setDrawer((cur) => (cur === kind ? null : kind));
 
+  const startNewSession = (agentId: string) => {
+    setDrawer(null);
+    onNewSession(agentId);
+  };
+
   const startRename = (s: SessionListItem) => {
     setRenamingId(s.id);
     setRenameDraft(s.name);
@@ -126,7 +131,7 @@ export function Shell(props: ShellProps) {
             <div className="ui-surface-head">
               <b>{surfaceTitle}</b>
               <IconButton label="会话" onClick={() => openDrawer('session')}><SessionsIcon /></IconButton>
-              <IconButton label="新会话" onClick={() => onNewSession(active)}><PlusIcon /></IconButton>
+              <IconButton label="新会话" onClick={() => startNewSession(active)}><PlusIcon /></IconButton>
               {surfaceActions && <span className="ui-surface-head-right">{surfaceActions}</span>}
             </div>
           )}
@@ -139,7 +144,7 @@ export function Shell(props: ShellProps) {
       <Drawer open={drawer === 'session'} title="会话" onClose={closeDrawer}>
         <SessionList
           sessions={activeSessions}
-          onNew={() => onNewSession(active)}
+          onNew={() => startNewSession(active)}
           onOpen={(id) => (onOpenSession ? onOpenSession(active, id) : onNavigate(active))}
           onRename={props.onRenameSession ? (id) => startRename(activeSessions.find((s) => s.id === id)!) : undefined}
           onDelete={props.onDeleteSession ? (id) => props.onDeleteSession!(active, id) : undefined}
