@@ -66,6 +66,10 @@ async function makeRuntime(opts: {
       activeCount: vi.fn(() => 0),
       get: () => opts.client,
       broadcast: vi.fn(async () => {}),
+      snapshot: vi.fn(() => ({ maxAgents: 4, active: 0, queued: 0, slots: [], queue: [] })),
+      subscribe: vi.fn(() => () => {}),
+      cancelPending: vi.fn(() => true),
+      setMaxAgents: vi.fn(),
     },
     subject: { userId: 'tester', roles: ['admin'] },
     chatSessions: { get: () => opts.chatSession ?? null, list: vi.fn(() => []), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
@@ -188,6 +192,20 @@ describe('ipc provider handlers', () => {
     const settings = (await getSettings!(null)) as { activeProviderId: string; apiKey?: string };
     expect(settings.activeProviderId).toBe('deepseek');
     expect(settings.apiKey).toBe('sk-ds');
+  });
+
+  it('getRuntimePool returns the pool snapshot', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const client = { send: async () => ({ success: true }) };
+    const rt = await makeRuntime({ dataDir, piAgentDir, client });
+    (rt.pool as any).snapshot = () => ({ maxAgents: 4, active: 1, queued: 1, slots: [], queue: [] });
+
+    const handlers = await registeredHandlers();
+    const getRuntimePool = handlers.get('sparkii:getRuntimePool');
+    await expect(getRuntimePool!(null)).toEqual({ maxAgents: 4, active: 1, queued: 1, slots: [], queue: [] });
   });
 
   it('listModels uses the caller-provided key instead of the stored keyring key', async () => {
@@ -341,7 +359,7 @@ describe('ipc provider handlers', () => {
     dirs.push(dataDir);
     const piAgentDir = join(dataDir, 'pi-agent');
     await mkdir(piAgentDir, { recursive: true });
-    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({ maxAgents: 4 }), 'utf8');
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({ maxAgents: 4, queueEnabled: false }), 'utf8');
 
     const client = { send: async () => ({ success: true }) };
     const rt = await makeRuntime({ dataDir, piAgentDir, client });

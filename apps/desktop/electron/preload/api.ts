@@ -1,4 +1,4 @@
-import type { ProviderEntryInfo, SparkiiApi } from './api-types.js';
+import type { ProviderEntryInfo, RuntimePoolSnapshot, SparkiiApi } from './api-types.js';
 import { webUtils } from 'electron';
 
 export type IpcLike = {
@@ -33,6 +33,9 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
     getModelOptions: () => invoke('getModelOptions') as Promise<{ defaultModel: string | null; models: string[]; provider: string }>,
     listThinkingLevels: (providerId, modelId) => invoke('listThinkingLevels', providerId, modelId) as Promise<string[]>,
     deleteChatSession: (sessionId) => invoke('deleteChatSession', sessionId) as Promise<{ ok: boolean }>,
+    getRuntimePool: () => invoke('getRuntimePool') as Promise<RuntimePoolSnapshot>,
+    cancelQueuedSession: (queueId) => invoke('cancelQueuedSession', queueId) as Promise<{ ok: boolean }>,
+    releaseSessionSlot: (sessionId) => invoke('releaseSessionSlot', sessionId) as Promise<{ ok: boolean }>,
     listAgents: () => invoke('listAgents') as Promise<Array<{ id: string; name: string }>>,
     listPendingApprovals: () => invoke('listPendingApprovals') as Promise<unknown[]>,
     decideApproval: (id, approved, note) => invoke('decideApproval', id, approved, note),
