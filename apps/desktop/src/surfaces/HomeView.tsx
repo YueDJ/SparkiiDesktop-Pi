@@ -48,7 +48,7 @@ export function HomeView(props: HomeViewProps) {
         ))}
       </div>
       <div className="home-label">最近会话</div>
-      <Card><div className="ui-muted">暂无会话记录(会话历史接口待后端提供)</div></Card>
+      <Card><div className="ui-muted">在左侧「会话历史」中查看与管理各智能体的会话</div></Card>
     </div>
   );
 }

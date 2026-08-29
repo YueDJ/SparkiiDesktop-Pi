@@ -48,7 +48,7 @@ describe('Shell', () => {
     render(<Shell {...props} />);
     fireEvent.click(screen.getByText('Sparkii'));
     expect(props.onNavigate).toHaveBeenCalledWith('home');
-    fireEvent.click(screen.getByText('法规问答'));
+    fireEvent.click(screen.getByTestId('agent-nav-chat'));
     expect(props.onNavigate).toHaveBeenCalledWith('chat');
   });
 
@@ -61,29 +61,31 @@ describe('Shell', () => {
     expect(document.documentElement.classList.contains('dark')).toBe(false);
   });
 
-  it('session drawer lists only the active agent sessions', () => {
+  it('rail groups sessions by agent instead of a right drawer', () => {
     render(<Shell {...makeProps()} />);
-    fireEvent.click(screen.getByTitle('会话'));
-    expect(screen.getByText('会话#3 比对中')).toBeTruthy();
-    expect(screen.queryByText('会话#1 进行中')).toBeNull();
+    // 会话历史直接内嵌在左侧栏，按智能体分组
+    expect(screen.getByText('会话#3')).toBeTruthy();
+    expect(screen.getByText('会话#2')).toBeTruthy();
+    expect(screen.getByText('会话#1')).toBeTruthy();
+    // 右侧抽屉不再存在
+    expect(document.querySelector('.ui-drawer')).toBeNull();
   });
 
-  it('starts a new session and closes the drawer from the drawer button', () => {
-    const props = makeProps();
-    render(<Shell {...props} />);
-    fireEvent.click(screen.getByTitle('会话'));
-    fireEvent.click(screen.getByText('+ 新会话'));
-    expect(props.onNewSession).toHaveBeenCalledWith('contract');
-    expect(screen.queryByText('+ 新会话')).toBeNull();
+  it('filters session history by the search query', () => {
+    render(<Shell {...makeProps()} />);
+    fireEvent.click(screen.getByTitle('搜索会话'));
+    const input = screen.getByPlaceholderText('搜索会话…');
+    fireEvent.change(input, { target: { value: '会话#3' } });
+    expect(screen.getByText('会话#3')).toBeTruthy();
+    expect(screen.queryByText('会话#2')).toBeNull();
+    expect(screen.queryByText('会话#1')).toBeNull();
   });
 
-  it('starts a new session and closes the drawer from the surface plus', () => {
+  it('clicking an agent in the nav starts a new conversation', () => {
     const props = makeProps();
     render(<Shell {...props} />);
-    fireEvent.click(screen.getByTitle('会话'));
-    fireEvent.click(screen.getByTitle('新会话'));
+    fireEvent.click(screen.getByTestId('agent-nav-contract'));
     expect(props.onNewSession).toHaveBeenCalledWith('contract');
-    expect(screen.queryByText('+ 新会话')).toBeNull();
   });
 
   it('queue panel opens from the status bar with running and queued agents', () => {
@@ -96,10 +98,10 @@ describe('Shell', () => {
 
   it('closes a drawer when clicking outside it', () => {
     render(<Shell {...makeProps()} />);
-    fireEvent.click(screen.getByTitle('会话'));
-    expect(screen.getByText('会话#3 比对中')).toBeTruthy();
+    fireEvent.click(screen.getByText('运行 1/4 · 1 排队'));
+    expect(screen.getByText('运行中心')).toBeTruthy();
     fireEvent.click(screen.getByTestId('drawer-backdrop'));
-    expect(document.querySelector('.drawer.open')).toBeNull();
+    expect(screen.queryByText('运行中心')).toBeNull();
   });
 
   it('account drawer shows the current user', () => {
@@ -108,7 +110,7 @@ describe('Shell', () => {
     expect(screen.getByText('admin')).toBeTruthy();
   });
 
-  it('supports general agent and rename/delete callbacks in session drawer', () => {
+  it('renames and deletes a session through the right-click menu', () => {
     const props = makeProps();
     props.active = 'general';
     props.agents = [...props.agents, { id: 'general', name: '通用智能体', status: 'idle' }];
@@ -116,13 +118,14 @@ describe('Shell', () => {
     props.onRenameSession = vi.fn();
     props.onDeleteSession = vi.fn();
     render(<Shell {...props} />);
-    fireEvent.click(screen.getByTitle('会话'));
-    fireEvent.click(screen.getByTitle('重命名 g1'));
+    fireEvent.contextMenu(screen.getByTestId('session-g1'));
+    fireEvent.click(screen.getByRole('menuitem', { name: /重命名/ }));
     const input = screen.getByDisplayValue('会话 08-25 17:10');
     fireEvent.change(input, { target: { value: '新标题' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(props.onRenameSession).toHaveBeenCalledWith('general', 'g1', '新标题');
-    fireEvent.click(screen.getByTitle('删除 g1'));
+    fireEvent.contextMenu(screen.getByTestId('session-g1'));
+    fireEvent.click(screen.getByRole('menuitem', { name: /删除/ }));
     expect(props.onDeleteSession).toHaveBeenCalledWith('general', 'g1');
   });
 
@@ -133,7 +136,6 @@ describe('Shell', () => {
     props.sessions = { ...props.sessions, general: [{ id: 'g1', name: '旧会话', state: '', time: '今天' }] };
     props.onOpenSession = vi.fn();
     render(<Shell {...props} />);
-    fireEvent.click(screen.getByTitle('会话'));
     fireEvent.click(screen.getByText('旧会话'));
     expect(props.onOpenSession).toHaveBeenCalledWith('general', 'g1');
     expect(props.onNavigate).not.toHaveBeenCalled();

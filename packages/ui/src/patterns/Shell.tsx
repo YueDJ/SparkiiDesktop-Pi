@@ -1,13 +1,14 @@
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Button } from '../primitives/Button.js';
 import { IconButton } from '../primitives/IconButton.js';
 import { Badge } from '../primitives/Badge.js';
 import { Drawer } from '../primitives/Drawer.js';
 import { AgentNav } from './AgentNav.js';
-import { SessionList, type SessionListItem } from './SessionList.js';
+import { SessionList, type SessionGroup, type SessionListItem } from './SessionList.js';
 import { StatusBar } from './StatusBar.js';
 import { RuntimeCenter, type RuntimePoolSummary } from './RuntimeCenter.js';
-import { SessionsIcon, PlusIcon, GearIcon, MoonIcon, SunIcon, UserIcon, ShieldIcon, AuditIcon } from '../icons/index.js';
+import { TextField } from '../primitives/TextField.js';
+import { GearIcon, MoonIcon, SunIcon, UserIcon, ShieldIcon, SearchIcon } from '../icons/index.js';
 
 export type ScreenId = 'home' | 'contract-review' | 'chat' | 'dashboard' | 'general' | 'approvals' | 'audit' | 'settings';
 export type AgentStatus = 'running' | 'idle' | 'queued';
@@ -23,8 +24,12 @@ export interface ShellSession {
   id: string;
   name: string;
   state: string;
-  time: string;
+  time?: string;
   active?: boolean;
+  pinned?: boolean;
+  archived?: boolean;
+  updatedAt?: number;
+  sortOrder?: number | null;
 }
 
 export interface ShellProps {
@@ -43,6 +48,9 @@ export interface ShellProps {
   onOpenSession?(agentId: string, sessionId: string): void;
   onRenameSession?(agentId: string, sessionId: string, title: string): void;
   onDeleteSession?(agentId: string, sessionId: string): void;
+  onPinSession?(agentId: string, sessionId: string, pinned: boolean): void;
+  onArchiveSession?(agentId: string, sessionId: string, archived: boolean): void;
+  onReorderSession?(agentId: string, orderedSessionIds: string[]): void;
   onStopSession?(sessionId: string): Promise<void> | void;
   onReleaseSession?(sessionId: string): Promise<void> | void;
   onCancelQueuedSession?(queueId: string): Promise<void> | void;
@@ -57,7 +65,7 @@ const TITLES: Partial<Record<ScreenId, string>> = {
   settings: '系统设置',
 };
 
-type DrawerKind = 'session' | 'queue' | 'account' | null;
+type DrawerKind = 'queue' | 'account' | null;
 
 function setTheme(dark: boolean): void {
   document.documentElement.classList.toggle('dark', dark);
@@ -68,18 +76,23 @@ function setTheme(dark: boolean): void {
   }
 }
 
+function isRunningStatus(status: string | undefined): boolean {
+  return status === 'running' || status === 'waiting-approval' || status === 'streaming' || status === 'starting';
+}
+
 export function Shell(props: ShellProps) {
   const { active, agents, sessions, pendingApprovals, statusText, runtimePool, userName = 'admin', userRole = '审核员', surfaceTitle, surfaceActions, onNavigate, onNewSession, onOpenSession, children } = props;
   const [drawer, setDrawer] = useState<DrawerKind>(null);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
-  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<{ agentId: string; sessionId: string } | null>(null);
   const [renameDraft, setRenameDraft] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [search, setSearch] = useState('');
 
   const activeAgent = agents.find((a) => a.id === active);
   const runningCount = agents.filter((a) => a.status === 'running').length;
   const queueCount = agents.filter((a) => a.status === 'queued').length;
   const title = activeAgent?.name ?? TITLES[active] ?? '工作台';
-  const activeSessions = sessions[active] ?? [];
   const fallbackRuntimePool: RuntimePoolSummary = runtimePool ?? {
     active: runningCount,
     queued: queueCount,
@@ -92,6 +105,33 @@ export function Shell(props: ShellProps) {
       .map((a, i) => ({ queueId: a.id, profileId: a.id, profileName: a.name, label: a.name, position: a.queuePosition ?? i + 1 })),
   };
 
+  // 每个会话的运行状态：idle 不显示，running 显示旋转圆环
+  const runningSessionIds = useMemo(() => {
+    const pool = runtimePool ?? fallbackRuntimePool;
+    return new Set((pool.sessions ?? []).filter((s) => isRunningStatus(s.status)).map((s) => s.sessionId));
+  }, [runtimePool, fallbackRuntimePool]);
+
+  // 按智能体分组会话历史；保证每个智能体都有一组（便于按智能体新建会话）
+  const groups = useMemo<SessionGroup[]>(() => {
+    const agentIds = [...agents.map((a) => a.id), ...Object.keys(sessions).filter((id) => !agents.some((a) => a.id === id))];
+    return agentIds
+      .filter((id, i, arr) => arr.indexOf(id) === i)
+      .map((agentId) => {
+        const agent = agents.find((a) => a.id === agentId);
+        const list: SessionListItem[] = (sessions[agentId] ?? []).map((s) => ({
+          id: s.id,
+          name: s.name,
+          active: s.active,
+          pinned: s.pinned,
+          archived: s.archived,
+          running: runningSessionIds.has(s.id),
+          updatedAt: s.updatedAt,
+          sortOrder: s.sortOrder,
+        }));
+        return { agentId, agentName: agent?.name ?? agentId, sessions: list };
+      });
+  }, [agents, sessions, runningSessionIds]);
+
   const toggleTheme = () => {
     const next = !dark;
     setDark(next);
@@ -102,19 +142,20 @@ export function Shell(props: ShellProps) {
   const openDrawer = (kind: Exclude<DrawerKind, null>) => setDrawer((cur) => (cur === kind ? null : kind));
 
   const startNewSession = (agentId: string) => {
-    setDrawer(null);
     onNewSession(agentId);
+    if (agents.some((a) => a.id === agentId)) onNavigate(agentId as ScreenId);
   };
 
-  const startRename = (s: SessionListItem) => {
-    setRenamingId(s.id);
-    setRenameDraft(s.name);
+  const startRename = (agentId: string, sessionId: string) => {
+    const session = (sessions[agentId] ?? []).find((s) => s.id === sessionId);
+    setRenaming({ agentId, sessionId });
+    setRenameDraft(session?.name ?? '');
   };
 
-  const commitRename = (agentId: string, s: SessionListItem) => {
+  const commitRename = (agentId: string, sessionId: string) => {
     const title = renameDraft.trim();
-    setRenamingId(null);
-    if (title && title !== s.name) props.onRenameSession?.(agentId, s.id, title);
+    setRenaming(null);
+    if (title) props.onRenameSession?.(agentId, sessionId, title);
   };
 
   return (
@@ -135,19 +176,52 @@ export function Shell(props: ShellProps) {
 
       <div className="ui-shell-main">
         <aside className="ui-rail">
-          <AgentNav agents={agents} active={active} onNavigate={onNavigate} />
-          <Button variant="ghost" className="ui-btn--block" title="安装智能体(即将开放)">+ 安装</Button>
-          <nav className="ui-rail-group" aria-label="全局">
-            <Button variant="ghost" className="ui-btn--block" onClick={() => onNavigate('approvals')}>审批中心 {pendingApprovals > 0 && <Badge>{pendingApprovals}</Badge>}</Button>
-            <Button variant="ghost" className="ui-btn--block" onClick={() => onNavigate('audit')}><AuditIcon />审计</Button>
+          <nav className="ui-rail-group" aria-label="智能体">
+            <AgentNav agents={agents} active={active} onNavigate={(id) => startNewSession(id)} />
           </nav>
+          <div className="ui-rail-section-row">
+            <span className="ui-rail-section-label">会话历史</span>
+            <IconButton label="搜索会话" size="sm" onClick={() => {
+              if (searchOpen) { setSearch(''); setSearchOpen(false); }
+              else setSearchOpen(true);
+            }}><SearchIcon /></IconButton>
+          </div>
+          {searchOpen && (
+            <div className="ui-rail-search-field">
+              <TextField
+                autoFocus
+                value={search}
+                placeholder="搜索会话…"
+                onChange={(e) => setSearch(e.target.value)}
+                onBlur={() => { if (!search.trim()) setSearchOpen(false); }}
+                onKeyDown={(e) => { if (e.key === 'Escape') { setSearch(''); setSearchOpen(false); } }}
+              />
+            </div>
+          )}
+          <div className="ui-rail-sessions">
+            <SessionList
+              groups={groups}
+              filter={search}
+              onOpen={(agentId, id) => (onOpenSession ? onOpenSession(agentId, id) : onNavigate(agentId as ScreenId))}
+              onRename={props.onRenameSession ? (agentId, id) => startRename(agentId, id) : undefined}
+              onDelete={props.onDeleteSession ? (agentId, id) => props.onDeleteSession!(agentId, id) : undefined}
+              onPin={props.onPinSession ? (agentId, id, pinned) => props.onPinSession!(agentId, id, pinned) : undefined}
+              onArchive={props.onArchiveSession ? (agentId, id, archived) => props.onArchiveSession!(agentId, id, archived) : undefined}
+              onReorder={props.onReorderSession ? (agentId, ids) => props.onReorderSession!(agentId, ids) : undefined}
+              onStop={props.onStopSession ? (id) => props.onStopSession!(id) : undefined}
+              onRelease={props.onReleaseSession ? (id) => props.onReleaseSession!(id) : undefined}
+              renaming={renaming}
+              renameDraft={renameDraft}
+              onRenameChange={setRenameDraft}
+              onRenameCommit={commitRename}
+              onRenameCancel={() => setRenaming(null)}
+            />
+          </div>
         </aside>
         <main className="ui-surface">
           {surfaceTitle && (
             <div className="ui-surface-head">
               <b>{surfaceTitle}</b>
-              <IconButton label="会话" onClick={() => openDrawer('session')}><SessionsIcon /></IconButton>
-              <IconButton label="新会话" onClick={() => startNewSession(active)}><PlusIcon /></IconButton>
               {surfaceActions && <span className="ui-surface-head-right">{surfaceActions}</span>}
             </div>
           )}
@@ -156,21 +230,6 @@ export function Shell(props: ShellProps) {
       </div>
 
       <StatusBar statusText={statusText} runtimePool={fallbackRuntimePool} onOpenQueue={() => openDrawer('queue')} />
-
-      <Drawer open={drawer === 'session'} title="会话" onClose={closeDrawer}>
-        <SessionList
-          sessions={activeSessions}
-          onNew={() => startNewSession(active)}
-          onOpen={(id) => (onOpenSession ? onOpenSession(active, id) : onNavigate(active))}
-          onRename={props.onRenameSession ? (id) => startRename(activeSessions.find((s) => s.id === id)!) : undefined}
-          onDelete={props.onDeleteSession ? (id) => props.onDeleteSession!(active, id) : undefined}
-          renamingId={renamingId}
-          renameDraft={renameDraft}
-          onRenameChange={setRenameDraft}
-          onRenameCommit={(id) => commitRename(active, activeSessions.find((s) => s.id === id)!)}
-          onRenameCancel={() => setRenamingId(null)}
-        />
-      </Drawer>
 
       <Drawer open={drawer === 'queue'} title="运行中心" onClose={closeDrawer}>
         <RuntimeCenter

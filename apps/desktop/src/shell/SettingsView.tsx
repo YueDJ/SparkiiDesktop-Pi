@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button, Select, SettingsLayout, SettingsRow, Switch, TextField } from '@sparkii/ui';
 import { THINKING_LEVELS, thinkingLevelLabel } from '../workbench/thinking-levels.js';
+import { AuditView } from '../audit/AuditView.js';
 
 export interface ProviderEntry {
   id: string;
@@ -26,14 +27,15 @@ export interface SettingsApi {
   listProviders?(): Promise<ProviderEntry[]>;
   listModels?(provider: string, apiKey?: string | null): Promise<{ ok: boolean; models?: string[]; httpStatus?: number; reason?: string; error?: string }>;
   testConnection?(provider: string, apiKey?: string | null): Promise<{ ok: boolean; latencyMs?: number; httpStatus?: number; reason?: string; error?: string }>;
+  queryAudit?(filter: object): Promise<unknown[]>;
 }
 
-export interface SettingsViewProps { api?: SettingsApi; }
+export interface SettingsViewProps { api?: SettingsApi; onExportAudit?(jsonl: string): void; }
 
-const PANES = ['llm', 'data', 'runtime', 'approval', 'appearance'] as const;
+const PANES = ['llm', 'data', 'runtime', 'approval', 'appearance', 'audit'] as const;
 type Pane = (typeof PANES)[number];
 const PANE_LABELS: Record<Pane, string> = {
-  llm: '大模型连接', data: '数据与隐私', runtime: '智能体与运行', approval: '审批与安全', appearance: '外观与语言',
+  llm: '大模型连接', data: '数据与隐私', runtime: '智能体与运行', approval: '审批与安全', appearance: '外观与语言', audit: '审计',
 };
 
 const ROUTE_TASKS = [
@@ -53,7 +55,7 @@ function probeError(r: { reason?: string; error?: string }): string {
 }
 
 export function SettingsView(props: SettingsViewProps) {
-  const { api } = props;
+  const { api, onExportAudit } = props;
   const [pane, setPane] = useState<Pane>('llm');
   const [entries, setEntries] = useState<ProviderEntry[]>([]);
   const [providerId, setProviderId] = useState('');
@@ -265,6 +267,17 @@ export function SettingsView(props: SettingsViewProps) {
           <h3 className="settings-section-title">外观与语言</h3>
           <SettingsRow label="主题"><Select><option>浅色</option><option>深色</option></Select></SettingsRow>
           <SettingsRow label="界面语言"><Select><option>简体中文</option><option>English</option></Select></SettingsRow>
+        </>
+      )}
+      {pane === 'audit' && (
+        <>
+          <h3 className="settings-section-title">审计</h3>
+          {(() => {
+            const queryAudit = api?.queryAudit;
+            return queryAudit
+              ? <AuditView api={{ queryAudit }} onExport={onExportAudit} />
+              : <div className="ui-muted">审计接口不可用</div>;
+          })()}
         </>
       )}
     </SettingsLayout>

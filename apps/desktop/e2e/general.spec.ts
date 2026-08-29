@@ -11,8 +11,7 @@ test('general agent surface smoke', async () => {
     env: { ...process.env, SPARKII_DATA_DIR: dataDir },
   });
   const page = await app.firstWindow();
-  await page.getByTestId('agent-card-general').click();
-  await page.getByText('新建会话').click();
+  await page.getByTestId('agent-nav-general').click();
   await expect(page.getByTestId('composer-input')).toBeVisible();
   await expect(page.getByTestId('workspace-path')).toContainText(/Sparkii/);
   await app.close();
