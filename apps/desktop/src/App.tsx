@@ -375,9 +375,7 @@ export function App() {
 
   const statusText = workflow.status === 'running'
     ? `正在执行:${workflow.step ?? '…'}`
-    : workflow.status === 'done' ? '审核完成 · 报告待复核'
-      : workflow.status === 'failed' ? '审核失败'
-        : '合同审核就绪 · 等待开始';
+    : '';
 
   const navigate = (s: ScreenId | 'contract-review') => {
     if (s === 'general') {

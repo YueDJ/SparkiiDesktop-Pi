@@ -52,6 +52,10 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
     listModels: (provider, apiKey) => invoke('listModels', provider, apiKey) as Promise<{ ok: boolean; models?: string[]; httpStatus?: number; reason?: string; error?: string }>,
     testConnection: (provider, apiKey) => invoke('testConnection', provider, apiKey) as Promise<{ ok: boolean; latencyMs?: number; httpStatus?: number; reason?: string; error?: string }>,
     diagnostics: () => invoke('diagnostics') as Promise<{ logs: string; audit: string }>,
+    windowMinimize: () => invoke('windowMinimize') as Promise<boolean>,
+    windowToggleMaximize: () => invoke('windowToggleMaximize') as Promise<boolean>,
+    windowClose: () => invoke('windowClose') as Promise<boolean>,
+    windowIsMaximized: () => invoke('windowIsMaximized') as Promise<boolean>,
     on: (channel, cb) => {
       const listener = (_e: unknown, payload: unknown) => cb(payload);
       ipc.on(`sparkii:event:${channel}`, listener);

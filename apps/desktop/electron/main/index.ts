@@ -29,6 +29,13 @@ app.whenReady().then(async () => {
   const logger = new Logger(join(dataDir, 'logs'));
   attachRecovery(rt, logger);
   win = new BrowserWindow({
+    width: 1280,
+    height: 820,
+    minWidth: 960,
+    minHeight: 640,
+    frame: false,
+    autoHideMenuBar: true,
+    backgroundColor: '#F5F7FB',
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, preload: join(__dirname, '../preload/index.cjs') },
   });
   registerIpc(rt, () => win, logger);

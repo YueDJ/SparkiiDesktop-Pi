@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Button } from '../primitives/Button.js';
 import { IconButton } from '../primitives/IconButton.js';
 import { Badge } from '../primitives/Badge.js';
@@ -8,7 +8,7 @@ import { SessionList, type SessionGroup, type SessionListItem } from './SessionL
 import { StatusBar } from './StatusBar.js';
 import { RuntimeCenter, type RuntimePoolSummary } from './RuntimeCenter.js';
 import { TextField } from '../primitives/TextField.js';
-import { GearIcon, MoonIcon, SunIcon, UserIcon, ShieldIcon, SearchIcon } from '../icons/index.js';
+import { GearIcon, MoonIcon, SunIcon, UserIcon, ShieldIcon, SearchIcon, CloseIcon, MinimizeIcon, MaximizeIcon, WindowRestoreIcon } from '../icons/index.js';
 
 export type ScreenId = 'home' | 'contract-review' | 'chat' | 'dashboard' | 'general' | 'approvals' | 'audit' | 'settings';
 export type AgentStatus = 'running' | 'idle' | 'queued';
@@ -88,6 +88,24 @@ export function Shell(props: ShellProps) {
   const [renameDraft, setRenameDraft] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [maximized, setMaximized] = useState(false);
+  const windowApi = (globalThis as any).window?.sparkii as
+    | {
+        windowMinimize?: () => Promise<boolean>;
+        windowToggleMaximize?: () => Promise<boolean>;
+        windowClose?: () => Promise<boolean>;
+        windowIsMaximized?: () => Promise<boolean>;
+        on?: (channel: string, cb: (payload: unknown) => void) => () => void;
+      }
+    | undefined;
+
+  useEffect(() => {
+    if (!windowApi?.windowIsMaximized) return;
+    let off: (() => void) | undefined;
+    windowApi.windowIsMaximized().then((v) => setMaximized(!!v)).catch(() => {});
+    off = windowApi.on?.('window-maximized', (v) => setMaximized(!!v));
+    return () => off?.();
+  }, [windowApi]);
 
   const activeAgent = agents.find((a) => a.id === active);
   const runningCount = agents.filter((a) => a.status === 'running').length;
@@ -160,17 +178,28 @@ export function Shell(props: ShellProps) {
 
   return (
     <div className="ui-shell">
-      <header className="ui-topbar">
+      <header
+        className="ui-topbar"
+        onDoubleClick={(e) => {
+          if ((e.target as HTMLElement).closest('button')) return;
+          windowApi?.windowToggleMaximize?.();
+        }}
+      >
         <div className="ui-topbar-left">
           <Button variant="ghost" onClick={() => onNavigate('home')}>Sparkii</Button>
           <span className="ui-topbar-title">{title}</span>
         </div>
         <div className="ui-topbar-right">
-          <span className="ui-trust-line">本机运行 · 审计✓</span>
           <Button variant="ghost" size="sm" onClick={() => onNavigate('approvals')}><ShieldIcon /> 审批 {pendingApprovals > 0 && <Badge>{pendingApprovals}</Badge>}</Button>
           <IconButton label="账号" onClick={() => openDrawer('account')}><UserIcon /></IconButton>
           <IconButton label="深色/浅色" onClick={toggleTheme}>{dark ? <SunIcon /> : <MoonIcon />}</IconButton>
           <IconButton label="设置" onClick={() => onNavigate('settings')}><GearIcon /></IconButton>
+          <span className="ui-topbar-divider" aria-hidden="true" />
+          <div className="ui-window-controls">
+            <button type="button" className="ui-window-btn" aria-label="最小化" onClick={() => windowApi?.windowMinimize?.()}><MinimizeIcon /></button>
+            <button type="button" className="ui-window-btn" aria-label={maximized ? '还原' : '最大化'} onClick={() => windowApi?.windowToggleMaximize?.()}>{maximized ? <WindowRestoreIcon /> : <MaximizeIcon />}</button>
+            <button type="button" className="ui-window-btn ui-window-btn--close" aria-label="关闭" onClick={() => windowApi?.windowClose?.()}><CloseIcon /></button>
+          </div>
         </div>
       </header>
 

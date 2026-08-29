@@ -174,10 +174,15 @@ button { font: inherit; color: inherit; }
 .ui-rail-sessions { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; margin: 0 calc(var(--spacing-xs) * -1); padding: 0 var(--spacing-xs); }
 .ui-surface { display: flex; flex-direction: column; overflow: hidden; padding: var(--spacing-md) var(--spacing-lg); min-width: 0; min-height: 0; }
 .ui-surface-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
-.ui-topbar { display: flex; align-items: center; justify-content: space-between; padding: 0 var(--spacing-md); background: var(--color-surface); border-bottom: 1px solid var(--color-border); }
-.ui-topbar-left, .ui-topbar-right { display: flex; align-items: center; gap: var(--spacing-xs); }
+.ui-topbar { display: flex; align-items: center; justify-content: space-between; padding: 0 var(--spacing-md); background: var(--color-surface); border-bottom: 1px solid var(--color-border); -webkit-app-region: drag; user-select: none; }
+.ui-topbar-left { display: flex; align-items: center; gap: var(--spacing-xs); -webkit-app-region: no-drag; }
+.ui-topbar-right { display: flex; align-items: center; gap: var(--spacing-xs); -webkit-app-region: no-drag; align-self: stretch; }
 .ui-topbar-title { font-weight: var(--font-weight-semibold); }
-.ui-trust-line { color: var(--color-textSecondary); font-size: var(--font-size-sm); }
+.ui-topbar-divider { width: 1px; height: 22px; background: var(--color-borderStrong); margin: 0 var(--spacing-sm); flex: none; }
+.ui-window-controls { display: flex; align-items: stretch; height: 100%; margin-right: calc(-1 * var(--spacing-md)); -webkit-app-region: no-drag; flex: none; }
+.ui-window-btn { width: 46px; height: 100%; border: none; background: transparent; color: var(--color-textSecondary); cursor: default; display: inline-flex; align-items: center; justify-content: center; transition: background var(--motion-fast) var(--motion-ease), color var(--motion-fast) var(--motion-ease); }
+.ui-window-btn:hover { background: var(--color-controlBg); color: var(--color-text); }
+.ui-window-btn--close:hover { background: var(--color-risk); color: var(--color-onPrimary); }
 .ui-surface-head { display: flex; align-items: center; gap: var(--spacing-xs); margin-bottom: var(--spacing-md); flex: none; position: relative; z-index: 1001; }
 .ui-surface-head-right { margin-left: auto; }
 .ui-rail-label { font-size: var(--font-size-xs); color: var(--color-textMuted); margin: var(--spacing-xs) 0; }
