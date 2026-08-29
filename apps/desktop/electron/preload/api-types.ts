@@ -32,6 +32,13 @@ export interface DraftPromptContext {
   thinkingLevel?: string | null;
 }
 
+export interface ChatAttachment {
+  path: string;
+  name: string;
+  size?: number;
+  type?: string;
+}
+
 export interface SparkiiApi {
   getLocalSubject(): Promise<{ userId: string; roles: string[] }>;
   getProfile(profileId?: string): Promise<unknown>;
