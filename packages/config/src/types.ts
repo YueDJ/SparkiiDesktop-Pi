@@ -4,6 +4,7 @@ export interface ProfileManifest {
   name: string;
   version: string;
   displayName?: string;
+  sortOrder?: number;
   extends?: string;
   modelRouting: {
     tasks: Record<string, Array<{ provider: string; modelId: string }>>;

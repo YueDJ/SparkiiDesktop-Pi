@@ -1,6 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { render, screen, fireEvent, act, cleanup } from '@testing-library/react';
 import { App } from '../src/App.js';
+
+afterEach(cleanup);
 
 function localSubject(username: string) {
   return { userId: username, roles: ['admin', 'reviewer'] as const };
@@ -31,6 +33,10 @@ function makeApi() {
     getLocalSubject: vi.fn().mockResolvedValue({ userId: 'alice', roles: ['admin', 'reviewer'] }),
     getProfile: vi.fn().mockResolvedValue({ pages: { home: HOME } }),
     listPendingApprovals: vi.fn().mockResolvedValue([]),
+    listAgents: vi.fn().mockResolvedValue([
+      { id: 'general', name: '通用智能体' },
+      { id: 'contract-review', name: '合同审核智能体' },
+    ]),
     chooseDocument: vi.fn(),
     runWorkflow: vi.fn().mockResolvedValue({ ok: true }),
     exportReport: vi.fn(),
@@ -52,7 +58,7 @@ describe('App workflow feedback', () => {
     render(<App />);
     // 以 OS 用户作为单一本地主体,直接进入工作台首页
     await screen.findByText(/工作台 · 上午好/);
-    fireEvent.click(screen.getByTestId('agent-card-contract'));
+    fireEvent.click(screen.getByTestId('agent-card-contract-review'));
     await screen.findByTestId('review');
     fireEvent.click(screen.getByTestId('review'));
     expect(api.runWorkflow).toHaveBeenCalledWith('contract-review', { documents: [] });

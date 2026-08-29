@@ -194,17 +194,24 @@ async function sendPrompt(rt: Runtime, text: string, task: ModelTask, sessionId:
   return acc;
 }
 
-async function runTool(rt: Runtime, broker: ReturnType<typeof createBroker>, toolName: string, args: unknown, sessionId: string) {
+async function runTool(
+  rt: Runtime,
+  broker: ReturnType<typeof createBroker>,
+  toolName: string,
+  args: unknown,
+  sessionId: string,
+  profileId: string,
+) {
   const tool = allTools.get(toolName);
   if (!tool) return { ok: false, error: { code: 'UNKNOWN_TOOL', message: toolName } };
   if (tool.sideEffect === 'read') {
     return tool.handler(args as Record<string, unknown>, {
-      profileId: rt.profileOf('contract-review').profile.manifest.name, sessionId, actor: rt.subject?.userId ?? 'agent', requestId: randomUUID(),
+      profileId: rt.profileOf(profileId).profile.manifest.name, sessionId, actor: rt.subject?.userId ?? 'agent', requestId: randomUUID(),
     });
   }
   const d = await broker.route({
     requestId: randomUUID(), toolName, targetSystem: toolName.split('.')[0], summary: JSON.stringify(args).slice(0, 512), payload: args, risk: tool.sideEffect,
-  }, { sessionId, profileId: 'contract-review' });
+  }, { sessionId, profileId });
   return { ok: d.approved, data: d.result };
 }
 
@@ -230,22 +237,23 @@ export async function runWorkflow(
   getWindow: () => BrowserWindow | null,
   input: Record<string, unknown>,
   broker: ReturnType<typeof createBroker>,
+  profileId: string,
 ): Promise<void> {
   const sessionId = randomUUID();
-  const pr = rt.profileOf('contract-review');
+  const pr = rt.profileOf(profileId);
   const slot = await rt.pool.acquire(sessionId, {
     saddle: buildProfileSaddle(pr, join(rt.dataDir, 'sessions', sessionId)),
   });
-  slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId: 'contract-review' }));
+  slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId }));
   try {
     const rawDef = pr.profile.agent.workflow as unknown as WorkflowDef;
     const def = resolveWorkflowTemplates(rawDef);
     const ctx: RunContext = {
       profileId: pr.profile.manifest.name, sessionId, actor: rt.subject?.userId ?? 'agent', input,
       sendPrompt: (text, task) => sendPrompt(rt, text, (task as ModelTask) ?? 'default', sessionId),
-      runTool: (name, args) => runTool(rt, broker, name, args, sessionId),
+      runTool: (name, args) => runTool(rt, broker, name, args, sessionId, profileId),
       requestApproval: async (req) => {
-        const d = await broker.route({ ...req, requestId: randomUUID() }, { sessionId, profileId: 'contract-review' });
+        const d = await broker.route({ ...req, requestId: randomUUID() }, { sessionId, profileId });
         return { id: d.proposalId, status: d.approved ? 'approved' : 'denied' } as any;
       },
     };

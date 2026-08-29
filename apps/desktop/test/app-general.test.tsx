@@ -27,8 +27,8 @@ function makeApi() {
     getProfile: vi.fn().mockResolvedValue({ pages: {} }),
     listPendingApprovals: vi.fn().mockResolvedValue([]),
     listAgents: vi.fn().mockResolvedValue([
-      { id: 'contract', name: '合同审核' },
       { id: 'general', name: '通用智能体' },
+      { id: 'contract-review', name: '合同审核智能体' },
     ]),
     newChatSession: vi.fn().mockResolvedValue({ sessionId: 'g1', workspacePath: 'C:/ws/SparkiiXyZ9202608251710', model: null }),
     promptDraftSession: vi.fn().mockResolvedValue({ ok: true, sessionId: 'g1', behavior: 'prompt' }),

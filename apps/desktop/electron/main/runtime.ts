@@ -15,6 +15,7 @@ import { Keyring } from "./keyring.js";
 import { loadSettings } from "./settings.js";
 import { loadApiKey, saveApiKey } from "./settings.js";
 import { registerGeneralExecutor } from "./general-executor.js";
+import { firstProfileWithKnowledge } from "./profile-catalog.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -94,8 +95,8 @@ export async function assemble(opts: {
     },
     markWorkspaceCreated: () => {},
   });
-  const contract = profiles.get("contract-review");
-  if (contract) await knowledgeConnector.init({ corpus: contract.profile.agent.knowledge });
+  const knowledgeProfile = firstProfileWithKnowledge(profiles.values());
+  if (knowledgeProfile) await knowledgeConnector.init({ corpus: knowledgeProfile.profile.agent.knowledge });
   const entry = resolvePiRuntimeEntry();
   const env = { PI_CODING_AGENT_DIR: piAgentDir };
   const settings = await loadSettings(opts.dataDir);

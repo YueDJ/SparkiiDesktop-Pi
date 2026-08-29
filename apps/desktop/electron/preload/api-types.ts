@@ -34,7 +34,7 @@ export interface DraftPromptContext {
 
 export interface SparkiiApi {
   getLocalSubject(): Promise<{ userId: string; roles: string[] }>;
-  getProfile(): Promise<unknown>;
+  getProfile(profileId?: string): Promise<unknown>;
   chooseDocument(): Promise<{ path?: string }>;
   runWorkflow(id: string, input: Record<string, unknown>): Promise<{ ok: boolean }>;
   prompt(text: string): Promise<{ ok: boolean }>;
