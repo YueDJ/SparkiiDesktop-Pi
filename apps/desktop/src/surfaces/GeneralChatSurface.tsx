@@ -242,9 +242,14 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
       if (rec?.workspacePath) setWorkspacePath(rec.workspacePath);
       if (rec?.thinkingLevel !== undefined) setThinkingLevel(rec.thinkingLevel ?? null);
       const storedModel = typeof rec?.model === 'string' ? rec.model : null;
-      const modelId = storedModel?.includes('/') ? storedModel.split('/')[1] : storedModel;
+      const slash = storedModel?.indexOf('/');
+      const storedProvider = slash !== undefined && slash >= 0 ? storedModel.slice(0, slash) : null;
+      const modelId = slash !== undefined && slash >= 0 ? storedModel.slice(slash + 1) : storedModel;
+      const providerMatches = !storedProvider || storedProvider === activeProvider;
       const modelIsKnown = availableModels.length === 0
-        || (storedModel !== null && (availableModels.includes(storedModel) || (modelId !== undefined && availableModels.includes(modelId))));
+        || (storedModel !== null
+          && providerMatches
+          && (availableModels.includes(storedModel) || (modelId !== undefined && availableModels.includes(modelId))));
       if (storedModel && modelIsKnown) {
         setModel(storedModel);
         refreshThinkingLevels(storedModel, activeProvider, defaultModelId);

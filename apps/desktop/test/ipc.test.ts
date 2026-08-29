@@ -271,12 +271,14 @@ describe('ipc provider handlers', () => {
         return { success: true };
       },
     };
-    await makeRuntime({
+    const rt = await makeRuntime({
       dataDir,
       piAgentDir,
       client,
       chatSession: { profileId: 'contract-review', model: null },
     });
+    const update = vi.fn();
+    (rt as any).chatSessions.update = update;
 
     const handlers = await registeredHandlers();
     const promptSession = handlers.get('sparkii:promptSession');
@@ -417,6 +419,9 @@ describe('ipc provider handlers', () => {
 
     expect(sent).not.toContainEqual({ type: 'set_model', provider: 'kimi', modelId: 'kimi-for-coding' });
     expect(sent).toContainEqual({ type: 'prompt', message: 'hello' });
+    expect((rt as any).chatSessions.create).toHaveBeenCalledWith(
+      expect.objectContaining({ model: 'kimi/kimi-for-coding' }),
+    );
   });
 
   it('newChatSession rejects when the runtime pool has reached maxAgents', async () => {
@@ -649,12 +654,14 @@ describe('ipc provider handlers', () => {
         return { success: true };
       },
     };
-    await makeRuntime({
+    const rt = await makeRuntime({
       dataDir,
       piAgentDir,
       client,
       chatSession: { profileId: 'contract-review', model: null },
     });
+    const update = vi.fn();
+    (rt as any).chatSessions.update = update;
 
     const handlers = await registeredHandlers();
     const promptSession = handlers.get('sparkii:promptSession');
@@ -665,6 +672,7 @@ describe('ipc provider handlers', () => {
     await setChatModel!(null, 's1', 'deepseek-v4-pro');
 
     expect(sent).toContainEqual({ type: 'set_model', provider: 'deepseek', modelId: 'deepseek-v4-pro' });
+    expect(update).toHaveBeenCalledWith('s1', { model: 'deepseek/deepseek-v4-pro' });
   });
 
   it('setChatThinkingLevel applies the selected level to the open Pi session', async () => {

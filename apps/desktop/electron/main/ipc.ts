@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { listPiSessions, readPiSessionEntries, readPiSessionMessages, type PiProviderInfo, type SessionSaddle } from '@sparkii/agent-host';
-import { applyThinkingLevel, createBroker, resolveModelTarget, resolveSessionModel, resolveThinkingLevel, runWorkflow, selectModel } from './workflow.js';
+import { applyThinkingLevel, createBroker, modelTargetKey, resolveModelTarget, resolveSessionModel, resolveThinkingLevel, runWorkflow, selectModel } from './workflow.js';
 import { resolveExportPath } from './export-path.js';
 import { loadSettings, saveSettings } from './settings.js';
 import { buildProviderList } from './provider-catalog.js';
@@ -335,7 +335,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
         profileId,
         workspaceKind: 'auto',
         workspacePath,
-        model: context.model ?? null,
+        model: target ? modelTargetKey(target) : null,
         thinkingLevel: context.thinkingLevel ?? null,
         piSessionFile: sessionFile ?? null,
       });
@@ -530,10 +530,10 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
 
   ipcMain.handle('sparkii:setChatModel', async (_e, sessionId: string, model: string | null) => {
     const open = openSessions.get(sessionId);
+    const settings = await loadSettings(rt.dataDir);
+    const target = resolveSessionModel(settings, { model });
     if (open) {
       pipeSessionEvents(sessionId, open);
-      const settings = await loadSettings(rt.dataDir);
-      const target = resolveSessionModel(settings, { model });
       if (target) {
         const applied = appliedModelBySession.get(sessionId);
         const changed = !applied || applied.provider !== target.provider || applied.modelId !== target.modelId;
@@ -549,7 +549,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
         }
       }
     }
-    rt.chatSessions.update(sessionId, { model });
+    rt.chatSessions.update(sessionId, { model: target ? modelTargetKey(target) : null });
     return { ok: true };
   });
 
