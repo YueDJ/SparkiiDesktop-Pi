@@ -12,6 +12,7 @@ export interface AppSettings {
   modelThinkingLevels?: Record<string, string>;
   maxAgents?: number;
   queueEnabled?: boolean;
+  chatDetailLevel?: 'minimal' | 'standard' | 'debug';
   approvalTimeoutMs?: number;
   theme?: 'light' | 'dark';
   language?: string;

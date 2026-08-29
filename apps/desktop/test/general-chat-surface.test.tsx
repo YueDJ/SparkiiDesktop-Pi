@@ -21,6 +21,7 @@ function makeApi() {
     setChatWorkspace: vi.fn().mockResolvedValue({ ok: true }),
     chooseWorkspace: vi.fn().mockResolvedValue({ path: 'C:/user-ws' }),
     getModelOptions: vi.fn().mockResolvedValue({ defaultModel: 'deepseek-v4-flash', models: ['deepseek-v4-pro', 'deepseek-v4-flash'], provider: 'deepseek' }),
+    getSettings: vi.fn().mockResolvedValue({ chatDetailLevel: 'standard' }),
   };
   return { api: api as any, channels };
 }
@@ -235,6 +236,22 @@ describe('GeneralChatSurface', () => {
       command: 'prompt',
     }));
     expect(screen.getByRole('alert').textContent).toContain('api rate limit');
+  });
+
+  it('hides model changes in standard detail level', async () => {
+    const { api, channels } = makeApi();
+    render(<GeneralChatSurface api={api} sessionId="s1" onNewSession={vi.fn()} />);
+    await screen.findByText('hi');
+    await waitFor(() => expect(api.getSettings).toHaveBeenCalled());
+
+    act(() => channels['chat-event']({
+      sessionId: 's1',
+      type: 'model_change',
+      provider: 'deepseek',
+      modelId: 'deepseek-v4-pro',
+    }));
+
+    expect(screen.queryByText('模型切换')).toBeNull();
   });
 
   it('does not duplicate the local user message when Pi echoes the idle prompt', async () => {
