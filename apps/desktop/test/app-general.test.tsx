@@ -36,6 +36,7 @@ function makeApi() {
     getChatSession: vi.fn().mockResolvedValue({ workspacePath: 'C:/ws/SparkiiXyZ9202608251710', workspaceKind: 'auto' }),
     openChatSession: vi.fn().mockResolvedValue({ messages: [] }),
     getChatState: vi.fn().mockResolvedValue({ streaming: false, steering: [], followUp: [] }),
+    getSettings: vi.fn().mockResolvedValue({ chatDetailLevel: 'standard' }),
     getModelOptions: vi.fn().mockResolvedValue({ defaultModel: null, models: [] }),
     promptSession: vi.fn().mockResolvedValue({ ok: true }),
     abortChat: vi.fn().mockResolvedValue({ ok: true, cleared: { steering: [], followUp: [] } }),

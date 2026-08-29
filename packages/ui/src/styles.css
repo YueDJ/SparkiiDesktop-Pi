@@ -85,7 +85,7 @@ button { font: inherit; color: inherit; }
 .ui-thinking { margin: 0; padding: var(--spacing-xs) var(--spacing-sm); border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-controlBg); color: var(--color-textSecondary); font-size: var(--font-size-sm); }
 .ui-thinking summary { cursor: pointer; color: var(--color-textMuted); user-select: none; }
 .ui-thinking > div { margin-top: var(--spacing-xs); white-space: pre-wrap; }
-.ui-tool-card { border: 1px solid var(--color-borderStrong); border-left-width: 3px; border-radius: var(--radius-card); background: var(--color-surface); padding: var(--spacing-xs) var(--spacing-sm); display: flex; flex-direction: column; gap: var(--spacing-xs); align-self: flex-start; max-width: 100%; box-shadow: var(--shadow-card); }
+.ui-tool-card { border: 1px solid var(--color-borderStrong); border-left-width: 3px; border-radius: var(--radius-card); background: var(--color-surface); padding: var(--spacing-xs) var(--spacing-sm); display: flex; flex-direction: column; gap: var(--spacing-xs); align-self: flex-start; width: fit-content; max-width: min(680px, 92%); box-shadow: var(--shadow-card); }
 .ui-tool-card--running { border-left-color: var(--color-primary); }
 .ui-tool-card--approval { border-left-color: var(--color-warn); background: var(--color-warnBg); }
 .ui-tool-card--ok { border-left-color: var(--color-ok); background: var(--color-okBg); }
@@ -94,7 +94,7 @@ button { font: inherit; color: inherit; }
 .ui-tool-card-name { font-family: var(--font-mono); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--color-text); flex: none; }
 .ui-tool-card-summary { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-textSecondary); font-size: var(--font-size-sm); }
 .ui-tool-card-status { margin-left: auto; flex: none; }
-.ui-tool-card-toggle { align-self: flex-start; height: var(--control-height-sm); padding: 0 var(--spacing-sm); }
+.ui-tool-card-toggle { flex: none; height: var(--control-height-sm); padding: 0 var(--spacing-xs); font-size: var(--font-size-xs); }
 .ui-tool-card-detail { margin-top: var(--spacing-xs); border-top: 1px dashed var(--color-border); padding-top: var(--spacing-xs); font-size: var(--font-size-sm); max-width: 100%; overflow: hidden; }
 .ui-composer { padding: var(--spacing-xxs) var(--spacing-md) var(--spacing-md); display: flex; flex-direction: column; }
 .ui-composer-ws-btn { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border: none; background: none; color: var(--color-textSecondary); border-radius: var(--radius-control); font-size: var(--font-size-sm); min-width: 0; cursor: pointer; }

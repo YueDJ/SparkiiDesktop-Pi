@@ -66,4 +66,18 @@ describe('SettingsView provider rendering', () => {
     const arg = saveSettings.mock.calls[0][0] as Record<string, unknown>;
     expect(arg.defaultThinkingLevel).toBe('high');
   });
+
+  it('saves the chat detail level from the runtime pane', async () => {
+    const saveSettings = vi.fn().mockResolvedValue({});
+    render(<SettingsView api={makeApi({ saveSettings })} />);
+    await screen.findByText('已加载本机配置');
+
+    fireEvent.click(screen.getByText('智能体与运行'));
+    fireEvent.change(screen.getByTestId('chat-detail-level-select'), { target: { value: 'debug' } });
+    fireEvent.click(screen.getByText('保存'));
+
+    await waitFor(() => expect(saveSettings).toHaveBeenCalled());
+    const arg = saveSettings.mock.calls[0][0] as Record<string, unknown>;
+    expect(arg.chatDetailLevel).toBe('debug');
+  });
 });

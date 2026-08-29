@@ -6,6 +6,7 @@ export interface ToolCardProps {
   input: unknown;
   result?: unknown;
   awaitingApproval?: boolean;
+  defaultExpanded?: boolean;
 }
 
 function summaryOf(toolName: string, input: unknown): string {
@@ -16,7 +17,7 @@ function summaryOf(toolName: string, input: unknown): string {
 }
 
 export function ToolCard(props: ToolCardProps) {
-  const { toolName, input, result, awaitingApproval } = props;
+  const { toolName, input, result, awaitingApproval, defaultExpanded = false } = props;
   const resultRec = (result ?? {}) as { details?: { diff?: string } };
   const inputRec = (input ?? {}) as { diff?: string };
   const diff = inputRec.diff ?? resultRec.details?.diff;
@@ -28,6 +29,7 @@ export function ToolCard(props: ToolCardProps) {
       awaitingApproval={awaitingApproval}
       summary={summaryOf(toolName, input)}
       detail={typeof diff === 'string' ? <DiffView diff={diff} /> : undefined}
+      defaultOpen={defaultExpanded}
     />
   );
 }

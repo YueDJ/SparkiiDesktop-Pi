@@ -6,6 +6,12 @@ import { ToolCard } from '../workbench/ToolCard.js';
 import { LifecycleCard } from '../workbench/LifecycleCard.js';
 import { Markdown } from '../workbench/Markdown.js';
 import { THINKING_LEVELS } from '../workbench/thinking-levels.js';
+import {
+  DEFAULT_CHAT_DETAIL_LEVEL,
+  isChatDetailLevel,
+  shouldShowEntry,
+  type ChatDetailLevel,
+} from '../workbench/chat-detail-level.js';
 import * as Timeline from '../workbench/pi-timeline.js';
 import type { ChatEntry } from '../workbench/pi-timeline.js';
 
@@ -210,6 +216,7 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
   const [workspacePath, setWorkspacePath] = useState<string | null>(null);
   const [contextUsage, setContextUsage] = useState<{ tokens?: number | null; contextWindow?: number; percent?: number | null } | null>(null);
   const [isCompacting, setIsCompacting] = useState(false);
+  const [detailLevel, setDetailLevel] = useState<ChatDetailLevel>(DEFAULT_CHAT_DETAIL_LEVEL);
   const lastIdlePromptRef = useRef('');
   const suppressUserEventRef = useRef(false);
   const providerRef = useRef(provider);
@@ -369,6 +376,15 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
     refreshModelOptions();
   }, [active, sessionId, draft]);
 
+  useEffect(() => {
+    if (!active) return;
+    api.getSettings().then((raw: any) => {
+      if (isChatDetailLevel(raw?.chatDetailLevel)) setDetailLevel(raw.chatDetailLevel);
+    }).catch(() => {
+      // 读取失败时保持默认值，不打断聊天流程
+    });
+  }, [active, sessionId, draft, api]);
+
   const getLocalPath = (file: File): string => api.getPathForFile(file);
 
   const send = (text: string, attachments: ComposerAttachment[] = []) => {
@@ -484,10 +500,12 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
     );
   }
 
+  const visibleEntries = entries.filter((entry) => shouldShowEntry(entry, detailLevel));
+
   return (
     <div className="chat-surface">
       <div className="chat-list">
-        {entries.map((e) => (
+        {visibleEntries.map((e) => (
           e.kind === 'message' ? (
             e.role === 'assistant'
               ? <ChatMessage key={e.id} role="assistant" text={e.text} thinking={e.thinking} streaming={e.streaming}><Markdown text={e.text} /></ChatMessage>
@@ -495,10 +513,10 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
           ) : e.kind === 'event' ? (
             <LifecycleCard key={e.id} entry={e} />
           ) : (
-            <ToolCard key={e.id} toolName={e.toolName} input={e.input} result={e.result} awaitingApproval={e.awaitingApproval} />
+            <ToolCard key={e.id} toolName={e.toolName} input={e.input} result={e.result} awaitingApproval={e.awaitingApproval} defaultExpanded={detailLevel === 'debug'} />
           )
         ))}
-        {entries.length === 0 && !busy && <div className="muted chat-hint">开始对话，或让智能体在工作区里做点什么。</div>}
+        {visibleEntries.length === 0 && !busy && <div className="muted chat-hint">开始对话，或让智能体在工作区里做点什么。</div>}
       </div>
       {error && <div className="chat-error" role="alert">{error}</div>}
       <div className="chat-queue-area">

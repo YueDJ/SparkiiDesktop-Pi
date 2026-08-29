@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Button, Select, SettingsLayout, SettingsRow, Switch, TextField } from '@sparkii/ui';
 import { THINKING_LEVELS, thinkingLevelLabel } from '../workbench/thinking-levels.js';
+import {
+  CHAT_DETAIL_LEVELS,
+  chatDetailLevelLabel,
+  isChatDetailLevel,
+  type ChatDetailLevel,
+} from '../workbench/chat-detail-level.js';
 import { AuditView } from '../audit/AuditView.js';
 
 export interface ProviderEntry {
@@ -73,6 +79,7 @@ export function SettingsView(props: SettingsViewProps) {
   const [testing, setTesting] = useState(false);
   const [maxAgents, setMaxAgents] = useState(4);
   const [queueEnabled, setQueueEnabled] = useState(true);
+  const [chatDetailLevel, setChatDetailLevel] = useState<ChatDetailLevel>('standard');
 
   const active = entries.find((e) => e.id === providerId);
 
@@ -89,6 +96,7 @@ export function SettingsView(props: SettingsViewProps) {
         if (typeof s.defaultThinkingLevel === 'string') setDefaultThinkingLevel(s.defaultThinkingLevel);
         if (typeof s.maxAgents === 'number' && Number.isFinite(s.maxAgents)) setMaxAgents(s.maxAgents);
         if (typeof s.queueEnabled === 'boolean') setQueueEnabled(s.queueEnabled);
+        if (isChatDetailLevel(s.chatDetailLevel)) setChatDetailLevel(s.chatDetailLevel);
         if (s.routes && typeof s.routes === 'object') setRoutes(s.routes as Record<string, string>);
         setInfo('已加载本机配置');
       })
@@ -145,7 +153,17 @@ export function SettingsView(props: SettingsViewProps) {
     const nextCustom = active?.kind === 'custom'
       ? [...customProviders.filter((p) => p.id !== providerId), { id: providerId, name: active.name, baseUrl: customBaseUrl, api: customApi }]
       : customProviders;
-    await api.saveSettings({ activeProviderId: providerId, providers: nextCustom, defaultModel, defaultThinkingLevel, routes, apiKey, maxAgents, queueEnabled });
+    await api.saveSettings({
+      activeProviderId: providerId,
+      providers: nextCustom,
+      defaultModel,
+      defaultThinkingLevel,
+      routes,
+      apiKey,
+      maxAgents,
+      queueEnabled,
+      chatDetailLevel,
+    });
     setCustomProviders(nextCustom);
     setInfo('设置已保存');
   };
@@ -244,6 +262,17 @@ export function SettingsView(props: SettingsViewProps) {
             </Select>
           </SettingsRow>
           <SettingsRow label="超出上限时排队"><Switch checked={queueEnabled} onCheckedChange={setQueueEnabled} label="超出上限时排队" /></SettingsRow>
+          <SettingsRow label="聊天信息详细程度">
+            <Select
+              data-testid="chat-detail-level-select"
+              value={chatDetailLevel}
+              onChange={(e) => setChatDetailLevel(e.target.value as ChatDetailLevel)}
+            >
+              {CHAT_DETAIL_LEVELS.map((level) => (
+                <option key={level} value={level}>{chatDetailLevelLabel(level)}</option>
+              ))}
+            </Select>
+          </SettingsRow>
           <SettingsRow label="崩溃自动恢复"><Switch checked onCheckedChange={() => {}} label="崩溃自动恢复" /></SettingsRow>
           <SettingsRow label="日志级别">
             <Select defaultValue="信息"><option>信息</option><option>调试</option><option>警告</option></Select>
