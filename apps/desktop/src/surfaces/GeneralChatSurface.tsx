@@ -292,6 +292,7 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
     setModel(null);
     setThinkingLevel(null);
     setThinkingLevels([...THINKING_LEVELS]);
+    setWorkspacePath(null);
     setProvider('deepseek');
     setContextUsage(null);
     setIsCompacting(false);
@@ -306,7 +307,7 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
       if (state?.streaming) setBusy(true);
     }).catch((e: any) => setError(String(e?.message ?? e)));
     api.openChatSession(sessionId).then(({ messages, entries }: any) => {
-      setEntries(entries?.length ? Timeline.normalizeSessionEntries(entries) : Timeline.normalizeMessages(messages ?? []));
+      setEntries(entries?.length ? Timeline.normalizeHistoricalSessionEntries(entries) : Timeline.normalizeMessages(messages ?? []));
     }).catch((e: any) => setError(String(e?.message ?? e)));
     const off1 = api.on('chat-event', (p: any) => {
       if (p?.sessionId !== sessionId) return;
