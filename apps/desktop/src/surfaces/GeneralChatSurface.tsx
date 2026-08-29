@@ -175,7 +175,7 @@ export interface GeneralChatSurfaceProps {
   active?: boolean;
   draft?: boolean;
   onNewSession(): void;
-  onSessionCommitted?(sessionId: string): void;
+  onSessionCommitted?(sessionId: string, title?: string): void;
 }
 
 function resolveThinkingTarget(
@@ -385,7 +385,7 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
         model,
         thinkingLevel,
       }).then((res) => {
-        if (res?.sessionId) onSessionCommitted?.(res.sessionId);
+        if (res?.sessionId) onSessionCommitted?.(res.sessionId, text);
       }).catch((e: any) => {
         setError(String(e?.message ?? e));
         setBusy(false);

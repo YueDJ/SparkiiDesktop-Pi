@@ -177,3 +177,115 @@ export function WarningIcon(p: IconProps) {
 export function InfoIcon(p: IconProps) {
   return <svg {...base} {...p}><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>;
 }
+
+export function PinIcon(p: IconProps) {
+  return (
+    <svg {...base} {...p}>
+      <path d="M12 17v5" />
+      <path d="M9 10.76a1 1 0 0 0 .67.23h4.66a1 1 0 0 0 .67-.23l2.1-1.9a1 1 0 0 0-1.6-1.2L14 8.7V5a1 1 0 0 0-1.4-.9 1 1 0 0 0-.6.9v3.7l-1.5-1.36a1 1 0 0 0-1.6 1.2z" />
+    </svg>
+  );
+}
+
+export function ArchiveIcon(p: IconProps) {
+  return (
+    <svg {...base} {...p}>
+      <rect x="3" y="4" width="18" height="4" rx="1" />
+      <path d="M5 8v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8" />
+      <line x1="10" y1="12" x2="14" y2="12" />
+    </svg>
+  );
+}
+
+export function RestoreIcon(p: IconProps) {
+  return (
+    <svg {...base} {...p}>
+      <polyline points="1 4 1 10 7 10" />
+      <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+    </svg>
+  );
+}
+
+export function BotIcon(p: IconProps) {
+  return (
+    <svg {...base} {...p}>
+      <rect x="4" y="8" width="16" height="12" rx="2" />
+      <path d="M12 8V4" /><circle cx="12" cy="3" r="1" />
+      <path d="M9 13h.01M15 13h.01" />
+      <path d="M9 17h6" />
+    </svg>
+  );
+}
+
+export function DocIcon(p: IconProps) {
+  return (
+    <svg {...base} {...p}>
+      <path d="M7 3h7l5 5v13H7z" />
+      <path d="M14 3v5h5" />
+      <line x1="10" y1="12" x2="17" y2="12" /><line x1="10" y1="16" x2="16" y2="16" />
+    </svg>
+  );
+}
+
+export function CpuIcon(p: IconProps) {
+  return (
+    <svg {...base} {...p}>
+      <rect x="6" y="6" width="12" height="12" rx="1.5" />
+      <rect x="10" y="10" width="4" height="4" />
+      <path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2" />
+    </svg>
+  );
+}
+
+export function GridIcon(p: IconProps) {
+  return (
+    <svg {...base} {...p}>
+      <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
+    </svg>
+  );
+}
+
+export function SparkIcon(p: IconProps) {
+  return (
+    <svg {...base} {...p}>
+      <path d="M12 3l1.9 5.8L20 12l-6.1 3.2L12 21l-1.9-5.8L4 12l6.1-3.2z" />
+    </svg>
+  );
+}
+
+export function GlobeIcon(p: IconProps) {
+  return (
+    <svg {...base} {...p}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18" /><path d="M12 3a13 13 0 0 1 0 18a13 13 0 0 1 0-18z" />
+    </svg>
+  );
+}
+
+export function FlowIcon(p: IconProps) {
+  return (
+    <svg {...base} {...p}>
+      <circle cx="6" cy="6" r="2.5" /><circle cx="18" cy="6" r="2.5" /><circle cx="12" cy="18" r="2.5" />
+      <path d="M8.2 7.5l2.4 8M15.8 7.5l-2.4 8M8 6h8" />
+    </svg>
+  );
+}
+
+export function BoxIcon(p: IconProps) {
+  return (
+    <svg {...base} {...p}>
+      <path d="M21 8l-9-5-9 5v8l9 5 9-5z" />
+      <path d="M3 8l9 5 9-5" /><path d="M12 13v8" />
+    </svg>
+  );
+}
+
+export function AgentGlyph(p: IconProps & { id?: string }) {
+  const { id = '', ...rest } = p;
+  const set = [BotIcon, DocIcon, CpuIcon, GridIcon, SparkIcon, GlobeIcon, FlowIcon, BoxIcon];
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  const Icon = set[h % set.length];
+  return <Icon {...rest} />;
+}

@@ -49,6 +49,9 @@ export interface SparkiiApi {
   getChatState(sessionId: string): Promise<ChatQueueState>;
   queueMutate(sessionId: string, mutation: ChatQueueMutation): Promise<{ ok: boolean; steering: string[]; followUp: string[] }>;
   setChatTitle(sessionId: string, title: string): Promise<{ ok: boolean }>;
+  setSessionPinned(sessionId: string, pinned: boolean, profileId?: string): Promise<{ ok: boolean }>;
+  setSessionArchived(sessionId: string, archived: boolean, profileId?: string): Promise<{ ok: boolean }>;
+  setSessionOrder(sessionId: string, sortOrder: number | null, profileId?: string): Promise<{ ok: boolean }>;
   setChatModel(sessionId: string, model: string | null): Promise<{ ok: boolean }>;
   setChatThinkingLevel(sessionId: string, level: string | null): Promise<{ ok: boolean }>;
   setChatWorkspace(sessionId: string, path: string | null): Promise<{ ok: boolean }>;

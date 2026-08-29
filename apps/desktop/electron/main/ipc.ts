@@ -1,6 +1,6 @@
 import { ipcMain, dialog, app, type BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { listPiSessions, readPiSessionEntries, readPiSessionMessages, type PiProviderInfo, type SessionSaddle } from '@sparkii/agent-host';
 import { applyThinkingLevel, createBroker, modelTargetKey, resolveModelTarget, resolveSessionModel, resolveThinkingLevel, runWorkflow, selectModel } from './workflow.js';
@@ -233,7 +233,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     const maxAgents = Number.isFinite(rawMaxAgents) && rawMaxAgents > 0 ? Math.floor(rawMaxAgents) : 4;
     rt.pool.setMaxAgents?.(maxAgents);
     if (rt.pool.activeCount() >= maxAgents && settings.queueEnabled === false) {
-      throw new Error(`已达到最大并发会话数 ${maxAgents}，请先释放一个槽位`);
+      throw new Error(`已达到最大并发会话数 ${maxAgents}，请先释放一个线程`);
     }
     const target = resolveSessionModel(settings, null);
     const thinkingLevel = resolveThinkingLevel(settings, null, target);
@@ -300,7 +300,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     const maxAgents = Number.isFinite(rawMaxAgents) && rawMaxAgents > 0 ? Math.floor(rawMaxAgents) : 4;
     rt.pool.setMaxAgents?.(maxAgents);
     if (rt.pool.activeCount() >= maxAgents && settings.queueEnabled === false) {
-      throw new Error(`已达到最大并发会话数 ${maxAgents}，请先释放一个槽位`);
+      throw new Error(`已达到最大并发会话数 ${maxAgents}，请先释放一个线程`);
     }
 
     const target = context.model
@@ -398,6 +398,9 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
         profileId: rec?.profileId,
         updatedAt: s.modified.getTime(),
         piFile: s.path,
+        pinned: rec?.pinned ?? false,
+        archived: rec?.archived ?? false,
+        sortOrder: rec?.sortOrder ?? null,
       };
     });
     return profileId ? mapped.filter((m) => m.profileId === profileId || m.profileId === undefined) : mapped;
@@ -511,6 +514,8 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   });
 
   ipcMain.handle('sparkii:setChatTitle', (_e, sessionId: string, title: string) => {
+    // 手动命名后不再自动生成标题，避免覆盖用户重命名
+    titledSessions.add(sessionId);
     const open = openSessions.get(sessionId);
     if (!open) {
       const rec = rt.chatSessions.get(sessionId);
@@ -637,6 +642,37 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       appliedModelBySession.delete(sessionId);
     }
     rt.chatSessions.delete(sessionId);
+    // 同步删除 Pi 会话文件，避免“已删除会话”仍出现在历史列表中
+    try {
+      const found = (await listPiSessions(join(rt.piAgentDir, 'sessions'))).find((s) => s.id === sessionId);
+      if (found) await rm(found.path, { force: true });
+    } catch { /* ignore */ }
+    return { ok: true };
+  });
+
+  async function ensureSessionRecord(sessionId: string, profileId?: string) {
+    if (rt.chatSessions.get(sessionId)) return;
+    const found = (await listPiSessions(join(rt.piAgentDir, 'sessions'))).find((s) => s.id === sessionId);
+    if (!found) return;
+    rt.chatSessions.create({ id: sessionId, profileId: profileId ?? 'general', workspaceKind: 'auto', workspacePath: found.cwd });
+  }
+
+  ipcMain.handle('sparkii:setSessionPinned', async (_e, sessionId: string, pinned: boolean, profileId?: string) => {
+    await ensureSessionRecord(sessionId, profileId);
+    rt.chatSessions.update(sessionId, { pinned: !!pinned });
+    return { ok: true };
+  });
+
+  ipcMain.handle('sparkii:setSessionArchived', async (_e, sessionId: string, archived: boolean, profileId?: string) => {
+    await ensureSessionRecord(sessionId, profileId);
+    rt.chatSessions.update(sessionId, { archived: !!archived });
+    return { ok: true };
+  });
+
+  ipcMain.handle('sparkii:setSessionOrder', async (_e, sessionId: string, sortOrder: number | null, profileId?: string) => {
+    await ensureSessionRecord(sessionId, profileId);
+    if (!rt.chatSessions.get(sessionId)) return { ok: true };
+    rt.chatSessions.update(sessionId, { sortOrder: sortOrder });
     return { ok: true };
   });
 

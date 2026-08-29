@@ -83,7 +83,7 @@ export function RuntimeCenter({
           </div>
           <div className="ui-runtime-actions">
             <Button size="sm" disabled={s.status === 'idle' || busy === `stop:${s.sessionId}`} onClick={() => setConfirm({ kind: 'stop', sessionId: s.sessionId })}>停止</Button>
-            <Button size="sm" variant="danger" disabled={busy === `release:${s.sessionId}`} onClick={() => setConfirm({ kind: 'release', sessionId: s.sessionId })}>释放槽位</Button>
+            <Button size="sm" variant="danger" disabled={busy === `release:${s.sessionId}`} onClick={() => setConfirm({ kind: 'release', sessionId: s.sessionId })}>释放线程</Button>
           </div>
         </div>
       ))}
@@ -97,8 +97,8 @@ export function RuntimeCenter({
           <Button size="sm" disabled={busy === `cancel:${q.queueId}`} onClick={() => void run(`cancel:${q.queueId}`, () => onCancelQueue(q.queueId))}>取消排队</Button>
         </div>
       ))}
-      <Modal open={confirm !== null} title={confirm?.kind === 'stop' ? '停止会话' : '释放槽位'} onClose={() => setConfirm(null)}>
-        <p>{confirm?.kind === 'stop' ? '确认中断当前这一轮？会话和槽位会保留。' : '确认释放槽位？会话记录会保留，工作进程将被复用。'}</p>
+      <Modal open={confirm !== null} title={confirm?.kind === 'stop' ? '停止会话' : '释放线程'} onClose={() => setConfirm(null)}>
+        <p>{confirm?.kind === 'stop' ? '确认中断当前这一轮？会话和线程会保留。' : '确认释放线程？会话记录会保留，工作进程将被复用。'}</p>
         <Button variant={confirm?.kind === 'release' ? 'danger' : 'primary'} onClick={confirmAction}>确认{confirm?.kind === 'stop' ? '停止' : '释放'}</Button>
       </Modal>
     </div>

@@ -39,6 +39,16 @@ describe('ChatSessionStore', () => {
     expect(s.get('pi-1')).toMatchObject({ thinkingLevel: null });
     s.close();
   });
+  it('persists manual sort order', () => {
+    const s = store();
+    s.create({ id: 'pi-1', profileId: 'general', workspaceKind: 'auto', workspacePath: 'C:/a' });
+    expect(s.get('pi-1')).toMatchObject({ sortOrder: null });
+    s.update('pi-1', { sortOrder: 2 });
+    expect(s.get('pi-1')).toMatchObject({ sortOrder: 2 });
+    s.update('pi-1', { sortOrder: null });
+    expect(s.get('pi-1')).toMatchObject({ sortOrder: null });
+    s.close();
+  });
   it('lists by profile and deletes', () => {
     const s = store();
     s.create({ id: 'pi-a', profileId: 'general', workspaceKind: 'auto', workspacePath: 'C:/a' });

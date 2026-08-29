@@ -20,7 +20,7 @@ describe('HomeView', () => {
   it('shows empty states when there is nothing pending or no sessions', () => {
     render(<HomeView userName="admin" agents={AGENTS} pendingApprovals={[]} onNavigate={vi.fn()} />);
     expect(screen.getByText('没有待审批事项')).toBeTruthy();
-    expect(screen.getByText(/暂无会话记录/)).toBeTruthy();
+    expect(screen.getByText(/会话历史/)).toBeTruthy();
   });
 
   it('navigates when an agent card is clicked', () => {
