@@ -1,5 +1,6 @@
 name: general
 displayName: 通用智能体
+sortOrder: 10
 version: 1.0.0
 modelRouting:
   tasks:

@@ -4,6 +4,7 @@ import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { listPiSessions, readPiSessionEntries, readPiSessionMessages, type PiProviderInfo, type SessionSaddle } from '@sparkii/agent-host';
 import { applyThinkingLevel, createBroker, modelTargetKey, resolveModelTarget, resolveSessionModel, resolveThinkingLevel, runWorkflow, selectModel } from './workflow.js';
+import { sortAgents } from './agent-catalog.js';
 import { resolveExportPath } from './export-path.js';
 import { loadSettings, saveSettings } from './settings.js';
 import { buildProviderList } from './provider-catalog.js';
@@ -675,15 +676,18 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     userId: rt.subject.userId,
     roles: rt.subject.roles,
   }));
-  ipcMain.handle('sparkii:getProfile', () => {
-    const first = [...rt.profiles.values()][0];
-    return { manifest: first.profile.manifest, pages: first.profile.ui.pages, theme: first.profile.ui.theme, tools: first.profile.agent.tools };
+  ipcMain.handle('sparkii:getProfile', (_e, profileId?: string) => {
+    const pr = profileId ? rt.profileOf(profileId) : [...rt.profiles.values()][0];
+    if (!pr) throw new Error('no profiles installed');
+    return { manifest: pr.profile.manifest, pages: pr.profile.ui.pages, theme: pr.profile.ui.theme, tools: pr.profile.agent.tools };
   });
   ipcMain.handle('sparkii:listAgents', () =>
-    [...rt.profiles.values()].map((pr) => ({
+    sortAgents([...rt.profiles.values()].map((pr) => ({
       id: pr.profile.manifest.name,
-      name: pr.profile.manifest.displayName ?? pr.profile.manifest.name,
-    })),
+      name: pr.profile.manifest.name,
+      displayName: pr.profile.manifest.displayName,
+      sortOrder: pr.profile.manifest.sortOrder,
+    }))),
   );
   ipcMain.handle('sparkii:chooseDocument', async () => {
     if (process.env.SPARKII_E2E_DOCUMENT) return { path: process.env.SPARKII_E2E_DOCUMENT };
@@ -780,11 +784,13 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     }
   });
   ipcMain.handle('sparkii:prompt', async (_e, text: string) => {
+    const profileId = [...rt.profiles.keys()][0];
+    if (!profileId) throw new Error('no profiles installed');
     const sessionId = randomUUID();
     const slot = await rt.pool.acquire(sessionId, {
-      saddle: buildProfileSaddle(rt.profileOf('contract-review'), anchorDir(sessionId)),
+      saddle: buildProfileSaddle(rt.profileOf(profileId), anchorDir(sessionId)),
     });
-    slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId: 'contract-review' }));
+    slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId }));
     try {
       await selectModel(rt, 'chat', sessionId);
       const c = slot.client;
@@ -805,8 +811,8 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     }
     return { ok: true };
   });
-  ipcMain.handle('sparkii:runWorkflow', async (_e, _id: string, input: Record<string, unknown>) => {
-    await runWorkflow(rt, getWindow, input, broker);
+  ipcMain.handle('sparkii:runWorkflow', async (_e, profileId: string, input: Record<string, unknown>) => {
+    await runWorkflow(rt, getWindow, input, broker, profileId);
     return { ok: true };
   });
   ipcMain.handle('sparkii:diagnostics', async () => ({ logs: await logger.export(), audit: await rt.audit.exportJsonl() }));

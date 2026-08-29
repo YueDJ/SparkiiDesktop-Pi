@@ -9,7 +9,7 @@ import { StatusBar } from './StatusBar.js';
 import { RuntimeCenter, type RuntimePoolSummary } from './RuntimeCenter.js';
 import { SessionsIcon, PlusIcon, GearIcon, MoonIcon, SunIcon, UserIcon, ShieldIcon, AuditIcon } from '../icons/index.js';
 
-export type ScreenId = 'home' | 'contract' | 'chat' | 'dashboard' | 'general' | 'approvals' | 'audit' | 'settings';
+export type ScreenId = 'home' | 'contract-review' | 'chat' | 'dashboard' | 'general' | 'approvals' | 'audit' | 'settings';
 export type AgentStatus = 'running' | 'idle' | 'queued';
 
 export interface ShellAgent {

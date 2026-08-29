@@ -45,10 +45,6 @@ function mapRuntimePool(raw: any, pendingApprovals: any[]): RuntimePoolSummary {
   };
 }
 
-function profileIdForAgent(id: ScreenId): string {
-  return id === 'contract' ? 'contract-review' : id;
-}
-
 export function App() {
   const api = window.sparkii;
   const [userName, setUserName] = useState('');
@@ -58,7 +54,7 @@ export function App() {
   const [workflow, setWorkflow] = useState<WorkflowStatusState>({ status: 'idle' });
   const [screen, setScreen] = useState<ScreenId>('home');
   const [roles, setRoles] = useState<string[]>([]);
-  const [agents, setAgents] = useState<ShellAgent[]>([{ id: 'contract', name: '合同审核', status: 'idle' }]);
+  const [agents, setAgents] = useState<ShellAgent[]>([{ id: 'contract-review', name: '合同审核智能体', status: 'idle' }]);
   const [sessions, setSessions] = useState<Record<string, ShellSession[]>>({});
   const [activeGeneralSession, setActiveGeneralSession] = useState<string | null>(null);
   const [generalTitle, setGeneralTitle] = useState('');
@@ -119,7 +115,7 @@ export function App() {
         await refreshApprovals();
         api.listAgents?.().then((list: Array<{ id: string; name: string }>) => {
           if (cancelled || !Array.isArray(list) || !list.length) return;
-          setAgents(list.map((a) => ({ id: (a.id === 'contract-review' ? 'contract' : a.id) as ScreenId, name: a.name, status: 'idle' })));
+          setAgents(list.map((a) => ({ id: a.id as ScreenId, name: a.name, status: 'idle' })));
         }).catch(() => {});
       } catch {
         // 本地主体初始化失败时仍保留默认壳,不阻塞渲染
@@ -165,14 +161,15 @@ export function App() {
       const { path } = await api.chooseDocument();
       if (path) setState((s) => ({ ...s, documents: [path] }));
     }
-    if (action === 'run-workflow:contract-review') {
+    if (action.startsWith('run-workflow:')) {
+      const profileId = action.slice('run-workflow:'.length);
       setWorkflow({ status: 'running' });
-      api.runWorkflow('contract-review', { documents: state.documents });
+      api.runWorkflow(profileId, { documents: state.documents });
     }
   };
 
   const refreshSessions = (agentId: string, activeId = activeGeneralSession) => {
-    const profileId = agentId === 'contract' ? 'contract-review' : agentId;
+    const profileId = agentId;
     api.listChatSessions?.(profileId)?.then((list: any[]) => {
       const mapped: ShellSession[] = (list ?? []).map((s) => ({
         id: s.id,
@@ -221,7 +218,7 @@ export function App() {
   };
 
   const derivedAgents = agents.map((a) => {
-    const profileId = profileIdForAgent(a.id);
+    const profileId = a.id;
     const running = runtimePool.sessions.some((s) => s.profileId === profileId);
     const queued = runtimePool.queue.some((q) => q.profileId === profileId);
     return { ...a, status: running ? 'running' : queued ? 'queued' : 'idle' } as ShellAgent;
@@ -253,13 +250,13 @@ export function App() {
       refreshSessions('general');
       return;
     }
-    if (s === 'contract' || s === 'contract-review') {
-      setScreen('contract');
-      refreshSessions('contract');
+    if (s === 'contract-review') {
+      setScreen('contract-review');
+      refreshSessions('contract-review');
       return;
     }
     // 对话/仪表板表面留档,待后端就绪后接入
-    if (s === 'chat' || s === 'dashboard') { setScreen('contract'); return; }
+    if (s === 'chat' || s === 'dashboard') { setScreen('contract-review'); return; }
     setScreen(s);
   };
 
@@ -267,7 +264,7 @@ export function App() {
     home: (
       <HomeView userName={userName} agents={derivedAgents} pendingApprovals={pending} onNavigate={navigate} />
     ),
-    contract: (
+    'contract-review': (
       <ContractSurface state={state} workflow={workflow} onAction={onAction} onRequestExport={() => setScreen('approvals')} />
     ),
     approvals: (
@@ -299,7 +296,7 @@ export function App() {
   );
 
   const surfaceTitles: Partial<Record<ScreenId, string>> = {
-    contract: '合同审核 · 会话#3',
+    'contract-review': '合同审核 · 会话#3',
     chat: '法规问答 · 会话#1',
     dashboard: '舆情监控 · 会话#2',
     general: activeGeneralSession ? `通用智能体 · ${generalTitle || '会话'}` : '通用智能体',

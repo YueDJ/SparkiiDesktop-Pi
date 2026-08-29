@@ -55,7 +55,7 @@ describe('runWorkflow broker sharing', () => {
     } as any;
 
     const broker = createBroker(rt, getWindow);
-    const running = runWorkflow(rt, getWindow, { documents: [] }, broker);
+    const running = runWorkflow(rt, getWindow, { documents: [] }, broker, 'contract-review');
     await new Promise((r) => setTimeout(r, 0));
 
     expect(acquiredSaddles).toHaveLength(1);
@@ -76,5 +76,42 @@ describe('runWorkflow broker sharing', () => {
     expect(send).toHaveBeenCalledWith('sparkii:event:state', expect.objectContaining({
       workflow: { result: expect.objectContaining({ review: { proposalId: 'p1', status: 'approved' } }) },
     }));
+  });
+
+  it('runs the workflow for the requested profile instead of contract-review', async () => {
+    const send = vi.fn();
+    const getWindow = () => ({ webContents: { send } }) as any;
+    const dataDir = mkdtempSync(join(tmpdir(), 'wf-general-'));
+    const profileOf = vi.fn((id: string) => ({
+      dir: join(dataDir, 'profiles', id),
+      profile: {
+        manifest: { name: id },
+        security: { approval: { timeoutMs: 50 } },
+        agent: {
+          tools: ['read'],
+          prompts: { system: `你是 ${id}。` },
+          workflow: { version: 1, engine: 'linear', steps: [] },
+        },
+      },
+    }));
+    const rt = {
+      dataDir,
+      profileOf,
+      subject: { userId: 'admin' },
+      gate: {
+        submit: async (req: any) => ({ id: 'p1', ...req, status: 'pending', payloadHash: 'h', createdAt: Date.now() }),
+        expire: async (id: string) => ({ id, status: 'expired' }),
+      },
+      pool: {
+        acquire: async () => ({ client: {}, supervisor: { onProposal: () => {} } }),
+        get: () => undefined,
+        release: async () => {},
+      },
+    } as any;
+
+    const broker = createBroker(rt, getWindow);
+    await runWorkflow(rt, getWindow, {}, broker, 'general');
+
+    expect(profileOf).toHaveBeenCalledWith('general');
   });
 });

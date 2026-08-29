@@ -12,7 +12,7 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
   const invoke = (name: string, ...args: unknown[]) => ipc.invoke(`sparkii:${name}`, ...args);
   return {
     getLocalSubject: () => invoke('getLocalSubject') as Promise<{ userId: string; roles: string[] }>,
-    getProfile: () => invoke('getProfile'),
+    getProfile: (profileId) => invoke('getProfile', profileId),
     chooseDocument: () => invoke('chooseDocument') as Promise<{ path?: string }>,
     runWorkflow: (id, input) => invoke('runWorkflow', id, input) as Promise<{ ok: boolean }>,
     prompt: (text) => invoke('prompt', text) as Promise<{ ok: boolean }>,

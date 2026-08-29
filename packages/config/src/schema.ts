@@ -6,6 +6,7 @@ export const manifestSchema = z.object({
   name: z.string().min(1),
   version: z.string().regex(/^\d+\.\d+\.\d+$/),
   displayName: z.string().optional(),
+  sortOrder: z.number().optional(),
   extends: z.string().optional(),
   modelRouting: z.object({
     tasks: z.record(z.string(), z.array(modelTarget)),

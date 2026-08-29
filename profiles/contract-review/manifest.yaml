@@ -1,4 +1,6 @@
 name: contract-review
+displayName: 合同审核智能体
+sortOrder: 20
 version: 1.0.0
 modelRouting:
   tasks:
