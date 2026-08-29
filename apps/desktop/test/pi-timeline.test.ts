@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyChatEvent, normalizeSessionEntries } from '../src/workbench/pi-timeline.js';
+import { applyChatEvent, normalizeHistoricalSessionEntries, normalizeSessionEntries } from '../src/workbench/pi-timeline.js';
 
 describe('normalizeSessionEntries', () => {
   it('rebuilds messages, tool calls and lifecycle events from persisted entries', () => {
@@ -36,6 +36,20 @@ describe('normalizeSessionEntries', () => {
     expect(entries[5]).toMatchObject({ kind: 'event', event: 'thinking_level_change' });
   });
 
+});
+
+describe('normalizeHistoricalSessionEntries', () => {
+  it('adds Pi start, end, and settled lifecycle cards around persisted entries', () => {
+    const entries = normalizeHistoricalSessionEntries([
+      { type: 'message', message: { role: 'user', content: 'hi' } },
+    ]);
+
+    expect(entries.map((entry) => entry.kind === 'event' ? entry.event : entry.kind))
+      .toEqual(['agent_start', 'message', 'agent_end', 'agent_settled']);
+    expect(entries[0]).toMatchObject({ event: 'agent_start' });
+    expect(entries[2]).toMatchObject({ event: 'agent_end' });
+    expect(entries[3]).toMatchObject({ event: 'agent_settled' });
+  });
 });
 
 describe('applyChatEvent', () => {

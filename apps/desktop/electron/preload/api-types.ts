@@ -26,6 +26,12 @@ export interface ChatQueueState {
   contextUsage?: { tokens?: number | null; contextWindow?: number; percent?: number | null } | null;
 }
 
+export interface DraftPromptContext {
+  workspacePath?: string | null;
+  model?: string | null;
+  thinkingLevel?: string | null;
+}
+
 export interface SparkiiApi {
   getLocalSubject(): Promise<{ userId: string; roles: string[] }>;
   getProfile(): Promise<unknown>;
@@ -33,6 +39,7 @@ export interface SparkiiApi {
   runWorkflow(id: string, input: Record<string, unknown>): Promise<{ ok: boolean }>;
   prompt(text: string): Promise<{ ok: boolean }>;
   newChatSession(profileId: string): Promise<{ sessionId: string; workspacePath: string; model: string | null }>;
+  promptDraftSession(profileId: string, text: string, context: DraftPromptContext): Promise<{ ok: boolean; sessionId: string; behavior: 'prompt' | 'steer' | 'followUp' }>;
   openChatSession(sessionId: string): Promise<{ messages: unknown[]; entries?: unknown[] }>;
   listChatSessions(profileId?: string): Promise<unknown[]>;
   getChatSession(sessionId: string): Promise<unknown>;

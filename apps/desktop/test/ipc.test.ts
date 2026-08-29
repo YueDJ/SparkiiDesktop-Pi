@@ -271,12 +271,14 @@ describe('ipc provider handlers', () => {
         return { success: true };
       },
     };
-    await makeRuntime({
+    const rt = await makeRuntime({
       dataDir,
       piAgentDir,
       client,
       chatSession: { profileId: 'contract-review', model: null },
     });
+    const update = vi.fn();
+    (rt as any).chatSessions.update = update;
 
     const handlers = await registeredHandlers();
     const promptSession = handlers.get('sparkii:promptSession');
@@ -354,6 +356,74 @@ describe('ipc provider handlers', () => {
     expect(sent).not.toContainEqual({ type: 'set_model', provider: 'deepseek', modelId: 'deepseek-v4-flash' });
   });
 
+  it('promptDraftSession creates a session and sends the first prompt', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    const sent: any[] = [];
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's-new', sessionFile: null } };
+        }
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({ dataDir, piAgentDir, client });
+    (rt as any).chatSessions.create = vi.fn();
+
+    const handlers = await registeredHandlers();
+    const promptDraftSession = handlers.get('sparkii:promptDraftSession');
+    const result = await promptDraftSession!(null, 'general', 'hello', {});
+
+    expect(result).toMatchObject({ ok: true, sessionId: 's-new' });
+    expect(sent).toContainEqual({ type: 'prompt', message: 'hello' });
+    expect(rt.pool.acquire).toHaveBeenCalled();
+    expect((rt as any).chatSessions.create).toHaveBeenCalled();
+  });
+
+  it('promptDraftSession does not duplicate model application when the model is already in the saddle', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(
+      join(dataDir, 'settings.json'),
+      JSON.stringify({ activeProviderId: 'kimi', defaultModel: 'kimi-for-coding' }),
+      'utf8',
+    );
+
+    const sent: any[] = [];
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's-new', sessionFile: null } };
+        }
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({ dataDir, piAgentDir, client });
+
+    const handlers = await registeredHandlers();
+    const promptDraftSession = handlers.get('sparkii:promptDraftSession');
+    await promptDraftSession!(null, 'general', 'hello', {
+      model: 'kimi/kimi-for-coding',
+      thinkingLevel: 'off',
+    });
+
+    expect(sent).not.toContainEqual({ type: 'set_model', provider: 'kimi', modelId: 'kimi-for-coding' });
+    expect(sent).toContainEqual({ type: 'prompt', message: 'hello' });
+    expect((rt as any).chatSessions.create).toHaveBeenCalledWith(
+      expect.objectContaining({ model: 'kimi/kimi-for-coding' }),
+    );
+  });
+
   it('newChatSession rejects when the runtime pool has reached maxAgents', async () => {
     const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
     dirs.push(dataDir);
@@ -370,7 +440,7 @@ describe('ipc provider handlers', () => {
     await expect(newChatSession!(null, 'general')).rejects.toThrow('已达到最大并发会话数 4');
   });
 
-  it('listChatSessions includes empty sessions from the local store', async () => {
+  it('listChatSessions excludes empty sessions from the local store', async () => {
     const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
     dirs.push(dataDir);
     const piAgentDir = join(dataDir, 'pi-agent');
@@ -394,9 +464,65 @@ describe('ipc provider handlers', () => {
     const handlers = await registeredHandlers();
     const listChatSessions = handlers.get('sparkii:listChatSessions');
     const result = await listChatSessions!(null, 'general');
-    expect(result).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'empty-1', profileId: 'general' }),
-    ]));
+    expect(result).toEqual([]);
+  });
+
+  it('getChatState does not acquire when a session has no lease', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    const client = { send: async () => ({ success: true }) };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'general', model: null },
+    });
+
+    const handlers = await registeredHandlers();
+    const getChatState = handlers.get('sparkii:getChatState');
+    const result = await getChatState!(null, 's-missing');
+
+    expect(result).toMatchObject({ streaming: false, steering: [], followUp: [] });
+    expect(rt.pool.acquire).not.toHaveBeenCalled();
+  });
+
+  it('schedules idle release after agent_settled and releases after timeout', async () => {
+    vi.useFakeTimers();
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    const events: Array<(e: any) => void> = [];
+    const sent: any[] = [];
+    const client = {
+      onEvent: (cb: (event: any) => void) => {
+        events.push(cb);
+        return () => {};
+      },
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's1', sessionFile: '/tmp/s.json', isStreaming: false } };
+        }
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({ dataDir, piAgentDir, client, chatSession: { profileId: 'general', model: null } });
+
+    const handlers = await registeredHandlers();
+    const promptDraftSession = handlers.get('sparkii:promptDraftSession');
+    await promptDraftSession!(null, 'general', 'hello', {});
+    events[0]?.({ type: 'agent_settled' });
+    events[0]?.({ type: 'session_info_changed', name: '标题生成后的事件' });
+
+    expect(rt.pool.release).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(rt.pool.release).toHaveBeenCalledWith('s1');
+    vi.useRealTimers();
   });
 
   it('workflow selectModel routes to settings active provider and default model', async () => {
@@ -528,12 +654,14 @@ describe('ipc provider handlers', () => {
         return { success: true };
       },
     };
-    await makeRuntime({
+    const rt = await makeRuntime({
       dataDir,
       piAgentDir,
       client,
       chatSession: { profileId: 'contract-review', model: null },
     });
+    const update = vi.fn();
+    (rt as any).chatSessions.update = update;
 
     const handlers = await registeredHandlers();
     const promptSession = handlers.get('sparkii:promptSession');
@@ -544,6 +672,7 @@ describe('ipc provider handlers', () => {
     await setChatModel!(null, 's1', 'deepseek-v4-pro');
 
     expect(sent).toContainEqual({ type: 'set_model', provider: 'deepseek', modelId: 'deepseek-v4-pro' });
+    expect(update).toHaveBeenCalledWith('s1', { model: 'deepseek/deepseek-v4-pro' });
   });
 
   it('setChatThinkingLevel applies the selected level to the open Pi session', async () => {

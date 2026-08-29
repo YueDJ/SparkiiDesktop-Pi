@@ -313,6 +313,17 @@ export function normalizeSessionEntries(entries: unknown[]): ChatEntry[] {
   return out;
 }
 
+export function normalizeHistoricalSessionEntries(entries: unknown[]): ChatEntry[] {
+  const body = normalizeSessionEntries(entries);
+  if (body.length === 0) return body;
+  return [
+    timelineEntry('agent_start', {}),
+    ...body,
+    timelineEntry('agent_end', {}),
+    timelineEntry('agent_settled', {}),
+  ];
+}
+
 export function normalizeMessages(messages: unknown[]): ChatEntry[] {
   const out: ChatEntry[] = [];
   let n = 0;

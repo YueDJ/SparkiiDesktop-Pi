@@ -92,6 +92,10 @@ export function resolveSessionModel(
   return resolveModelTarget(settings, 'chat');
 }
 
+export function modelTargetKey(target: { provider: string; modelId: string }): string {
+  return `${target.provider}/${target.modelId}`;
+}
+
 export function resolveThinkingLevel(
   settings: AppSettings,
   rec: { thinkingLevel: string | null } | null | undefined,

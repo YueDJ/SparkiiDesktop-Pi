@@ -122,7 +122,7 @@ describe('GeneralChatSurface', () => {
     expect(screen.getByText(/12,300/)).toBeTruthy();
   });
 
-  it('refreshes model options and clears the session override when the surface becomes active after a provider change', async () => {
+  it('refreshes model options after a provider change without forcing a null override', async () => {
     const { api } = makeApi();
     api.getModelOptions = vi.fn()
       .mockResolvedValueOnce({ defaultModel: 'k3', models: ['k3'], provider: 'kimi' })
@@ -133,6 +133,27 @@ describe('GeneralChatSurface', () => {
 
     view.rerender(<GeneralChatSurface api={api} sessionId="s1" active={false} onNewSession={vi.fn()} />);
     view.rerender(<GeneralChatSurface api={api} sessionId="s1" active onNewSession={vi.fn()} />);
+
+    await waitFor(() => expect(api.getModelOptions).toHaveBeenCalledTimes(2));
+    expect(api.setChatModel).not.toHaveBeenCalled();
+    expect(await screen.findByText('deepseek-v4-pro')).toBeTruthy();
+  });
+
+  it('clears an explicit session model when its provider no longer matches the active provider', async () => {
+    const { api } = makeApi();
+    api.getChatSession = vi.fn().mockResolvedValue({
+      workspacePath: 'C:/ws/SparkiiXyZ9202608251710',
+      workspaceKind: 'auto',
+      model: 'kimi/kimi-for-coding',
+      thinkingLevel: null,
+    });
+    api.getModelOptions = vi.fn().mockResolvedValue({
+      provider: 'deepseek',
+      defaultModel: 'deepseek-v4-pro',
+      models: ['deepseek-v4-pro'],
+    });
+
+    render(<GeneralChatSurface api={api} sessionId="s1" active onNewSession={vi.fn()} />);
 
     await waitFor(() => expect(api.setChatModel).toHaveBeenCalledWith('s1', null));
     expect(await screen.findByText('deepseek-v4-pro')).toBeTruthy();

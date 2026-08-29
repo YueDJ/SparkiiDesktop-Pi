@@ -31,6 +31,7 @@ function makeApi() {
       { id: 'general', name: '通用智能体' },
     ]),
     newChatSession: vi.fn().mockResolvedValue({ sessionId: 'g1', workspacePath: 'C:/ws/SparkiiXyZ9202608251710', model: null }),
+    promptDraftSession: vi.fn().mockResolvedValue({ ok: true, sessionId: 'g1', behavior: 'prompt' }),
     listChatSessions: vi.fn().mockResolvedValue([{ id: 'g1', profileId: 'general', title: '会话 08-25 17:10', workspaceKind: 'auto', workspacePath: 'C:/ws/SparkiiXyZ9202608251710', model: null, piSessionFile: null, createdAt: 0, updatedAt: 0 }]),
     getChatSession: vi.fn().mockResolvedValue({ workspacePath: 'C:/ws/SparkiiXyZ9202608251710', workspaceKind: 'auto' }),
     openChatSession: vi.fn().mockResolvedValue({ messages: [] }),
@@ -54,13 +55,11 @@ describe('App general agent', () => {
     render(<App />);
     await screen.findByText(/工作台 · 上午好/);
     fireEvent.click(screen.getByTestId('agent-card-general'));
-    await screen.findByText('新建会话');
-    fireEvent.click(screen.getByText('新建会话'));
-    await waitFor(() => expect(api.newChatSession).toHaveBeenCalledWith('general'));
-    await screen.findByTestId('composer-input');
-    fireEvent.change(screen.getByTestId('composer-input'), { target: { value: '你好' } });
-    fireEvent.keyDown(screen.getByTestId('composer-input'), { key: 'Enter' });
-    await waitFor(() => expect(api.promptSession).toHaveBeenCalledWith('g1', '你好'));
+    const input = await screen.findByTestId('composer-input');
+    fireEvent.change(input, { target: { value: '你好' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() => expect(api.promptDraftSession).toHaveBeenCalledWith('general', '你好', expect.any(Object)));
+    await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
     act(() => channels['chat-event']({ sessionId: 'g1', type: 'message', role: 'assistant', delta: '在的' }));
     expect(screen.getByText(/在的/)).toBeTruthy();
   });
@@ -71,19 +70,22 @@ describe('App general agent', () => {
     await screen.findByText(/工作台 · 上午好/);
 
     fireEvent.click(screen.getByTestId('agent-card-general'));
+    await screen.findByTestId('composer-input');
     fireEvent.click(screen.getByRole('button', { name: '新会话' }));
-    await waitFor(() => expect(api.newChatSession).toHaveBeenCalledWith('general'));
+    expect(api.newChatSession).not.toHaveBeenCalled();
     await screen.findByTestId('composer-input');
   });
 
-  it('shows an error when creating a general session fails', async () => {
+  it('shows an error when the first draft prompt fails', async () => {
     const { api } = makeApi();
-    api.newChatSession.mockRejectedValueOnce(new Error('session create failed'));
+    api.promptDraftSession.mockRejectedValueOnce(new Error('session create failed'));
     render(<App />);
     await screen.findByText(/工作台 · 上午好/);
 
     fireEvent.click(screen.getByTestId('agent-card-general'));
-    fireEvent.click(screen.getByRole('button', { name: '新会话' }));
+    const input = await screen.findByTestId('composer-input');
+    fireEvent.change(input, { target: { value: '你好' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
     expect((await screen.findByRole('alert')).textContent).toContain('session create failed');
   });
 
@@ -92,13 +94,14 @@ describe('App general agent', () => {
     render(<App />);
     await screen.findByText(/工作台 · 上午好/);
     fireEvent.click(screen.getByTestId('agent-card-general'));
-    await screen.findByText('新建会话');
-    fireEvent.click(screen.getByText('新建会话'));
-    await screen.findByTestId('composer-input');
+    const input = await screen.findByTestId('composer-input');
+    fireEvent.change(input, { target: { value: '你好' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() => expect(api.promptDraftSession).toHaveBeenCalled());
     fireEvent.click(screen.getByTitle('会话'));
     fireEvent.click(screen.getByTitle('删除 g1'));
     await waitFor(() => expect(api.deleteChatSession).toHaveBeenCalledWith('g1'));
-    await screen.findByText('新建会话');
+    await screen.findByTestId('composer-input');
   });
 
   it('opens a selected session from the chat history list', async () => {
@@ -114,7 +117,7 @@ describe('App general agent', () => {
     render(<App />);
     await screen.findByText(/工作台 · 上午好/);
     fireEvent.click(screen.getByTestId('agent-card-general'));
-    await screen.findByText('新建会话');
+    await screen.findByTestId('composer-input');
     fireEvent.click(screen.getByTitle('会话'));
     fireEvent.click(await screen.findByText('旧会话'));
 
@@ -127,13 +130,11 @@ describe('App general agent', () => {
     render(<App />);
     await screen.findByText(/工作台 · 上午好/);
     fireEvent.click(screen.getByTestId('agent-card-general'));
-    await screen.findByText('新建会话');
-    fireEvent.click(screen.getByText('新建会话'));
-    await waitFor(() => expect(api.newChatSession).toHaveBeenCalledWith('general'));
-    await screen.findByTestId('composer-input');
-    fireEvent.change(screen.getByTestId('composer-input'), { target: { value: '你好' } });
-    fireEvent.keyDown(screen.getByTestId('composer-input'), { key: 'Enter' });
-    await waitFor(() => expect(api.promptSession).toHaveBeenCalledWith('g1', '你好'));
+    const input = await screen.findByTestId('composer-input');
+    fireEvent.change(input, { target: { value: '你好' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() => expect(api.promptDraftSession).toHaveBeenCalledWith('general', '你好', expect.any(Object)));
+    await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
     act(() => channels['chat-event']({ sessionId: 'g1', type: 'message', role: 'assistant', delta: '在的' }));
     expect(screen.getByText(/在的/)).toBeTruthy();
 
