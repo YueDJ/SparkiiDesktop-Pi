@@ -273,14 +273,7 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
         setThinkingLevels([...THINKING_LEVELS]);
         return;
       }
-      if (providerChanged && sessionId) {
-        setModel(null);
-        api.setChatModel(sessionId, null)
-          .catch(() => {})
-          .finally(() => refreshMeta(nextModels, nextProvider, nextDefault));
-      } else {
-        refreshMeta(nextModels, nextProvider, nextDefault);
-      }
+      refreshMeta(nextModels, nextProvider, nextDefault);
     }).catch((e: any) => setError(String(e?.message ?? e)));
   };
 

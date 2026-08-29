@@ -384,6 +384,41 @@ describe('ipc provider handlers', () => {
     expect((rt as any).chatSessions.create).toHaveBeenCalled();
   });
 
+  it('promptDraftSession does not duplicate model application when the model is already in the saddle', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(
+      join(dataDir, 'settings.json'),
+      JSON.stringify({ activeProviderId: 'kimi', defaultModel: 'kimi-for-coding' }),
+      'utf8',
+    );
+
+    const sent: any[] = [];
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's-new', sessionFile: null } };
+        }
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({ dataDir, piAgentDir, client });
+
+    const handlers = await registeredHandlers();
+    const promptDraftSession = handlers.get('sparkii:promptDraftSession');
+    await promptDraftSession!(null, 'general', 'hello', {
+      model: 'kimi/kimi-for-coding',
+      thinkingLevel: 'off',
+    });
+
+    expect(sent).not.toContainEqual({ type: 'set_model', provider: 'kimi', modelId: 'kimi-for-coding' });
+    expect(sent).toContainEqual({ type: 'prompt', message: 'hello' });
+  });
+
   it('newChatSession rejects when the runtime pool has reached maxAgents', async () => {
     const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
     dirs.push(dataDir);
@@ -477,6 +512,7 @@ describe('ipc provider handlers', () => {
     const promptDraftSession = handlers.get('sparkii:promptDraftSession');
     await promptDraftSession!(null, 'general', 'hello', {});
     events[0]?.({ type: 'agent_settled' });
+    events[0]?.({ type: 'session_info_changed', name: '标题生成后的事件' });
 
     expect(rt.pool.release).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(60_000);

@@ -48,6 +48,16 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     idleTimers.set(sessionId, timer);
   }
 
+  function isRuntimeActivityEvent(type: string): boolean {
+    return (
+      type === 'agent_start'
+      || type === 'turn_start'
+      || type === 'compaction_start'
+      || type === 'auto_retry_start'
+      || type === 'summarization_retry_attempt_start'
+    );
+  }
+
   function buildSaddle(profileId: string, sessionId: string): SessionSaddle {
     return buildProfileSaddle(rt.profileOf(profileId), anchorDir(sessionId), rt.chatSessions.get(sessionId)?.workspacePath);
   }
@@ -178,7 +188,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       win?.webContents.send('sparkii:event:chat-event', { ...ev, sessionId });
       if (ev.type === 'agent_settled') {
         scheduleIdleRelease(sessionId);
-      } else {
+      } else if (isRuntimeActivityEvent(ev.type)) {
         cancelIdleRelease(sessionId);
       }
       if (ev.type === 'agent_end' && !titledSessions.has(sessionId)) {
@@ -347,7 +357,6 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
           const keyResp = await slot.client.send({ type: 'set_api_key', provider: target.provider, apiKey });
           if (!keyResp.success) throw new Error(keyResp.error ?? 'set_api_key failed');
         }
-        await selectModel(rt, 'chat', sessionId, `${target.provider}/${target.modelId}`);
       }
       const promptResp = await slot.client.send({ type: 'prompt', message: text });
       if (!promptResp.success) throw new Error(promptResp.error ?? 'prompt failed');
