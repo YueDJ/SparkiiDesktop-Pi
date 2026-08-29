@@ -22,6 +22,7 @@ function makeApi() {
     chooseWorkspace: vi.fn().mockResolvedValue({ path: 'C:/user-ws' }),
     getModelOptions: vi.fn().mockResolvedValue({ defaultModel: 'deepseek-v4-flash', models: ['deepseek-v4-pro', 'deepseek-v4-flash'], provider: 'deepseek' }),
     getSettings: vi.fn().mockResolvedValue({ chatDetailLevel: 'standard' }),
+    getPathForFile: vi.fn((file: File) => `C:/downloads/${file.name}`),
   };
   return { api: api as any, channels };
 }
@@ -88,6 +89,25 @@ describe('GeneralChatSurface', () => {
     expect(api.promptSession).toHaveBeenCalledWith('s1', '请创建 hello.txt');
     act(() => channels['chat-event']({ sessionId: 's1', type: 'message', role: 'assistant', delta: '收到' }));
     expect(screen.getByText(/收到/)).toBeTruthy();
+  });
+
+  it('passes attachments to promptSession when files are selected', async () => {
+    const { api } = makeApi();
+    const { container } = render(<GeneralChatSurface api={api} sessionId="s1" onNewSession={vi.fn()} />);
+    await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('s1'));
+
+    const file = new File(['report'], 'report.pdf', { type: 'application/pdf' });
+    fireEvent.change(container.querySelector('input[type="file"]')!, { target: { files: [file] } });
+    fireEvent.change(screen.getByTestId('composer-input'), { target: { value: '分析这个' } });
+    fireEvent.keyDown(screen.getByTestId('composer-input'), { key: 'Enter' });
+
+    await waitFor(() => expect(api.promptSession).toHaveBeenCalled());
+    expect(api.promptSession).toHaveBeenCalledWith(
+      's1',
+      '分析这个',
+      undefined,
+      [{ path: 'C:/downloads/report.pdf', name: 'report.pdf', size: 6, type: 'application/pdf' }],
+    );
   });
 
   it('restores full Pi history entries and renders a compaction card', async () => {
