@@ -18,6 +18,15 @@ import type { Logger } from './logger.js';
 
 export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, logger: Logger) {
   const broker = createBroker(rt, getWindow);
+  const win = getWindow();
+  if (win) {
+    win.on('maximize', () => {
+      if (!win.isDestroyed()) win.webContents.send('sparkii:event:window-maximized', true);
+    });
+    win.on('unmaximize', () => {
+      if (!win.isDestroyed()) win.webContents.send('sparkii:event:window-maximized', false);
+    });
+  }
   rt.pool.subscribe?.((snapshot) => {
     getWindow()?.webContents.send('sparkii:event:runtime-pool', snapshot);
   });
@@ -852,4 +861,21 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     return { ok: true };
   });
   ipcMain.handle('sparkii:diagnostics', async () => ({ logs: await logger.export(), audit: await rt.audit.exportJsonl() }));
+
+  ipcMain.handle('sparkii:windowMinimize', () => {
+    getWindow()?.minimize();
+    return true;
+  });
+  ipcMain.handle('sparkii:windowToggleMaximize', () => {
+    const window = getWindow();
+    if (!window) return false;
+    if (window.isMaximized()) window.unmaximize();
+    else window.maximize();
+    return window.isMaximized();
+  });
+  ipcMain.handle('sparkii:windowClose', () => {
+    getWindow()?.close();
+    return true;
+  });
+  ipcMain.handle('sparkii:windowIsMaximized', () => getWindow()?.isMaximized() ?? false);
 }

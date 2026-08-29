@@ -1,6 +1,6 @@
 import type { ShellAgent, ScreenId } from '../shell/Shell.js';
 import type { ApprovalProposalLike } from '../trust/types.js';
-import { Card, StatusBadge, RiskBadge, CheckIcon, InfoIcon } from '@sparkii/ui';
+import { Card, StatusBadge, RiskBadge } from '@sparkii/ui';
 
 export interface HomeViewProps {
   userName: string;
@@ -26,12 +26,6 @@ export function HomeView(props: HomeViewProps) {
                 <span className="ui-muted">查看 →</span>
               </button>
             ))}
-        </Card>
-        <Card>
-          <h3 className="home-card-title">系统状态</h3>
-          <div className="home-status-row"><CheckIcon /> 本机运行</div>
-          <div className="home-status-row"><CheckIcon /> 审计已开启</div>
-          <div className="home-status-row"><InfoIcon /> 模型:未测试(设置 → 大模型连接)</div>
         </Card>
       </div>
       <div className="home-label">智能体</div>

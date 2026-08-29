@@ -95,9 +95,6 @@ export function ContractSurface(props: ContractSurfaceProps) {
               ))
             )}
           </div>
-          <div className="contract-risk-footer">
-            {workflow.status === 'done' ? '已审计 ✓ · 导出需经审批' : '活动:等待开始…'}
-          </div>
         </Card>
       </div>
     </div>

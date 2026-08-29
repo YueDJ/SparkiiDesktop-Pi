@@ -74,5 +74,9 @@ export interface SparkiiApi {
   listModels(provider: string, apiKey?: string | null): Promise<{ ok: boolean; models?: string[]; httpStatus?: number; reason?: string; error?: string }>;
   testConnection(provider: string, apiKey?: string | null): Promise<{ ok: boolean; latencyMs?: number; httpStatus?: number; reason?: string; error?: string }>;
   diagnostics(): Promise<{ logs: string; audit: string }>;
+  windowMinimize(): Promise<boolean>;
+  windowToggleMaximize(): Promise<boolean>;
+  windowClose(): Promise<boolean>;
+  windowIsMaximized(): Promise<boolean>;
   on(channel: string, cb: (payload: unknown) => void): () => void;
 }

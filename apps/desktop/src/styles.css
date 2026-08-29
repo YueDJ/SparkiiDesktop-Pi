@@ -11,7 +11,7 @@ html, body { margin: 0; height: 100%; overflow-x: hidden; }
 /* 首页 */
 .home { max-width: 960px; }
 .home-greeting { font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); margin-bottom: var(--spacing-md); }
-.home-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md); margin-bottom: var(--spacing-md); }
+.home-grid-2 { display: grid; grid-template-columns: 1fr; gap: var(--spacing-md); margin-bottom: var(--spacing-md); }
 .home-card-title { margin: 0 0 var(--spacing-sm); font-size: var(--font-size-lg); }
 .home-approval-item { display: flex; align-items: center; gap: var(--spacing-sm); width: 100%; border: none; background: none; padding: var(--spacing-xs) 0; cursor: pointer; text-align: left; font-size: var(--font-size-md); color: var(--color-text); }
 .home-status-row { display: flex; align-items: center; gap: var(--spacing-xs); padding: 2px 0; font-size: var(--font-size-sm); color: var(--color-textSecondary); }

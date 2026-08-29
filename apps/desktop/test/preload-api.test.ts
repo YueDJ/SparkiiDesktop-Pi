@@ -14,6 +14,7 @@ describe('sparkii api shape', () => {
       'newChatSession', 'promptDraftSession', 'openChatSession', 'listChatSessions', 'getChatSession', 'getChatMessages', 'promptSession', 'abortChat', 'getChatState', 'queueMutate', 'setChatTitle', 'setChatModel', 'setChatThinkingLevel', 'setChatWorkspace', 'chooseWorkspace', 'getModelOptions', 'listThinkingLevels', 'deleteChatSession', 'setSessionPinned', 'setSessionArchived', 'setSessionOrder', 'listAgents',
       'getRuntimePool', 'cancelQueuedSession', 'releaseSessionSlot',
       'getPathForFile',
+      'windowMinimize', 'windowToggleMaximize', 'windowClose', 'windowIsMaximized',
     ];
     const api = buildApi({ invoke: () => Promise.resolve(null), on: () => () => {}, removeListener: () => {} } as any);
     expect(Object.keys(api).sort()).toEqual([...names].sort());
