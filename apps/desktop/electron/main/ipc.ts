@@ -48,16 +48,6 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     idleTimers.set(sessionId, timer);
   }
 
-  function isRuntimeActivityEvent(type: string): boolean {
-    return (
-      type === 'agent_start'
-      || type === 'turn_start'
-      || type === 'compaction_start'
-      || type === 'auto_retry_start'
-      || type === 'summarization_retry_attempt_start'
-    );
-  }
-
   function buildSaddle(profileId: string, sessionId: string): SessionSaddle {
     return buildProfileSaddle(rt.profileOf(profileId), anchorDir(sessionId), rt.chatSessions.get(sessionId)?.workspacePath);
   }
@@ -188,8 +178,6 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       win?.webContents.send('sparkii:event:chat-event', { ...ev, sessionId });
       if (ev.type === 'agent_settled') {
         scheduleIdleRelease(sessionId);
-      } else if (isRuntimeActivityEvent(ev.type)) {
-        cancelIdleRelease(sessionId);
       }
       if (ev.type === 'agent_end' && !titledSessions.has(sessionId)) {
         titledSessions.add(sessionId);
