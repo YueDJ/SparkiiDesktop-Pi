@@ -877,4 +877,82 @@ describe('ipc provider handlers', () => {
       followUp: ['再跑一遍测试'],
     });
   });
+
+  it('promptSession stages attachments into the session workspace before prompting', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({}), 'utf8');
+
+    const ws = await mkdtemp(join(tmpdir(), 'ipc-ws-'));
+    dirs.push(ws);
+    const srcDir = await mkdtemp(join(tmpdir(), 'ipc-src-'));
+    dirs.push(srcDir);
+    const src = join(srcDir, 'report.txt');
+    await writeFile(src, 'hello attachment');
+
+    const sent: any[] = [];
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') return { success: true, data: { isStreaming: false, sessionFile: null } };
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'general', model: null },
+    });
+    (rt as any).chatSessions.get = () => ({ profileId: 'general', model: null, workspacePath: ws });
+
+    const handlers = await registeredHandlers();
+    const promptSession = handlers.get('sparkii:promptSession');
+    await promptSession!(null, 's1', '请看附件', undefined, [{ path: src, name: 'report.txt' }]);
+
+    const promptCmd = sent.find((c) => c.type === 'prompt');
+    expect(promptCmd).toBeDefined();
+    expect(promptCmd.message).toContain('.sparkii-attachments/report.txt');
+    expect(promptCmd.message.endsWith('请看附件')).toBe(true);
+    expect(await readFile(join(ws, '.sparkii-attachments', 'report.txt'), 'utf8')).toBe('hello attachment');
+  });
+
+  it('promptDraftSession stages attachments into the chosen workspace', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({}), 'utf8');
+
+    const ws = await mkdtemp(join(tmpdir(), 'ipc-ws-'));
+    dirs.push(ws);
+    const srcDir = await mkdtemp(join(tmpdir(), 'ipc-src-'));
+    dirs.push(srcDir);
+    const src = join(srcDir, 'draft.txt');
+    await writeFile(src, 'draft bytes');
+
+    const sent: any[] = [];
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') return { success: true, data: { sessionId: 's-new', sessionFile: null } };
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({ dataDir, piAgentDir, client });
+    (rt as any).chatSessions.create = vi.fn();
+
+    const handlers = await registeredHandlers();
+    const promptDraftSession = handlers.get('sparkii:promptDraftSession');
+    await promptDraftSession!(null, 'general', '看附件', { workspacePath: ws }, [{ path: src, name: 'draft.txt' }]);
+
+    const promptCmd = sent.find((c) => c.type === 'prompt');
+    expect(promptCmd.message).toContain('.sparkii-attachments/draft.txt');
+    expect(promptCmd.message.endsWith('看附件')).toBe(true);
+    expect(await readFile(join(ws, '.sparkii-attachments', 'draft.txt'), 'utf8')).toBe('draft bytes');
+  });
 });

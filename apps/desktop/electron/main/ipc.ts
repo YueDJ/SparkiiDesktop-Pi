@@ -10,11 +10,13 @@ import { loadSettings, saveSettings } from './settings.js';
 import { buildProviderList } from './provider-catalog.js';
 import { autoWorkspacePath } from './workspace.js';
 import { buildProfileSaddle } from './saddle.js';
+import { buildAttachmentPrompt, stageAttachments } from './attachments.js';
 import { writePiModelsConfig } from './pi-model-config.js';
 import { probeProviderModels } from './provider-probe.js';
 import { mutateQueues, type QueueMutation, type QueueSnapshot } from './queue-mutation.js';
 import type { Runtime } from './runtime.js';
 import type { Logger } from './logger.js';
+import type { ChatAttachment } from '../preload/api-types.js';
 
 export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, logger: Logger) {
   const broker = createBroker(rt, getWindow);
@@ -301,6 +303,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     profileId: string,
     text: string,
     context: { workspacePath?: string | null; model?: string | null; thinkingLevel?: string | null } = {},
+    attachments: ChatAttachment[] = [],
   ) => {
     const now = new Date();
     const workspacePath = context.workspacePath ?? autoWorkspacePath(app.getPath('desktop'), now);
@@ -356,7 +359,8 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
           if (!keyResp.success) throw new Error(keyResp.error ?? 'set_api_key failed');
         }
       }
-      const promptResp = await slot.client.send({ type: 'prompt', message: text });
+      const staged = await stageAttachments(workspacePath, attachments ?? []);
+      const promptResp = await slot.client.send({ type: 'prompt', message: buildAttachmentPrompt(text, staged) });
       if (!promptResp.success) throw new Error(promptResp.error ?? 'prompt failed');
       return { ok: true, sessionId, behavior: 'prompt' as const };
     } catch (e) {
@@ -427,6 +431,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     sessionId: string,
     text: string,
     options?: { behavior?: 'steer' | 'followUp' },
+    attachments: ChatAttachment[] = [],
   ) => {
     cancelIdleRelease(sessionId);
     const open = await ensureOpenSession(sessionId);
@@ -453,14 +458,21 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     const isStreaming = state.isStreaming ?? state.streaming ?? false;
     const behavior = options?.behavior ?? (isStreaming ? 'followUp' : 'prompt');
 
+    const workspacePath = rec?.workspacePath;
+    if (attachments?.length && !workspacePath) {
+      throw new Error('会话缺少工作区，无法放置附件');
+    }
+    const staged = workspacePath ? await stageAttachments(workspacePath, attachments ?? []) : [];
+    const finalText = buildAttachmentPrompt(text, staged);
+
     if (behavior === 'steer') {
-      const resp = await open.slot.client.send({ type: 'steer', message: text });
+      const resp = await open.slot.client.send({ type: 'steer', message: finalText });
       if (!resp.success) throw new Error(resp.error ?? 'steer failed');
     } else if (behavior === 'followUp') {
-      const resp = await open.slot.client.send({ type: 'follow_up', message: text });
+      const resp = await open.slot.client.send({ type: 'follow_up', message: finalText });
       if (!resp.success) throw new Error(resp.error ?? 'follow_up failed');
     } else {
-      const resp = await open.slot.client.send({ type: 'prompt', message: text });
+      const resp = await open.slot.client.send({ type: 'prompt', message: finalText });
       if (!resp.success) throw new Error(resp.error ?? 'prompt failed');
     }
 
