@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, cleanup, waitFor } from '@testing-library/react';
 import { GeneralChatSurface, applyChatEvent, normalizeMessages, type ChatEntry } from '../src/surfaces/GeneralChatSurface.js';
+import { ErrorProvider, createMemoryErrorStore } from '@sparkii/ui';
 
 afterEach(cleanup);
 
@@ -246,7 +247,7 @@ describe('GeneralChatSurface', () => {
 
   it('shows runtime errors pushed by Pi', async () => {
     const { api, channels } = makeApi();
-    render(<GeneralChatSurface api={api} sessionId="s1" onNewSession={vi.fn()} />);
+    render(<ErrorProvider store={createMemoryErrorStore()}><GeneralChatSurface api={api} sessionId="s1" onNewSession={vi.fn()} /></ErrorProvider>);
     await screen.findByText('hi');
 
     act(() => channels['chat-event']({

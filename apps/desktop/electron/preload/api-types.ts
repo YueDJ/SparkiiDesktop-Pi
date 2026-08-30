@@ -40,6 +40,14 @@ export interface ChatAttachment {
   type?: string;
 }
 
+export interface ErrorRecord {
+  id: string;
+  message: string;
+  source: string;
+  createdAt: number;
+  read: boolean;
+}
+
 export interface SparkiiApi {
   getLocalSubject(): Promise<{ userId: string; roles: string[] }>;
   chooseDocument(): Promise<{ path?: string }>;
@@ -78,6 +86,11 @@ export interface SparkiiApi {
   listModels(provider: string, apiKey?: string | null): Promise<{ ok: boolean; models?: string[]; httpStatus?: number; reason?: string; error?: string }>;
   testConnection(provider: string, apiKey?: string | null): Promise<{ ok: boolean; latencyMs?: number; httpStatus?: number; reason?: string; error?: string }>;
   diagnostics(): Promise<{ logs: string; audit: string }>;
+  listErrors(): Promise<ErrorRecord[]>;
+  appendError(rec: { id: string; message: string; source: string; createdAt: number }): Promise<ErrorRecord>;
+  clearError(id: string): Promise<{ ok: boolean }>;
+  clearErrors(): Promise<{ ok: boolean }>;
+  markAllErrorsRead(): Promise<{ ok: boolean }>;
   windowMinimize(): Promise<boolean>;
   windowToggleMaximize(): Promise<boolean>;
   windowClose(): Promise<boolean>;

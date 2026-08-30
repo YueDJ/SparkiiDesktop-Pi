@@ -7,8 +7,9 @@ import { AgentNav } from './AgentNav.js';
 import { SessionList, type SessionGroup, type SessionListItem } from './SessionList.js';
 import { StatusBar } from './StatusBar.js';
 import { RuntimeCenter, type RuntimePoolSummary } from './RuntimeCenter.js';
+import { ErrorCenterPanel, useErrors } from './ErrorCenter.js';
 import { TextField } from '../primitives/TextField.js';
-import { GearIcon, MoonIcon, SunIcon, UserIcon, ShieldIcon, SearchIcon, CloseIcon, MinimizeIcon, MaximizeIcon, WindowRestoreIcon } from '../icons/index.js';
+import { GearIcon, MoonIcon, SunIcon, UserIcon, ShieldIcon, SearchIcon, CloseIcon, MinimizeIcon, MaximizeIcon, WindowRestoreIcon, BellIcon } from '../icons/index.js';
 
 export type ScreenId = 'home' | 'contract-review' | 'chat' | 'dashboard' | 'general' | 'approvals' | 'audit' | 'settings';
 export type AgentStatus = 'running' | 'idle' | 'queued';
@@ -65,7 +66,7 @@ const TITLES: Partial<Record<ScreenId, string>> = {
   settings: '系统设置',
 };
 
-type DrawerKind = 'queue' | 'account' | null;
+type DrawerKind = 'queue' | 'account' | 'errors' | null;
 
 function setTheme(dark: boolean): void {
   document.documentElement.classList.toggle('dark', dark);
@@ -82,6 +83,7 @@ function isRunningStatus(status: string | undefined): boolean {
 
 export function Shell(props: ShellProps) {
   const { active, agents, sessions, pendingApprovals, statusText, runtimePool, userName = 'admin', userRole = '审核员', surfaceTitle, surfaceActions, onNavigate, onNewSession, onOpenSession, children } = props;
+  const { unreadCount, toast, dismissToast } = useErrors();
   const [drawer, setDrawer] = useState<DrawerKind>(null);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
   const [renaming, setRenaming] = useState<{ agentId: string; sessionId: string } | null>(null);
@@ -101,9 +103,8 @@ export function Shell(props: ShellProps) {
 
   useEffect(() => {
     if (!windowApi?.windowIsMaximized) return;
-    let off: (() => void) | undefined;
+    const off = windowApi.on?.('window-maximized', (v) => setMaximized(!!v));
     windowApi.windowIsMaximized().then((v) => setMaximized(!!v)).catch(() => {});
-    off = windowApi.on?.('window-maximized', (v) => setMaximized(!!v));
     return () => off?.();
   }, [windowApi]);
 
@@ -157,7 +158,10 @@ export function Shell(props: ShellProps) {
   };
 
   const closeDrawer = () => setDrawer(null);
-  const openDrawer = (kind: Exclude<DrawerKind, null>) => setDrawer((cur) => (cur === kind ? null : kind));
+  const openDrawer = (kind: Exclude<DrawerKind, null>) => {
+    setDrawer((cur) => (cur === kind ? null : kind));
+    if (toast) dismissToast(toast.id);
+  };
 
   const startNewSession = (agentId: string) => {
     onNewSession(agentId);
@@ -193,6 +197,19 @@ export function Shell(props: ShellProps) {
           <Button variant="ghost" size="sm" onClick={() => onNavigate('approvals')}><ShieldIcon /> 审批 {pendingApprovals > 0 && <Badge>{pendingApprovals}</Badge>}</Button>
           <IconButton label="账号" onClick={() => openDrawer('account')}><UserIcon /></IconButton>
           <IconButton label="深色/浅色" onClick={toggleTheme}>{dark ? <SunIcon /> : <MoonIcon />}</IconButton>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ui-error-trigger"
+            aria-label={`报错中心${unreadCount > 0 ? ` · ${unreadCount} 条未读` : ''}`}
+            title={`报错中心${unreadCount > 0 ? ` · ${unreadCount} 条未读` : ''}`}
+            onClick={() => openDrawer('errors')}
+          >
+            <span className="ui-error-trigger-icon">
+              <BellIcon />
+              {unreadCount > 0 && <span className="ui-error-trigger-badge">{unreadCount}</span>}
+            </span>
+          </Button>
           <IconButton label="设置" onClick={() => onNavigate('settings')}><GearIcon /></IconButton>
           <span className="ui-topbar-divider" aria-hidden="true" />
           <div className="ui-window-controls">
@@ -277,6 +294,10 @@ export function Shell(props: ShellProps) {
           <div className="ui-item">修改密码</div>
           <div className="ui-item">导出审计记录</div>
         </div>
+      </Drawer>
+
+      <Drawer open={drawer === 'errors'} title="报错中心" onClose={closeDrawer}>
+        <ErrorCenterPanel />
       </Drawer>
     </div>
   );

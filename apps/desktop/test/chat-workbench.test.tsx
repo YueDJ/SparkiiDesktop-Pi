@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act, cleanup } from '@testing-library/react';
 import { ChatWorkbench } from '../src/workbench/ChatWorkbench.js';
+import { ErrorProvider, createMemoryErrorStore } from '@sparkii/ui';
 
 // vitest runs without `globals: true`, so RTL's auto-cleanup is inactive;
 // clean up between tests to avoid cross-test DOM leakage.
@@ -31,7 +32,7 @@ describe('ChatWorkbench', () => {
 
   it('shows an error when prompt rejects', async () => {
     const { api } = makeApi(() => Promise.reject(new Error('prompt timeout')));
-    render(<ChatWorkbench api={api} />);
+    render(<ErrorProvider store={createMemoryErrorStore()}><ChatWorkbench api={api} /></ErrorProvider>);
     fireEvent.change(screen.getByRole('textbox'), { target: { value: 'hi' } });
     fireEvent.click(screen.getByText('发送'));
     await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());

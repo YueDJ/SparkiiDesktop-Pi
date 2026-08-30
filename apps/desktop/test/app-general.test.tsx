@@ -26,6 +26,11 @@ function makeApi() {
     getLocalSubject: vi.fn().mockResolvedValue({ userId: 'admin', roles: ['admin', 'reviewer'] }),
     getProfile: vi.fn().mockResolvedValue({ pages: {} }),
     listPendingApprovals: vi.fn().mockResolvedValue([]),
+    listErrors: vi.fn().mockResolvedValue([]),
+    appendError: vi.fn().mockResolvedValue({ id: 'e', message: '', source: '', createdAt: 0, read: false }),
+    clearError: vi.fn().mockResolvedValue({ ok: true }),
+    clearErrors: vi.fn().mockResolvedValue({ ok: true }),
+    markAllErrorsRead: vi.fn().mockResolvedValue({ ok: true }),
     listAgents: vi.fn().mockResolvedValue([
       { id: 'general', name: '通用智能体' },
       { id: 'contract-review', name: '合同审核智能体' },

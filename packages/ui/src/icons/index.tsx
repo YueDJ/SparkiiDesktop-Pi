@@ -195,6 +195,15 @@ export function InfoIcon(p: IconProps) {
   return <svg {...base} {...p}><circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" /></svg>;
 }
 
+export function BellIcon(p: IconProps) {
+  return (
+    <svg {...base} {...p}>
+      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
+  );
+}
+
 export function PinIcon(p: IconProps) {
   return (
     <svg {...base} {...p}>

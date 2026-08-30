@@ -11,6 +11,7 @@ import { knowledgeConnector } from "@sparkii/connectors";
 import { createUtilityHostHandle, createForkHostHandle } from "../pi-runtime/transports.js";
 import { registerConnectorHandlers } from "./connector-registry.js";
 import { ChatSessionStore } from "./chat-session-store.js";
+import { ErrorStore } from "./error-store.js";
 import { Keyring } from "./keyring.js";
 import { loadSettings } from "./settings.js";
 import { loadApiKey, saveApiKey } from "./settings.js";
@@ -30,7 +31,7 @@ export interface Runtime {
   profiles: Map<string, ProfileRuntime>;
   gate: ApprovalGate; executor: ConnectorExecutor; audit: AuditStore;
   pool: PiRuntimePool; subject: Subject;
-  chatSessions: ChatSessionStore; dataDir: string; keyring: Keyring; piAgentDir: string;
+  chatSessions: ChatSessionStore; errors: ErrorStore; dataDir: string; keyring: Keyring; piAgentDir: string;
   profileOf(id: string): ProfileRuntime;
   keyFor(providerId: string): Promise<string | null>;
   setKey(providerId: string, key: string): Promise<void>;
@@ -86,6 +87,7 @@ export async function assemble(opts: {
   const executor = new ConnectorExecutor(audit);
   registerConnectorHandlers(executor);
   const chatSessions = new ChatSessionStore(join(opts.dataDir, "sessions.db"));
+  const errors = new ErrorStore(join(opts.dataDir, "errors.db"));
   const keyring = new Keyring(join(opts.dataDir, "keyring"));
   const piAgentDir = join(opts.dataDir, "pi-agent");
   registerGeneralExecutor(executor, {
@@ -113,7 +115,7 @@ export async function assemble(opts: {
   return {
     profiles, gate, executor, audit, pool,
     subject: { userId: userInfo().username, roles: ["admin", "reviewer"] },
-    chatSessions, dataDir: opts.dataDir, keyring, piAgentDir,
+    chatSessions, errors, dataDir: opts.dataDir, keyring, piAgentDir,
     profileOf: (id) => {
       const pr = profiles.get(id);
       if (!pr) throw new Error(`unknown profile ${id}`);

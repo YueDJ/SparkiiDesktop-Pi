@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Select, SettingsLayout, SettingsRow, Switch, TextField } from '@sparkii/ui';
+import { Button, Select, SettingsLayout, SettingsRow, Switch, TextField, useErrors } from '@sparkii/ui';
 import { THINKING_LEVELS, thinkingLevelLabel } from '../workbench/thinking-levels.js';
 import {
   CHAT_DETAIL_LEVELS,
@@ -62,6 +62,7 @@ function probeError(r: { reason?: string; error?: string }): string {
 
 export function SettingsView(props: SettingsViewProps) {
   const { api, onExportAudit } = props;
+  const { reportError } = useErrors();
   const [pane, setPane] = useState<Pane>('llm');
   const [entries, setEntries] = useState<ProviderEntry[]>([]);
   const [providerId, setProviderId] = useState('');
@@ -100,7 +101,10 @@ export function SettingsView(props: SettingsViewProps) {
         if (s.routes && typeof s.routes === 'object') setRoutes(s.routes as Record<string, string>);
         setInfo('已加载本机配置');
       })
-      .catch(() => setInfo('配置加载失败'));
+      .catch(() => {
+        setInfo('配置加载失败');
+        reportError('配置加载失败', { source: '系统设置' });
+      });
   }, [api]);
 
   const switchProvider = (id: string) => {
@@ -118,7 +122,7 @@ export function SettingsView(props: SettingsViewProps) {
   };
 
   const fetchModels = async () => {
-    if (!api?.listModels) { setInfo('IPC 未连接，无法拉取模型'); return; }
+    if (!api?.listModels) { setInfo('IPC 未连接，无法拉取模型'); reportError('IPC 未连接，无法拉取模型', { source: '系统设置' }); return; }
     setFetching(true);
     setModels([]);
     setConnStatus({ cls: '', text: '未测试' });
@@ -129,12 +133,13 @@ export function SettingsView(props: SettingsViewProps) {
     } else {
       setModels([]);
       setInfo(`拉取失败：${probeError(r)}`);
+      reportError(`拉取失败：${probeError(r)}`, { source: '系统设置' });
     }
     setFetching(false);
   };
 
   const testConnection = async () => {
-    if (!api?.testConnection) { setInfo('IPC 未连接，无法测试'); return; }
+    if (!api?.testConnection) { setInfo('IPC 未连接，无法测试'); reportError('IPC 未连接，无法测试', { source: '系统设置' }); return; }
     setTesting(true);
     setConnStatus({ cls: 'wait', text: '连接中…' });
     const r = await api.testConnection(providerId, apiKey);
@@ -144,28 +149,33 @@ export function SettingsView(props: SettingsViewProps) {
     } else {
       setConnStatus({ cls: 'fail', text: probeError(r) });
       setInfo('测试失败');
+      reportError(probeError(r), { source: '系统设置' });
     }
     setTesting(false);
   };
 
   const save = async () => {
-    if (!api?.saveSettings) { setInfo('IPC 未连接，无法保存'); return; }
+    if (!api?.saveSettings) { setInfo('IPC 未连接，无法保存'); reportError('IPC 未连接，无法保存', { source: '系统设置' }); return; }
     const nextCustom = active?.kind === 'custom'
       ? [...customProviders.filter((p) => p.id !== providerId), { id: providerId, name: active.name, baseUrl: customBaseUrl, api: customApi }]
       : customProviders;
-    await api.saveSettings({
-      activeProviderId: providerId,
-      providers: nextCustom,
-      defaultModel,
-      defaultThinkingLevel,
-      routes,
-      apiKey,
-      maxAgents,
-      queueEnabled,
-      chatDetailLevel,
-    });
-    setCustomProviders(nextCustom);
-    setInfo('设置已保存');
+    try {
+      await api.saveSettings({
+        activeProviderId: providerId,
+        providers: nextCustom,
+        defaultModel,
+        defaultThinkingLevel,
+        routes,
+        apiKey,
+        maxAgents,
+        queueEnabled,
+        chatDetailLevel,
+      });
+      setCustomProviders(nextCustom);
+      setInfo('设置已保存');
+    } catch (e) {
+      reportError(e instanceof Error ? e.message : String(e), { source: '系统设置' });
+    }
   };
 
   const nav = (
