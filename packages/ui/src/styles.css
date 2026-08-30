@@ -201,7 +201,7 @@ button { font: inherit; color: inherit; }
 .ui-window-btn { width: 46px; height: 100%; border: none; background: transparent; color: var(--color-textSecondary); cursor: default; display: inline-flex; align-items: center; justify-content: center; transition: background var(--motion-fast) var(--motion-ease), color var(--motion-fast) var(--motion-ease); }
 .ui-window-btn:hover { background: var(--color-controlBg); color: var(--color-text); }
 .ui-window-btn--close:hover { background: var(--color-risk); color: var(--color-onPrimary); }
-.ui-surface-head { display: flex; align-items: center; gap: var(--spacing-xs); margin-bottom: var(--spacing-md); flex: none; position: relative; z-index: 1001; }
+.ui-surface-head { display: flex; align-items: center; gap: var(--spacing-xs); margin-bottom: var(--spacing-md); flex: none; position: relative; }
 .ui-surface-head-right { margin-left: auto; }
 .ui-rail-label { font-size: var(--font-size-xs); color: var(--color-textMuted); margin: var(--spacing-xs) 0; }
 .ui-item { display: flex; align-items: center; gap: var(--spacing-xs); padding: var(--spacing-xs) var(--spacing-sm); font-size: var(--font-size-md); }
