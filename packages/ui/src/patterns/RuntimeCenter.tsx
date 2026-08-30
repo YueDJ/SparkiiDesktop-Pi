@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '../primitives/Button.js';
 import { Modal } from '../primitives/Modal.js';
+import { useErrors } from './ErrorCenter.js';
 
 export type RuntimeCenterStatus = 'running' | 'waiting-approval' | 'idle';
 
@@ -41,17 +42,16 @@ export function RuntimeCenter({
   onRelease(sessionId: string): Promise<void> | void;
   onCancelQueue(queueId: string): Promise<void> | void;
 }) {
+  const { reportError } = useErrors();
   const [confirm, setConfirm] = useState<ConfirmState>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState('');
 
   const run = async (key: string, action: () => Promise<void> | void) => {
     setBusy(key);
-    setError('');
     try {
       await action();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      reportError(e instanceof Error ? e.message : String(e), { source: '运行中心' });
     } finally {
       setBusy(null);
     }
@@ -72,7 +72,6 @@ export function RuntimeCenter({
       <div className="ui-runtime-summary">
         运行 {snapshot.active}/{snapshot.maxAgents} · 排队 {snapshot.queued} · 空闲 {Math.max(0, snapshot.maxAgents - snapshot.active)}
       </div>
-      {error && <div className="ui-error" role="alert">{error}</div>}
       <div className="ui-rail-label">运行中</div>
       {snapshot.sessions.length === 0 ? <div className="ui-muted">暂无运行中的智能体</div> : snapshot.sessions.map((s) => (
         <div key={s.sessionId} className="ui-runtime-row">

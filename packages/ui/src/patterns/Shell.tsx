@@ -103,9 +103,8 @@ export function Shell(props: ShellProps) {
 
   useEffect(() => {
     if (!windowApi?.windowIsMaximized) return;
-    let off: (() => void) | undefined;
+    const off = windowApi.on?.('window-maximized', (v) => setMaximized(!!v));
     windowApi.windowIsMaximized().then((v) => setMaximized(!!v)).catch(() => {});
-    off = windowApi.on?.('window-maximized', (v) => setMaximized(!!v));
     return () => off?.();
   }, [windowApi]);
 

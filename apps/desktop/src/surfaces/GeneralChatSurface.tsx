@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChatAttachment, SparkiiApi } from '../types/sparkii-api.js';
-import { Button, ChatMessage, type ComposerAttachment } from '@sparkii/ui';
+import { Button, ChatMessage, useErrors, type ComposerAttachment } from '@sparkii/ui';
 import { Composer } from '../workbench/Composer.js';
 import { ToolCard } from '../workbench/ToolCard.js';
 import { LifecycleCard } from '../workbench/LifecycleCard.js';
@@ -201,12 +201,12 @@ function resolveThinkingTarget(
 
 export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
   const { api, sessionId, active = true, draft = false, onNewSession, onSessionCommitted } = props;
+  const { reportError } = useErrors();
   const [entries, setEntries] = useState<ChatEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [stopping, setStopping] = useState(false);
   const [queues, setQueues] = useState<QueueMap>({ steering: [], followUp: [] });
   const [drafts, setDrafts] = useState<QueueMap>({ steering: [], followUp: [] });
-  const [error, setError] = useState('');
   const [models, setModels] = useState<string[]>([]);
   const [defaultModel, setDefaultModel] = useState<string | null>(null);
   const [model, setModel] = useState<string | null>(null);
@@ -267,7 +267,7 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
       }
       setModel(null);
       refreshThinkingLevels(null, activeProvider, defaultModelId);
-    }).catch((e: any) => setError(String(e?.message ?? e)));
+    }).catch((e: any) => reportError(String(e?.message ?? e), { source: '通用智能体' }));
   };
 
   const refreshModelOptions = () => {
@@ -286,7 +286,7 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
         return;
       }
       refreshMeta(nextModels, nextProvider, nextDefault);
-    }).catch((e: any) => setError(String(e?.message ?? e)));
+    }).catch((e: any) => reportError(String(e?.message ?? e), { source: '通用智能体' }));
   };
 
   useEffect(() => {
@@ -295,7 +295,6 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
     setStopping(false);
     setQueues({ steering: [], followUp: [] });
     setDrafts({ steering: [], followUp: [] });
-    setError('');
     setModel(null);
     setThinkingLevel(null);
     setThinkingLevels([...THINKING_LEVELS]);
@@ -312,10 +311,10 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
       setContextUsage(state?.contextUsage ?? null);
       setIsCompacting(Boolean(state?.isCompacting));
       if (state?.streaming) setBusy(true);
-    }).catch((e: any) => setError(String(e?.message ?? e)));
+    }).catch((e: any) => reportError(String(e?.message ?? e), { source: '通用智能体' }));
     api.openChatSession(sessionId).then(({ messages, entries }: any) => {
       setEntries(entries?.length ? Timeline.normalizeHistoricalSessionEntries(entries) : Timeline.normalizeMessages(messages ?? []));
-    }).catch((e: any) => setError(String(e?.message ?? e)));
+    }).catch((e: any) => reportError(String(e?.message ?? e), { source: '通用智能体' }));
     const off1 = api.on('chat-event', (p: any) => {
       if (p?.sessionId !== sessionId) return;
       if (p?.type === 'queue_update') {
@@ -333,7 +332,7 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
         return;
       }
       if (p?.type === 'runtime_error') {
-        setError(typeof p?.message === 'string' ? p.message : 'Pi 运行时错误');
+        reportError(typeof p?.message === 'string' ? p.message : 'Pi 运行时错误', { source: '通用智能体' });
         setEntries((xs) => Timeline.applyChatEvent(xs, p));
         return;
       }
@@ -390,7 +389,6 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
   const send = (text: string, attachments: ComposerAttachment[] = []) => {
     const display = attachments.length ? `${attachments.map((a) => `📎 ${a.name}`).join(' ')}\n${text}` : text;
     const chatAttachments: ChatAttachment[] = attachments.map(({ path, name, size, type }) => ({ path, name, size, type }));
-    setError('');
     if (!sessionId && draft) {
       if (busy) return;
       setBusy(true);
@@ -403,7 +401,7 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
       ).then((res) => {
         if (res?.sessionId) onSessionCommitted?.(res.sessionId, text);
       }).catch((e: any) => {
-        setError(String(e?.message ?? e));
+        reportError(String(e?.message ?? e), { source: '通用智能体' });
         setBusy(false);
       });
       return;
@@ -412,10 +410,10 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
     if (busy) {
       if (chatAttachments.length) {
         api.promptSession(sessionId, text, { behavior: 'followUp' }, chatAttachments)
-          .catch((e: any) => setError(String(e?.message ?? e)));
+          .catch((e: any) => reportError(String(e?.message ?? e), { source: '通用智能体' }));
       } else {
         api.promptSession(sessionId, text, { behavior: 'followUp' })
-          .catch((e: any) => setError(String(e?.message ?? e)));
+          .catch((e: any) => reportError(String(e?.message ?? e), { source: '通用智能体' }));
       }
       return;
     }
@@ -426,13 +424,13 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
     if (chatAttachments.length) {
       api.promptSession(sessionId, text, undefined, chatAttachments)
         .catch((e: any) => {
-          setError(String(e?.message ?? e));
+          reportError(String(e?.message ?? e), { source: '通用智能体' });
           setBusy(false);
         });
     } else {
       api.promptSession(sessionId, text)
         .catch((e: any) => {
-          setError(String(e?.message ?? e));
+          reportError(String(e?.message ?? e), { source: '通用智能体' });
           setBusy(false);
         });
     }
@@ -441,7 +439,6 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
   const stop = () => {
     if (!sessionId || stopping) return;
     setStopping(true);
-    setError('');
     api.abortChat(sessionId).then((res: any) => {
       setDrafts({
         steering: res?.cleared?.steering ?? [],
@@ -450,7 +447,7 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
       setBusy(false);
       setStopping(false);
     }).catch((e: any) => {
-      setError(String(e?.message ?? e));
+      reportError(String(e?.message ?? e), { source: '通用智能体' });
       setStopping(false);
     });
   };
@@ -465,7 +462,7 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
     targetQueue?: QueueName;
   }) => {
     if (!sessionId) return;
-    api.queueMutate(sessionId, mutation as any).catch((e: any) => setError(String(e?.message ?? e)));
+    api.queueMutate(sessionId, mutation as any).catch((e: any) => reportError(String(e?.message ?? e), { source: '通用智能体' }));
   };
 
   const restoreDraft = (queue: QueueName, index: number, behavior: 'steer' | 'followUp') => {
@@ -478,7 +475,7 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
         next[queue].splice(index, 1);
         return next;
       }))
-      .catch((e: any) => setError(String(e?.message ?? e)));
+      .catch((e: any) => reportError(String(e?.message ?? e), { source: '通用智能体' }));
   };
 
   const onModelChange = (next: string | null) => {
@@ -531,7 +528,6 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
         ))}
         {visibleEntries.length === 0 && !busy && <div className="muted chat-hint">开始对话，或让智能体在工作区里做点什么。</div>}
       </div>
-      {error && <div className="chat-error" role="alert">{error}</div>}
       <div className="chat-queue-area">
         <QueueGroup
           title="引导队列"

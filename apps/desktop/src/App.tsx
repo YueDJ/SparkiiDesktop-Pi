@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Shell, type ScreenId, type ShellAgent, type ShellSession } from './shell/Shell.js';
-import type { RuntimePoolSummary } from '@sparkii/ui';
+import { ErrorProvider, useErrors, type ErrorStoreAdapter, type RuntimePoolSummary } from '@sparkii/ui';
+import type { SparkiiApi } from './types/sparkii-api.js';
 import { SettingsView } from './shell/SettingsView.js';
 import { ApprovalCenter } from './trust/ApprovalCenter.js';
 import { ApprovalPanel } from './trust/ApprovalPanel.js';
@@ -70,8 +71,27 @@ function mapRuntimePool(raw: any, pendingApprovals: any[]): RuntimePoolSummary {
   };
 }
 
+function makeErrorStore(api: SparkiiApi): ErrorStoreAdapter {
+  return {
+    load: () => api.listErrors(),
+    append: (rec) => api.appendError(rec),
+    clearOne: (id) => api.clearError(id).then(() => {}),
+    clearAll: () => api.clearErrors().then(() => {}),
+    markAllRead: () => api.markAllErrorsRead().then(() => {}),
+  };
+}
+
 export function App() {
+  return (
+    <ErrorProvider store={makeErrorStore(window.sparkii)}>
+      <AppShell />
+    </ErrorProvider>
+  );
+}
+
+function AppShell() {
   const api = window.sparkii;
+  const { reportError } = useErrors();
   const [userName, setUserName] = useState('');
   const [state, setState] = useState<Record<string, unknown>>({ documents: [] });
   const [pending, setPending] = useState<any[]>([]);
@@ -83,7 +103,6 @@ export function App() {
   const [sessions, setSessions] = useState<Record<string, ShellSession[]>>({});
   const [activeGeneralSession, setActiveGeneralSession] = useState<string | null>(null);
   const [generalTitle, setGeneralTitle] = useState('');
-  const [globalError, setGlobalError] = useState('');
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [approvalFocusId, setApprovalFocusId] = useState<string | null>(null);
   const [runtimePool, setRuntimePool] = useState<RuntimePoolSummary>({
@@ -111,8 +130,11 @@ export function App() {
   useEffect(() => api.on('workflow', (e: any) => {
     if (e.type === 'step_started') setWorkflow({ status: 'running', step: e.stepId });
     else if (e.type === 'workflow_completed') setWorkflow({ status: 'done' });
-    else if (e.type === 'workflow_failed') setWorkflow({ status: 'failed', error: e.error?.message });
-  }), [api]);
+    else if (e.type === 'workflow_failed') {
+      setWorkflow({ status: 'failed', error: e.error?.message });
+      reportError(e.error?.message ?? '审核失败', { source: '合同审核' });
+    }
+  }), [api, reportError]);
   useEffect(() => api.on('chat-event', (p: any) => {
     if (p?.sessionId) {
       const ov = sessionOverridesRef.current.get(p.sessionId);
@@ -272,7 +294,6 @@ export function App() {
 
   const onNewSession = async (agentId: string) => {
     if (agentId === 'general') {
-      setGlobalError('');
       setActiveGeneralSession(null);
       setGeneralTitle('');
       setScreen('general');
@@ -451,7 +472,6 @@ export function App() {
 
   return (
     <>
-      {globalError && <div className="chat-error" role="alert" style={{ margin: 'var(--spacing-sm)' }}>{globalError}</div>}
       <Shell
         active={screen}
         agents={derivedAgents}
