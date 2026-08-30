@@ -31,14 +31,13 @@ function makeApi() {
       { id: 'contract-review', name: '合同审核智能体' },
     ]),
     newChatSession: vi.fn().mockResolvedValue({ sessionId: 'g1', workspacePath: 'C:/ws/SparkiiXyZ9202608251710', model: null }),
-    promptDraftSession: vi.fn().mockResolvedValue({ ok: true, sessionId: 'g1', behavior: 'prompt' }),
     listChatSessions: vi.fn().mockResolvedValue([{ id: 'g1', profileId: 'general', title: '会话 08-25 17:10', workspaceKind: 'auto', workspacePath: 'C:/ws/SparkiiXyZ9202608251710', model: null, piSessionFile: null, createdAt: 0, updatedAt: 0 }]),
     getChatSession: vi.fn().mockResolvedValue({ workspacePath: 'C:/ws/SparkiiXyZ9202608251710', workspaceKind: 'auto' }),
     openChatSession: vi.fn().mockResolvedValue({ messages: [] }),
     getChatState: vi.fn().mockResolvedValue({ streaming: false, steering: [], followUp: [] }),
     getSettings: vi.fn().mockResolvedValue({ chatDetailLevel: 'standard' }),
     getModelOptions: vi.fn().mockResolvedValue({ defaultModel: null, models: [] }),
-    promptSession: vi.fn().mockResolvedValue({ ok: true }),
+    promptSession: vi.fn().mockResolvedValue({ ok: true, sessionId: 'g1', behavior: 'prompt' }),
     abortChat: vi.fn().mockResolvedValue({ ok: true, cleared: { steering: [], followUp: [] } }),
     queueMutate: vi.fn().mockResolvedValue({ ok: true, steering: [], followUp: [] }),
     setChatTitle: vi.fn().mockResolvedValue({ ok: true }),
@@ -59,7 +58,7 @@ describe('App general agent', () => {
     const input = await screen.findByTestId('composer-input');
     fireEvent.change(input, { target: { value: '你好' } });
     fireEvent.keyDown(input, { key: 'Enter' });
-    await waitFor(() => expect(api.promptDraftSession).toHaveBeenCalledWith('general', '你好', expect.any(Object)));
+    await waitFor(() => expect(api.promptSession).toHaveBeenCalledWith(null, '你好', undefined, undefined, expect.any(Object)));
     await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
     act(() => channels['chat-event']({ sessionId: 'g1', type: 'message', role: 'assistant', delta: '在的' }));
     expect(screen.getByText(/在的/)).toBeTruthy();
@@ -78,7 +77,7 @@ describe('App general agent', () => {
 
   it('shows an error when the first draft prompt fails', async () => {
     const { api } = makeApi();
-    api.promptDraftSession.mockRejectedValueOnce(new Error('session create failed'));
+    api.promptSession.mockRejectedValueOnce(new Error('session create failed'));
     render(<App />);
     await screen.findByText(/工作台 · 上午好/);
 
@@ -97,7 +96,7 @@ describe('App general agent', () => {
     const input = await screen.findByTestId('composer-input');
     fireEvent.change(input, { target: { value: '你好' } });
     fireEvent.keyDown(input, { key: 'Enter' });
-    await waitFor(() => expect(api.promptDraftSession).toHaveBeenCalled());
+    await waitFor(() => expect(api.promptSession).toHaveBeenCalled());
     fireEvent.contextMenu(await screen.findByTestId('session-g1'));
     fireEvent.click(screen.getByRole('menuitem', { name: /删除/ }));
     await waitFor(() => expect(api.deleteChatSession).toHaveBeenCalledWith('g1'));
@@ -132,7 +131,7 @@ describe('App general agent', () => {
     const input = await screen.findByTestId('composer-input');
     fireEvent.change(input, { target: { value: '你好' } });
     fireEvent.keyDown(input, { key: 'Enter' });
-    await waitFor(() => expect(api.promptDraftSession).toHaveBeenCalledWith('general', '你好', expect.any(Object)));
+    await waitFor(() => expect(api.promptSession).toHaveBeenCalledWith(null, '你好', undefined, undefined, expect.any(Object)));
     await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
     act(() => channels['chat-event']({ sessionId: 'g1', type: 'message', role: 'assistant', delta: '在的' }));
     expect(screen.getByText(/在的/)).toBeTruthy();
@@ -153,7 +152,7 @@ describe('App general agent', () => {
     const input = await screen.findByTestId('composer-input');
     fireEvent.change(input, { target: { value: '你好' } });
     fireEvent.keyDown(input, { key: 'Enter' });
-    await waitFor(() => expect(api.promptDraftSession).toHaveBeenCalled());
+    await waitFor(() => expect(api.promptSession).toHaveBeenCalled());
     await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
     // 会话应立即出现在左侧历史里，无需切换后再出现
     expect(screen.getByTestId('session-g1')).toBeTruthy();

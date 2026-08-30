@@ -394,10 +394,13 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
     if (!sessionId && draft) {
       if (busy) return;
       setBusy(true);
-      const draftRequest = chatAttachments.length
-        ? api.promptDraftSession('general', text, { workspacePath, model, thinkingLevel }, chatAttachments)
-        : api.promptDraftSession('general', text, { workspacePath, model, thinkingLevel });
-      draftRequest.then((res) => {
+      api.promptSession(
+        null,
+        text,
+        undefined,
+        chatAttachments.length ? chatAttachments : undefined,
+        { profileId: 'general', workspacePath, model, thinkingLevel },
+      ).then((res) => {
         if (res?.sessionId) onSessionCommitted?.(res.sessionId, text);
       }).catch((e: any) => {
         setError(String(e?.message ?? e));
