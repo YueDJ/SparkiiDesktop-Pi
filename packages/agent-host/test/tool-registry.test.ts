@@ -36,4 +36,23 @@ describe("resolveToolDefinitions", () => {
     const result = await (read as any).execute("t1", { path: "a.txt" }, undefined, undefined, {});
     expect((result as any).content?.[0]?.text).toContain("hello workspace");
   });
+
+  it("read tool returns inline image content for an image file", async () => {
+    const ws = mkdtempSync(join(tmpdir(), "ws-"));
+    const png = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+      "base64",
+    );
+    writeFileSync(join(ws, "pixel.png"), png);
+    const defs = resolveToolDefinitions(["read"], { cwd: tmpdir(), workspaceRoot: ws, propose });
+    const read = defs[0];
+    const result = await (read as any).execute("t1", { path: "pixel.png" }, undefined, undefined, {});
+    const content = (result as any).content;
+    expect(Array.isArray(content)).toBe(true);
+    const image = content.find((c: any) => c.type === "image");
+    expect(image).toBeDefined();
+    expect(image.mimeType).toBe("image/png");
+    expect(typeof image.data).toBe("string");
+    expect(image.data.length).toBeGreaterThan(0);
+  });
 });
