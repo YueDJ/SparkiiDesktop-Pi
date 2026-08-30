@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Sparkii">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4C8DFF"/>
+      <stop offset="0.55" stop-color="#2563EB"/>
+      <stop offset="1" stop-color="#1E40AF"/>
+    </linearGradient>
+    <radialGradient id="sheen" cx="0.25" cy="0.15" r="0.8">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.22"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="0" y="0" width="512" height="512" rx="116" ry="116" fill="url(#bg)"/>
+  <rect x="0" y="0" width="512" height="512" rx="116" ry="116" fill="url(#sheen)"/>
+  <path d="M256 108 L292.77 219.23 L404 256 L292.77 292.77 L256 404 L219.23 292.77 L108 256 L219.23 219.23 Z" fill="#FFFFFF"/>
+  <path d="M354 112 L364.61 143.39 L396 154 L364.61 164.61 L354 196 L343.39 164.61 L312 154 L343.39 143.39 Z" fill="#FFFFFF" fill-opacity="0.86"/>
+</svg>

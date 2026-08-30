@@ -307,6 +307,23 @@ export function BoxIcon(p: IconProps) {
   );
 }
 
+export function SparkiiMark(p: IconProps) {
+  const { width = 18, height = 18, ...rest } = p;
+  return (
+    <svg width={width} height={height} viewBox="108 108 296 296" fill="none" aria-hidden {...rest}>
+      <defs>
+        <linearGradient id="sparkii-mark-g" x1="108" y1="108" x2="404" y2="404" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#4C8DFF" />
+          <stop offset="0.55" stopColor="#2563EB" />
+          <stop offset="1" stopColor="#1E40AF" />
+        </linearGradient>
+      </defs>
+      <path d="M256 108 L292.77 219.23 L404 256 L292.77 292.77 L256 404 L219.23 292.77 L108 256 L219.23 219.23 Z" fill="url(#sparkii-mark-g)" />
+      <path d="M354 112 L364.61 143.39 L396 154 L364.61 164.61 L354 196 L343.39 164.61 L312 154 L343.39 143.39 Z" fill="url(#sparkii-mark-g)" fillOpacity="0.86" />
+    </svg>
+  );
+}
+
 export function AgentGlyph(p: IconProps & { id?: string }) {
   const { id = '', ...rest } = p;
   const set = [BotIcon, DocIcon, CpuIcon, GridIcon, SparkIcon, GlobeIcon, FlowIcon, BoxIcon];

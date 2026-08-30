@@ -14,3 +14,4 @@ out/
 apps/desktop/src/types/*.js
 apps/desktop/src/types/*.js.map
 /start.cmd
+/start-packaged.cmd

@@ -1,5 +1,5 @@
-import { app, BrowserWindow, Menu } from 'electron';
-import { mkdirSync, readdirSync, existsSync } from 'node:fs';
+import { app, BrowserWindow, Menu, nativeImage } from 'electron';
+import { mkdirSync, readdirSync, existsSync, readFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assemble, type Runtime } from './runtime.js';
@@ -11,6 +11,23 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 let rt: Runtime;
 let win: BrowserWindow | null = null;
+
+function resolveWindowIcon() {
+  const candidates = [
+    join(__dirname, '../../build/icon.png'),
+    join(__dirname, '../../dist/icon-512.png'),
+  ];
+  for (const p of candidates) {
+    if (existsSync(p)) {
+      try {
+        return nativeImage.createFromBuffer(readFileSync(p));
+      } catch {
+        /* keep looking */
+      }
+    }
+  }
+  return undefined;
+}
 
 app.whenReady().then(async () => {
   Menu.setApplicationMenu(null);
@@ -34,8 +51,10 @@ app.whenReady().then(async () => {
     minWidth: 960,
     minHeight: 640,
     frame: false,
+    title: 'Sparkii',
     autoHideMenuBar: true,
     backgroundColor: '#F5F7FB',
+    icon: resolveWindowIcon(),
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, preload: join(__dirname, '../preload/index.cjs') },
   });
   registerIpc(rt, () => win, logger);
