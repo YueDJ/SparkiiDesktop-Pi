@@ -26,6 +26,7 @@ export * from './patterns/AgentNav.js';
 export * from './patterns/SessionList.js';
 export * from './patterns/StatusBar.js';
 export * from './patterns/RuntimeCenter.js';
+export * from './patterns/ErrorCenter.js';
 export * from './patterns/Shell.js';
 export * from './patterns/WorkflowSteps.js';
 export * from './patterns/RiskBadge.js';

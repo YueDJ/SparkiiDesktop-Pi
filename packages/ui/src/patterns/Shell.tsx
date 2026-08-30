@@ -7,8 +7,9 @@ import { AgentNav } from './AgentNav.js';
 import { SessionList, type SessionGroup, type SessionListItem } from './SessionList.js';
 import { StatusBar } from './StatusBar.js';
 import { RuntimeCenter, type RuntimePoolSummary } from './RuntimeCenter.js';
+import { ErrorCenterPanel, useErrors } from './ErrorCenter.js';
 import { TextField } from '../primitives/TextField.js';
-import { GearIcon, MoonIcon, SunIcon, UserIcon, ShieldIcon, SearchIcon, CloseIcon, MinimizeIcon, MaximizeIcon, WindowRestoreIcon } from '../icons/index.js';
+import { GearIcon, MoonIcon, SunIcon, UserIcon, ShieldIcon, SearchIcon, CloseIcon, MinimizeIcon, MaximizeIcon, WindowRestoreIcon, WarningIcon } from '../icons/index.js';
 
 export type ScreenId = 'home' | 'contract-review' | 'chat' | 'dashboard' | 'general' | 'approvals' | 'audit' | 'settings';
 export type AgentStatus = 'running' | 'idle' | 'queued';
@@ -65,7 +66,7 @@ const TITLES: Partial<Record<ScreenId, string>> = {
   settings: '系统设置',
 };
 
-type DrawerKind = 'queue' | 'account' | null;
+type DrawerKind = 'queue' | 'account' | 'errors' | null;
 
 function setTheme(dark: boolean): void {
   document.documentElement.classList.toggle('dark', dark);
@@ -82,6 +83,7 @@ function isRunningStatus(status: string | undefined): boolean {
 
 export function Shell(props: ShellProps) {
   const { active, agents, sessions, pendingApprovals, statusText, runtimePool, userName = 'admin', userRole = '审核员', surfaceTitle, surfaceActions, onNavigate, onNewSession, onOpenSession, children } = props;
+  const { unreadCount } = useErrors();
   const [drawer, setDrawer] = useState<DrawerKind>(null);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
   const [renaming, setRenaming] = useState<{ agentId: string; sessionId: string } | null>(null);
@@ -191,6 +193,10 @@ export function Shell(props: ShellProps) {
         </div>
         <div className="ui-topbar-right">
           <Button variant="ghost" size="sm" onClick={() => onNavigate('approvals')}><ShieldIcon /> 审批 {pendingApprovals > 0 && <Badge>{pendingApprovals}</Badge>}</Button>
+          <IconButton label={`报错中心${unreadCount > 0 ? ` · ${unreadCount} 条未读` : ''}`} onClick={() => openDrawer('errors')}>
+            <WarningIcon />
+            {unreadCount > 0 && <Badge>{unreadCount}</Badge>}
+          </IconButton>
           <IconButton label="账号" onClick={() => openDrawer('account')}><UserIcon /></IconButton>
           <IconButton label="深色/浅色" onClick={toggleTheme}>{dark ? <SunIcon /> : <MoonIcon />}</IconButton>
           <IconButton label="设置" onClick={() => onNavigate('settings')}><GearIcon /></IconButton>
@@ -277,6 +283,10 @@ export function Shell(props: ShellProps) {
           <div className="ui-item">修改密码</div>
           <div className="ui-item">导出审计记录</div>
         </div>
+      </Drawer>
+
+      <Drawer open={drawer === 'errors'} title="报错中心" onClose={closeDrawer}>
+        <ErrorCenterPanel />
       </Drawer>
     </div>
   );
