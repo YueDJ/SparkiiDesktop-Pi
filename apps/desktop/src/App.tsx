@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Shell, type ScreenId, type ShellAgent, type ShellSession } from './shell/Shell.js';
 import { ErrorProvider, useErrors, type ErrorStoreAdapter, type RuntimePoolSummary } from '@sparkii/ui';
 import type { SparkiiApi } from './types/sparkii-api.js';
@@ -82,8 +82,9 @@ function makeErrorStore(api: SparkiiApi): ErrorStoreAdapter {
 }
 
 export function App() {
+  const store = useMemo(() => makeErrorStore(window.sparkii), []);
   return (
-    <ErrorProvider store={makeErrorStore(window.sparkii)}>
+    <ErrorProvider store={store}>
       <AppShell />
     </ErrorProvider>
   );

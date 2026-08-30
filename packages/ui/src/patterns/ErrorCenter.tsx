@@ -86,7 +86,13 @@ export function ErrorProvider({ store, children }: { store: ErrorStoreAdapter; c
   useEffect(() => {
     let cancelled = false;
     store.load().then((list) => {
-      if (!cancelled) setRecords(list);
+      if (cancelled) return;
+      setRecords((prev) => {
+        if (prev.length === 0) return list;
+        const existing = new Set(prev.map((r) => r.id));
+        const extra = list.filter((r) => !existing.has(r.id));
+        return extra.length ? [...prev, ...extra] : prev;
+      });
     }).catch(() => {});
     return () => { cancelled = true; };
   }, [store]);
