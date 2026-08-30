@@ -1,4 +1,4 @@
-import type { ProviderEntryInfo, SparkiiApi } from './api-types.js';
+import type { ErrorRecord, ProviderEntryInfo, SparkiiApi } from './api-types.js';
 import type { RuntimePoolSnapshot } from '@sparkii/agent-host';
 import { webUtils } from 'electron';
 
@@ -48,6 +48,11 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
     listModels: (provider, apiKey) => invoke('listModels', provider, apiKey) as Promise<{ ok: boolean; models?: string[]; httpStatus?: number; reason?: string; error?: string }>,
     testConnection: (provider, apiKey) => invoke('testConnection', provider, apiKey) as Promise<{ ok: boolean; latencyMs?: number; httpStatus?: number; reason?: string; error?: string }>,
     diagnostics: () => invoke('diagnostics') as Promise<{ logs: string; audit: string }>,
+    listErrors: () => invoke('listErrors') as Promise<ErrorRecord[]>,
+    appendError: (rec) => invoke('appendError', rec) as Promise<ErrorRecord>,
+    clearError: (id) => invoke('clearError', id) as Promise<{ ok: boolean }>,
+    clearErrors: () => invoke('clearErrors') as Promise<{ ok: boolean }>,
+    markAllErrorsRead: () => invoke('markAllErrorsRead') as Promise<{ ok: boolean }>,
     windowMinimize: () => invoke('windowMinimize') as Promise<boolean>,
     windowToggleMaximize: () => invoke('windowToggleMaximize') as Promise<boolean>,
     windowClose: () => invoke('windowClose') as Promise<boolean>,

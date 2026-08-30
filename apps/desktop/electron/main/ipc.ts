@@ -800,6 +800,11 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     return { ok: true };
   });
   ipcMain.handle('sparkii:diagnostics', async () => ({ logs: await logger.export(), audit: await rt.audit.exportJsonl() }));
+  ipcMain.handle('sparkii:listErrors', () => rt.errors.list());
+  ipcMain.handle('sparkii:appendError', (_e, rec: { id: string; message: string; source: string; createdAt: number }) => rt.errors.append(rec));
+  ipcMain.handle('sparkii:clearError', (_e, id: string) => { rt.errors.clearOne(id); return { ok: true }; });
+  ipcMain.handle('sparkii:clearErrors', () => { rt.errors.clear(); return { ok: true }; });
+  ipcMain.handle('sparkii:markAllErrorsRead', () => { rt.errors.markAllRead(); return { ok: true }; });
 
   ipcMain.handle('sparkii:windowMinimize', () => {
     getWindow()?.minimize();
