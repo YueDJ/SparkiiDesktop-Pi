@@ -30,7 +30,6 @@ function makeApi() {
       { id: 'general', name: '通用智能体' },
       { id: 'contract-review', name: '合同审核智能体' },
     ]),
-    newChatSession: vi.fn().mockResolvedValue({ sessionId: 'g1', workspacePath: 'C:/ws/SparkiiXyZ9202608251710', model: null }),
     listChatSessions: vi.fn().mockResolvedValue([{ id: 'g1', profileId: 'general', title: '会话 08-25 17:10', workspaceKind: 'auto', workspacePath: 'C:/ws/SparkiiXyZ9202608251710', model: null, piSessionFile: null, createdAt: 0, updatedAt: 0 }]),
     getChatSession: vi.fn().mockResolvedValue({ workspacePath: 'C:/ws/SparkiiXyZ9202608251710', workspaceKind: 'auto' }),
     openChatSession: vi.fn().mockResolvedValue({ messages: [] }),
@@ -71,7 +70,6 @@ describe('App general agent', () => {
 
     fireEvent.click(screen.getByTestId('agent-nav-general'));
     await screen.findByTestId('composer-input');
-    expect(api.newChatSession).not.toHaveBeenCalled();
     await screen.findByTestId('composer-input');
   });
 

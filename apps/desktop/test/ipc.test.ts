@@ -288,74 +288,6 @@ describe('ipc provider handlers', () => {
     expect(sent).toContainEqual({ type: 'set_model', provider: 'zai', modelId: 'glm-5' });
   });
 
-  it('newChatSession returns a session id and pipes runtime events', async () => {
-    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
-    dirs.push(dataDir);
-    const piAgentDir = join(dataDir, 'pi-agent');
-    await mkdir(piAgentDir, { recursive: true });
-
-    const client = {
-      onEvent: vi.fn(() => () => {}),
-      send: async (command: any) => {
-        if (command.type === 'get_state') {
-          return { success: true, data: { sessionId: 's-new', sessionFile: null } };
-        }
-        return { success: true };
-      },
-    };
-    const rt = await makeRuntime({ dataDir, piAgentDir, client });
-    (rt as any).chatSessions.create = vi.fn();
-
-    const handlers = await registeredHandlers();
-    const newChatSession = handlers.get('sparkii:newChatSession');
-    const result = await newChatSession!(null, 'general');
-
-    expect(result).toMatchObject({ sessionId: 's-new' });
-    expect(client.onEvent).toHaveBeenCalled();
-  });
-
-  it('newChatSession creates the Pi session with the app model and thinking level', async () => {
-    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
-    dirs.push(dataDir);
-    const piAgentDir = join(dataDir, 'pi-agent');
-    await mkdir(piAgentDir, { recursive: true });
-    await writeFile(
-      join(dataDir, 'settings.json'),
-      JSON.stringify({ activeProviderId: 'deepseek', defaultModel: 'deepseek-v4-flash', defaultThinkingLevel: 'off' }),
-      'utf8',
-    );
-
-    const sent: any[] = [];
-    const client = {
-      onEvent: vi.fn(() => () => {}),
-      send: async (command: any) => {
-        sent.push(command);
-        if (command.type === 'get_state') {
-          return { success: true, data: { sessionId: 's-new', sessionFile: null } };
-        }
-        return { success: true };
-      },
-    };
-    const rt = await makeRuntime({ dataDir, piAgentDir, client });
-    (rt as any).chatSessions.create = vi.fn();
-
-    const handlers = await registeredHandlers();
-    const newChatSession = handlers.get('sparkii:newChatSession');
-    await newChatSession!(null, 'general');
-
-    expect(rt.pool.acquire).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({
-        saddle: expect.objectContaining({
-          model: { provider: 'deepseek', modelId: 'deepseek-v4-flash' },
-          thinkingLevel: 'off',
-        }),
-      }),
-    );
-    expect(sent).toContainEqual({ type: 'new_session' });
-    expect(sent).not.toContainEqual({ type: 'set_model', provider: 'deepseek', modelId: 'deepseek-v4-flash' });
-  });
-
   it('promptSession creates a session and sends the first prompt', async () => {
     const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
     dirs.push(dataDir);
@@ -423,22 +355,6 @@ describe('ipc provider handlers', () => {
     expect((rt as any).chatSessions.create).toHaveBeenCalledWith(
       expect.objectContaining({ model: 'kimi/kimi-for-coding' }),
     );
-  });
-
-  it('newChatSession rejects when the runtime pool has reached maxAgents', async () => {
-    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
-    dirs.push(dataDir);
-    const piAgentDir = join(dataDir, 'pi-agent');
-    await mkdir(piAgentDir, { recursive: true });
-    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({ maxAgents: 4, queueEnabled: false }), 'utf8');
-
-    const client = { send: async () => ({ success: true }) };
-    const rt = await makeRuntime({ dataDir, piAgentDir, client });
-    (rt.pool as unknown as { activeCount: () => number }).activeCount = () => 4;
-
-    const handlers = await registeredHandlers();
-    const newChatSession = handlers.get('sparkii:newChatSession');
-    await expect(newChatSession!(null, 'general')).rejects.toThrow('已达到最大并发会话数 4');
   });
 
   it('listChatSessions excludes empty sessions from the local store', async () => {

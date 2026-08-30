@@ -236,69 +236,6 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     throw new Error('stop timeout');
   }
 
-  ipcMain.handle('sparkii:newChatSession', async (_e, profileId: string) => {
-    const now = new Date();
-    const workspacePath = autoWorkspacePath(app.getPath('desktop'), now);
-    const settings = await loadSettings(rt.dataDir);
-    const rawMaxAgents = Number(settings.maxAgents ?? process.env.SPARKII_MAX_AGENTS ?? 4);
-    const maxAgents = Number.isFinite(rawMaxAgents) && rawMaxAgents > 0 ? Math.floor(rawMaxAgents) : 4;
-    rt.pool.setMaxAgents?.(maxAgents);
-    if (rt.pool.activeCount() >= maxAgents && settings.queueEnabled === false) {
-      throw new Error(`已达到最大并发会话数 ${maxAgents}，请先释放一个线程`);
-    }
-    const target = resolveSessionModel(settings, null);
-    const thinkingLevel = resolveThinkingLevel(settings, null, target);
-    const tempKey = `new:${randomUUID()}`;
-    const slot = await rt.pool.acquire(tempKey, {
-      saddle: buildProfileSaddle(rt.profileOf(profileId), anchorDir(tempKey), workspacePath, target ?? undefined, thinkingLevel),
-      meta: {
-        profileId,
-        profileName: (rt.profileOf(profileId).profile as { manifest?: { displayName?: string } })?.manifest?.displayName ?? profileId,
-        label: '新会话',
-      },
-    });
-    let sessionId: string | undefined;
-    try {
-      const freshResp = await slot.client.send({ type: 'new_session' });
-      if (!freshResp.success) throw new Error(freshResp.error ?? 'new_session failed');
-      const state = await slot.client.send({ type: 'get_state' });
-      if (!state.success) throw new Error(state.error ?? 'get_state failed');
-      sessionId = (state.data as { sessionId?: string } | undefined)?.sessionId;
-      const sessionFile = (state.data as { sessionFile?: string } | undefined)?.sessionFile;
-      if (!sessionId) throw new Error('runtime did not provide a session id');
-      rt.pool.renameSession(tempKey, sessionId);
-      const entry = { slot, profileId };
-      openSessions.set(sessionId, entry);
-      pipeSessionEvents(sessionId, entry);
-      slot.supervisor.onProposal((req) => broker.route(req, { sessionId: sessionId!, profileId }));
-      await mkdir(anchorDir(sessionId), { recursive: true });
-      rt.chatSessions.create({
-        id: sessionId,
-        profileId,
-        workspaceKind: 'auto',
-        workspacePath,
-        piSessionFile: sessionFile ?? null,
-      });
-      if (target) {
-        const apiKey = await rt.keyFor(target.provider);
-        if (apiKey) {
-          const keyResp = await slot.client.send({ type: 'set_api_key', provider: target.provider, apiKey });
-          if (!keyResp.success) throw new Error(keyResp.error ?? 'set_api_key failed');
-        }
-        appliedModelBySession.set(sessionId, target);
-      }
-      return { sessionId, workspacePath, model: null };
-    } catch (e) {
-      if (sessionId) {
-        openSessions.delete(sessionId);
-        await rt.pool.release(sessionId);
-      } else {
-        await rt.pool.release(tempKey);
-      }
-      throw e;
-    }
-  });
-
   async function openOrCreateSession(
     sessionId: string | null,
     context: { profileId?: string; workspacePath?: string | null; model?: string | null; thinkingLevel?: string | null },
@@ -437,12 +374,6 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     return profileId ? mapped.filter((m) => m.profileId === profileId || m.profileId === undefined) : mapped;
   });
   ipcMain.handle('sparkii:getChatSession', (_e, sessionId: string) => rt.chatSessions.get(sessionId) ?? null);
-  ipcMain.handle('sparkii:getChatMessages', async (_e, sessionId: string) => {
-    const open = openSessions.get(sessionId);
-    if (!open) return [];
-    const resp = await open.slot.client.send({ type: 'get_messages' });
-    return (resp.data ?? []) as unknown[];
-  });
 
   ipcMain.handle('sparkii:promptSession', async (
     _e,
@@ -734,11 +665,6 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     userId: rt.subject.userId,
     roles: rt.subject.roles,
   }));
-  ipcMain.handle('sparkii:getProfile', (_e, profileId?: string) => {
-    const pr = profileId ? rt.profileOf(profileId) : [...rt.profiles.values()][0];
-    if (!pr) throw new Error('no profiles installed');
-    return { manifest: pr.profile.manifest, pages: pr.profile.ui.pages, theme: pr.profile.ui.theme, tools: pr.profile.agent.tools };
-  });
   ipcMain.handle('sparkii:listAgents', () =>
     sortAgents([...rt.profiles.values()].map((pr) => ({
       id: pr.profile.manifest.name,
