@@ -60,4 +60,12 @@ describe('ErrorCenter', () => {
     act(() => vi.advanceTimersByTime(5000));
     expect(screen.queryByRole('alert')).toBeNull();
   });
+
+  it('closes the toast when the close button is clicked', () => {
+    renderCenter();
+    fireEvent.click(screen.getByText('报错'));
+    expect(screen.getByRole('alert')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '关闭' }));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
 });

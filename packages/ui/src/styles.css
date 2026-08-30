@@ -71,6 +71,9 @@ button { font: inherit; color: inherit; }
 .ui-error-center-main { flex: 1; min-width: 0; }
 .ui-error-center-msg { overflow-wrap: anywhere; }
 .ui-error-center-meta { color: var(--color-textMuted); font-size: var(--font-size-xs); }
+.ui-error-trigger { position: relative; }
+.ui-error-trigger-icon { position: relative; display: inline-flex; }
+.ui-error-trigger-badge { position: absolute; top: -6px; right: -8px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: var(--radius-pill); background: var(--color-risk); color: var(--color-onPrimary); font-size: 10px; line-height: 16px; text-align: center; pointer-events: none; }
 @keyframes ui-error-in { from { transform: translateX(8px); opacity: 0; } to { transform: none; opacity: 1; } }
 
 .ui-drawer-backdrop { position: absolute; inset: 0; border: none; background: transparent; z-index: var(--z-drawer); cursor: default; }

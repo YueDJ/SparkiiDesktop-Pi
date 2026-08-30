@@ -9,7 +9,7 @@ import { StatusBar } from './StatusBar.js';
 import { RuntimeCenter, type RuntimePoolSummary } from './RuntimeCenter.js';
 import { ErrorCenterPanel, useErrors } from './ErrorCenter.js';
 import { TextField } from '../primitives/TextField.js';
-import { GearIcon, MoonIcon, SunIcon, UserIcon, ShieldIcon, SearchIcon, CloseIcon, MinimizeIcon, MaximizeIcon, WindowRestoreIcon, WarningIcon } from '../icons/index.js';
+import { GearIcon, MoonIcon, SunIcon, UserIcon, ShieldIcon, SearchIcon, CloseIcon, MinimizeIcon, MaximizeIcon, WindowRestoreIcon, BellIcon } from '../icons/index.js';
 
 export type ScreenId = 'home' | 'contract-review' | 'chat' | 'dashboard' | 'general' | 'approvals' | 'audit' | 'settings';
 export type AgentStatus = 'running' | 'idle' | 'queued';
@@ -83,7 +83,7 @@ function isRunningStatus(status: string | undefined): boolean {
 
 export function Shell(props: ShellProps) {
   const { active, agents, sessions, pendingApprovals, statusText, runtimePool, userName = 'admin', userRole = '审核员', surfaceTitle, surfaceActions, onNavigate, onNewSession, onOpenSession, children } = props;
-  const { unreadCount } = useErrors();
+  const { unreadCount, toast, dismissToast } = useErrors();
   const [drawer, setDrawer] = useState<DrawerKind>(null);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
   const [renaming, setRenaming] = useState<{ agentId: string; sessionId: string } | null>(null);
@@ -158,7 +158,10 @@ export function Shell(props: ShellProps) {
   };
 
   const closeDrawer = () => setDrawer(null);
-  const openDrawer = (kind: Exclude<DrawerKind, null>) => setDrawer((cur) => (cur === kind ? null : kind));
+  const openDrawer = (kind: Exclude<DrawerKind, null>) => {
+    setDrawer((cur) => (cur === kind ? null : kind));
+    if (kind === 'errors' && toast) dismissToast(toast.id);
+  };
 
   const startNewSession = (agentId: string) => {
     onNewSession(agentId);
@@ -192,12 +195,21 @@ export function Shell(props: ShellProps) {
         </div>
         <div className="ui-topbar-right">
           <Button variant="ghost" size="sm" onClick={() => onNavigate('approvals')}><ShieldIcon /> 审批 {pendingApprovals > 0 && <Badge>{pendingApprovals}</Badge>}</Button>
-          <IconButton label={`报错中心${unreadCount > 0 ? ` · ${unreadCount} 条未读` : ''}`} onClick={() => openDrawer('errors')}>
-            <WarningIcon />
-            {unreadCount > 0 && <Badge>{unreadCount}</Badge>}
-          </IconButton>
           <IconButton label="账号" onClick={() => openDrawer('account')}><UserIcon /></IconButton>
           <IconButton label="深色/浅色" onClick={toggleTheme}>{dark ? <SunIcon /> : <MoonIcon />}</IconButton>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ui-error-trigger"
+            aria-label={`报错中心${unreadCount > 0 ? ` · ${unreadCount} 条未读` : ''}`}
+            title={`报错中心${unreadCount > 0 ? ` · ${unreadCount} 条未读` : ''}`}
+            onClick={() => openDrawer('errors')}
+          >
+            <span className="ui-error-trigger-icon">
+              <BellIcon />
+              {unreadCount > 0 && <span className="ui-error-trigger-badge">{unreadCount}</span>}
+            </span>
+          </Button>
           <IconButton label="设置" onClick={() => onNavigate('settings')}><GearIcon /></IconButton>
           <span className="ui-topbar-divider" aria-hidden="true" />
           <div className="ui-window-controls">
