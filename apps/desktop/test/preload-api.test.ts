@@ -10,8 +10,8 @@ vi.mock('electron', () => ({
 describe('sparkii api shape', () => {
   it('exposes the expected method names', () => {
     const names = [
-      'getLocalSubject', 'getProfile', 'chooseDocument', 'runWorkflow', 'prompt', 'listPendingApprovals', 'decideApproval', 'queryAudit', 'getSettings', 'saveSettings', 'getApiKey', 'listModels', 'testConnection', 'listProviders', 'diagnostics', 'on',
-      'newChatSession', 'promptDraftSession', 'openChatSession', 'listChatSessions', 'getChatSession', 'getChatMessages', 'promptSession', 'abortChat', 'getChatState', 'queueMutate', 'setChatTitle', 'setChatModel', 'setChatThinkingLevel', 'setChatWorkspace', 'chooseWorkspace', 'getModelOptions', 'listThinkingLevels', 'deleteChatSession', 'setSessionPinned', 'setSessionArchived', 'setSessionOrder', 'listAgents',
+      'getLocalSubject', 'chooseDocument', 'runWorkflow', 'prompt', 'listPendingApprovals', 'decideApproval', 'queryAudit', 'getSettings', 'saveSettings', 'getApiKey', 'listModels', 'testConnection', 'listProviders', 'diagnostics', 'on',
+      'openChatSession', 'listChatSessions', 'getChatSession', 'promptSession', 'abortChat', 'getChatState', 'queueMutate', 'setChatTitle', 'setChatModel', 'setChatThinkingLevel', 'setChatWorkspace', 'chooseWorkspace', 'getModelOptions', 'listThinkingLevels', 'deleteChatSession', 'setSessionPinned', 'setSessionArchived', 'setSessionOrder', 'listAgents',
       'getRuntimePool', 'cancelQueuedSession', 'releaseSessionSlot',
       'getPathForFile',
       'windowMinimize', 'windowToggleMaximize', 'windowClose', 'windowIsMaximized',
@@ -29,17 +29,15 @@ describe('sparkii api shape', () => {
       removeListener: () => {},
     };
     const api = buildApi(ipc as any);
-    void api.newChatSession('general');
     void api.listChatSessions();
     void api.getModelOptions();
     void api.setChatThinkingLevel('s1', 'high');
     void api.listThinkingLevels('deepseek', 'deepseek-v4-pro');
     void api.listAgents();
     void api.promptSession('s1', 'hi');
-    void api.promptDraftSession('general', 'hello', { model: null });
     expect(calls).toEqual([
-      'sparkii:newChatSession', 'sparkii:listChatSessions', 'sparkii:getModelOptions',
-      'sparkii:setChatThinkingLevel', 'sparkii:listThinkingLevels', 'sparkii:listAgents', 'sparkii:promptSession', 'sparkii:promptDraftSession',
+      'sparkii:listChatSessions', 'sparkii:getModelOptions',
+      'sparkii:setChatThinkingLevel', 'sparkii:listThinkingLevels', 'sparkii:listAgents', 'sparkii:promptSession',
     ]);
   });
 });

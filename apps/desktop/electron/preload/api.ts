@@ -12,17 +12,13 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
   const invoke = (name: string, ...args: unknown[]) => ipc.invoke(`sparkii:${name}`, ...args);
   return {
     getLocalSubject: () => invoke('getLocalSubject') as Promise<{ userId: string; roles: string[] }>,
-    getProfile: (profileId) => invoke('getProfile', profileId),
     chooseDocument: () => invoke('chooseDocument') as Promise<{ path?: string }>,
     runWorkflow: (id, input) => invoke('runWorkflow', id, input) as Promise<{ ok: boolean }>,
     prompt: (text) => invoke('prompt', text) as Promise<{ ok: boolean }>,
-    newChatSession: (profileId) => invoke('newChatSession', profileId) as Promise<{ sessionId: string; workspacePath: string; model: string | null }>,
-    promptDraftSession: (profileId, text, context) => invoke('promptDraftSession', profileId, text, context) as Promise<{ ok: boolean; sessionId: string; behavior: 'prompt' | 'steer' | 'followUp' }>,
     openChatSession: (sessionId) => invoke('openChatSession', sessionId) as Promise<{ messages: unknown[]; entries?: unknown[] }>,
     listChatSessions: (profileId) => invoke('listChatSessions', profileId) as Promise<unknown[]>,
     getChatSession: (sessionId) => invoke('getChatSession', sessionId),
-    getChatMessages: (sessionId) => invoke('getChatMessages', sessionId) as Promise<unknown[]>,
-    promptSession: (sessionId, text, options) => invoke('promptSession', sessionId, text, options) as Promise<{ ok: boolean; behavior?: 'prompt' | 'steer' | 'followUp' }>,
+    promptSession: (sessionId, text, options, attachments, context) => invoke('promptSession', sessionId, text, options, attachments, context) as Promise<{ ok: boolean; sessionId?: string; behavior?: 'prompt' | 'steer' | 'followUp' }>,
     abortChat: (sessionId) => invoke('abortChat', sessionId) as Promise<{ ok: boolean; cleared?: { steering: string[]; followUp: string[] } }>,
     getChatState: (sessionId) => invoke('getChatState', sessionId) as Promise<import('./api-types.js').ChatQueueState>,
     queueMutate: (sessionId, mutation) => invoke('queueMutate', sessionId, mutation) as Promise<{ ok: boolean; steering: string[]; followUp: string[] }>,

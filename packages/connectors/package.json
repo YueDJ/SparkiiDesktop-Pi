@@ -6,8 +6,8 @@
   "scripts": { "test": "vitest run" },
   "dependencies": {
     "docx": "^9.7.1",
-    "mammoth": "^1.12.1",
-    "pdfjs-dist": "^6.2.108",
+    "mammoth": "^1.12.2",
+    "pdfjs-dist": "^6.3.289",
     "xlsx": "^0.18.5"
   },
   "devDependencies": { "typescript": "^6.0.3" }

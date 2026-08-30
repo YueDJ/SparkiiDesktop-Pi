@@ -4,6 +4,6 @@
   "type": "module",
   "main": "src/index.ts",
   "scripts": { "test": "vitest run", "build": "tsc -p tsconfig.json" },
-  "dependencies": { "yaml": "^2.9.0", "zod": "^4.4.3" },
+  "dependencies": { "yaml": "^2.9.0", "zod": "^4.5.4" },
   "devDependencies": { "typescript": "^6.0.3" }
 }

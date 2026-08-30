@@ -10,11 +10,13 @@ import { loadSettings, saveSettings } from './settings.js';
 import { buildProviderList } from './provider-catalog.js';
 import { autoWorkspacePath } from './workspace.js';
 import { buildProfileSaddle } from './saddle.js';
+import { buildAttachmentPrompt, stageAttachments } from './attachments.js';
 import { writePiModelsConfig } from './pi-model-config.js';
 import { probeProviderModels } from './provider-probe.js';
 import { mutateQueues, type QueueMutation, type QueueSnapshot } from './queue-mutation.js';
 import type { Runtime } from './runtime.js';
 import type { Logger } from './logger.js';
+import type { ChatAttachment } from '../preload/api-types.js';
 
 export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, logger: Logger) {
   const broker = createBroker(rt, getWindow);
@@ -234,74 +236,32 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     throw new Error('stop timeout');
   }
 
-  ipcMain.handle('sparkii:newChatSession', async (_e, profileId: string) => {
-    const now = new Date();
-    const workspacePath = autoWorkspacePath(app.getPath('desktop'), now);
-    const settings = await loadSettings(rt.dataDir);
-    const rawMaxAgents = Number(settings.maxAgents ?? process.env.SPARKII_MAX_AGENTS ?? 4);
-    const maxAgents = Number.isFinite(rawMaxAgents) && rawMaxAgents > 0 ? Math.floor(rawMaxAgents) : 4;
-    rt.pool.setMaxAgents?.(maxAgents);
-    if (rt.pool.activeCount() >= maxAgents && settings.queueEnabled === false) {
-      throw new Error(`已达到最大并发会话数 ${maxAgents}，请先释放一个线程`);
-    }
-    const target = resolveSessionModel(settings, null);
-    const thinkingLevel = resolveThinkingLevel(settings, null, target);
-    const tempKey = `new:${randomUUID()}`;
-    const slot = await rt.pool.acquire(tempKey, {
-      saddle: buildProfileSaddle(rt.profileOf(profileId), anchorDir(tempKey), workspacePath, target ?? undefined, thinkingLevel),
-      meta: {
-        profileId,
-        profileName: (rt.profileOf(profileId).profile as { manifest?: { displayName?: string } })?.manifest?.displayName ?? profileId,
-        label: '新会话',
-      },
-    });
-    let sessionId: string | undefined;
-    try {
-      const freshResp = await slot.client.send({ type: 'new_session' });
-      if (!freshResp.success) throw new Error(freshResp.error ?? 'new_session failed');
-      const state = await slot.client.send({ type: 'get_state' });
-      if (!state.success) throw new Error(state.error ?? 'get_state failed');
-      sessionId = (state.data as { sessionId?: string } | undefined)?.sessionId;
-      const sessionFile = (state.data as { sessionFile?: string } | undefined)?.sessionFile;
-      if (!sessionId) throw new Error('runtime did not provide a session id');
-      rt.pool.renameSession(tempKey, sessionId);
-      const entry = { slot, profileId };
-      openSessions.set(sessionId, entry);
-      pipeSessionEvents(sessionId, entry);
-      await mkdir(anchorDir(sessionId), { recursive: true });
-      rt.chatSessions.create({
-        id: sessionId,
-        profileId,
-        workspaceKind: 'auto',
-        workspacePath,
-        piSessionFile: sessionFile ?? null,
-      });
+  async function openOrCreateSession(
+    sessionId: string | null,
+    context: { profileId?: string; workspacePath?: string | null; model?: string | null; thinkingLevel?: string | null },
+  ): Promise<{ open: Awaited<ReturnType<typeof ensureOpenSession>>; sessionId: string; workspacePath: string | undefined }> {
+    if (sessionId) {
+      cancelIdleRelease(sessionId);
+      const open = await ensureOpenSession(sessionId);
+      pipeSessionEvents(sessionId, open);
+      open.slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId: open.profileId }));
+      const rec = rt.chatSessions.get(sessionId);
+      const target = rec?.model
+        ? resolveSessionModel(await loadSettings(rt.dataDir), rec)
+        : resolveSessionModel(await loadSettings(rt.dataDir), null);
       if (target) {
-        const apiKey = await rt.keyFor(target.provider);
-        if (apiKey) {
-          const keyResp = await slot.client.send({ type: 'set_api_key', provider: target.provider, apiKey });
-          if (!keyResp.success) throw new Error(keyResp.error ?? 'set_api_key failed');
+        const applied = appliedModelBySession.get(sessionId);
+        if (!applied || applied.provider !== target.provider || applied.modelId !== target.modelId) {
+          await selectModel(rt, 'chat', sessionId, `${target.provider}/${target.modelId}`);
+          appliedModelBySession.set(sessionId, target);
         }
-        appliedModelBySession.set(sessionId, target);
+        const settings = await loadSettings(rt.dataDir);
+        await applyThinkingLevel(open.slot.client, resolveThinkingLevel(settings, rec, target));
       }
-      return { sessionId, workspacePath, model: null };
-    } catch (e) {
-      if (sessionId) {
-        openSessions.delete(sessionId);
-        await rt.pool.release(sessionId);
-      } else {
-        await rt.pool.release(tempKey);
-      }
-      throw e;
+      return { open, sessionId, workspacePath: rec?.workspacePath };
     }
-  });
 
-  ipcMain.handle('sparkii:promptDraftSession', async (
-    _e,
-    profileId: string,
-    text: string,
-    context: { workspacePath?: string | null; model?: string | null; thinkingLevel?: string | null } = {},
-  ) => {
+    const profileId = context.profileId ?? 'general';
     const now = new Date();
     const workspacePath = context.workspacePath ?? autoWorkspacePath(app.getPath('desktop'), now);
     const settings = await loadSettings(rt.dataDir);
@@ -326,22 +286,23 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       },
     });
 
-    let sessionId: string | undefined;
+    let createdSessionId: string | undefined;
     try {
       const freshResp = await slot.client.send({ type: 'new_session' });
       if (!freshResp.success) throw new Error(freshResp.error ?? 'new_session failed');
       const state = await slot.client.send({ type: 'get_state' });
       if (!state.success) throw new Error(state.error ?? 'get_state failed');
-      sessionId = (state.data as { sessionId?: string } | undefined)?.sessionId;
+      createdSessionId = (state.data as { sessionId?: string } | undefined)?.sessionId;
       const sessionFile = (state.data as { sessionFile?: string } | undefined)?.sessionFile;
-      if (!sessionId) throw new Error('runtime did not provide a session id');
-      rt.pool.renameSession(tempKey, sessionId);
+      if (!createdSessionId) throw new Error('runtime did not provide a session id');
+      rt.pool.renameSession(tempKey, createdSessionId);
       const entry = { slot, profileId };
-      openSessions.set(sessionId, entry);
-      pipeSessionEvents(sessionId, entry);
-      await mkdir(anchorDir(sessionId), { recursive: true });
+      openSessions.set(createdSessionId, entry);
+      pipeSessionEvents(createdSessionId, entry);
+      slot.supervisor.onProposal((req) => broker.route(req, { sessionId: createdSessionId!, profileId }));
+      await mkdir(anchorDir(createdSessionId), { recursive: true });
       rt.chatSessions.create({
-        id: sessionId,
+        id: createdSessionId,
         profileId,
         workspaceKind: 'auto',
         workspacePath,
@@ -356,20 +317,18 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
           if (!keyResp.success) throw new Error(keyResp.error ?? 'set_api_key failed');
         }
       }
-      const promptResp = await slot.client.send({ type: 'prompt', message: text });
-      if (!promptResp.success) throw new Error(promptResp.error ?? 'prompt failed');
-      return { ok: true, sessionId, behavior: 'prompt' as const };
+      return { open: entry, sessionId: createdSessionId, workspacePath };
     } catch (e) {
-      if (sessionId) {
-        openSessions.delete(sessionId);
-        await rt.pool.release(sessionId);
-        rt.chatSessions.delete(sessionId);
+      if (createdSessionId) {
+        openSessions.delete(createdSessionId);
+        await rt.pool.release(createdSessionId);
+        rt.chatSessions.delete(createdSessionId);
       } else {
         await rt.pool.release(tempKey);
       }
       throw e;
     }
-  });
+  }
 
   ipcMain.handle('sparkii:openChatSession', async (_e, sessionId: string) => {
     const open = openSessions.get(sessionId);
@@ -415,37 +374,22 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     return profileId ? mapped.filter((m) => m.profileId === profileId || m.profileId === undefined) : mapped;
   });
   ipcMain.handle('sparkii:getChatSession', (_e, sessionId: string) => rt.chatSessions.get(sessionId) ?? null);
-  ipcMain.handle('sparkii:getChatMessages', async (_e, sessionId: string) => {
-    const open = openSessions.get(sessionId);
-    if (!open) return [];
-    const resp = await open.slot.client.send({ type: 'get_messages' });
-    return (resp.data ?? []) as unknown[];
-  });
 
   ipcMain.handle('sparkii:promptSession', async (
     _e,
-    sessionId: string,
+    sessionId: string | null,
     text: string,
     options?: { behavior?: 'steer' | 'followUp' },
+    attachments: ChatAttachment[] = [],
+    context: { profileId?: string; workspacePath?: string | null; model?: string | null; thinkingLevel?: string | null } = {},
   ) => {
-    cancelIdleRelease(sessionId);
-    const open = await ensureOpenSession(sessionId);
-    pipeSessionEvents(sessionId, open);
-    open.slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId: open.profileId }));
-    const rec = rt.chatSessions.get(sessionId);
+    const { open, sessionId: resolvedSessionId, workspacePath } = await openOrCreateSession(sessionId, context);
 
-    const target = rec?.model
-      ? resolveSessionModel(await loadSettings(rt.dataDir), rec)
-      : resolveSessionModel(await loadSettings(rt.dataDir), null);
-    if (target) {
-      const applied = appliedModelBySession.get(sessionId);
-      if (!applied || applied.provider !== target.provider || applied.modelId !== target.modelId) {
-        await selectModel(rt, 'chat', sessionId, `${target.provider}/${target.modelId}`);
-        appliedModelBySession.set(sessionId, target);
-      }
-      const settings = await loadSettings(rt.dataDir);
-      await applyThinkingLevel(open.slot.client, resolveThinkingLevel(settings, rec, target));
+    if (attachments?.length && !workspacePath) {
+      throw new Error('会话缺少工作区，无法放置附件');
     }
+    const staged = workspacePath ? await stageAttachments(workspacePath, attachments ?? []) : [];
+    const finalText = buildAttachmentPrompt(text, staged);
 
     const stateResp = await open.slot.client.send({ type: 'get_state' });
     if (!stateResp.success) throw new Error(stateResp.error ?? 'get_state failed');
@@ -454,23 +398,23 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     const behavior = options?.behavior ?? (isStreaming ? 'followUp' : 'prompt');
 
     if (behavior === 'steer') {
-      const resp = await open.slot.client.send({ type: 'steer', message: text });
+      const resp = await open.slot.client.send({ type: 'steer', message: finalText });
       if (!resp.success) throw new Error(resp.error ?? 'steer failed');
     } else if (behavior === 'followUp') {
-      const resp = await open.slot.client.send({ type: 'follow_up', message: text });
+      const resp = await open.slot.client.send({ type: 'follow_up', message: finalText });
       if (!resp.success) throw new Error(resp.error ?? 'follow_up failed');
     } else {
-      const resp = await open.slot.client.send({ type: 'prompt', message: text });
+      const resp = await open.slot.client.send({ type: 'prompt', message: finalText });
       if (!resp.success) throw new Error(resp.error ?? 'prompt failed');
     }
 
     const after = await open.slot.client.send({ type: 'get_state' });
     if ((after.data as { sessionFile?: string } | undefined)?.sessionFile) {
-      rt.chatSessions.update(sessionId, {
+      rt.chatSessions.update(resolvedSessionId, {
         piSessionFile: (after.data as { sessionFile: string }).sessionFile,
       });
     }
-    return { ok: true, behavior: behavior === 'prompt' ? 'prompt' : behavior };
+    return { ok: true, sessionId: resolvedSessionId, behavior: behavior === 'prompt' ? 'prompt' : behavior };
   });
 
   ipcMain.handle('sparkii:abortChat', async (_e, sessionId: string) => {
@@ -721,11 +665,6 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     userId: rt.subject.userId,
     roles: rt.subject.roles,
   }));
-  ipcMain.handle('sparkii:getProfile', (_e, profileId?: string) => {
-    const pr = profileId ? rt.profileOf(profileId) : [...rt.profiles.values()][0];
-    if (!pr) throw new Error('no profiles installed');
-    return { manifest: pr.profile.manifest, pages: pr.profile.ui.pages, theme: pr.profile.ui.theme, tools: pr.profile.agent.tools };
-  });
   ipcMain.handle('sparkii:listAgents', () =>
     sortAgents([...rt.profiles.values()].map((pr) => ({
       id: pr.profile.manifest.name,

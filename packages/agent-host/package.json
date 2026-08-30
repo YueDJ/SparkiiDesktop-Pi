@@ -7,7 +7,7 @@
   "dependencies": {
     "@sparkii/approval": "workspace:*",
     "@sparkii/connectors": "workspace:*",
-    "@earendil-works/pi-coding-agent": "^0.84.3"
+    "@earendil-works/pi-coding-agent": "^0.84.4"
   },
   "devDependencies": {
     "@sparkii/config": "workspace:*",

@@ -27,24 +27,28 @@ export interface ChatQueueState {
 }
 
 export interface DraftPromptContext {
+  profileId?: string;
   workspacePath?: string | null;
   model?: string | null;
   thinkingLevel?: string | null;
 }
 
+export interface ChatAttachment {
+  path: string;
+  name: string;
+  size?: number;
+  type?: string;
+}
+
 export interface SparkiiApi {
   getLocalSubject(): Promise<{ userId: string; roles: string[] }>;
-  getProfile(profileId?: string): Promise<unknown>;
   chooseDocument(): Promise<{ path?: string }>;
   runWorkflow(id: string, input: Record<string, unknown>): Promise<{ ok: boolean }>;
   prompt(text: string): Promise<{ ok: boolean }>;
-  newChatSession(profileId: string): Promise<{ sessionId: string; workspacePath: string; model: string | null }>;
-  promptDraftSession(profileId: string, text: string, context: DraftPromptContext): Promise<{ ok: boolean; sessionId: string; behavior: 'prompt' | 'steer' | 'followUp' }>;
   openChatSession(sessionId: string): Promise<{ messages: unknown[]; entries?: unknown[] }>;
   listChatSessions(profileId?: string): Promise<unknown[]>;
   getChatSession(sessionId: string): Promise<unknown>;
-  getChatMessages(sessionId: string): Promise<unknown[]>;
-  promptSession(sessionId: string, text: string, options?: { behavior?: 'steer' | 'followUp' }): Promise<{ ok: boolean; behavior?: 'prompt' | 'steer' | 'followUp' }>;
+  promptSession(sessionId: string | null, text: string, options?: { behavior?: 'steer' | 'followUp' }, attachments?: ChatAttachment[], context?: DraftPromptContext): Promise<{ ok: boolean; sessionId?: string; behavior?: 'prompt' | 'steer' | 'followUp' }>;
   abortChat(sessionId: string): Promise<{ ok: boolean; cleared?: { steering: string[]; followUp: string[] } }>;
   getChatState(sessionId: string): Promise<ChatQueueState>;
   queueMutate(sessionId: string, mutation: ChatQueueMutation): Promise<{ ok: boolean; steering: string[]; followUp: string[] }>;

@@ -54,8 +54,13 @@ export function resolveToolDefinitions(toolNames: string[], ctx: RegistryContext
       else throw new Error(`unknown tool in saddle: ${name}`);
       continue;
     }
-    if (name === "read" || name === "ls" || name === "grep" || name === "find") {
-      const factory = { read: createReadToolDefinition, ls: createLsToolDefinition, grep: createGrepToolDefinition, find: createFindToolDefinition }[name];
+    if (name === "read") {
+      const def = createReadToolDefinition(pathCwd, { autoResizeImages: false }) as ToolDefinition;
+      out.push(ctx.workspaceRoot ? withWorkspaceGuard(def, ctx.workspaceRoot, pathCwd) : def);
+      continue;
+    }
+    if (name === "ls" || name === "grep" || name === "find") {
+      const factory = { ls: createLsToolDefinition, grep: createGrepToolDefinition, find: createFindToolDefinition }[name];
       const def = factory(pathCwd) as ToolDefinition;
       out.push(ctx.workspaceRoot ? withWorkspaceGuard(def, ctx.workspaceRoot, pathCwd) : def);
       continue;

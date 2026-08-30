@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { SparkiiApi } from '../types/sparkii-api.js';
+import type { ChatAttachment, SparkiiApi } from '../types/sparkii-api.js';
 import { Button, ChatMessage, type ComposerAttachment } from '@sparkii/ui';
 import { Composer } from '../workbench/Composer.js';
 import { ToolCard } from '../workbench/ToolCard.js';
@@ -339,7 +339,7 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
       }
       if (p?.type === 'message' && p?.role === 'user') {
         const text = typeof p?.text === 'string' ? p.text : '';
-        if (suppressUserEventRef.current && lastIdlePromptRef.current === text) {
+        if (suppressUserEventRef.current && lastIdlePromptRef.current && text.endsWith(lastIdlePromptRef.current)) {
           suppressUserEventRef.current = false;
           return;
         }
@@ -389,18 +389,18 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
 
   const send = (text: string, attachments: ComposerAttachment[] = []) => {
     const display = attachments.length ? `${attachments.map((a) => `📎 ${a.name}`).join(' ')}\n${text}` : text;
-    const prompt = attachments.length
-      ? `请基于以下我提供的文件进行分析:\n${attachments.map((a) => `- ${a.path}`).join('\n')}\n\n${text}`
-      : text;
+    const chatAttachments: ChatAttachment[] = attachments.map(({ path, name, size, type }) => ({ path, name, size, type }));
     setError('');
     if (!sessionId && draft) {
       if (busy) return;
       setBusy(true);
-      api.promptDraftSession('general', prompt, {
-        workspacePath,
-        model,
-        thinkingLevel,
-      }).then((res) => {
+      api.promptSession(
+        null,
+        text,
+        undefined,
+        chatAttachments.length ? chatAttachments : undefined,
+        { profileId: 'general', workspacePath, model, thinkingLevel },
+      ).then((res) => {
         if (res?.sessionId) onSessionCommitted?.(res.sessionId, text);
       }).catch((e: any) => {
         setError(String(e?.message ?? e));
@@ -410,19 +410,32 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
     }
     if (!sessionId) return;
     if (busy) {
-      api.promptSession(sessionId, prompt, { behavior: 'followUp' })
-        .catch((e: any) => setError(String(e?.message ?? e)));
+      if (chatAttachments.length) {
+        api.promptSession(sessionId, text, { behavior: 'followUp' }, chatAttachments)
+          .catch((e: any) => setError(String(e?.message ?? e)));
+      } else {
+        api.promptSession(sessionId, text, { behavior: 'followUp' })
+          .catch((e: any) => setError(String(e?.message ?? e)));
+      }
       return;
     }
-    lastIdlePromptRef.current = prompt;
+    lastIdlePromptRef.current = text;
     suppressUserEventRef.current = true;
     setEntries((xs) => [...xs, { kind: 'message', id: `u${Date.now()}`, role: 'user', text: display, streaming: false }]);
     setBusy(true);
-    api.promptSession(sessionId, prompt)
-      .catch((e: any) => {
-        setError(String(e?.message ?? e));
-        setBusy(false);
-      });
+    if (chatAttachments.length) {
+      api.promptSession(sessionId, text, undefined, chatAttachments)
+        .catch((e: any) => {
+          setError(String(e?.message ?? e));
+          setBusy(false);
+        });
+    } else {
+      api.promptSession(sessionId, text)
+        .catch((e: any) => {
+          setError(String(e?.message ?? e));
+          setBusy(false);
+        });
+    }
   };
 
   const stop = () => {
