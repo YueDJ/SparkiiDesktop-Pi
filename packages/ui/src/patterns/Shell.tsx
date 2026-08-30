@@ -9,7 +9,7 @@ import { StatusBar } from './StatusBar.js';
 import { RuntimeCenter, type RuntimePoolSummary } from './RuntimeCenter.js';
 import { ErrorCenterPanel, useErrors } from './ErrorCenter.js';
 import { TextField } from '../primitives/TextField.js';
-import { GearIcon, MoonIcon, SunIcon, UserIcon, ShieldIcon, SearchIcon, CloseIcon, MinimizeIcon, MaximizeIcon, WindowRestoreIcon, BellIcon } from '../icons/index.js';
+import { GearIcon, MoonIcon, SunIcon, UserIcon, ShieldIcon, SearchIcon, CloseIcon, MinimizeIcon, MaximizeIcon, WindowRestoreIcon, BellIcon, SparkiiMark } from '../icons/index.js';
 
 export type ScreenId = 'home' | 'contract-review' | 'chat' | 'dashboard' | 'general' | 'approvals' | 'audit' | 'settings';
 export type AgentStatus = 'running' | 'idle' | 'queued';
@@ -190,7 +190,7 @@ export function Shell(props: ShellProps) {
         }}
       >
         <div className="ui-topbar-left">
-          <Button variant="ghost" onClick={() => onNavigate('home')}>Sparkii</Button>
+          <Button variant="ghost" onClick={() => onNavigate('home')} icon={<SparkiiMark />}>Sparkii</Button>
           <span className="ui-topbar-title">{title}</span>
         </div>
         <div className="ui-topbar-right">

@@ -12,6 +12,7 @@ extraResources:
   - from: ../../profiles
     to: profiles
 win:
+  icon: build/icon.ico
   target:
     - nsis
     - appx
