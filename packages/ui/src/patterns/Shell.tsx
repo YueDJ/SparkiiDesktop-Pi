@@ -160,7 +160,7 @@ export function Shell(props: ShellProps) {
   const closeDrawer = () => setDrawer(null);
   const openDrawer = (kind: Exclude<DrawerKind, null>) => {
     setDrawer((cur) => (cur === kind ? null : kind));
-    if (kind === 'errors' && toast) dismissToast(toast.id);
+    if (toast) dismissToast(toast.id);
   };
 
   const startNewSession = (agentId: string) => {
