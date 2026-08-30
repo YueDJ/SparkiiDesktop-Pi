@@ -270,6 +270,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       const entry = { slot, profileId };
       openSessions.set(sessionId, entry);
       pipeSessionEvents(sessionId, entry);
+      slot.supervisor.onProposal((req) => broker.route(req, { sessionId: sessionId!, profileId }));
       await mkdir(anchorDir(sessionId), { recursive: true });
       rt.chatSessions.create({
         id: sessionId,
@@ -342,6 +343,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       const entry = { slot, profileId };
       openSessions.set(sessionId, entry);
       pipeSessionEvents(sessionId, entry);
+      slot.supervisor.onProposal((req) => broker.route(req, { sessionId: sessionId!, profileId }));
       await mkdir(anchorDir(sessionId), { recursive: true });
       rt.chatSessions.create({
         id: sessionId,

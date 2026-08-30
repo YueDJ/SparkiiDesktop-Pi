@@ -955,4 +955,31 @@ describe('ipc provider handlers', () => {
     expect(promptCmd.message.endsWith('看附件')).toBe(true);
     expect(await readFile(join(ws, '.sparkii-attachments', 'draft.txt'), 'utf8')).toBe('draft bytes');
   });
+
+  it('promptDraftSession registers the proposal broker before the first prompt', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({}), 'utf8');
+
+    const onProposal = vi.fn();
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        if (command.type === 'get_state') return { success: true, data: { sessionId: 's-new', sessionFile: null } };
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({ dataDir, piAgentDir, client });
+    (rt as any).pool.acquire = vi.fn(async () => ({ client, supervisor: { onProposal } }));
+    (rt as any).chatSessions.create = vi.fn();
+
+    const handlers = await registeredHandlers();
+    const promptDraftSession = handlers.get('sparkii:promptDraftSession');
+    await promptDraftSession!(null, 'general', '看文件');
+
+    expect(onProposal).toHaveBeenCalledTimes(1);
+    expect(onProposal).toHaveBeenCalledWith(expect.any(Function));
+  });
 });
