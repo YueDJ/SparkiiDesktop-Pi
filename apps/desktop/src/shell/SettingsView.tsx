@@ -34,6 +34,7 @@ export interface SettingsApi {
   listModels?(provider: string, apiKey?: string | null): Promise<{ ok: boolean; models?: string[]; httpStatus?: number; reason?: string; error?: string }>;
   testConnection?(provider: string, apiKey?: string | null): Promise<{ ok: boolean; latencyMs?: number; httpStatus?: number; reason?: string; error?: string }>;
   queryAudit?(filter: object): Promise<unknown[]>;
+  diagnostics?(): Promise<{ logs: string }>;
 }
 
 export interface SettingsViewProps { api?: SettingsApi; onExportAudit?(jsonl: string): void; }
@@ -81,6 +82,8 @@ export function SettingsView(props: SettingsViewProps) {
   const [maxAgents, setMaxAgents] = useState(4);
   const [queueEnabled, setQueueEnabled] = useState(true);
   const [chatDetailLevel, setChatDetailLevel] = useState<ChatDetailLevel>('standard');
+  const [logLevel, setLogLevel] = useState<'debug' | 'info' | 'warn' | 'error'>('info');
+  const [logRows, setLogRows] = useState<Array<{ ts: number; level: string; msg: string }>>([]);
 
   const active = entries.find((e) => e.id === providerId);
 
@@ -98,6 +101,7 @@ export function SettingsView(props: SettingsViewProps) {
         if (typeof s.maxAgents === 'number' && Number.isFinite(s.maxAgents)) setMaxAgents(s.maxAgents);
         if (typeof s.queueEnabled === 'boolean') setQueueEnabled(s.queueEnabled);
         if (isChatDetailLevel(s.chatDetailLevel)) setChatDetailLevel(s.chatDetailLevel);
+        if (typeof s.logLevel === 'string' && ['debug', 'info', 'warn', 'error'].includes(s.logLevel)) setLogLevel(s.logLevel as typeof logLevel);
         if (s.routes && typeof s.routes === 'object') setRoutes(s.routes as Record<string, string>);
         setInfo('已加载本机配置');
       })
@@ -170,12 +174,32 @@ export function SettingsView(props: SettingsViewProps) {
         maxAgents,
         queueEnabled,
         chatDetailLevel,
+        logLevel,
       });
       setCustomProviders(nextCustom);
       setInfo('设置已保存');
     } catch (e) {
       reportError(e instanceof Error ? e.message : String(e), { source: '系统设置' });
     }
+  };
+
+  const refreshLogs = async () => {
+    const d = await api?.diagnostics?.();
+    if (!d?.logs) return;
+    const rows: Array<{ ts: number; level: string; msg: string }> = [];
+    for (const line of d.logs.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed.ts === 'number' && typeof parsed.level === 'string' && typeof parsed.msg === 'string') {
+          rows.push({ ts: parsed.ts, level: parsed.level, msg: parsed.msg });
+        }
+      } catch {
+        // 跳过损坏行
+      }
+    }
+    setLogRows(rows.slice(-100));
   };
 
   const nav = (
@@ -285,8 +309,26 @@ export function SettingsView(props: SettingsViewProps) {
           </SettingsRow>
           <SettingsRow label="崩溃自动恢复"><Switch checked onCheckedChange={() => {}} label="崩溃自动恢复" /></SettingsRow>
           <SettingsRow label="日志级别">
-            <Select defaultValue="信息"><option>信息</option><option>调试</option><option>警告</option></Select>
+            <Select data-testid="log-level-select" value={logLevel} onChange={(e) => setLogLevel(e.target.value as typeof logLevel)}>
+              <option value="debug">调试</option>
+              <option value="info">信息</option>
+              <option value="warn">警告</option>
+              <option value="error">错误</option>
+            </Select>
           </SettingsRow>
+          <SettingsRow label="运行日志">
+            <Button onClick={refreshLogs}>刷新</Button>
+          </SettingsRow>
+          <div className="settings-models">
+            {logRows.length === 0 && <div className="ui-muted">暂无日志</div>}
+            {logRows.map((r, i) => (
+              <div key={i} className="settings-log-row">
+                <span className="ui-muted">{new Date(r.ts).toLocaleString('zh-CN')}</span>
+                <span>{r.level}</span>
+                <span>{r.msg}</span>
+              </div>
+            ))}
+          </div>
           <div className="settings-actions">
             <Button variant="primary" onClick={save}>保存</Button>
           </div>

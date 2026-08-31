@@ -754,6 +754,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     const s = settings as Parameters<typeof saveSettings>[1] & { apiKey?: string };
     const { apiKey, ...rest } = s;
     await saveSettings(rt.dataDir, rest);
+    if (rest.logLevel) logger.level = rest.logLevel;
     if (s.activeProviderId) {
       await rt.setKey(s.activeProviderId, apiKey ?? '');
       await rt.pool.broadcast(

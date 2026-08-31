@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { SettingsView } from '../src/shell/SettingsView.js';
 
 afterEach(cleanup);
@@ -14,6 +14,7 @@ function makeApi(over: Record<string, unknown> = {}) {
     ]),
     listModels: vi.fn().mockResolvedValue({ ok: true, models: ['qwen2.5', 'llama3.1'] }),
     testConnection: vi.fn().mockResolvedValue({ ok: true, latencyMs: 86 }),
+    diagnostics: vi.fn().mockResolvedValue({ logs: '' }),
     ...over,
   } as any;
 }
@@ -72,5 +73,16 @@ describe('SettingsView', () => {
     expect(api.saveSettings).toHaveBeenCalledWith(
       expect.objectContaining({ activeProviderId: 'deepseek', defaultModel: 'qwen2.5', routes: {} }),
     );
+  });
+
+  it('changes the log level and saves it', async () => {
+    const api = makeApi();
+    render(<SettingsView api={api} />);
+    await screen.findByText('已加载本机配置');
+    fireEvent.click(screen.getByText('智能体与运行'));
+    fireEvent.change(screen.getByTestId('log-level-select'), { target: { value: 'debug' } });
+    fireEvent.click(screen.getByText('保存'));
+    await waitFor(() => expect(api.saveSettings).toHaveBeenCalled());
+    expect(api.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ logLevel: 'debug' }));
   });
 });

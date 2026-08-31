@@ -7,6 +7,7 @@ import { registerIpc } from './ipc.js';
 import { Logger } from './logger.js';
 import { attachRecovery } from './recovery.js';
 import { defaultDataDir } from './paths.js';
+import { loadSettings } from './settings.js';
 import { ensureRuntime, runtimeArchivePath, verifyRuntime } from './runtime-provision.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -35,11 +36,14 @@ app.whenReady().then(async () => {
   Menu.setApplicationMenu(null);
   const dataDir = process.env.SPARKII_DATA_DIR ?? defaultDataDir();
   mkdirSync(dataDir, { recursive: true });
+  const logger = new Logger(join(dataDir, 'logs'));
+  const settings = await loadSettings(dataDir);
+  logger.level = settings.logLevel ?? 'info';
   await ensureRuntime({ archivePath: runtimeArchivePath(process.env, process.resourcesPath) }).catch((e) => {
-    console.error('[runtime] ensure failed:', e instanceof Error ? e.message : e);
+    void logger.log({ level: 'error', msg: 'runtime ensure failed', ctx: { error: e instanceof Error ? e.message : String(e) } });
   });
   const runtimeCheck = await verifyRuntime().catch(() => null);
-  console.log('[runtime] verify:', JSON.stringify(runtimeCheck));
+  void logger.log({ level: 'info', msg: 'runtime verify', ctx: (runtimeCheck ?? { error: 'verify failed' }) as unknown as Record<string, unknown> });
   const single = process.env.SPARKII_PROFILE_DIR;
   const profileRoot = single
     ? dirname(single)
@@ -50,7 +54,6 @@ app.whenReady().then(async () => {
         .filter((e) => e.isDirectory() && existsSync(join(profileRoot, e.name, 'manifest.yaml')))
         .map((e) => ({ id: e.name, dir: join(profileRoot, e.name) }));
   rt = await assemble({ profiles: profileDirs, dataDir, allowUnsigned: process.env.NODE_ENV !== 'production' });
-  const logger = new Logger(join(dataDir, 'logs'));
   attachRecovery(rt, logger);
   win = new BrowserWindow({
     width: 1280,

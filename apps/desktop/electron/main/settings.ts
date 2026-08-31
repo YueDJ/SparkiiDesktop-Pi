@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Keyring } from './keyring.js';
 import type { CustomProvider } from './provider-catalog.js';
+import type { LogLevel } from './logger.js';
 
 export interface AppSettings {
   activeProviderId?: string;
@@ -16,6 +17,7 @@ export interface AppSettings {
   approvalTimeoutMs?: number;
   theme?: 'light' | 'dark';
   language?: string;
+  logLevel?: LogLevel;
 }
 
 export type { CustomProvider } from './provider-catalog.js';
