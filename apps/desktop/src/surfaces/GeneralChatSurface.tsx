@@ -221,10 +221,8 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
   const [detailLevel, setDetailLevel] = useState<ChatDetailLevel>(DEFAULT_CHAT_DETAIL_LEVEL);
   const lastIdlePromptRef = useRef('');
   const suppressUserEventRef = useRef(false);
-  const providerRef = useRef(provider);
   const modelRef = useRef(model);
 
-  useEffect(() => { providerRef.current = provider; }, [provider]);
   useEffect(() => { modelRef.current = model; }, [model]);
 
   const refreshContext = () => {
@@ -274,11 +272,9 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
 
   const refreshModelOptions = () => {
     api.getModelOptions().then((r: any) => {
-      const previousProvider = providerRef.current;
       const nextProvider = r.provider ?? 'deepseek';
       const nextModels = r.models ?? [];
       const nextDefault = r.defaultModel ?? null;
-      const providerChanged = Boolean(previousProvider && previousProvider !== nextProvider);
       setModels(nextModels);
       setDefaultModel(nextDefault);
       setProvider(nextProvider);

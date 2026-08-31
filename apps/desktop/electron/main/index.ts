@@ -7,7 +7,7 @@ import { registerIpc } from './ipc.js';
 import { Logger } from './logger.js';
 import { attachRecovery } from './recovery.js';
 import { defaultDataDir } from './paths.js';
-import { ensureRuntime, runtimeArchivePath } from './runtime-provision.js';
+import { ensureRuntime, runtimeArchivePath, verifyRuntime } from './runtime-provision.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -38,6 +38,8 @@ app.whenReady().then(async () => {
   await ensureRuntime({ archivePath: runtimeArchivePath(process.env, process.resourcesPath) }).catch((e) => {
     console.error('[runtime] ensure failed:', e instanceof Error ? e.message : e);
   });
+  const runtimeCheck = await verifyRuntime().catch(() => null);
+  console.log('[runtime] verify:', JSON.stringify(runtimeCheck));
   const single = process.env.SPARKII_PROFILE_DIR;
   const profileRoot = single
     ? dirname(single)

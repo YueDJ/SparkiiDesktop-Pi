@@ -69,7 +69,7 @@ describe('App general agent', () => {
   });
 
   it('clicking the general agent in the nav opens a new conversation', async () => {
-    const { api } = makeApi();
+    makeApi();
     render(<App />);
     await screen.findByText(/工作台 · 上午好/);
 

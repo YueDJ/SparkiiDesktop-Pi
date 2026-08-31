@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { EventEmitter } from 'node:events';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ensureRuntime } from '../electron/main/runtime-provision.js';
+import { ensureRuntime, verifyRuntime } from '../electron/main/runtime-provision.js';
 
 const childProcessMock = vi.hoisted(() => ({ spawn: vi.fn() }));
 
@@ -55,5 +55,39 @@ describe('ensureRuntime', () => {
     await ensureRuntime({ archivePath: join(root, 'PortableGit.7z.exe'), env: { SPARKII_RUNTIME_ROOT: root } });
 
     expect(childProcessMock.spawn).not.toHaveBeenCalled();
+  });
+});
+
+describe('verifyRuntime', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('reports not ready when the runtime is missing', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'sparkii-rt-'));
+    const result = await verifyRuntime({ SPARKII_RUNTIME_ROOT: root });
+    expect(result.ready).toBe(false);
+    expect(result.error).toBe('runtime not provisioned');
+  });
+
+  it('probes bash and git versions through the bundled bash', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'sparkii-rt-'));
+    provision(root);
+    childProcessMock.spawn.mockImplementation(() => {
+      const child = new EventEmitter();
+      child.stdout = new EventEmitter();
+      child.stderr = new EventEmitter();
+      setImmediate(() => {
+        child.stdout.emit('data', Buffer.from('git version 2.47.1.windows.2'));
+        child.emit('close', 0);
+      });
+      return child;
+    });
+
+    const result = await verifyRuntime({ SPARKII_RUNTIME_ROOT: root });
+
+    expect(result.ready).toBe(true);
+    expect(result.bashVersion).toBe('git version 2.47.1.windows.2');
+    expect(result.gitVersion).toBe('git version 2.47.1.windows.2');
   });
 });

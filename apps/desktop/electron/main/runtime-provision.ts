@@ -31,6 +31,54 @@ export async function ensureRuntime(opts: EnsureRuntimeOptions = {}): Promise<vo
   await extract(archivePath, paths.portableGitDir);
 }
 
+export interface RuntimeVerification {
+  root: string;
+  bashPath: string;
+  gitPath: string;
+  ready: boolean;
+  bashVersion: string | null;
+  gitVersion: string | null;
+  error: string | null;
+}
+
+export async function verifyRuntime(env: NodeJS.ProcessEnv = process.env): Promise<RuntimeVerification> {
+  const paths = resolveRuntimePaths(env);
+  const ready = existsSync(paths.bashPath) && existsSync(paths.gitPath);
+  if (!ready) {
+    return {
+      root: paths.root,
+      bashPath: paths.bashPath,
+      gitPath: paths.gitPath,
+      ready: false,
+      bashVersion: null,
+      gitVersion: null,
+      error: 'runtime not provisioned',
+    };
+  }
+  const bashVersion = await capture(paths.bashPath, ['--version']);
+  const gitVersion = await capture(paths.bashPath, ['-c', 'git --version']);
+  return {
+    root: paths.root,
+    bashPath: paths.bashPath,
+    gitPath: paths.gitPath,
+    ready: true,
+    bashVersion,
+    gitVersion,
+    error: null,
+  };
+}
+
+function capture(command: string, args: string[]): Promise<string | null> {
+  return new Promise((resolve) => {
+    const child = spawn(command, args, { windowsHide: true });
+    let output = '';
+    child.stdout?.on('data', (d: Buffer) => { output += d.toString(); });
+    child.stderr?.on('data', (d: Buffer) => { output += d.toString(); });
+    child.on('error', () => resolve(null));
+    child.on('close', () => resolve(output.trim() || null));
+  });
+}
+
 function extract(archivePath: string, dest: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(archivePath, [`-o${dest}`, '-y'], { windowsHide: true });

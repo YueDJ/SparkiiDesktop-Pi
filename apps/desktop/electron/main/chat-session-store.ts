@@ -52,6 +52,9 @@ export class ChatSessionStore {
     if (columns.some((c) => c.name === 'title')) {
       this.db.exec('ALTER TABLE chat_sessions DROP COLUMN title');
     }
+    if (columns.some((c) => c.name === 'shell')) {
+      this.db.exec('ALTER TABLE chat_sessions DROP COLUMN shell');
+    }
     if (!columns.some((c) => c.name === 'thinking_level')) {
       this.db.exec('ALTER TABLE chat_sessions ADD COLUMN thinking_level TEXT');
     }

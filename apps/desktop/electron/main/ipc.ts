@@ -14,6 +14,7 @@ import { buildAttachmentPrompt, stageAttachments } from './attachments.js';
 import { resizeImageForAttachment } from './image-resize.js';
 import { writePiModelsConfig } from './pi-model-config.js';
 import { probeProviderModels } from './provider-probe.js';
+import { verifyRuntime } from './runtime-provision.js';
 import { mutateQueues, type QueueMutation, type QueueSnapshot } from './queue-mutation.js';
 import type { Runtime } from './runtime.js';
 import type { Logger } from './logger.js';
@@ -826,7 +827,11 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     await runWorkflow(rt, getWindow, input, broker, profileId);
     return { ok: true };
   });
-  ipcMain.handle('sparkii:diagnostics', async () => ({ logs: await logger.export(), audit: await rt.audit.exportJsonl() }));
+  ipcMain.handle('sparkii:diagnostics', async () => ({
+    logs: await logger.export(),
+    audit: await rt.audit.exportJsonl(),
+    runtime: await verifyRuntime(),
+  }));
   ipcMain.handle('sparkii:listErrors', () => rt.errors.list());
   ipcMain.handle('sparkii:appendError', (_e, rec: { id: string; message: string; source: string; createdAt: number }) => rt.errors.append(rec));
   ipcMain.handle('sparkii:clearError', (_e, id: string) => { rt.errors.clearOne(id); return { ok: true }; });
