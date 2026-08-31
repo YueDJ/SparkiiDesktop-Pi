@@ -21,7 +21,6 @@ const GLYPHS: Record<string, string> = {
   summarization_retry_scheduled: '⏱',
   summarization_retry_attempt_start: '↻',
   summarization_retry_finished: '✓',
-  shell_selected: '⚙',
   runtime_error: '!',
 };
 

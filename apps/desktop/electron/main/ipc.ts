@@ -12,7 +12,6 @@ import { autoWorkspacePath } from './workspace.js';
 import { buildProfileSaddle } from './saddle.js';
 import { buildAttachmentPrompt, stageAttachments } from './attachments.js';
 import { resizeImageForAttachment } from './image-resize.js';
-import { resolveShellChoice } from './shell-detect.js';
 import { writePiModelsConfig } from './pi-model-config.js';
 import { probeProviderModels } from './provider-probe.js';
 import { mutateQueues, type QueueMutation, type QueueSnapshot } from './queue-mutation.js';
@@ -64,14 +63,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
 
   function buildSaddle(profileId: string, sessionId: string): SessionSaddle {
     const rec = rt.chatSessions.get(sessionId);
-    const resolution = resolveShellChoice(rt.profileOf(profileId).profile.agent.tools, rec?.shell ?? 'bash');
-    return buildProfileSaddle(rt.profileOf(profileId), anchorDir(sessionId), rec?.workspacePath, undefined, undefined, resolution.shell);
-  }
-
-  function resolveSessionShell(sessionId: string): { shell: 'bash' | 'powershell' | null; degraded: boolean } {
-    const rec = rt.chatSessions.get(sessionId);
-    const profileId = rec?.profileId ?? 'general';
-    return resolveShellChoice(rt.profileOf(profileId).profile.agent.tools, rec?.shell ?? 'bash');
+    return buildProfileSaddle(rt.profileOf(profileId), anchorDir(sessionId), rec?.workspacePath);
   }
 
   async function withProbeSlot<T>(fn: (client: Awaited<ReturnType<typeof rt.pool.acquire>>['client']) => Promise<T>): Promise<T> {
@@ -286,10 +278,9 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       ? resolveSessionModel(settings, { model: context.model })
       : resolveSessionModel(settings, null);
     const thinkingLevel = context.thinkingLevel ?? resolveThinkingLevel(settings, null, target);
-    const newShell = resolveShellChoice(rt.profileOf(profileId).profile.agent.tools);
     const tempKey = `new:${randomUUID()}`;
     const slot = await rt.pool.acquire(tempKey, {
-      saddle: buildProfileSaddle(rt.profileOf(profileId), anchorDir(tempKey), workspacePath, target ?? undefined, thinkingLevel, newShell.shell),
+      saddle: buildProfileSaddle(rt.profileOf(profileId), anchorDir(tempKey), workspacePath, target ?? undefined, thinkingLevel),
       meta: {
         profileId,
         profileName: (rt.profileOf(profileId).profile as { manifest?: { displayName?: string } })?.manifest?.displayName ?? profileId,
@@ -319,7 +310,6 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
         workspacePath,
         model: target ? modelTargetKey(target) : null,
         thinkingLevel: context.thinkingLevel ?? null,
-        shell: newShell.shell,
         piSessionFile: sessionFile ?? null,
       });
       if (target) {
@@ -343,7 +333,6 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   }
 
   ipcMain.handle('sparkii:openChatSession', async (_e, sessionId: string) => {
-    const shellInfo = resolveSessionShell(sessionId);
     const open = openSessions.get(sessionId);
     if (open) {
       const [messagesResp, entriesResp] = await Promise.all([
@@ -353,20 +342,18 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       return {
         messages: (messagesResp.data ?? []) as unknown[],
         entries: (entriesResp.data ?? []) as unknown[],
-        shell: shellInfo.shell,
-        degraded: shellInfo.degraded,
       };
     }
     const rec = rt.chatSessions.get(sessionId) ?? (await listPiSessions(join(rt.piAgentDir, 'sessions'))).find((s) => s.id === sessionId);
     if (!rec) throw new Error('session not found');
     const file = (rec as { piSessionFile?: string | null }).piSessionFile
       ?? (rec as { path?: string }).path;
-    if (!file) return { messages: [], shell: shellInfo.shell, degraded: shellInfo.degraded };
+    if (!file) return { messages: [] };
     try {
-      return { messages: readPiSessionMessages(file), entries: readPiSessionEntries(file), shell: shellInfo.shell, degraded: shellInfo.degraded };
+      return { messages: readPiSessionMessages(file), entries: readPiSessionEntries(file) };
     } catch (e) {
       // 空会话或尚未落盘的会话（首条 assistant 才写 jsonl）没有文件，返回空消息。
-      if ((e as NodeJS.ErrnoException).code === 'ENOENT') return { messages: [], shell: shellInfo.shell, degraded: shellInfo.degraded };
+      if ((e as NodeJS.ErrnoException).code === 'ENOENT') return { messages: [] };
       throw e;
     }
   });

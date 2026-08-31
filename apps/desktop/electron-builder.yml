@@ -11,6 +11,8 @@ asar: true
 extraResources:
   - from: ../../profiles
     to: profiles
+  - from: runtime/portable-git.7z.exe
+    to: runtime/portable-git.7z.exe
 win:
   icon: build/icon.ico
   target:

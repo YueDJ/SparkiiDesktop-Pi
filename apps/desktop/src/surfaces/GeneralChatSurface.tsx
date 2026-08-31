@@ -213,7 +213,6 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
   const [provider, setProvider] = useState<string>('deepseek');
   const [supportsImages, setSupportsImages] = useState<Record<string, boolean>>({});
   const [visionWarning, setVisionWarning] = useState<string | null>(null);
-  const [shellNotice, setShellNotice] = useState<string | null>(null);
   const [thinkingLevels, setThinkingLevels] = useState<string[]>([...THINKING_LEVELS]);
   const [thinkingLevel, setThinkingLevel] = useState<string | null>(null);
   const [workspacePath, setWorkspacePath] = useState<string | null>(null);
@@ -303,7 +302,6 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
     setThinkingLevel(null);
     setThinkingLevels([...THINKING_LEVELS]);
     setWorkspacePath(null);
-    setShellNotice(null);
     setProvider('deepseek');
     setContextUsage(null);
     setIsCompacting(false);
@@ -317,13 +315,9 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
       setIsCompacting(Boolean(state?.isCompacting));
       if (state?.streaming) setBusy(true);
     }).catch((e: any) => reportError(String(e?.message ?? e), { source: '通用智能体' }));
-    api.openChatSession(sessionId).then(({ messages, entries, shell, degraded }: any) => {
+    api.openChatSession(sessionId).then(({ messages, entries }: any) => {
       const base = entries?.length ? Timeline.normalizeHistoricalSessionEntries(entries) : Timeline.normalizeMessages(messages ?? []);
-      const withShell = shell === 'bash' || shell === 'powershell'
-        ? [Timeline.shellSelectedEntry(shell, degraded), ...base]
-        : base;
-      setEntries(withShell);
-      if (degraded) setShellNotice('该会话原本使用 Git Bash，当前环境未检测到，已切换为 PowerShell。');
+      setEntries(base);
     }).catch((e: any) => reportError(String(e?.message ?? e), { source: '通用智能体' }));
     const off1 = api.on('chat-event', (p: any) => {
       if (p?.sessionId !== sessionId) return;
@@ -559,11 +553,6 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
       {visionWarning && (
         <div className="muted chat-vision-warning" data-testid="vision-warning" role="alert">
           {visionWarning}
-        </div>
-      )}
-      {shellNotice && (
-        <div className="muted chat-shell-notice" data-testid="shell-notice" role="alert">
-          {shellNotice}
         </div>
       )}
       <Composer

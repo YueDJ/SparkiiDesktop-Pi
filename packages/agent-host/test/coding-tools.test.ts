@@ -19,9 +19,9 @@ function ctx(over: Partial<CodingToolsContext & { proposes: ReturnType<typeof vi
 }
 
 describe("createCodingToolDefinitions", () => {
-  it("registers bash/powershell/edit/write with native names", () => {
+  it("registers bash/edit/write with native names", () => {
     const defs = createCodingToolDefinitions(ctx());
-    expect(defs.map((d) => d.name).sort()).toEqual(["bash", "edit", "powershell", "write"]);
+    expect(defs.map((d) => d.name).sort()).toEqual(["bash", "edit", "write"]);
   });
 
   it("bash exec proposes and streams output on approval", async () => {

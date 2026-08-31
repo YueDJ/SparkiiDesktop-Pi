@@ -3,7 +3,6 @@ import { access, readFile } from "node:fs/promises";
 import {
   createBashToolDefinition,
   createEditToolDefinition,
-  createPowerShellToolDefinition,
   createWriteToolDefinition,
   type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
@@ -23,11 +22,11 @@ function guardPath(ctx: CodingToolsContext, absolutePath: string): void {
   }
 }
 
-function shellExec(ctx: CodingToolsContext, toolName: "bash" | "powershell") {
+function shellExec(ctx: CodingToolsContext) {
   return async (command: string, cwd: string, opts: { onData: (data: Buffer) => void }) => {
     const decision = await ctx.propose({
       requestId: randomUUID(),
-      toolName,
+      toolName: "bash",
       targetSystem: "general",
       summary: command.slice(0, 512),
       payload: { command, cwd, workspaceRoot: ctx.workspaceRoot },
@@ -50,13 +49,7 @@ export function createCodingToolDefinitions(ctx: CodingToolsContext): Array<Tool
 
   const bash = createBashToolDefinition(pathCwd, {
     operations: {
-      exec: shellExec(ctx, "bash"),
-    },
-  });
-
-  const powershell = createPowerShellToolDefinition(pathCwd, {
-    operations: {
-      exec: shellExec(ctx, "powershell"),
+      exec: shellExec(ctx),
     },
   });
 
@@ -105,5 +98,5 @@ export function createCodingToolDefinitions(ctx: CodingToolsContext): Array<Tool
     },
   });
 
-  return [bash, powershell, edit, write];
+  return [bash, edit, write];
 }

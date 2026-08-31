@@ -48,7 +48,7 @@ export function resolveToolDefinitions(toolNames: string[], ctx: RegistryContext
   const codingByName = new Map(createCodingToolDefinitions({ cwd: pathCwd, workspaceRoot: ctx.workspaceRoot ?? pathCwd, propose: ctx.propose }).map((d) => [d.name, d]));
   const out: ToolDefinition[] = [];
   for (const name of toolNames) {
-    if (name === "bash" || name === "powershell" || name === "edit" || name === "write") {
+    if (name === "bash" || name === "edit" || name === "write") {
       const def = codingByName.get(name);
       if (def) out.push(def);
       else throw new Error(`unknown tool in saddle: ${name}`);

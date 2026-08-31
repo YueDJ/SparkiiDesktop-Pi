@@ -316,33 +316,6 @@ describe('GeneralChatSurface', () => {
     expect(screen.queryByText('模型切换')).toBeNull();
   });
 
-  it('shows the selected shell entry in debug detail level', async () => {
-    const { api } = makeApi();
-    api.getSettings = vi.fn().mockResolvedValue({ chatDetailLevel: 'debug' });
-    api.openChatSession = vi.fn().mockResolvedValue({
-      messages: [{ role: 'user', text: 'hi' }],
-      shell: 'bash',
-      degraded: false,
-    });
-    render(<GeneralChatSurface api={api} sessionId="s1" onNewSession={vi.fn()} />);
-    await screen.findByText('hi');
-    expect(await screen.findByText('执行 Shell')).toBeTruthy();
-    expect(screen.getByText('Git Bash')).toBeTruthy();
-  });
-
-  it('shows a notice when a persisted bash session degrades to PowerShell', async () => {
-    const { api } = makeApi();
-    api.openChatSession = vi.fn().mockResolvedValue({
-      messages: [{ role: 'user', text: 'hi' }],
-      shell: 'powershell',
-      degraded: true,
-    });
-    render(<GeneralChatSurface api={api} sessionId="s1" onNewSession={vi.fn()} />);
-    await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('s1'));
-    expect(await screen.findByTestId('shell-notice')).toBeTruthy();
-    expect(screen.getByText(/已切换为 PowerShell/)).toBeTruthy();
-  });
-
   it('does not duplicate the local user message when Pi echoes the idle prompt', async () => {
     const { api, channels } = makeApi();
     render(<GeneralChatSurface api={api} sessionId="s1" onNewSession={vi.fn()} />);

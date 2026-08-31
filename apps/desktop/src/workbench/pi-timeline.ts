@@ -19,7 +19,6 @@ export type TimelineEventType =
   | 'summarization_retry_scheduled'
   | 'summarization_retry_attempt_start'
   | 'summarization_retry_finished'
-  | 'shell_selected'
   | 'runtime_error';
 
 export type TimelineStatus = 'info' | 'running' | 'ok' | 'warn' | 'error';
@@ -112,7 +111,6 @@ function eventLabel(type: TimelineEventType, _raw: Record<string, unknown>): str
     case 'summarization_retry_scheduled': return '摘要重试已安排';
     case 'summarization_retry_attempt_start': return '摘要重试开始';
     case 'summarization_retry_finished': return '摘要重试完成';
-    case 'shell_selected': return '执行 Shell';
     case 'runtime_error': return '运行时错误';
   }
 }
@@ -159,11 +157,6 @@ function eventDetail(type: TimelineEventType, raw: Record<string, unknown>): str
       return `第 ${raw.attempt}/${raw.maxAttempts} 次 · ${raw.delayMs}ms`;
     case 'summarization_retry_attempt_start':
       return raw.source ? String(raw.source) : undefined;
-    case 'shell_selected': {
-      const shell = raw.shell === 'powershell' ? 'PowerShell' : raw.shell === 'bash' ? 'Git Bash' : undefined;
-      if (!shell) return undefined;
-      return raw.degraded ? `${shell}（降级）` : shell;
-    }
     case 'runtime_error':
       return typeof raw.message === 'string' ? raw.message : undefined;
     default:
@@ -196,7 +189,6 @@ function eventStatus(type: TimelineEventType, _raw: Record<string, unknown>): Ti
     case 'branch_summary':
     case 'custom':
     case 'label':
-    case 'shell_selected':
       return 'info';
     default:
       return undefined;
@@ -330,10 +322,6 @@ export function normalizeHistoricalSessionEntries(entries: unknown[]): ChatEntry
     timelineEntry('agent_end', {}),
     timelineEntry('agent_settled', {}),
   ];
-}
-
-export function shellSelectedEntry(shell: 'bash' | 'powershell', degraded?: boolean): ChatEntry {
-  return timelineEntry('shell_selected', { shell, degraded: Boolean(degraded) });
 }
 
 export function normalizeMessages(messages: unknown[]): ChatEntry[] {

@@ -40,16 +40,6 @@ describe('ChatSessionStore', () => {
     s.close();
   });
 
-  it('stores and updates the shell choice', () => {
-    const s = store();
-    s.create({ id: 'pi-1', profileId: 'general', workspaceKind: 'auto', workspacePath: 'C:/a', shell: 'powershell' });
-    expect(s.get('pi-1')).toMatchObject({ shell: 'powershell' });
-    s.update('pi-1', { shell: 'bash' });
-    expect(s.get('pi-1')).toMatchObject({ shell: 'bash' });
-    s.update('pi-1', { shell: null });
-    expect(s.get('pi-1')).toMatchObject({ shell: null });
-    s.close();
-  });
   it('persists manual sort order', () => {
     const s = store();
     s.create({ id: 'pi-1', profileId: 'general', workspaceKind: 'auto', workspacePath: 'C:/a' });

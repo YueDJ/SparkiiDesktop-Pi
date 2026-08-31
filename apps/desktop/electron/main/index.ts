@@ -7,6 +7,7 @@ import { registerIpc } from './ipc.js';
 import { Logger } from './logger.js';
 import { attachRecovery } from './recovery.js';
 import { defaultDataDir } from './paths.js';
+import { ensureRuntime, runtimeArchivePath } from './runtime-provision.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -34,6 +35,9 @@ app.whenReady().then(async () => {
   Menu.setApplicationMenu(null);
   const dataDir = process.env.SPARKII_DATA_DIR ?? defaultDataDir();
   mkdirSync(dataDir, { recursive: true });
+  await ensureRuntime({ archivePath: runtimeArchivePath(process.env, process.resourcesPath) }).catch((e) => {
+    console.error('[runtime] ensure failed:', e instanceof Error ? e.message : e);
+  });
   const single = process.env.SPARKII_PROFILE_DIR;
   const profileRoot = single
     ? dirname(single)
