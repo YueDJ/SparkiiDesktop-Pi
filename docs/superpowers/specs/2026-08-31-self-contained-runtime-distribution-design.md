@@ -18,7 +18,7 @@
 1. **Pi 跑在 Electron 自带的 Node 里，不依赖独立 Node。** Pi SDK 被 esbuild 打进 `dist-electron/pi-runtime/utility-entry.js`，由 `utilityProcess.fork()` 或 `fork()` 启动，复用 Electron 的 Node。全仓库 runtime 代码没有任何 `spawn(node/npm/npx)`。
 2. **Sparkii 自身没有任何 Python/uv 依赖。** 全仓库 runtime 代码没有 `python`/`uv`/`venv`/`VIRTUAL_ENV`/`UV_` 引用（唯一命中是 Markdown 语法高亮标签）。Python 只是「agent 帮用户跑 Python 项目」的可选能力。
 3. **bash/edit/write 的执行已被 Sparkii 接管到主进程。** `coding-tools.ts` 用 `operations.exec` 覆盖 Pi 原生的 bash 执行，真实 `spawn(bash.exe, ['-c', cmd])` 发生在主进程 `general-executor.ts` 的 `runShell`。Pi 侧只发起审批。
-4. **Pi 子进程内会直接 `spawn("git" / "npm")`，但仅用于「技能/插件更新检查」。** 打包后的 Pi SDK 用 `runCommandCapture("git", ["rev-parse" / "ls-remote" / "fetch", ...])` 与 `runCommandCapture("npm", ["view", ...])` 检查已安装技能/工具是否有更新；该逻辑受离线模式门控，且整体包在 try/catch 里、失败静默返回 false。它运行在 Pi 子进程、依赖 PATH。
+4. **Pi SDK 里有会 `spawn("git" / "npm")` 的代码，但属于「技能/插件包管理」与「TUI footer 分支显示」，在 Sparkii 的用法下基本不触发。** 打包产物里有两类调用：(a) `resource-loader.js` 的技能/插件包管理器——从 npm/git 源安装与更新技能，用到 `npm view` / `npm install` / `git clone` / `git fetch` / `git reset --hard` 等；(b) `footer-data-provider.js` 用 `git symbolic-ref --short HEAD` 读当前分支供 TUI footer 显示。两者要么受离线模式门控、要么失败静默。Sparkii 的技能来自 `profiles/*/agent/skills/` 静态捆绑（走 `additionalSkillPaths`），不以 npm/git 安装；且 Sparkii 是 headless 嵌入（不带 Pi 的 TUI footer），所以这些路径在 Sparkii 里几乎不触发。
 5. **`powershell` 当前不是任何 profile 的一等工具。** `general` profile 只有 `bash`；`contract-review` 没有 shell 工具。整套 `resolvePowerShell`/`resolveShellChoice`/`buildProfileSaddle` 替换，存在的唯一目的就是「机器上没有 Git Bash 时降级到 PowerShell」。
 
 结论：Sparkii 自己的运行时只需要 **Portable Git**（提供 bash + git + coreutils）。Node、uv、Python 都是「agent 帮用户跑项目」的可选语言运行时，不属于本轮「让 Sparkii 零安装跑起来」的范围。
@@ -80,13 +80,13 @@
 - `general-executor.runShell` 用绝对路径 `spawn(<runtimeRoot>\portable-git\bin\bash.exe, ['-c', cmd])`，bash 本身不需要在 PATH 上。
 - 命令内的 `git` / `ls` / `grep` 由 Portable Git 自带的 `/etc/profile` 组织 PATH（`/usr/bin`、`/mingw64/bin` 等）解析，与现有系统 Git Bash 行为一致。**agent 的 git/coreutils 无需在 Windows PATH 上注入任何东西。**
 
-**B. Pi 子进程（技能/插件更新检查）**
+**B. Pi 子进程（技能/插件包管理 + footer 分支显示，基本 dormant）**
 
-- Pi SDK 在子进程内直接 `runCommandCapture("git", ...)` / `runCommandCapture("npm", ...)` 检查已装技能/工具是否有更新；该逻辑离线门控 + 失败静默，不在核心会话路径上。
+- Pi SDK 内会直接 `spawn("git" / "npm")`，但仅在「从 npm/git 安装/更新技能」与「TUI footer 显示当前分支」时发生；两者都离线门控或失败静默，且 Sparkii（静态技能 + headless 嵌入）几乎不触发。
 - 这些 `spawn` 依赖子进程 PATH；子进程 env 为 `{ ...process.env, ...env }`，继承主进程 PATH。
-- 因此只需在**主进程启动时把 `portable-git\cmd`（`git.exe`）prepend 到 PATH**，一处注入即覆盖主进程与 Pi 子进程两处。
+- 因此把 `portable-git\cmd`（`git.exe`）prepend 到主进程 PATH 属**防御性/一致性措施**（一处注入即覆盖主进程与 Pi 子进程两处），而非 Sparkii 运行的硬要求。
 - `bin` / `usr\bin` / `mingw64\bin` **无需**放入 Windows PATH（它们是给 bash 内部用的，直接放入 Windows PATH 反而可能遮蔽系统同名程序），也不设 `MSYSTEM`（那是从 Windows 直接调用 MSYS 工具才需要，这里不用）。
-- `npm` 更新检查：本轮不打包 Node，`npm` 不在 PATH，该半支自然静默失效（离线门控 + try/catch），记为已知非目标。
+- `npm`：本轮不打包 Node，`npm` 不在 PATH，npm 源相关调用自然静默失效（离线门控 + try/catch），记为已知非目标。
 
 **验收（冒烟）**
 
