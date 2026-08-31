@@ -5,14 +5,14 @@ import { createWriteStream, existsSync, mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
-import { fileURLToPath } from 'node:url';
+import { URL as NodeURL, fileURLToPath } from 'node:url';
 import https from 'node:https';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const desktopRoot = join(__dirname, '..');
 
-// Git for Windows 的发布标签形如 v2.47.1.windows.2，对应归档 PortableGit-2.47.1.2-64-bit.7z.exe。
-const VERSION = process.env.PORTABLE_GIT_VERSION ?? '2.47.1.windows.2';
+// Git for Windows 的发布标签形如 v2.55.0.windows.3，对应归档 PortableGit-2.55.0.3-64-bit.7z.exe。
+const VERSION = process.env.PORTABLE_GIT_VERSION ?? '2.55.0.windows.3';
 const ASSET = `PortableGit-${VERSION.replace('.windows.', '.')}-64-bit.7z.exe`;
 const URL = `https://github.com/git-for-windows/git/releases/download/v${VERSION}/${ASSET}`;
 
@@ -25,14 +25,28 @@ const portableGitDir = join(runtimeRoot, 'portable-git');
 function download(url, dest) {
   mkdirSync(dirname(dest), { recursive: true });
   return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
-      if (res.statusCode !== 200) {
-        res.resume();
-        reject(new Error(`download failed: HTTP ${res.statusCode} for ${url}`));
+    const follow = (current, redirects) => {
+      if (redirects > 5) {
+        reject(new Error(`too many redirects for ${url}`));
         return;
       }
-      pipeline(res, createWriteStream(dest)).then(resolve, reject);
-    }).on('error', reject);
+      https.get(current, (res) => {
+        const { statusCode, headers } = res;
+        if (statusCode >= 300 && statusCode < 400 && headers.location) {
+          res.resume();
+          const next = new NodeURL(headers.location, current).toString();
+          follow(next, redirects + 1);
+          return;
+        }
+        if (statusCode !== 200) {
+          res.resume();
+          reject(new Error(`download failed: HTTP ${statusCode} for ${current}`));
+          return;
+        }
+        pipeline(res, createWriteStream(dest)).then(resolve, reject);
+      }).on('error', reject);
+    };
+    follow(url, 0);
   });
 }
 
