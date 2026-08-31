@@ -52,12 +52,15 @@
   - git：`<runtimeRoot>\portable-git\cmd\git.exe`
 - **单一固定路径，无分支**：生产与 dev 共用同一路径解析；不存在 `app.isPackaged` 分支，也不存在「探测系统 Git Bash」的兜底。
 
-## 5. 打包与首次解压
+## 5. 打包与安装时解压
 
-- 安装包通过 electron-builder `extraResources` 携带 Portable Git 官方自解压包（压缩后约 50MB）到 `resources/runtime/`。
-- 首次启动（`app.whenReady` 内）：若 `<runtimeRoot>\portable-git\bin\bash.exe` 或 `<runtimeRoot>\portable-git\cmd\git.exe` 不存在，则解压 SFX 到 `<runtimeRoot>\portable-git`；解压后确认 `bin\bash.exe` 存在（若官方 SFX 自带一层目录名则对齐到该布局）。
+- 安装包通过 electron-builder `extraResources` 携带 Portable Git 官方自解压包（约 56MB，解压后约 389MB）到 `resources/runtime/`。
+- **主路径（安装器解压，零首次等待）**：NSIS 安装器在文件安装完成后，通过自定义 `customInstall` 宏静默执行 `resources\runtime\portable-git.7z.exe -o"%LOCALAPPDATA%\SparkiiDesktop\runtime\portable-git" -y`。解压发生在安装进度期间，安装完成即运行时已就位，首次启动零解压、零等待、零弹窗。
+- **兜底（首次启动补解压）**：`ensureRuntime()` 保持幂等——若 `<runtimeRoot>\portable-git\bin\bash.exe` 或 `cmd\git.exe` 缺失（用户误删 LOCALAPPDATA 或安装器解压失败），首次启动静默补解压。运行时代码不感知打包/未打包差异。
+- **卸载清理**：NSIS `customUnInstall` 仅删除 `%LOCALAPPDATA%\SparkiiDesktop\runtime\portable-git`，不触碰 `data\` 用户数据。
+- 解压失败不阻断安装：安装器解压尽力而为，失败仅 `DetailPrint` 记录，交由首次启动兜底。
 - 解压未完成时 `bash` 不可用：`bash` handler 返回清晰错误，**不做 PowerShell 降级**。
-- dev 环境：由 `pnpm ensure:runtime`（或 `start.cmd` 钩子）下载并解压到同一 `%LOCALAPPDATA%\SparkiiDesktop\runtime\portable-git`，与生产共享路径；运行时代码不感知打包/未打包差异。
+- dev 环境：由 `pnpm ensure:runtime` 下载并解压到同一 `%LOCALAPPDATA%\SparkiiDesktop\runtime\portable-git`，与生产共享路径。
 
 ## 6. shell 简化（取代 shell-selection 的兜底）
 
@@ -76,7 +79,7 @@
 
 ## 8. 更新策略
 
-- 本轮：运行时随主程序发布、解压一次即可（见第 5 节）；不建版本清单、不做重解压、不做独立运行时更新通道。
+- 本轮：运行时随主程序发布、安装器解压一次即可（见第 5 节）；不建版本清单、不做重解压、不做独立运行时更新通道。
 - 后续确有需要时再引入版本标记与运行时独立更新；第 4 节的可写目录布局已为其预留。
 
 ## 9. 许可合规

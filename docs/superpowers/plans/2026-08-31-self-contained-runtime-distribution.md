@@ -1,121 +1,115 @@
-# Self-contained Runtime 实施计划
+# 自带运行时「安装器解压」实施计划
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 让 Sparkii Desktop 打包自带的 Portable Git（bash + git + coreutils），并简化 shell 逻辑为「固定使用自带 bash、删除 powershell 检测/降级」。
+**Goal:** 把 Portable Git 的解压从「首次启动」挪到「NSIS 安装器」阶段，安装完成即运行时已就位，首次启动零解压、零等待、零弹窗；保留首次启动兜底。
 
-**Architecture:** 新增 `runtime-layout.ts` 解析固定运行时路径（`%LOCALAPPDATA%\SparkiiDesktop\runtime\portable-git`），`ensureRuntime()` 在首次启动解压随包的 Portable Git 自解压包；`general-executor` 直接使用该绝对路径跑 bash，git 随 bash 自带；删除 `shell-detect.ts`、powershell handler、会话 `shell` 持久化及整套降级。
+**Architecture:** 新增 `build/installer.nsh`，用 electron-builder 的 `customInstall` 宏在文件安装完成后静默执行随包 SFX 解压到 `%LOCALAPPDATA%\SparkiiDesktop\runtime\portable-git`，`customUnInstall` 卸载时清理该目录。运行时代码 `ensureRuntime()` 不变，作为「安装器解压失败 / 用户误删 LOCALAPPDATA」时的幂等兜底。
 
-**Tech Stack:** TypeScript, Electron main process, electron-builder, vitest。
+**Tech Stack:** NSIS（经 electron-builder 集成）、electron-builder、TypeScript/Electron（不变）。
 
 **Spec:** `docs/superpowers/specs/2026-08-31-self-contained-runtime-distribution-design.md`
 
 ## Global Constraints
 
 - 运行时根固定为 `%LOCALAPPDATA%\SparkiiDesktop\runtime`，Portable Git 树在 `runtime\portable-git`（`bin\bash.exe`、`cmd\git.exe`）。
-- bash 由 Sparkii 自己的代码用绝对路径 spawn；git 随 bash 自带，本轮不做任何单独注入。
-- 生产与 dev 共用同一路径解析，无 `app.isPackaged` 分支、无系统 Git Bash 探测。
-- 删除 powershell：`detectGitBashPath` / `resolvePowerShell` / `resolveShellChoice` / saddle 替换 / 会话 `shell` 字段 / general-executor 的 powershell handler 及其只读与风险判定。
+- 固定自带、不做系统 Git Bash 检测；bash 由代码绝对路径 spawn，git 随 bash 自带。
+- 生产与 dev 共用同一路径解析，无 `app.isPackaged` 分支。
 - 仅本轮打包 Portable Git；Node / uv / Python 不打包。
+- SFX 解压为静默模式（`-o<dir> -y`），解压失败不阻断安装，交由首次启动 `ensureRuntime()` 兜底。
+- 卸载清理只删 `runtime\portable-git`，绝不触碰 `%LOCALAPPDATA%\SparkiiDesktop\data\` 用户数据。
 
 ---
 
 ## File Structure
 
-- Create: `apps/desktop/electron/main/runtime-layout.ts` — 纯路径解析 + 解压判断（可单测）。
-- Create: `apps/desktop/electron/main/runtime-provision.ts` — 首次解压（spawn SFX）。
-- Create: `apps/desktop/scripts/ensure-runtime.mjs` — dev 下载/解压脚本。
-- Create: `apps/desktop/test/runtime-layout.test.ts`。
-- Modify: `apps/desktop/electron/main/general-executor.ts` — bash-only，用绝对路径。
-- Modify: `apps/desktop/electron/main/index.ts` — 启动时 `ensureRuntime()`。
-- Modify: `apps/desktop/electron/main/saddle.ts`、`ipc.ts`、`chat-session-store.ts`、`workflow.ts`、`paths.ts`。
-- Modify: `apps/desktop/electron/preload/api.ts`、`api-types.ts`。
-- Modify: `apps/desktop/src/workbench/pi-timeline.ts`、`apps/desktop/src/surfaces/GeneralChatSurface.tsx`。
-- Modify: `packages/agent-host/src/coding-tools.ts`、`tool-registry.ts`。
-- Modify: `apps/desktop/electron-builder.yml`、`apps/desktop/package.json`。
-- Delete: `apps/desktop/electron/main/shell-detect.ts`、`apps/desktop/test/shell-detect.test.ts`。
-- Modify tests: `general-executor.test.ts`、`saddle.test.ts`、`chat-session-store.test.ts`、`pi-timeline.test.ts`、`general-chat-surface.test.tsx`、`coding-tools.test.ts`、`tool-registry.test.ts`。
+- Create: `apps/desktop/build/installer.nsh` — NSIS 自定义宏（`customInstall` 解压、`customUnInstall` 清理）。
+- Modify: `apps/desktop/electron-builder.yml` — `nsis` 加 `include: build/installer.nsh`。
+- 不变：`apps/desktop/electron/main/runtime-provision.ts`（`ensureRuntime()` 已是幂等兜底）、`runtime-layout.ts`。
 
 ## Tasks
 
-### Task 1: runtime-layout 纯路径解析
+### Task 1: NSIS 安装器脚本 installer.nsh
 
-**Files:** Create `apps/desktop/electron/main/runtime-layout.ts`, `apps/desktop/test/runtime-layout.test.ts`
-
-**Interfaces:**
-- Produces: `resolveRuntimeRoot(env)`, `resolveBashPath(env)`, `resolveGitCmdDir(env)`, `needsProvision(env)`（后面被 provision、general-executor 使用）。
-
-- [ ] **Step 1: 写失败测试** `runtime-layout.test.ts`：`resolveRuntimeRoot` 返回 `join(LOCALAPPDATA,'SparkiiDesktop','runtime')`；`SPARKII_RUNTIME_ROOT` 覆盖生效；`resolveBashPath` = `root/portable-git/bin/bash.exe`；`needsProvision` 在缺 bash.exe 或 git.exe 时 true、齐备时 false。
-- [ ] **Step 2: 跑测试确认失败**（模块不存在）。
-- [ ] **Step 3: 实现** `runtime-layout.ts`（常量 `APP_DIR='SparkiiDesktop'`、`PORTABLE_GIT='portable-git'`，纯函数，用 `existsSync`）。
-- [ ] **Step 4: 跑测试确认通过**。
-- [ ] **Step 5: 提交**。
-
-### Task 2: ensureRuntime 首次解压
-
-**Files:** Create `apps/desktop/electron/main/runtime-provision.ts`；Modify `apps/desktop/electron/main/index.ts`
+**Files:**
+- Create: `apps/desktop/build/installer.nsh`
 
 **Interfaces:**
-- Consumes: `resolveRuntimeRoot`, `needsProvision` from Task 1。
-- Produces: `ensureRuntime(opts)`：若 `needsProvision` 且有归档则 spawn SFX 解压；归档路径 `opts.archivePath`。
+- Produces: NSIS 宏 `customInstall`（安装后解压 SFX）与 `customUnInstall`（卸载清理）。electron-builder 在 `installSection.nsh` 第 81-82 行、`uninstaller.nsh` 第 156-157 行以 `!ifmacrodef` + `!insertmacro` 调用，宏名必须完全一致。
 
-- [ ] **Step 1: 写失败测试**（mock `node:child_process.spawn`）：归档存在 + 缺 bash → 调用 spawn 且参数含 `-o` 与 portable-git 目录；已就绪 → 不 spawn。
-- [ ] **Step 2: 跑测试确认失败**。
-- [ ] **Step 3: 实现** `runtime-provision.ts`。
-- [ ] **Step 4: 跑测试确认通过**。
-- [ ] **Step 5: 在 `index.ts` 的 `app.whenReady` 里 `await ensureRuntime()`（best-effort，失败仅记录日志，不阻断启动）。
-- [ ] **Step 6: 提交**。
+- [ ] **Step 1: 写 installer.nsh**
 
-### Task 3: general-executor 改为 bash-only
+```nsh
+!macro customInstall
+  DetailPrint "Installing Portable Git runtime..."
+  ExecWait '"$INSTDIR\resources\runtime\portable-git.7z.exe" -o"$LOCALAPPDATA\SparkiiDesktop\runtime\portable-git" -y' $0
+  DetailPrint "Portable Git runtime extraction exit code: $0"
+!macroend
 
-**Files:** Modify `apps/desktop/electron/main/general-executor.ts`, `apps/desktop/test/general-executor.test.ts`
+!macro customUnInstall
+  RMDir /r "$LOCALAPPDATA\SparkiiDesktop\runtime\portable-git"
+!macroend
+```
+
+- [ ] **Step 2: 打包编译验证 NSIS 语法**（Task 2 完成后执行）：`pnpm dist` 若 NSIS 宏语法/引号错误会在生成安装器时报错。
+
+- [ ] **Step 3: 提交**（与 Task 2 一并提交）。
+
+### Task 2: electron-builder.yml 引入 installer.nsh
+
+**Files:**
+- Modify: `apps/desktop/electron-builder.yml`
 
 **Interfaces:**
-- Consumes: `resolveBashPath` from Task 1。
-- Produces: 仅导出 `isReadOnlyBashCommand`、`riskOfCommand`、`registerGeneralExecutor`（只注册 bash/edit/write）。
+- Consumes: Task 1 的 `build/installer.nsh`。
 
-- [ ] **Step 1: 改测试**：删除 powershell 相关断言与 `detectGitBashPath/resolvePowerShell` mock，改为 mock `runtime-layout.js` 的 `resolveBashPath` 返回固定路径，断言 bash 用绝对路径 spawn。
-- [ ] **Step 2: 跑测试确认失败**。
-- [ ] **Step 3: 实现**：移除 powershell handler 与只读/风险函数，`runShell` 用 `resolveBashPath()`。
-- [ ] **Step 4: 跑测试确认通过**。
-- [ ] **Step 5: 提交**。
+- [ ] **Step 1: 在 `nsis` 块加 `include`**
 
-### Task 4: 删除 shell-detect 与降级/持久化
+```yaml
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  include: build/installer.nsh
+```
 
-**Files:** Delete `shell-detect.ts`, `shell-detect.test.ts`；Modify `saddle.ts`, `ipc.ts`, `chat-session-store.ts`, `workflow.ts`, `preload/api.ts`, `api-types.ts`, `pi-timeline.ts`, `GeneralChatSurface.tsx`, `paths.ts`, 相关测试
+- [ ] **Step 2: 提交 Task 1 + Task 2**
 
-- [ ] **Step 1: 删 `shell-detect.ts`** 及 `resolveShellChoice` 的所有 import/调用。
-- [ ] **Step 2: `saddle.ts`** 去掉 `shell` 参数与 bash→powershell 替换。
-- [ ] **Step 3: `chat-session-store.ts`** 去掉 `shell` 字段（interface/建表/insert/update/select）。
-- [ ] **Step 4: `ipc.ts`** 去掉 `resolveShellChoice`、`shell`/`degraded` 返回值与 `buildProfileSaddle` 的 shell 实参。
-- [ ] **Step 5: `preload/api.ts` + `api-types.ts`** 去掉 `openChatSession` 的 `shell`/`degraded`。
-- [ ] **Step 6: `pi-timeline.ts`** 去掉 `shellSelectedEntry` 与 `shell_selected` 事件类型/label/detail/status。
-- [ ] **Step 7: `GeneralChatSurface.tsx`** 去掉 `shellNotice` 与 shell 相关渲染。
-- [ ] **Step 8: `workflow.ts`** 改 import 为 `isReadOnlyBashCommand`/`riskOfCommand`，去掉 powershell 分支。
-- [ ] **Step 9: 更新/删除相关测试**。
-- [ ] **Step 10: 提交**。
+```bash
+git add apps/desktop/build/installer.nsh apps/desktop/electron-builder.yml
+git commit -m "feat(runtime): 安装器阶段解压 Portable Git 并卸载清理"
+```
 
-### Task 5: 移除 agent-host 的 powershell 工具定义
+### Task 3: 打包与安装/卸载冒烟
 
-**Files:** Modify `packages/agent-host/src/coding-tools.ts`, `tool-registry.ts`, `coding-tools.test.ts`, `tool-registry.test.ts`
+- [ ] **Step 1: 打包**
 
-- [ ] **Step 1: `coding-tools.ts`** 去掉 `createPowerShellToolDefinition` 与 powershell def，`shellExec` 去掉 toolName 参数并固定 `bash`，返回 `[bash, edit, write]`。
-- [ ] **Step 2: `tool-registry.ts`** 去掉 `name === "powershell"` 分支。
-- [ ] **Step 3: 更新测试**。
-- [ ] **Step 4: 提交**。
+Run: `pnpm --filter @sparkii/desktop dist`
+Expected: 在 `apps/desktop/out/` 生成 NSIS 安装器（如 `Sparkii Setup 0.1.0.exe`），编译过程无 NSIS 语法错误。
 
-### Task 6: 构建配置与 dev 脚本
+- [ ] **Step 2: 静默安装**
 
-**Files:** Modify `apps/desktop/electron-builder.yml`, `apps/desktop/package.json`；Create `apps/desktop/scripts/ensure-runtime.mjs`
+Run: `& "apps/desktop/out/Sparkii Setup 0.1.0.exe" /S`（NSIS `/S` 静默安装）
+Expected: 安装完成后 `%LOCALAPPDATA%\SparkiiDesktop\runtime\portable-git\bin\bash.exe` 与 `cmd\git.exe` 存在。
 
-- [ ] **Step 1: `electron-builder.yml`** 加 `extraResources` 携带 Portable Git 自解压包到 `resources/runtime`。
-- [ ] **Step 2: `scripts/ensure-runtime.mjs`** 下载并解压 Portable Git 到 `%LOCALAPPDATA%\SparkiiDesktop\runtime\portable-git`。
-- [ ] **Step 3: `package.json`** 加 `ensure:runtime` script。
-- [ ] **Step 4: 提交**。
+- [ ] **Step 3: 首次启动验证**
 
-### Task 7: 全量验证
+Run: 启动已安装应用，观察 `[runtime] verify` 日志 `ready: true` 且 `bashVersion` / `gitVersion` 非空。
+Expected: 首次启动零解压（runtime 已由安装器解压），verify 通过。
 
-- [ ] **Step 1:** `pnpm test`（vitest）全绿。
-- [ ] **Step 2:** `pnpm typecheck` 全绿。
-- [ ] **Step 3:** 复查无残留 `shell-detect`/`resolveShellChoice`/`resolvePowerShell`/`detectGitBashPath`/`shell`/`powershell` 引用（不含文档）。
-- [ ] **Step 4: 提交**。
+- [ ] **Step 4: 静默卸载**
+
+Run: 用卸载器 `/S` 静默卸载（`%LOCALAPPDATA%\Programs\Sparkii\Uninstall Sparkii.exe /S`，路径以实际安装目录为准）
+Expected: 卸载后 `%LOCALAPPDATA%\SparkiiDesktop\runtime\portable-git` 已删除，但 `%LOCALAPPDATA%\SparkiiDesktop\data` 仍在。
+
+- [ ] **Step 5: 兜底验证（可选）**
+
+手动删除 `%LOCALAPPDATA%\SparkiiDesktop\runtime\portable-git`，再次启动应用。
+Expected: `ensureRuntime()` 首次启动静默补解压，runtime 恢复，verify 通过。
+
+- [ ] **Step 6: 提交**（如有 `.gitignore`/文档微调）。
+
+## Self-Review
+
+- Spec 覆盖：第 5 节「安装器解压 + 首次启动兜底 + 卸载清理」由 Task 1（解压/清理）+ Task 3（冒烟验证兜底）覆盖；第 6/7 节（bash-only、git 随 bash）已在此前提交完成，本计划不变。
+- 占位符扫描：无 TBD/TODO；`build/installer.nsh` 内容完整可执行。
+- 类型一致性：宏名 `customInstall` / `customUnInstall` 与 electron-builder 模板 `installSection.nsh:81-82`、`uninstaller.nsh:156-157` 严格一致。

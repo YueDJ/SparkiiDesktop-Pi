@@ -24,5 +24,6 @@ appx:
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
+  include: build/installer.nsh
 extraMetadata:
   main: dist-electron/main/index.js
