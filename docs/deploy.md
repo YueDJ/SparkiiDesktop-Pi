@@ -26,7 +26,8 @@ SparkiiDesktop-Pi 面向可私有化部署场景：应用本体、Pi Agent 运�
 
 ## 数据目录与用户隔离
 
-- 每位用户的数据目录为 `<userData>/sparkii/data/<userId>`（`apps/desktop/electron/main/paths.ts` 的 `dataDirFor`），用户标识中的非法字符会被替换为 `_`。
+- 默认数据目录为 `%LOCALAPPDATA%\SparkiiDesktop\data`（由 `apps/desktop/electron/main/paths.ts` 的 `defaultDataDir()` 解析）；需要时可用 `SPARKII_DATA_DIR` 显式覆盖，仅用于开发、CI、便携或企业指定目录，正常启动不应指向 `%TEMP%`。
+- 数据暂按当前 Windows 用户平铺存放；`dataDirFor(userId)` 仅作为未来应用内多用户隔离的预留接口，尚未启用。
 - 审计日志使用 SQLite WAL（`audit.db`）落盘并支持导出 JSONL；结构化运行日志写入 `<dataDir>/logs/sparkii.log.jsonl`。
 - 敏感数据加密落盘（密钥经 Electron `safeStorage` 加密，Windows 使用 DPAPI/凭据管理器），明文密钥不落盘、不暴露给 Renderer。
 
