@@ -18,7 +18,7 @@
 1. **Pi 跑在 Electron 自带的 Node 里，不依赖独立 Node。** Pi SDK 被 esbuild 打进 `dist-electron/pi-runtime/utility-entry.js`，由 `utilityProcess.fork()` 或 `fork()` 启动，复用 Electron 的 Node。全仓库 runtime 代码没有任何 `spawn(node/npm/npx)`。
 2. **Sparkii 自身没有任何 Python/uv 依赖。** 全仓库 runtime 代码没有 `python`/`uv`/`venv`/`VIRTUAL_ENV`/`UV_` 引用（唯一命中是 Markdown 语法高亮标签）。Python 只是「agent 帮用户跑 Python 项目」的可选能力。
 3. **bash/edit/write 的执行已被 Sparkii 接管到主进程。** `coding-tools.ts` 用 `operations.exec` 覆盖 Pi 原生的 bash 执行，真实 `spawn(bash.exe, ['-c', cmd])` 发生在主进程 `general-executor.ts` 的 `runShell`。Pi 侧只发起审批。
-4. **Pi 子进程内仍会直接 `spawn("git", ...)`。** 打包后的 Pi SDK 内 `runCommandCapture("git", ["rev-parse", ...])` 做会话 git 上下文，运行在 Pi 子进程、依赖 PATH 上的 `git.exe`。
+4. **Pi 子进程内会直接 `spawn("git" / "npm")`，但仅用于「技能/插件更新检查」。** 打包后的 Pi SDK 用 `runCommandCapture("git", ["rev-parse" / "ls-remote" / "fetch", ...])` 与 `runCommandCapture("npm", ["view", ...])` 检查已安装技能/工具是否有更新；该逻辑受离线模式门控，且整体包在 try/catch 里、失败静默返回 false。它运行在 Pi 子进程、依赖 PATH。
 5. **`powershell` 当前不是任何 profile 的一等工具。** `general` profile 只有 `bash`；`contract-review` 没有 shell 工具。整套 `resolvePowerShell`/`resolveShellChoice`/`buildProfileSaddle` 替换，存在的唯一目的就是「机器上没有 Git Bash 时降级到 PowerShell」。
 
 结论：Sparkii 自己的运行时只需要 **Portable Git**（提供 bash + git + coreutils）。Node、uv、Python 都是「agent 帮用户跑项目」的可选语言运行时，不属于本轮「让 Sparkii 零安装跑起来」的范围。
@@ -68,15 +68,30 @@
 - 生产固定使用自带 bash；shell 选择退化为常量，不再「bash/powershell 二选一」。
 - 删除 `detectGitBashPath` / `resolvePowerShell` / `resolveShellChoice`、`saddle.ts` 的 bash→powershell 替换、会话级 `shell` 持久化。
 - `bash` handler 直接使用固定 `bash.exe` 路径（第 4 节）。
-- 一并移除 powershell handler 与相关只读/风险判定代码（`isReadOnlyPowerShellCommand` / `riskOfPowerShellCommand` / `isReadOnlyShellCommand` / `riskOfShellCommand` 的 powershell 分支），因为降级链已不存在。
+- 一并移除 powershell handler 及其全部相关代码：`isReadOnlyPowerShellCommand`、`riskOfPowerShellCommand`、`POWERSHELL_READ_ONLY_PREFIXES`、`HIGH_RISK_POWERSHELL`；`isReadOnlyShellCommand` / `riskOfShellCommand` 简化为只按 `bash` 分发（或直接调用 `isReadOnlyBashCommand` / `riskOfCommand` 并删除分发函数）。
 - 若后续希望保留一个**独立** PowerShell 工具（非 bash 的兜底），作为可选工具另行加回，不在本轮范围。
 
 ## 7. 环境注入（暴露给 agent）
 
-- 主进程启动时一次性把以下目录按序 prepend 到 PATH：`portable-git\cmd`、`portable-git\bin`、`portable-git\usr\bin`、`portable-git\mingw64\bin`。其中 `cmd`（`git.exe`）是 Pi 子进程内直接 `spawn("git")` 所必需的。
-- Pi 子进程 env 为 `{ ...process.env, ...env }`，继承主进程 PATH，故**主进程注入一次即覆盖两处**：主进程的 bash spawn 与 Pi 子进程内的 git 调用。
-- bash 内部的 coreutils/git 由 Portable Git 自带的 `/etc/profile` 组织 PATH（与现有系统 Git Bash 行为一致），无需在 Windows PATH 里为每个 coreutils 单列。
-- 验收标准（冒烟）：`bash -c "git --version && ls && grep --version"` 在解压后的运行时上通过。
+分两个执行面，机制不同：
+
+**A. `bash` 工具（主进程）**
+
+- `general-executor.runShell` 用绝对路径 `spawn(<runtimeRoot>\portable-git\bin\bash.exe, ['-c', cmd])`，bash 本身不需要在 PATH 上。
+- 命令内的 `git` / `ls` / `grep` 由 Portable Git 自带的 `/etc/profile` 组织 PATH（`/usr/bin`、`/mingw64/bin` 等）解析，与现有系统 Git Bash 行为一致。**agent 的 git/coreutils 无需在 Windows PATH 上注入任何东西。**
+
+**B. Pi 子进程（技能/插件更新检查）**
+
+- Pi SDK 在子进程内直接 `runCommandCapture("git", ...)` / `runCommandCapture("npm", ...)` 检查已装技能/工具是否有更新；该逻辑离线门控 + 失败静默，不在核心会话路径上。
+- 这些 `spawn` 依赖子进程 PATH；子进程 env 为 `{ ...process.env, ...env }`，继承主进程 PATH。
+- 因此只需在**主进程启动时把 `portable-git\cmd`（`git.exe`）prepend 到 PATH**，一处注入即覆盖主进程与 Pi 子进程两处。
+- `bin` / `usr\bin` / `mingw64\bin` **无需**放入 Windows PATH（它们是给 bash 内部用的，直接放入 Windows PATH 反而可能遮蔽系统同名程序），也不设 `MSYSTEM`（那是从 Windows 直接调用 MSYS 工具才需要，这里不用）。
+- `npm` 更新检查：本轮不打包 Node，`npm` 不在 PATH，该半支自然静默失效（离线门控 + try/catch），记为已知非目标。
+
+**验收（冒烟）**
+
+- `bash -c "git --version && ls && grep --version"` 在解压后的运行时上通过（agent 的 bash 路径）。
+- 主进程 `process.env.PATH` 包含 `portable-git\cmd`（Pi 子进程的 git 更新检查可解析 `git`）。
 
 ## 8. 更新策略
 
