@@ -18,7 +18,7 @@
 1. **Pi 跑在 Electron 自带的 Node 里，不依赖独立 Node。** Pi SDK 被 esbuild 打进 `dist-electron/pi-runtime/utility-entry.js`，由 `utilityProcess.fork()` 或 `fork()` 启动，复用 Electron 的 Node。全仓库 runtime 代码没有任何 `spawn(node/npm/npx)`。
 2. **Sparkii 自身没有任何 Python/uv 依赖。** 全仓库 runtime 代码没有 `python`/`uv`/`venv`/`VIRTUAL_ENV`/`UV_` 引用（唯一命中是 Markdown 语法高亮标签）。Python 只是「agent 帮用户跑 Python 项目」的可选能力。
 3. **bash/edit/write 的执行已被 Sparkii 接管到主进程。** `coding-tools.ts` 用 `operations.exec` 覆盖 Pi 原生的 bash 执行，真实 `spawn(bash.exe, ['-c', cmd])` 发生在主进程 `general-executor.ts` 的 `runShell`。Pi 侧只发起审批。
-4. **Pi SDK 里有会 `spawn("git" / "npm")` 的代码，但属于「技能/插件包管理」与「TUI footer 分支显示」，在 Sparkii 的用法下基本不触发。** 打包产物里有两类调用：(a) `resource-loader.js` 的技能/插件包管理器——从 npm/git 源安装与更新技能，用到 `npm view` / `npm install` / `git clone` / `git fetch` / `git reset --hard` 等；(b) `footer-data-provider.js` 用 `git symbolic-ref --short HEAD` 读当前分支供 TUI footer 显示。两者要么受离线模式门控、要么失败静默。Sparkii 的技能来自 `profiles/*/agent/skills/` 静态捆绑（走 `additionalSkillPaths`），不以 npm/git 安装；且 Sparkii 是 headless 嵌入（不带 Pi 的 TUI footer），所以这些路径在 Sparkii 里几乎不触发。
+4. **Pi SDK 内部会 `spawn("git" / "npm")`，但仅用于「技能/插件包管理」与「TUI footer 分支显示」，在 Sparkii（技能静态捆绑 + headless 嵌入）下基本不触发。** 因此本轮无需为 Pi 单独注入 git；agent 的 git 操作都经 bash 完成（见第 7 节）。
 5. **`powershell` 当前不是任何 profile 的一等工具。** `general` profile 只有 `bash`；`contract-review` 没有 shell 工具。整套 `resolvePowerShell`/`resolveShellChoice`/`buildProfileSaddle` 替换，存在的唯一目的就是「机器上没有 Git Bash 时降级到 PowerShell」。
 
 结论：Sparkii 自己的运行时只需要 **Portable Git**（提供 bash + git + coreutils）。Node、uv、Python 都是「agent 帮用户跑项目」的可选语言运行时，不属于本轮「让 Sparkii 零安装跑起来」的范围。
@@ -27,7 +27,7 @@
 
 | 组件 | 本轮 | 说明 |
 | --- | --- | --- |
-| Portable Git for Windows | 打包 | 提供 `bash.exe` + `git.exe` + coreutils，满足 `bash` 工具与 git 上下文 |
+| Portable Git for Windows | 打包 | 提供 `bash.exe` + `git.exe` + coreutils，满足 `bash` 工具（git 随 bash 使用） |
 | Node 运行时 | 不打包 | Pi 跑在 Electron Node；agent 的 `node/npm` 属可选语言运行时，后续单独评估 |
 | uv + 预建 Python venv | 不打包 | Sparkii 无 Python 依赖；属可选语言运行时，后续单独评估 |
 
@@ -38,13 +38,12 @@
 ```
 %LOCALAPPDATA%\SparkiiDesktop\
   data\                     # 现有：sessions.db / pi-agent / keyring / ...
-  runtime\                  # 新增：版本化、可替换的运行时根
+  runtime\                  # 新增：运行时根
     portable-git\           # 解压后的 Portable Git 树（bin/ usr/ cmd/ mingw64/ ...）
       bin\bash.exe
       cmd\git.exe
       usr\bin\ ...          # coreutils（ls/cat/grep/...）
       mingw64\bin\ ...
-    installed.json          # 已解压组件的版本 + sha256
 ```
 
 - 运行时根：`%LOCALAPPDATA%\SparkiiDesktop\runtime`（与现有 `data\` 同级，复用 `DATA_APP_DIR = 'SparkiiDesktop'`）。
@@ -56,11 +55,8 @@
 ## 5. 打包与首次解压
 
 - 安装包通过 electron-builder `extraResources` 携带 Portable Git 官方自解压包（压缩后约 50MB）到 `resources/runtime/`。
-- 随包附带 `runtime-manifest.json`，形如 `{ "portable-git": { "version": "2.47.1", "sha256": "<hex>" } }`；具体版本在构建期锁定并随主程序同一发布节奏。
-- 首次启动（`app.whenReady` 内）校验 `installed.json` 与随包 manifest 的版本/sha256：
-  - 缺失或不一致 → 解压到 `<runtimeRoot>\portable-git`；解压后确认 `<runtimeRoot>\portable-git\bin\bash.exe` 存在（若官方 SFX 自带一层目录名，则对齐到该布局），并写回 `installed.json`。
-  - 一致 → 跳过。
-- 解压未完成时 `bash` 不可用：`bash` handler 等待解压完成或返回清晰错误，**不做 PowerShell 降级**。
+- 首次启动（`app.whenReady` 内）：若 `<runtimeRoot>\portable-git\bin\bash.exe` 或 `<runtimeRoot>\portable-git\cmd\git.exe` 不存在，则解压 SFX 到 `<runtimeRoot>\portable-git`；解压后确认 `bin\bash.exe` 存在（若官方 SFX 自带一层目录名则对齐到该布局）。
+- 解压未完成时 `bash` 不可用：`bash` handler 返回清晰错误，**不做 PowerShell 降级**。
 - dev 环境：由 `pnpm ensure:runtime`（或 `start.cmd` 钩子）下载并解压到同一 `%LOCALAPPDATA%\SparkiiDesktop\runtime\portable-git`，与生产共享路径；运行时代码不感知打包/未打包差异。
 
 ## 6. shell 简化（取代 shell-selection 的兜底）
@@ -71,33 +67,17 @@
 - 一并移除 powershell handler 及其全部相关代码：`isReadOnlyPowerShellCommand`、`riskOfPowerShellCommand`、`POWERSHELL_READ_ONLY_PREFIXES`、`HIGH_RISK_POWERSHELL`；`isReadOnlyShellCommand` / `riskOfShellCommand` 简化为只按 `bash` 分发（或直接调用 `isReadOnlyBashCommand` / `riskOfCommand` 并删除分发函数）。
 - 若后续希望保留一个**独立** PowerShell 工具（非 bash 的兜底），作为可选工具另行加回，不在本轮范围。
 
-## 7. 环境注入（暴露给 agent）
+## 7. 运行时解析（bash + git）
 
-分两个执行面，机制不同：
-
-**A. `bash` 工具（主进程）**
-
-- `general-executor.runShell` 用绝对路径 `spawn(<runtimeRoot>\portable-git\bin\bash.exe, ['-c', cmd])`，bash 本身不需要在 PATH 上。
-- 命令内的 `git` / `ls` / `grep` 由 Portable Git 自带的 `/etc/profile` 组织 PATH（`/usr/bin`、`/mingw64/bin` 等）解析，与现有系统 Git Bash 行为一致。**agent 的 git/coreutils 无需在 Windows PATH 上注入任何东西。**
-
-**B. Pi 子进程（git：为未来「Pi 通过 git 安装/更新技能」预留）**
-
-- 现在这些 `spawn("git" / "npm")` 在 Sparkii 里基本 dormant；但产品方向是**让 Pi 自己通过 git 安装技能、检查技能/插件版本**，届时这些路径会被激活，`git` 必须能在 Pi 子进程里解析。
-- 这些 `spawn` 用裸命令名 `"git"`，靠子进程 PATH 解析；子进程 env 为 `{ ...process.env, ...env }`。
-- 做法：在 `runtime.ts` 构造子进程 `env` 时（与现有 `PI_CODING_AGENT_DIR` 同处），把 `portable-git\cmd`（`git.exe`）与 `portable-git\usr\bin`（`ssh.exe` 等 git 远程依赖）prepend 到 `env.PATH`。**不**改动全局主进程 `process.env.PATH`（避免副作用）。
-- bash 与 git 都由同一个 `RuntimeLayout` 产出：bash 用**绝对路径**（因为是 Sparkii 自己的 `runShell` 在 spawn）；git 用**PATH 条目**（因为是 Pi SDK 内部按名字 spawn，我们改不了其调用点）。
-- `npm`：本轮不打包 Node，`npm` 不在 PATH，npm 源相关调用自然静默失效（离线门控 + try/catch），记为已知非目标。
-
-**验收（冒烟）**
-
-- `bash -c "git --version && ls && grep --version"` 在解压后的运行时上通过（agent 的 bash 路径）。
-- Pi 子进程 `process.env.PATH` 包含 `portable-git\cmd`（未来 git 技能安装/版本检查可解析 `git`）。
+- `bash`：`general-executor.runShell` 用绝对路径 `spawn(<runtimeRoot>\portable-git\bin\bash.exe, ['-c', cmd])`。
+- `git`：**随 bash 自带**。agent 的 `git pull` / `clone` / `status` 等都作为 bash 命令执行，Portable Git 的 bash 自带 git 与 coreutils，无需单独注入。
+- 未来若实现「Pi 自己通过 git 安装/更新技能」，再在 `runtime.ts` 的子进程 `env` 里把 `portable-git\cmd` 加进 PATH（一行即可）；本轮不做。
+- 验收（冒烟）：`bash -c "git --version && ls && grep --version"` 通过。
 
 ## 8. 更新策略
 
-- 运行时与主程序同版本发布：每次发版重钉 `runtime-manifest.json` 中的版本 + sha256。
-- 启动校验时，若 manifest 版本 > `installed.json` 版本 → 重新解压并写回 `installed.json`。
-- 独立运行时自更新通道（组件级热补丁）留待后续；第 4 节的可写目录布局已为其预留，无需改架构。
+- 本轮：运行时随主程序发布、解压一次即可（见第 5 节）；不建版本清单、不做重解压、不做独立运行时更新通道。
+- 后续确有需要时再引入版本标记与运行时独立更新；第 4 节的可写目录布局已为其预留。
 
 ## 9. 许可合规
 
