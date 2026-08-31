@@ -117,7 +117,7 @@ pnpm --filter @sparkii/desktop exec playwright test
 | --- | --- |
 | `SPARKII_MAX_AGENTS` | Agent 进程池上限（默认 4） |
 | `SPARKII_PROFILE_DIR` | 覆盖 profile 目录 |
-| `SPARKII_DATA_DIR` | 覆盖数据目录（审计、账号、日志） |
+| `SPARKII_DATA_DIR` | 覆盖数据目录（默认 `%LOCALAPPDATA%\SparkiiDesktop\data`；仅用于开发/CI/便携/企业指定目录） |
 | `SPARKII_PI_USE_FORK` | `1` 时改用 `child_process.fork`（回退路径） |
 | `SPARKII_SKIP_LLM` | `1` 时跳过真实模型 E2E |
 

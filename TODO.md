@@ -1,13 +1,11 @@
 # TODO
 
-## 数据存储位置（后续处理）
+## 数据存储位置（已确定）
 
-- 背景：应用数据目录由 `SPARKII_DATA_DIR` 环境变量或 `<userData>/data` 决定，
-  见 `apps/desktop/electron/main/index.ts`。
-- 现状：早期使用中数据曾写入 `%TEMP%\sparkii-dev-data`，换启动方式后模型配置与
-  对话记录表现为「丢失」（数据仍在 Temp，但应用不再读取）。
-- 待办：
-  - 固定并文档化默认数据目录（默认走 `userData/data`，即 `AppData\Roaming\Sparkii\data`）。
-  - 明确 `SPARKII_DATA_DIR` 的用途约定，避免再指向临时目录。
-  - 如需，提供一次性迁移：把 `%TEMP%\sparkii-dev-data` 迁到正式目录。
-  - 避免把持久化数据放到 `%TEMP%`（会被系统 / 清理工具回收）。
+- 默认数据目录：`%LOCALAPPDATA%\SparkiiDesktop\data`，由 `apps/desktop/electron/main/paths.ts`
+  的 `defaultDataDir()` 解析（不再使用 `userData/data` 的 Roaming 路径）。
+- 目录名采用 `SparkiiDesktop` 以避免与本地另一个名为 `Sparkii` 的应用数据目录冲突。
+- `SPARKII_DATA_DIR` 仅作显式覆盖，用于开发 / CI / 便携 / 企业指定目录；
+  持久化数据不得指向 `%TEMP%`。
+- 不做 `%TEMP%\sparkii-dev-data` 迁移：开发环境与生产环境本就应隔离，各自独立。
+- 数据暂按当前 Windows 用户平铺，`dataDirFor(userId)` 作为未来多用户隔离的预留接口。
