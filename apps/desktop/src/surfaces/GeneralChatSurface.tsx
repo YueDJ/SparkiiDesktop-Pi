@@ -211,6 +211,9 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
   const [defaultModel, setDefaultModel] = useState<string | null>(null);
   const [model, setModel] = useState<string | null>(null);
   const [provider, setProvider] = useState<string>('deepseek');
+  const [supportsImages, setSupportsImages] = useState<Record<string, boolean>>({});
+  const [visionWarning, setVisionWarning] = useState<string | null>(null);
+  const [shellNotice, setShellNotice] = useState<string | null>(null);
   const [thinkingLevels, setThinkingLevels] = useState<string[]>([...THINKING_LEVELS]);
   const [thinkingLevel, setThinkingLevel] = useState<string | null>(null);
   const [workspacePath, setWorkspacePath] = useState<string | null>(null);
@@ -280,6 +283,7 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
       setModels(nextModels);
       setDefaultModel(nextDefault);
       setProvider(nextProvider);
+      setSupportsImages(r.supportsImages ?? {});
       if (!sessionId) {
         setThinkingLevel(null);
         setThinkingLevels([...THINKING_LEVELS]);
@@ -299,6 +303,7 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
     setThinkingLevel(null);
     setThinkingLevels([...THINKING_LEVELS]);
     setWorkspacePath(null);
+    setShellNotice(null);
     setProvider('deepseek');
     setContextUsage(null);
     setIsCompacting(false);
@@ -312,8 +317,13 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
       setIsCompacting(Boolean(state?.isCompacting));
       if (state?.streaming) setBusy(true);
     }).catch((e: any) => reportError(String(e?.message ?? e), { source: '通用智能体' }));
-    api.openChatSession(sessionId).then(({ messages, entries }: any) => {
-      setEntries(entries?.length ? Timeline.normalizeHistoricalSessionEntries(entries) : Timeline.normalizeMessages(messages ?? []));
+    api.openChatSession(sessionId).then(({ messages, entries, shell, degraded }: any) => {
+      const base = entries?.length ? Timeline.normalizeHistoricalSessionEntries(entries) : Timeline.normalizeMessages(messages ?? []);
+      const withShell = shell === 'bash' || shell === 'powershell'
+        ? [Timeline.shellSelectedEntry(shell, degraded), ...base]
+        : base;
+      setEntries(withShell);
+      if (degraded) setShellNotice('该会话原本使用 Git Bash，当前环境未检测到，已切换为 PowerShell。');
     }).catch((e: any) => reportError(String(e?.message ?? e), { source: '通用智能体' }));
     const off1 = api.on('chat-event', (p: any) => {
       if (p?.sessionId !== sessionId) return;
@@ -389,51 +399,37 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
   const send = (text: string, attachments: ComposerAttachment[] = []) => {
     const display = attachments.length ? `${attachments.map((a) => `📎 ${a.name}`).join(' ')}\n${text}` : text;
     const chatAttachments: ChatAttachment[] = attachments.map(({ path, name, size, type }) => ({ path, name, size, type }));
-    if (!sessionId && draft) {
-      if (busy) return;
-      setBusy(true);
-      api.promptSession(
-        null,
-        text,
-        undefined,
-        chatAttachments.length ? chatAttachments : undefined,
-        { profileId: 'general', workspacePath, model, thinkingLevel },
-      ).then((res) => {
-        if (res?.sessionId) onSessionCommitted?.(res.sessionId, text);
-      }).catch((e: any) => {
-        reportError(String(e?.message ?? e), { source: '通用智能体' });
-        setBusy(false);
-      });
+    const hasImage = attachments.some((a) => a.type?.startsWith('image/'));
+    const selectedModel = model ?? defaultModel;
+    setVisionWarning(hasImage && selectedModel && supportsImages[selectedModel] === false
+      ? '当前模型不支持图片输入，发送后图片将被忽略，建议切换为支持视觉的模型。'
+      : null);
+
+    if (busy && sessionId) {
+      api.promptSession(sessionId, display, { behavior: 'followUp' }, chatAttachments.length ? chatAttachments : undefined)
+        .catch((e: any) => reportError(String(e?.message ?? e), { source: '通用智能体' }));
       return;
     }
-    if (!sessionId) return;
-    if (busy) {
-      if (chatAttachments.length) {
-        api.promptSession(sessionId, text, { behavior: 'followUp' }, chatAttachments)
-          .catch((e: any) => reportError(String(e?.message ?? e), { source: '通用智能体' }));
-      } else {
-        api.promptSession(sessionId, text, { behavior: 'followUp' })
-          .catch((e: any) => reportError(String(e?.message ?? e), { source: '通用智能体' }));
-      }
-      return;
-    }
-    lastIdlePromptRef.current = text;
+
+    lastIdlePromptRef.current = display;
     suppressUserEventRef.current = true;
-    setEntries((xs) => [...xs, { kind: 'message', id: `u${Date.now()}`, role: 'user', text: display, streaming: false }]);
-    setBusy(true);
-    if (chatAttachments.length) {
-      api.promptSession(sessionId, text, undefined, chatAttachments)
-        .catch((e: any) => {
-          reportError(String(e?.message ?? e), { source: '通用智能体' });
-          setBusy(false);
-        });
-    } else {
-      api.promptSession(sessionId, text)
-        .catch((e: any) => {
-          reportError(String(e?.message ?? e), { source: '通用智能体' });
-          setBusy(false);
-        });
+    if (sessionId) {
+      setEntries((xs) => [...xs, { kind: 'message', id: `u${Date.now()}`, role: 'user', text: display, streaming: false }]);
     }
+    setBusy(true);
+
+    api.promptSession(
+      sessionId,
+      display,
+      undefined,
+      chatAttachments.length ? chatAttachments : undefined,
+      sessionId ? undefined : { profileId: 'general', workspacePath, model, thinkingLevel },
+    ).then((res: any) => {
+      if (!sessionId && res?.sessionId) onSessionCommitted?.(res.sessionId, text);
+    }).catch((e: any) => {
+      reportError(String(e?.message ?? e), { source: '通用智能体' });
+      setBusy(false);
+    });
   };
 
   const stop = () => {
@@ -480,6 +476,7 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
 
   const onModelChange = (next: string | null) => {
     setModel(next);
+    setVisionWarning(null);
     if (sessionId) void api.setChatModel(sessionId, next);
     refreshThinkingLevels(next);
   };
@@ -559,6 +556,16 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
           onRestore={restoreDraft}
         />
       </div>
+      {visionWarning && (
+        <div className="muted chat-vision-warning" data-testid="vision-warning" role="alert">
+          {visionWarning}
+        </div>
+      )}
+      {shellNotice && (
+        <div className="muted chat-shell-notice" data-testid="shell-notice" role="alert">
+          {shellNotice}
+        </div>
+      )}
       <Composer
         busy={busy}
         stopping={stopping}

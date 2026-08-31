@@ -274,4 +274,36 @@ describe("createPiRuntime", () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(session.setFollowUpMode).toHaveBeenCalledWith("all");
   });
+
+  it("forwards images on prompt, steer, and follow_up", async () => {
+    const session = fakeSession();
+    const host: PiRuntimeSessionHost = {
+      current: () => session,
+      newSession: vi.fn(async () => {}),
+      switchSession: vi.fn(async () => {}),
+      configureSaddle: vi.fn(async () => {}),
+    };
+    const transport = {
+      postMessage: () => {},
+      onMessage: (cb: (env: PiRuntimeEnvelope) => void) => {
+        transport.emit = cb;
+        return () => {};
+      },
+      emit: (_env: PiRuntimeEnvelope) => {},
+    };
+    createPiRuntime({ host, transport });
+    const images = [{ type: "image", mimeType: "image/png", data: "aGVsbG8=" }];
+
+    transport.emit(commandEnvelope("p1", { type: "prompt", message: "看这个", images }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(session.prompt).toHaveBeenCalledWith("看这个", { streamingBehavior: undefined, images });
+
+    transport.emit(commandEnvelope("p2", { type: "steer", message: "再改", images }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(session.steer).toHaveBeenCalledWith("再改", images);
+
+    transport.emit(commandEnvelope("p3", { type: "follow_up", message: "收尾", images }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(session.followUp).toHaveBeenCalledWith("收尾", images);
+  });
 });

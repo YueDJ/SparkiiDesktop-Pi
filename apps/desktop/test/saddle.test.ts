@@ -54,4 +54,36 @@ describe('buildProfileSaddle', () => {
     expect(saddle.cwd).toBe('C:/anchor/a');
     expect(saddle.workspaceRoot).toBeUndefined();
   });
+
+  it('replaces bash with powershell when the resolved shell is powershell', () => {
+    const pr = {
+      dir: 'C:/profiles/general',
+      profile: {
+        agent: {
+          tools: ['read', 'ls', 'bash', 'edit', 'write'],
+          prompts: { system: 'general system prompt' },
+        },
+      },
+    } as unknown as ProfileRuntime;
+
+    const saddle = buildProfileSaddle(pr, 'C:/anchor/a', undefined, undefined, undefined, 'powershell');
+
+    expect(saddle.tools).toEqual(['read', 'ls', 'powershell', 'edit', 'write']);
+  });
+
+  it('keeps bash when no shell override is provided', () => {
+    const pr = {
+      dir: 'C:/profiles/general',
+      profile: {
+        agent: {
+          tools: ['read', 'bash'],
+          prompts: { system: 'general system prompt' },
+        },
+      },
+    } as unknown as ProfileRuntime;
+
+    const saddle = buildProfileSaddle(pr, 'C:/anchor/a');
+
+    expect(saddle.tools).toEqual(['read', 'bash']);
+  });
 });

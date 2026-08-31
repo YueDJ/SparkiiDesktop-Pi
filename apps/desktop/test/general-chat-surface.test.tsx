@@ -87,7 +87,7 @@ describe('GeneralChatSurface', () => {
     await screen.findByText('hi');
     fireEvent.change(screen.getByTestId('composer-input'), { target: { value: '请创建 hello.txt' } });
     fireEvent.keyDown(screen.getByTestId('composer-input'), { key: 'Enter' });
-    expect(api.promptSession).toHaveBeenCalledWith('s1', '请创建 hello.txt');
+    expect(api.promptSession).toHaveBeenCalledWith('s1', '请创建 hello.txt', undefined, undefined, undefined);
     act(() => channels['chat-event']({ sessionId: 's1', type: 'message', role: 'assistant', delta: '收到' }));
     expect(screen.getByText(/收到/)).toBeTruthy();
   });
@@ -105,10 +105,51 @@ describe('GeneralChatSurface', () => {
     await waitFor(() => expect(api.promptSession).toHaveBeenCalled());
     expect(api.promptSession).toHaveBeenCalledWith(
       's1',
-      '分析这个',
+      '📎 report.pdf\n分析这个',
       undefined,
       [{ path: 'C:/downloads/report.pdf', name: 'report.pdf', size: 6, type: 'application/pdf' }],
+      undefined,
     );
+  });
+
+  it('sends the attachment display text for the first draft message', async () => {
+    const { api } = makeApi();
+    const { container } = render(<GeneralChatSurface api={api} sessionId={null} draft onNewSession={vi.fn()} onSessionCommitted={vi.fn()} />);
+
+    const file = new File(['img'], 'photo.png', { type: 'image/png' });
+    fireEvent.change(container.querySelector('input[type="file"]')!, { target: { files: [file] } });
+    fireEvent.change(screen.getByTestId('composer-input'), { target: { value: '看这张图' } });
+    fireEvent.keyDown(screen.getByTestId('composer-input'), { key: 'Enter' });
+
+    await waitFor(() => expect(api.promptSession).toHaveBeenCalled());
+    expect(api.promptSession).toHaveBeenCalledWith(
+      null,
+      '📎 photo.png\n看这张图',
+      undefined,
+      [{ path: 'C:/downloads/photo.png', name: 'photo.png', size: 3, type: 'image/png' }],
+      expect.any(Object),
+    );
+  });
+
+  it('warns when sending an image with a non-vision model', async () => {
+    const { api } = makeApi();
+    api.getModelOptions = vi.fn().mockResolvedValue({
+      defaultModel: 'deepseek-v4-flash',
+      models: ['deepseek-v4-flash', 'deepseek-v4-flash-vision-exp'],
+      provider: 'deepseek',
+      supportsImages: { 'deepseek-v4-flash': false, 'deepseek-v4-flash-vision-exp': true },
+    });
+    const { container } = render(<GeneralChatSurface api={api} sessionId="s1" onNewSession={vi.fn()} />);
+    await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('s1'));
+
+    const file = new File(['img'], 'photo.png', { type: 'image/png' });
+    fireEvent.change(container.querySelector('input[type="file"]')!, { target: { files: [file] } });
+    fireEvent.change(screen.getByTestId('composer-input'), { target: { value: '看这张图' } });
+    fireEvent.keyDown(screen.getByTestId('composer-input'), { key: 'Enter' });
+
+    expect(await screen.findByTestId('vision-warning')).toBeTruthy();
+    expect(screen.getByText(/不支持图片输入/)).toBeTruthy();
+    expect(api.promptSession).toHaveBeenCalled();
   });
 
   it('restores full Pi history entries and renders a compaction card', async () => {
@@ -273,6 +314,33 @@ describe('GeneralChatSurface', () => {
     }));
 
     expect(screen.queryByText('模型切换')).toBeNull();
+  });
+
+  it('shows the selected shell entry in debug detail level', async () => {
+    const { api } = makeApi();
+    api.getSettings = vi.fn().mockResolvedValue({ chatDetailLevel: 'debug' });
+    api.openChatSession = vi.fn().mockResolvedValue({
+      messages: [{ role: 'user', text: 'hi' }],
+      shell: 'bash',
+      degraded: false,
+    });
+    render(<GeneralChatSurface api={api} sessionId="s1" onNewSession={vi.fn()} />);
+    await screen.findByText('hi');
+    expect(await screen.findByText('执行 Shell')).toBeTruthy();
+    expect(screen.getByText('Git Bash')).toBeTruthy();
+  });
+
+  it('shows a notice when a persisted bash session degrades to PowerShell', async () => {
+    const { api } = makeApi();
+    api.openChatSession = vi.fn().mockResolvedValue({
+      messages: [{ role: 'user', text: 'hi' }],
+      shell: 'powershell',
+      degraded: true,
+    });
+    render(<GeneralChatSurface api={api} sessionId="s1" onNewSession={vi.fn()} />);
+    await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('s1'));
+    expect(await screen.findByTestId('shell-notice')).toBeTruthy();
+    expect(screen.getByText(/已切换为 PowerShell/)).toBeTruthy();
   });
 
   it('does not duplicate the local user message when Pi echoes the idle prompt', async () => {

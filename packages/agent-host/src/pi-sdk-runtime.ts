@@ -16,7 +16,7 @@ import {
   proposalEnvelope,
   type ProposalDecision,
 } from "./pi-runtime-transport.js";
-import type { SessionSaddle } from "./types.js";
+import type { ImageContent, SessionSaddle } from "./types.js";
 import type {
   PiRuntimeChildTransport,
   PiRuntimeSession,
@@ -63,7 +63,7 @@ export function clearSessionQueue(session: {
 export function startPromptWithoutBlocking(
   session: { prompt: (text: string, options?: any) => Promise<unknown> },
   text: string,
-  options?: { streamingBehavior?: "steer" | "followUp" },
+  options?: { streamingBehavior?: "steer" | "followUp"; images?: ImageContent[] },
   onError?: (error: { message: string; command?: string; stack?: string }, command?: string) => void,
 ): Promise<void> {
   void session.prompt(text, options).catch((error) => {
@@ -189,8 +189,8 @@ export async function createPiSdkSessionHost(
         promptOptions,
         (error) => runtimeErrorListeners.forEach((listener) => listener(error)),
       ),
-      steer: (text) => session.steer(text),
-      followUp: (text) => session.followUp(text),
+      steer: (text, images) => session.steer(text, images),
+      followUp: (text, images) => session.followUp(text, images),
       clearQueue: async () => clearSessionQueue(session),
       setSteeringMode: async (mode) => {
         session.setSteeringMode(mode);
@@ -255,6 +255,7 @@ export async function createPiSdkSessionHost(
         return models.map((model) => ({
           provider: model.provider ?? provider ?? "",
           modelId: model.id,
+          supportsImages: Array.isArray((model as any).input) && (model as any).input.includes('image'),
         }));
       },
       listProviders: async () =>

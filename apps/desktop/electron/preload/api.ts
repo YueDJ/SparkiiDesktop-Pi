@@ -15,7 +15,7 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
     chooseDocument: () => invoke('chooseDocument') as Promise<{ path?: string }>,
     runWorkflow: (id, input) => invoke('runWorkflow', id, input) as Promise<{ ok: boolean }>,
     prompt: (text) => invoke('prompt', text) as Promise<{ ok: boolean }>,
-    openChatSession: (sessionId) => invoke('openChatSession', sessionId) as Promise<{ messages: unknown[]; entries?: unknown[] }>,
+    openChatSession: (sessionId) => invoke('openChatSession', sessionId) as Promise<{ messages: unknown[]; entries?: unknown[]; shell?: 'bash' | 'powershell' | null; degraded?: boolean }>,
     listChatSessions: (profileId) => invoke('listChatSessions', profileId) as Promise<unknown[]>,
     getChatSession: (sessionId) => invoke('getChatSession', sessionId),
     promptSession: (sessionId, text, options, attachments, context) => invoke('promptSession', sessionId, text, options, attachments, context) as Promise<{ ok: boolean; sessionId?: string; behavior?: 'prompt' | 'steer' | 'followUp' }>,

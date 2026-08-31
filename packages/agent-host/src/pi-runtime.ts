@@ -1,5 +1,5 @@
 import { normalizeEvent } from "./rpc-client.js";
-import type { PiProviderInfo, RpcCommand, RpcResponse, SessionSaddle } from "./types.js";
+import type { ImageContent, PiProviderInfo, RpcCommand, RpcResponse, SessionSaddle } from "./types.js";
 import {
   eventEnvelope,
   readyEnvelope,
@@ -8,9 +8,9 @@ import {
 } from "./pi-runtime-transport.js";
 
 export interface PiRuntimeSession {
-  prompt(text: string, options?: { streamingBehavior?: "steer" | "followUp" }): Promise<void>;
-  steer(text: string): Promise<void>;
-  followUp(text: string): Promise<void>;
+  prompt(text: string, options?: { streamingBehavior?: "steer" | "followUp"; images?: ImageContent[] }): Promise<void>;
+  steer(text: string, images?: ImageContent[]): Promise<void>;
+  followUp(text: string, images?: ImageContent[]): Promise<void>;
   clearQueue(): Promise<unknown>;
   setSteeringMode(mode: "all" | "one-at-a-time"): Promise<void>;
   setFollowUpMode(mode: "all" | "one-at-a-time"): Promise<void>;
@@ -25,7 +25,7 @@ export interface PiRuntimeSession {
   setThinkingLevel(level: string): void;
   getThinkingLevel(): string;
   getAvailableThinkingLevels(): string[];
-  listModels(provider?: string): Promise<Array<{ provider: string; modelId: string }>>;
+  listModels(provider?: string): Promise<Array<{ provider: string; modelId: string; supportsImages: boolean }>>;
   listProviders(): Promise<PiProviderInfo[]>;
   subscribe(callback: (event: any) => void): () => void;
   onRuntimeError(callback: (error: { message: string; command?: string; stack?: string }) => void): () => void;
@@ -112,13 +112,13 @@ async function handleCommand(host: PiRuntimeSessionHost, command: RpcCommand): P
   const session = host.current();
   switch (command.type) {
     case "prompt":
-      await session.prompt(command.message, { streamingBehavior: command.streamingBehavior });
+      await session.prompt(command.message, { streamingBehavior: command.streamingBehavior, images: command.images });
       return undefined;
     case "steer":
-      await session.steer(command.message);
+      await session.steer(command.message, command.images);
       return undefined;
     case "follow_up":
-      await session.followUp(command.message);
+      await session.followUp(command.message, command.images);
       return undefined;
     case "clear_queue":
       return await session.clearQueue();

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyChatEvent, normalizeHistoricalSessionEntries, normalizeSessionEntries } from '../src/workbench/pi-timeline.js';
+import { applyChatEvent, normalizeHistoricalSessionEntries, normalizeSessionEntries, shellSelectedEntry } from '../src/workbench/pi-timeline.js';
 
 describe('normalizeSessionEntries', () => {
   it('rebuilds messages, tool calls and lifecycle events from persisted entries', () => {
@@ -49,6 +49,16 @@ describe('normalizeHistoricalSessionEntries', () => {
     expect(entries[0]).toMatchObject({ event: 'agent_start' });
     expect(entries[2]).toMatchObject({ event: 'agent_end' });
     expect(entries[3]).toMatchObject({ event: 'agent_settled' });
+  });
+});
+
+describe('shellSelectedEntry', () => {
+  it('renders the selected shell with a degraded marker when applicable', () => {
+    const bash = shellSelectedEntry('bash');
+    expect(bash).toMatchObject({ kind: 'event', event: 'shell_selected', label: '执行 Shell', detail: 'Git Bash' });
+
+    const degraded = shellSelectedEntry('powershell', true);
+    expect(degraded).toMatchObject({ kind: 'event', event: 'shell_selected', detail: 'PowerShell（降级）' });
   });
 });
 

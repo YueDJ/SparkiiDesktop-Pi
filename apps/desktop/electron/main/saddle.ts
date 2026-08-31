@@ -8,9 +8,13 @@ export function buildProfileSaddle(
   workspaceRoot?: string,
   model?: { provider: string; modelId: string },
   thinkingLevel?: string | null,
+  shell?: 'bash' | 'powershell' | null,
 ): SessionSaddle {
+  const tools = shell === 'powershell'
+    ? pr.profile.agent.tools.map((t) => (t === 'bash' ? 'powershell' : t))
+    : pr.profile.agent.tools;
   return {
-    tools: pr.profile.agent.tools,
+    tools,
     skillsDir: join(pr.dir, 'agent', 'skills'),
     cwd,
     systemPrompt: pr.profile.agent.prompts.system,

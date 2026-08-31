@@ -16,10 +16,16 @@ export interface PiProviderInfo {
   oauthAuth: boolean;
 }
 
+export interface ImageContent {
+  type: 'image';
+  mimeType: string;
+  data: string;
+}
+
 export type RpcCommand =
-  | { type: 'prompt'; message: string; streamingBehavior?: 'steer' | 'followUp' }
-  | { type: 'steer'; message: string }
-  | { type: 'follow_up'; message: string }
+  | { type: 'prompt'; message: string; streamingBehavior?: 'steer' | 'followUp'; images?: ImageContent[] }
+  | { type: 'steer'; message: string; images?: ImageContent[] }
+  | { type: 'follow_up'; message: string; images?: ImageContent[] }
   | { type: 'clear_queue' }
   | { type: 'set_steering_mode'; mode: 'all' | 'one-at-a-time' }
   | { type: 'set_follow_up_mode'; mode: 'all' | 'one-at-a-time' }

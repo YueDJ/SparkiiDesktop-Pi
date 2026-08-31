@@ -64,7 +64,7 @@ export function buildAttachmentPrompt(text: string, refs: StagedAttachment[]): s
     '以下是本条消息附带的文件，已放置到会话工作区（相对工作区路径）：',
     list,
     '',
-    '请使用 read 工具读取附带的文件：文本与代码会直接返回内容，图片文件经 read 读取后作为图像输入；PDF、Word 等二进制文档请用 bash 配合本机可用工具解析。',
+    '请使用 read 工具读取附带的文件：文本与代码会直接返回内容；PDF、Word 等二进制文档请用 bash 配合本机可用工具解析。',
     '',
     text,
   ].join('\n');

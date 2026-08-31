@@ -48,6 +48,7 @@ const EVENT_MIN_LEVEL: Partial<Record<TimelineEventType, ChatDetailLevel>> = {
   summarization_retry_scheduled: 'debug',
   summarization_retry_attempt_start: 'debug',
   summarization_retry_finished: 'debug',
+  shell_selected: 'debug',
 };
 
 function toolResultIsImportant(result: unknown): boolean {

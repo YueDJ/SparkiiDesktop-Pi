@@ -3,6 +3,7 @@ import { access, readFile } from "node:fs/promises";
 import {
   createBashToolDefinition,
   createEditToolDefinition,
+  createPowerShellToolDefinition,
   createWriteToolDefinition,
   type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
@@ -22,6 +23,26 @@ function guardPath(ctx: CodingToolsContext, absolutePath: string): void {
   }
 }
 
+function shellExec(ctx: CodingToolsContext, toolName: "bash" | "powershell") {
+  return async (command: string, cwd: string, opts: { onData: (data: Buffer) => void }) => {
+    const decision = await ctx.propose({
+      requestId: randomUUID(),
+      toolName,
+      targetSystem: "general",
+      summary: command.slice(0, 512),
+      payload: { command, cwd, workspaceRoot: ctx.workspaceRoot },
+      risk: "write",
+    });
+    if (!decision.approved) {
+      opts.onData(Buffer.from(`操作未执行:${decision.status}\n`));
+      return { exitCode: 1 };
+    }
+    const result = (decision.result ?? {}) as { exitCode?: number | null; output?: string };
+    if (result.output) opts.onData(Buffer.from(result.output));
+    return { exitCode: result.exitCode ?? 0 };
+  };
+}
+
 export function createCodingToolDefinitions(ctx: CodingToolsContext): Array<ToolDefinition<any, any, any>> {
   // 会话锚点 cwd 只用于承载 Pi 进程与历史；工具的相对路径和执行
   // 必须落在用户可见的工作区根内。
@@ -29,23 +50,13 @@ export function createCodingToolDefinitions(ctx: CodingToolsContext): Array<Tool
 
   const bash = createBashToolDefinition(pathCwd, {
     operations: {
-      exec: async (command: string, cwd: string, opts: { onData: (data: Buffer) => void }) => {
-        const decision = await ctx.propose({
-          requestId: randomUUID(),
-          toolName: "bash",
-          targetSystem: "general",
-          summary: command.slice(0, 512),
-          payload: { command, cwd, workspaceRoot: ctx.workspaceRoot },
-          risk: "write",
-        });
-        if (!decision.approved) {
-          opts.onData(Buffer.from(`操作未执行:${decision.status}\n`));
-          return { exitCode: 1 };
-        }
-        const result = (decision.result ?? {}) as { exitCode?: number | null; output?: string };
-        if (result.output) opts.onData(Buffer.from(result.output));
-        return { exitCode: result.exitCode ?? 0 };
-      },
+      exec: shellExec(ctx, "bash"),
+    },
+  });
+
+  const powershell = createPowerShellToolDefinition(pathCwd, {
+    operations: {
+      exec: shellExec(ctx, "powershell"),
     },
   });
 
@@ -94,5 +105,5 @@ export function createCodingToolDefinitions(ctx: CodingToolsContext): Array<Tool
     },
   });
 
-  return [bash, edit, write];
+  return [bash, powershell, edit, write];
 }

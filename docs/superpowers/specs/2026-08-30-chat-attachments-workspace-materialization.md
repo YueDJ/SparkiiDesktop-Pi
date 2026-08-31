@@ -29,7 +29,8 @@
 | 文件名 | 保留原名；目标已存在同名文件时使用 `原名-N.ext`（连字符数字后缀，保留扩展名） |
 | 懒创建 | 复制附件属于写操作，会 `mkdir` 创建 workspace 与附件目录；无附件不创建 |
 | 消息引用 | 发送给 Pi 的 message 附带 **workspace-relative** 引用，正斜杠分隔 |
-| 图片 | 不特殊处理、不直接传 `images` 字段；由 Pi 原生 `read` 工具读取（其 `autoResizeImages` 默认 true，自动缩放到 2000×2000 并转 ImageContent） |
+| 图片 | 应用侧用 Electron `nativeImage` 缩放（长边 ≤ 2000px、体积 ≤ 4.5MB、不放大；无法解码的格式原样透传）后，作为 `ImageContent[]` 经 `RpcCommand.images` **直接**传给 Pi，**不经过 `read` 工具** |
+| 模型能力 | 图片输入要求模型支持 `image` 模态；模型列表标注视觉能力，附件含图片而当前模型不支持时 UI 提示（**不强制拦截**），由 Pi 兜底替换为占位文本 |
 | 文本 | 由 Pi 原生 `read` 工具读取 |
 | PDF/DOCX | 由模型用 `bash` + 本机可用工具解析，**不做预解析** |
 | 文件类型 | 不设白名单，任意文件 |
@@ -44,7 +45,7 @@ Pi SDK/RPC 层**不会**展开 `@file`，也不会读取磁盘文件。其原生
 - `read` 工具：读图片文件时自动 MIME 检测 + `processImage`（缩放/转 base64/ImageContent）；`ReadToolOptions.autoResizeImages` 默认 true。
 - `bash` 工具：可运行命令解析任意文档。
 
-本设计把“文件读取/缩放/解析”全部交给 Pi 的 `read`/`bash` 工具，应用侧只负责“把文件放进 workspace 并给出路径引用”。
+本设计把“文件读取/解析”交给 Pi 的 `read`/`bash` 工具；但**图片的缩放由应用侧 `nativeImage` 完成、以 `images` 直传**，不再依赖 Pi `read` 的 photon 缩放（打包后 WASM 不可用）。
 
 ## 5. 架构与数据流
 
@@ -59,13 +60,12 @@ Preload（api.ts）原样透传
         ↓ IPC
 Main（ipc.ts）
   ├─ 取会话 workspacePath（promptDraftSession 用 context 或 auto 生成；promptSession 用 chatSessions 记录）
-  ├─ stageAttachments(workspacePath, attachments)：
-  │     · 已在 workspace 内且存在 → 不复制，ref = relative(workspace, path)
-  │     · 否则 mkdir workspace + .sparkii-attachments，冲突避让后 copyFile，ref = 落盘相对路径
-  ├─ buildAttachmentPrompt(text, refs)：引用块 + 用户文本
-  └─ slot.client.send({ type: prompt|steer|follow_up, message: finalMessage })
+  ├─ 拆分附件：图片 vs 非图片
+  ├─ 非图片 → stageAttachments(...) + buildAttachmentPrompt(...) → 引用块
+  ├─ 图片 → resizeForAttachment（nativeImage 缩放）→ base64 → ImageContent[]
+  └─ slot.client.send({ type: prompt|steer|follow_up, message: finalMessage, images })
         ↓
-Pi 子进程：模型用 read/bash 读 workspace 内文件
+Pi 子进程：模型直接看到 images；非图片文件用 read/bash 读 workspace 内文件
 ```
 
 ## 6. 详细设计
@@ -127,7 +127,7 @@ export function buildAttachmentPrompt(
 以下是本条消息附带的文件，已放置到会话工作区（相对工作区路径）：
 - .sparkii-attachments/report.pdf
 
-请使用 read 工具读取需要的文本或代码内容；图片会作为图像输入；PDF、Word 等二进制文档请用 bash 配合本机可用工具解析。
+请使用 read 工具读取需要的文本或代码内容；PDF、Word 等二进制文档请用 bash 配合本机可用工具解析。
 
 <用户文本>
 ```
@@ -145,7 +145,7 @@ export function buildAttachmentPrompt(
 ## 7. 文件类型策略
 
 - 不设扩展名/MIME 白名单，任意文件均可作为附件。
-- 图片：`read` 工具原生处理（自动缩放/ImageContent）。
+- 图片：应用侧 `nativeImage` 缩放后以 `images` 直传 Pi；HEIC/AVIF 等 `nativeImage` 无法解码的格式**原样 base64 透传**并提示「建议转 PNG/JPG」；**SVG 按文本走 `read` 工具**（不塞给视觉模型）。
 - 文本/代码：`read` 工具读取（受 Pi 默认 50KB / 2000 行截断，属原生行为）。
 - 二进制文档（PDF/DOCX/XLSX 等）：模型用 `bash` + 本机工具解析。
 
@@ -158,13 +158,11 @@ export function buildAttachmentPrompt(
 | workspace 尚未创建 | 复制前 `mkdir` 触发懒创建 |
 | 用户指定 workspace | 规则与 auto 一致；附件目录 `.sparkii-attachments` 落于用户目录内 |
 | 无文字、仅附件 | 沿用现有约束：composer 无文本不发送（不改变） |
-| 附件为图片 | 无特殊分支，走 read 工具 |
+| 附件为图片 | 应用侧缩放后以 `images` 直传；不经过 read 工具 |
 
 ## 9. 非目标
 
 - 不做附件内容预解析/文本抽取。
-- 不把图片直接塞入 `RpcCommand.images`。
-- 不做图片缩放逻辑（复用 Pi read 工具）。
 - 不做文件类型校验/白名单。
 - 不做附件生命周期回收（会话结束清理）——留后续。
 - 不改 workspace-guard 与审批模型。
@@ -172,8 +170,11 @@ export function buildAttachmentPrompt(
 ## 10. 测试策略
 
 - `attachments.ts`：单元测试覆盖“在 workspace 内不复制 / 外部复制 / 同名避让 / 懒创建 / 失败抛错 / 空附件不创建目录 / message 拼接”。
+- `image-resize`（新模块）：覆盖“不放大 / 长边 ≤ 2000 / 体积上限 / 无法解码透传 / PNG 保透明 / 等比缩放的几何计算”。
 - IPC：`promptSession` / `promptDraftSession` 带附件时完成复制并把引用写入最终 message。
+- IPC：带图片附件时完成缩放并把 `images` 写入 RPC；非图片附件仍走物化 + 引用。
 - renderer：有附件时把 `ChatAttachment[]` 传给 api；无附件时调用签名不变（保持现有测试通过）；回显抑制兼容引用块前缀。
+- renderer：附件含图片且当前模型不支持视觉时出现提示（不拦截发送）。
 
 ## 11. 验收标准
 
@@ -182,3 +183,5 @@ export function buildAttachmentPrompt(
 3. 无附件时行为与现状完全一致。
 4. 复制失败时 UI 显示明确错误，不发送半成品。
 5. 现有 `pnpm test` 全量通过，合同审核流程不回归。
+6. 带图片的消息用真实 `deepseek-v4-flash-vision-exp` 在打包产物中验证：模型能准确描述图片内容（覆盖小图 / 大图 / 多图）。
+7. 当前模型不支持视觉时，发送带图片消息 UI 有提示；切换到视觉模型后图片可被理解。

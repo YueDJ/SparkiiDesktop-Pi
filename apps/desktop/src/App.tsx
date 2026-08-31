@@ -142,6 +142,8 @@ function AppShell() {
       if (ov) ov.updatedAt = Date.now();
     }
     if (p?.type === 'session_title' && p?.sessionId) {
+      const ov = sessionOverridesRef.current.get(p.sessionId);
+      if (ov) ov.name = p.title;
       setSessions((prev) => {
         const next = { ...prev };
         for (const k of Object.keys(next)) {

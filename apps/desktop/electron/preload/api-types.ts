@@ -53,7 +53,7 @@ export interface SparkiiApi {
   chooseDocument(): Promise<{ path?: string }>;
   runWorkflow(id: string, input: Record<string, unknown>): Promise<{ ok: boolean }>;
   prompt(text: string): Promise<{ ok: boolean }>;
-  openChatSession(sessionId: string): Promise<{ messages: unknown[]; entries?: unknown[] }>;
+  openChatSession(sessionId: string): Promise<{ messages: unknown[]; entries?: unknown[]; shell?: 'bash' | 'powershell' | null; degraded?: boolean }>;
   listChatSessions(profileId?: string): Promise<unknown[]>;
   getChatSession(sessionId: string): Promise<unknown>;
   promptSession(sessionId: string | null, text: string, options?: { behavior?: 'steer' | 'followUp' }, attachments?: ChatAttachment[], context?: DraftPromptContext): Promise<{ ok: boolean; sessionId?: string; behavior?: 'prompt' | 'steer' | 'followUp' }>;

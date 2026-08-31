@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
+import { existsSync } from 'node:fs';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -20,6 +21,9 @@ vi.mock('electron', () => {
     dialog: {
       showOpenDialog: vi.fn(),
       showSaveDialog: vi.fn(),
+    },
+    nativeImage: {
+      createFromPath: vi.fn(),
     },
   };
 });
@@ -835,6 +839,68 @@ describe('ipc provider handlers', () => {
     expect(promptCmd.message).toContain('.sparkii-attachments/report.txt');
     expect(promptCmd.message.endsWith('请看附件')).toBe(true);
     expect(await readFile(join(ws, '.sparkii-attachments', 'report.txt'), 'utf8')).toBe('hello attachment');
+  });
+
+  it('promptSession sends images directly and stages only non-image attachments', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({}), 'utf8');
+
+    const ws = await mkdtemp(join(tmpdir(), 'ipc-ws-'));
+    dirs.push(ws);
+    const srcDir = await mkdtemp(join(tmpdir(), 'ipc-src-'));
+    dirs.push(srcDir);
+    const img = join(srcDir, 'pixel.png');
+    const raw = Buffer.from('fake-png-bytes');
+    await writeFile(img, raw);
+    const doc = join(srcDir, 'notes.txt');
+    await writeFile(doc, 'doc bytes');
+    const svg = join(srcDir, 'logo.svg');
+    await writeFile(svg, '<svg></svg>');
+
+    const electron = (await import('electron')) as unknown as {
+      nativeImage: { createFromPath: ReturnType<typeof vi.fn> };
+    };
+    electron.nativeImage.createFromPath.mockReturnValue({ isEmpty: () => true });
+
+    const sent: any[] = [];
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') return { success: true, data: { isStreaming: false, sessionFile: null } };
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'general', model: null },
+    });
+    (rt as any).chatSessions.get = () => ({ profileId: 'general', model: null, workspacePath: ws });
+
+    const handlers = await registeredHandlers();
+    const promptSession = handlers.get('sparkii:promptSession');
+    await promptSession!(null, 's1', '看图', undefined, [
+      { path: img, name: 'pixel.png', type: 'image/png' },
+      { path: doc, name: 'notes.txt', type: 'text/plain' },
+      { path: svg, name: 'logo.svg', type: 'image/svg+xml' },
+    ]);
+
+    const promptCmd = sent.find((c) => c.type === 'prompt');
+    expect(promptCmd).toBeDefined();
+    expect(promptCmd.images).toEqual([
+      { type: 'image', mimeType: 'image/png', data: raw.toString('base64') },
+    ]);
+    expect(promptCmd.message).toContain('.sparkii-attachments/notes.txt');
+    expect(promptCmd.message).toContain('.sparkii-attachments/logo.svg');
+    expect(promptCmd.message.endsWith('看图')).toBe(true);
+    expect(await readFile(join(ws, '.sparkii-attachments', 'notes.txt'), 'utf8')).toBe('doc bytes');
+    expect(await readFile(join(ws, '.sparkii-attachments', 'logo.svg'), 'utf8')).toBe('<svg></svg>');
+    expect(existsSync(join(ws, '.sparkii-attachments', 'pixel.png'))).toBe(false);
   });
 
   it('promptSession creates a session and stages attachments into the chosen workspace', async () => {

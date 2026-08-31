@@ -55,6 +55,8 @@ describe('chat detail level helpers', () => {
     expect(shouldShowEntry(event('runtime_error'), 'minimal')).toBe(true);
     expect(shouldShowEntry(event('model_change'), 'standard')).toBe(false);
     expect(shouldShowEntry(event('model_change'), 'debug')).toBe(true);
+    expect(shouldShowEntry(event('shell_selected'), 'standard')).toBe(false);
+    expect(shouldShowEntry(event('shell_selected'), 'debug')).toBe(true);
   });
 
   it('shows standard lifecycle events at standard level but hides debug-only events', () => {

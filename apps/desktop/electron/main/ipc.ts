@@ -1,6 +1,6 @@
 import { ipcMain, dialog, app, type BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
-import { mkdir, rm } from 'node:fs/promises';
+import { mkdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { listPiSessions, readPiSessionEntries, readPiSessionMessages, type PiProviderInfo, type SessionSaddle } from '@sparkii/agent-host';
 import { applyThinkingLevel, createBroker, modelTargetKey, resolveModelTarget, resolveSessionModel, resolveThinkingLevel, runWorkflow, selectModel } from './workflow.js';
@@ -11,6 +11,8 @@ import { buildProviderList } from './provider-catalog.js';
 import { autoWorkspacePath } from './workspace.js';
 import { buildProfileSaddle } from './saddle.js';
 import { buildAttachmentPrompt, stageAttachments } from './attachments.js';
+import { resizeImageForAttachment } from './image-resize.js';
+import { resolveShellChoice } from './shell-detect.js';
 import { writePiModelsConfig } from './pi-model-config.js';
 import { probeProviderModels } from './provider-probe.js';
 import { mutateQueues, type QueueMutation, type QueueSnapshot } from './queue-mutation.js';
@@ -61,7 +63,15 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   }
 
   function buildSaddle(profileId: string, sessionId: string): SessionSaddle {
-    return buildProfileSaddle(rt.profileOf(profileId), anchorDir(sessionId), rt.chatSessions.get(sessionId)?.workspacePath);
+    const rec = rt.chatSessions.get(sessionId);
+    const resolution = resolveShellChoice(rt.profileOf(profileId).profile.agent.tools, rec?.shell ?? 'bash');
+    return buildProfileSaddle(rt.profileOf(profileId), anchorDir(sessionId), rec?.workspacePath, undefined, undefined, resolution.shell);
+  }
+
+  function resolveSessionShell(sessionId: string): { shell: 'bash' | 'powershell' | null; degraded: boolean } {
+    const rec = rt.chatSessions.get(sessionId);
+    const profileId = rec?.profileId ?? 'general';
+    return resolveShellChoice(rt.profileOf(profileId).profile.agent.tools, rec?.shell ?? 'bash');
   }
 
   async function withProbeSlot<T>(fn: (client: Awaited<ReturnType<typeof rt.pool.acquire>>['client']) => Promise<T>): Promise<T> {
@@ -276,9 +286,10 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       ? resolveSessionModel(settings, { model: context.model })
       : resolveSessionModel(settings, null);
     const thinkingLevel = context.thinkingLevel ?? resolveThinkingLevel(settings, null, target);
+    const newShell = resolveShellChoice(rt.profileOf(profileId).profile.agent.tools);
     const tempKey = `new:${randomUUID()}`;
     const slot = await rt.pool.acquire(tempKey, {
-      saddle: buildProfileSaddle(rt.profileOf(profileId), anchorDir(tempKey), workspacePath, target ?? undefined, thinkingLevel),
+      saddle: buildProfileSaddle(rt.profileOf(profileId), anchorDir(tempKey), workspacePath, target ?? undefined, thinkingLevel, newShell.shell),
       meta: {
         profileId,
         profileName: (rt.profileOf(profileId).profile as { manifest?: { displayName?: string } })?.manifest?.displayName ?? profileId,
@@ -308,6 +319,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
         workspacePath,
         model: target ? modelTargetKey(target) : null,
         thinkingLevel: context.thinkingLevel ?? null,
+        shell: newShell.shell,
         piSessionFile: sessionFile ?? null,
       });
       if (target) {
@@ -331,6 +343,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   }
 
   ipcMain.handle('sparkii:openChatSession', async (_e, sessionId: string) => {
+    const shellInfo = resolveSessionShell(sessionId);
     const open = openSessions.get(sessionId);
     if (open) {
       const [messagesResp, entriesResp] = await Promise.all([
@@ -340,18 +353,20 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       return {
         messages: (messagesResp.data ?? []) as unknown[],
         entries: (entriesResp.data ?? []) as unknown[],
+        shell: shellInfo.shell,
+        degraded: shellInfo.degraded,
       };
     }
     const rec = rt.chatSessions.get(sessionId) ?? (await listPiSessions(join(rt.piAgentDir, 'sessions'))).find((s) => s.id === sessionId);
     if (!rec) throw new Error('session not found');
     const file = (rec as { piSessionFile?: string | null }).piSessionFile
       ?? (rec as { path?: string }).path;
-    if (!file) return { messages: [] };
+    if (!file) return { messages: [], shell: shellInfo.shell, degraded: shellInfo.degraded };
     try {
-      return { messages: readPiSessionMessages(file), entries: readPiSessionEntries(file) };
+      return { messages: readPiSessionMessages(file), entries: readPiSessionEntries(file), shell: shellInfo.shell, degraded: shellInfo.degraded };
     } catch (e) {
       // 空会话或尚未落盘的会话（首条 assistant 才写 jsonl）没有文件，返回空消息。
-      if ((e as NodeJS.ErrnoException).code === 'ENOENT') return { messages: [] };
+      if ((e as NodeJS.ErrnoException).code === 'ENOENT') return { messages: [], shell: shellInfo.shell, degraded: shellInfo.degraded };
       throw e;
     }
   });
@@ -385,11 +400,27 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   ) => {
     const { open, sessionId: resolvedSessionId, workspacePath } = await openOrCreateSession(sessionId, context);
 
-    if (attachments?.length && !workspacePath) {
+    const list = attachments ?? [];
+    const isImage = (a: ChatAttachment) => (a.type ?? '').toLowerCase().startsWith('image/')
+      && (a.type ?? '').toLowerCase() !== 'image/svg+xml';
+    const imageAtts = list.filter(isImage);
+    const fileAtts = list.filter((a) => !isImage(a));
+
+    if (fileAtts.length && !workspacePath) {
       throw new Error('会话缺少工作区，无法放置附件');
     }
-    const staged = workspacePath ? await stageAttachments(workspacePath, attachments ?? []) : [];
+    const staged = workspacePath ? await stageAttachments(workspacePath, fileAtts) : [];
     const finalText = buildAttachmentPrompt(text, staged);
+
+    const images = await Promise.all(imageAtts.map(async (att) => {
+      const resized = resizeImageForAttachment(att.path, att.type ?? '');
+      const buffer = resized ? resized.buffer : await readFile(att.path);
+      return {
+        type: 'image' as const,
+        mimeType: resized ? resized.mimeType : (att.type || 'image/png'),
+        data: buffer.toString('base64'),
+      };
+    }));
 
     const stateResp = await open.slot.client.send({ type: 'get_state' });
     if (!stateResp.success) throw new Error(stateResp.error ?? 'get_state failed');
@@ -398,13 +429,19 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     const behavior = options?.behavior ?? (isStreaming ? 'followUp' : 'prompt');
 
     if (behavior === 'steer') {
-      const resp = await open.slot.client.send({ type: 'steer', message: finalText });
+      const resp = await open.slot.client.send(images.length
+        ? { type: 'steer', message: finalText, images }
+        : { type: 'steer', message: finalText });
       if (!resp.success) throw new Error(resp.error ?? 'steer failed');
     } else if (behavior === 'followUp') {
-      const resp = await open.slot.client.send({ type: 'follow_up', message: finalText });
+      const resp = await open.slot.client.send(images.length
+        ? { type: 'follow_up', message: finalText, images }
+        : { type: 'follow_up', message: finalText });
       if (!resp.success) throw new Error(resp.error ?? 'follow_up failed');
     } else {
-      const resp = await open.slot.client.send({ type: 'prompt', message: finalText });
+      const resp = await open.slot.client.send(images.length
+        ? { type: 'prompt', message: finalText, images }
+        : { type: 'prompt', message: finalText });
       if (!resp.success) throw new Error(resp.error ?? 'prompt failed');
     }
 
@@ -572,13 +609,16 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   ipcMain.handle('sparkii:getModelOptions', async () => {
     const settings = await loadSettings(rt.dataDir);
     const providerId = settings.activeProviderId ?? 'deepseek';
-    const models = await withProbeSlot(async (client) => {
+    const modelEntries = await withProbeSlot(async (client) => {
       await injectProbeKey(client, providerId);
       const resp = await client.send({ type: 'list_models', provider: providerId });
-      if (!resp.success) return [] as string[];
-      return ((resp.data ?? []) as Array<{ modelId: string }>).map((m) => m.modelId);
-    }).catch(() => [] as string[]);
-    return { defaultModel: settings.defaultModel ?? null, models, provider: providerId };
+      if (!resp.success) return [] as Array<{ modelId: string; supportsImages?: boolean }>;
+      return (resp.data ?? []) as Array<{ modelId: string; supportsImages?: boolean }>;
+    }).catch(() => [] as Array<{ modelId: string; supportsImages?: boolean }>);
+    const models = modelEntries.map((m) => m.modelId);
+    const supportsImages: Record<string, boolean> = {};
+    for (const m of modelEntries) supportsImages[m.modelId] = m.supportsImages ?? false;
+    return { defaultModel: settings.defaultModel ?? null, models, provider: providerId, supportsImages };
   });
 
   ipcMain.handle('sparkii:deleteChatSession', async (_e, sessionId: string) => {

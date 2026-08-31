@@ -9,7 +9,7 @@ import type { ProposalRequest } from '@sparkii/approval';
 import type { ModelTask } from '@sparkii/model-router';
 import type { Runtime } from './runtime.js';
 import { buildProfileSaddle } from './saddle.js';
-import { isReadOnlyBashCommand, riskOfCommand } from './general-executor.js';
+import { isReadOnlyShellCommand, riskOfShellCommand } from './general-executor.js';
 import { loadSettings, type AppSettings } from './settings.js';
 
 const allTools = new Map<string, ToolDef>(
@@ -42,11 +42,15 @@ export function createBroker(rt: Runtime, getWindow: () => BrowserWindow | null)
       return { approved: true, proposalId: req.requestId, status: result.status, result: result.execution?.result };
     },
     route(req: ProposalRequest & { requestId: string }, meta: { sessionId: string; profileId: string }): Promise<ProposalDecision> {
-      if (req.toolName === 'bash' && isReadOnlyBashCommand(String((req.payload as any)?.command ?? ''))) {
+      if (isReadOnlyShellCommand(req.toolName, String((req.payload as any)?.command ?? ''))) {
         return this.requestReadOnly(req, meta);
       }
-      if (req.toolName === 'edit' || req.toolName === 'write' || req.toolName === 'bash') {
-        req = { ...req, payload: attachDiff(rt, req), risk: req.toolName === 'bash' ? riskOfCommand(String((req.payload as any)?.command ?? '')) : req.risk };
+      if (req.toolName === 'edit' || req.toolName === 'write' || req.toolName === 'bash' || req.toolName === 'powershell') {
+        const command = String((req.payload as any)?.command ?? '');
+        const risk = req.toolName === 'bash' || req.toolName === 'powershell'
+          ? riskOfShellCommand(req.toolName, command)
+          : req.risk;
+        req = { ...req, payload: attachDiff(rt, req), risk };
       }
       return this.request(req, meta);
     },

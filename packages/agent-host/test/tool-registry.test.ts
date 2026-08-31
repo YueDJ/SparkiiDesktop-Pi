@@ -15,6 +15,13 @@ describe("resolveToolDefinitions", () => {
     expect(defs.map((d) => d.name).sort()).toEqual(["bash", "document_read", "read"]);
   });
 
+  it("resolves the powershell coding tool", () => {
+    const defs = resolveToolDefinitions(["powershell"], {
+      cwd: tmpdir(), workspaceRoot: mkdtempSync(join(tmpdir(), "ws-")), propose,
+    });
+    expect(defs.map((d) => d.name)).toEqual(["powershell"]);
+  });
+
   it("fails closed on unknown tool names", () => {
     expect(() => resolveToolDefinitions(["read", "nope"], { cwd: tmpdir(), propose })).toThrow(/unknown tool in saddle: nope/);
   });
