@@ -80,18 +80,18 @@
 - `general-executor.runShell` 用绝对路径 `spawn(<runtimeRoot>\portable-git\bin\bash.exe, ['-c', cmd])`，bash 本身不需要在 PATH 上。
 - 命令内的 `git` / `ls` / `grep` 由 Portable Git 自带的 `/etc/profile` 组织 PATH（`/usr/bin`、`/mingw64/bin` 等）解析，与现有系统 Git Bash 行为一致。**agent 的 git/coreutils 无需在 Windows PATH 上注入任何东西。**
 
-**B. Pi 子进程（技能/插件包管理 + footer 分支显示，基本 dormant）**
+**B. Pi 子进程（git：为未来「Pi 通过 git 安装/更新技能」预留）**
 
-- Pi SDK 内会直接 `spawn("git" / "npm")`，但仅在「从 npm/git 安装/更新技能」与「TUI footer 显示当前分支」时发生；两者都离线门控或失败静默，且 Sparkii（静态技能 + headless 嵌入）几乎不触发。
-- 这些 `spawn` 依赖子进程 PATH；子进程 env 为 `{ ...process.env, ...env }`，继承主进程 PATH。
-- 因此把 `portable-git\cmd`（`git.exe`）prepend 到主进程 PATH 属**防御性/一致性措施**（一处注入即覆盖主进程与 Pi 子进程两处），而非 Sparkii 运行的硬要求。
-- `bin` / `usr\bin` / `mingw64\bin` **无需**放入 Windows PATH（它们是给 bash 内部用的，直接放入 Windows PATH 反而可能遮蔽系统同名程序），也不设 `MSYSTEM`（那是从 Windows 直接调用 MSYS 工具才需要，这里不用）。
+- 现在这些 `spawn("git" / "npm")` 在 Sparkii 里基本 dormant；但产品方向是**让 Pi 自己通过 git 安装技能、检查技能/插件版本**，届时这些路径会被激活，`git` 必须能在 Pi 子进程里解析。
+- 这些 `spawn` 用裸命令名 `"git"`，靠子进程 PATH 解析；子进程 env 为 `{ ...process.env, ...env }`。
+- 做法：在 `runtime.ts` 构造子进程 `env` 时（与现有 `PI_CODING_AGENT_DIR` 同处），把 `portable-git\cmd`（`git.exe`）与 `portable-git\usr\bin`（`ssh.exe` 等 git 远程依赖）prepend 到 `env.PATH`。**不**改动全局主进程 `process.env.PATH`（避免副作用）。
+- bash 与 git 都由同一个 `RuntimeLayout` 产出：bash 用**绝对路径**（因为是 Sparkii 自己的 `runShell` 在 spawn）；git 用**PATH 条目**（因为是 Pi SDK 内部按名字 spawn，我们改不了其调用点）。
 - `npm`：本轮不打包 Node，`npm` 不在 PATH，npm 源相关调用自然静默失效（离线门控 + try/catch），记为已知非目标。
 
 **验收（冒烟）**
 
 - `bash -c "git --version && ls && grep --version"` 在解压后的运行时上通过（agent 的 bash 路径）。
-- 主进程 `process.env.PATH` 包含 `portable-git\cmd`（Pi 子进程的 git 更新检查可解析 `git`）。
+- Pi 子进程 `process.env.PATH` 包含 `portable-git\cmd`（未来 git 技能安装/版本检查可解析 `git`）。
 
 ## 8. 更新策略
 
