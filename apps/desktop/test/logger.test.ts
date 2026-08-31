@@ -32,4 +32,13 @@ describe('Logger', () => {
     expect(warnSpy).toHaveBeenCalled();
     warnSpy.mockRestore();
   });
+
+  it('does not echo to console when echo is disabled', async () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const dir = mkdtempSync(join(tmpdir(), 'log-'));
+    const l = new Logger(dir, false);
+    await l.log({ level: 'info', msg: 'silent' });
+    expect(logSpy).not.toHaveBeenCalled();
+    logSpy.mockRestore();
+  });
 });

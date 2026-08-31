@@ -83,7 +83,7 @@ export function SettingsView(props: SettingsViewProps) {
   const [queueEnabled, setQueueEnabled] = useState(true);
   const [chatDetailLevel, setChatDetailLevel] = useState<ChatDetailLevel>('standard');
   const [logLevel, setLogLevel] = useState<'debug' | 'info' | 'warn' | 'error'>('info');
-  const [logRows, setLogRows] = useState<Array<{ ts: number; level: string; msg: string }>>([]);
+  const [logRows, setLogRows] = useState<Array<{ ts: number; level: string; msg: string; ctx?: unknown }>>([]);
 
   const active = entries.find((e) => e.id === providerId);
 
@@ -186,14 +186,14 @@ export function SettingsView(props: SettingsViewProps) {
   const refreshLogs = async () => {
     const d = await api?.diagnostics?.();
     if (!d?.logs) return;
-    const rows: Array<{ ts: number; level: string; msg: string }> = [];
+    const rows: Array<{ ts: number; level: string; msg: string; ctx?: unknown }> = [];
     for (const line of d.logs.split('\n')) {
       const trimmed = line.trim();
       if (!trimmed) continue;
       try {
         const parsed = JSON.parse(trimmed);
         if (parsed && typeof parsed.ts === 'number' && typeof parsed.level === 'string' && typeof parsed.msg === 'string') {
-          rows.push({ ts: parsed.ts, level: parsed.level, msg: parsed.msg });
+          rows.push({ ts: parsed.ts, level: parsed.level, msg: parsed.msg, ctx: parsed.ctx });
         }
       } catch {
         // 跳过损坏行
@@ -319,13 +319,14 @@ export function SettingsView(props: SettingsViewProps) {
           <SettingsRow label="运行日志">
             <Button onClick={refreshLogs}>刷新</Button>
           </SettingsRow>
-          <div className="settings-models">
+          <div className="settings-logs">
             {logRows.length === 0 && <div className="ui-muted">暂无日志</div>}
             {logRows.map((r, i) => (
               <div key={i} className="settings-log-row">
-                <span className="ui-muted">{new Date(r.ts).toLocaleString('zh-CN')}</span>
-                <span>{r.level}</span>
-                <span>{r.msg}</span>
+                <span className="settings-log-time">{new Date(r.ts).toLocaleString('zh-CN')}</span>
+                <span className={`settings-log-level settings-log-level-${r.level}`}>{r.level}</span>
+                <span className="settings-log-msg">{r.msg}</span>
+                {r.ctx != null && <span className="settings-log-ctx">{JSON.stringify(r.ctx)}</span>}
               </div>
             ))}
           </div>

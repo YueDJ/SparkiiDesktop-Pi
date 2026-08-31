@@ -36,7 +36,7 @@ app.whenReady().then(async () => {
   Menu.setApplicationMenu(null);
   const dataDir = process.env.SPARKII_DATA_DIR ?? defaultDataDir();
   mkdirSync(dataDir, { recursive: true });
-  const logger = new Logger(join(dataDir, 'logs'));
+  const logger = new Logger(join(dataDir, 'logs'), !app.isPackaged);
   const settings = await loadSettings(dataDir);
   logger.level = settings.logLevel ?? 'info';
   await ensureRuntime({ archivePath: runtimeArchivePath(process.env, process.resourcesPath) }).catch((e) => {

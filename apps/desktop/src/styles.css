@@ -56,6 +56,16 @@ html, body { margin: 0; height: 100%; overflow-x: hidden; }
 .settings-conn-ok { color: var(--color-ok); }
 .settings-conn-fail { color: var(--color-risk); }
 .settings-conn-wait { color: var(--color-warn); }
+.settings-logs { display: flex; flex-direction: column; gap: 2px; max-height: 360px; overflow-y: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: var(--font-size-xs); }
+.settings-log-row { display: flex; align-items: baseline; gap: var(--spacing-sm); padding: 3px 0; border-bottom: 1px solid var(--color-border); line-height: 1.5; }
+.settings-log-time { color: var(--color-textMuted); white-space: nowrap; flex-shrink: 0; }
+.settings-log-level { font-weight: var(--font-weight-semibold); flex-shrink: 0; min-width: 44px; }
+.settings-log-level-debug { color: var(--color-textSecondary); }
+.settings-log-level-info { color: var(--color-primary); }
+.settings-log-level-warn { color: var(--color-warn); }
+.settings-log-level-error { color: var(--color-risk); }
+.settings-log-msg { color: var(--color-text); word-break: break-all; }
+.settings-log-ctx { color: var(--color-textSecondary); word-break: break-all; }
 
 /* 审计 */
 .audit-head { display: flex; gap: var(--spacing-sm); align-items: center; margin-bottom: var(--spacing-md); }
