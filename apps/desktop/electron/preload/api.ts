@@ -31,7 +31,7 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
     setChatWorkspace: (sessionId, path) => invoke('setChatWorkspace', sessionId, path) as Promise<{ ok: boolean }>,
     chooseWorkspace: () => invoke('chooseWorkspace') as Promise<{ path?: string }>,
     getPathForFile: (file) => webUtils.getPathForFile(file),
-    getModelOptions: () => invoke('getModelOptions') as Promise<{ defaultModel: string | null; models: string[]; provider: string }>,
+    getModelOptions: (agentId) => invoke('getModelOptions', agentId) as Promise<{ defaultModel: string | null; models: string[]; provider: string; supportsImages?: Record<string, boolean>; modelRequirements?: { requires: string[]; prefers?: string[] }; compatibleModels?: string[]; incompatibleModels?: string[] }>,
     listThinkingLevels: (providerId, modelId) => invoke('listThinkingLevels', providerId, modelId) as Promise<string[]>,
     deleteChatSession: (sessionId) => invoke('deleteChatSession', sessionId) as Promise<{ ok: boolean }>,
     getRuntimePool: () => invoke('getRuntimePool') as Promise<RuntimePoolSnapshot>,

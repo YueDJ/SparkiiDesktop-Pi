@@ -4,6 +4,7 @@ import { mkdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { listPiSessions, readPiSessionEntries, readPiSessionMessages, type PiProviderInfo, type SessionSaddle } from '@sparkii/agent-host';
 import { applyThinkingLevel, createBroker, modelTargetKey, resolveModelTarget, resolveSessionModel, resolveThinkingLevel, runWorkflow, selectModel } from './workflow.js';
+import { findCompatibleModels, type ModelCapability } from '@sparkii/model-router';
 import { sortAgents } from './agent-catalog.js';
 import { resolveExportPath } from './export-path.js';
 import { loadSettings, saveSettings } from './settings.js';
@@ -99,12 +100,18 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     return { baseUrl: base.baseUrl, api: undefined, apiKey };
   }
 
-  const messageText = (m: unknown): string => {
+const messageText = (m: unknown): string => {
     const rec = (m ?? {}) as { role?: string; text?: string; content?: unknown };
     if (typeof rec.content === 'string') return rec.content;
     if (Array.isArray(rec.content)) return rec.content.map((b) => (b as { text?: string })?.text ?? '').join('');
     return typeof rec.text === 'string' ? rec.text : '';
-  };
+};
+
+const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
+  'deepseek-v4-pro': ['chat', 'reasoning', 'longContext', 'toolCall', 'thinking'],
+  'deepseek-v4-flash': ['chat', 'fast', 'toolCall'],
+  'deepseek-vision': ['chat', 'vision'],
+};
 
   async function maybeGenerateTitle(
     sessionId: string,
@@ -594,7 +601,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     return result.canceled ? {} : { path: result.filePaths[0] };
   });
 
-  ipcMain.handle('sparkii:getModelOptions', async () => {
+  ipcMain.handle('sparkii:getModelOptions', async (_e, agentId?: string) => {
     const settings = await loadSettings(rt.dataDir);
     const providerId = settings.activeProviderId ?? 'deepseek';
     const modelEntries = await withProbeSlot(async (client) => {
@@ -606,7 +613,24 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     const models = modelEntries.map((m) => m.modelId);
     const supportsImages: Record<string, boolean> = {};
     for (const m of modelEntries) supportsImages[m.modelId] = m.supportsImages ?? false;
-    return { defaultModel: settings.defaultModel ?? null, models, provider: providerId, supportsImages };
+    const requirements = rt.agentOf(agentId ?? 'general').manifest.modelRequirements ?? { requires: ['chat'] };
+    const descriptors = modelEntries.map((m) => ({
+      provider: providerId,
+      modelId: m.modelId,
+      capabilities: MODEL_CAPABILITY_DEFAULTS[m.modelId]
+        ?? (m.supportsImages ? ['chat', 'vision'] : ['chat', 'toolCall']) as ModelCapability[],
+    }));
+    const compatible = findCompatibleModels(descriptors, requirements);
+    const compatibleSet = new Set(compatible.map((m) => m.modelId));
+    return {
+      defaultModel: settings.defaultModel ?? null,
+      models,
+      provider: providerId,
+      supportsImages,
+      modelRequirements: requirements,
+      compatibleModels: models.filter((modelId) => compatibleSet.has(modelId)),
+      incompatibleModels: models.filter((modelId) => !compatibleSet.has(modelId)),
+    };
   });
 
   ipcMain.handle('sparkii:deleteChatSession', async (_e, sessionId: string) => {
