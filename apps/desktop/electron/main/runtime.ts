@@ -117,7 +117,8 @@ export async function assemble(opts: {
     gate.configureProfile(id, { policy: pr.profile.security.approval, rbac: pr.rbac });
   }
   const executor = new ConnectorExecutor(audit);
-  registerConnectorHandlers(executor);
+  const installedTools = new Set([...agents.values()].flatMap((agent) => agent.tools));
+  registerConnectorHandlers(executor, installedTools);
   const chatSessions = new ChatSessionStore(join(opts.dataDir, "sessions.db"));
   const errors = new ErrorStore(join(opts.dataDir, "errors.db"));
   const keyring = new Keyring(join(opts.dataDir, "keyring"));

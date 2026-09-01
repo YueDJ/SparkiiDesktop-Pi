@@ -6,11 +6,13 @@ import {
   type Connector,
 } from "@sparkii/connectors";
 
-export function registerConnectorHandlers(executor: ConnectorExecutor): void {
+export function registerConnectorHandlers(executor: ConnectorExecutor, toolNames?: Set<string>): void {
   const connectors: Connector[] = [documentConnector, knowledgeConnector, reportConnector];
   for (const connector of connectors) {
     for (const tool of connector.tools) {
-      executor.register(tool.name, tool.handler);
+      if (!toolNames || toolNames.has(tool.name)) {
+        executor.register(tool.name, tool.handler);
+      }
     }
   }
 }

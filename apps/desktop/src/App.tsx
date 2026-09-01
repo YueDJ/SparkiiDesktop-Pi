@@ -100,11 +100,14 @@ function AppShell() {
   const [workflow, setWorkflow] = useState<WorkflowStatusState>({ status: 'idle' });
   const [screen, setScreen] = useState<ScreenId>('home');
   const [roles, setRoles] = useState<string[]>([]);
-  const [agents, setAgents] = useState<ShellAgent[]>([{ id: 'contract-review', name: '合同审核智能体', status: 'idle' }]);
+  const [agents, setAgents] = useState<ShellAgent[]>([
+    { id: 'general', name: '通用智能体', status: 'idle', surfaceType: 'chat' },
+    { id: 'contract-review', name: '合同审核智能体', status: 'idle', surfaceType: 'workflow' },
+  ]);
   const [sessions, setSessions] = useState<Record<string, ShellSession[]>>({});
   const [workflowSessionId, setWorkflowSessionId] = useState<string | null>(null);
-  const [activeGeneralSession, setActiveGeneralSession] = useState<string | null>(null);
-  const [generalTitle, setGeneralTitle] = useState('');
+  const [activeSessionByAgent, setActiveSessionByAgent] = useState<Record<string, string | null>>({});
+  const [titleByAgent, setTitleByAgent] = useState<Record<string, string>>({});
   const [approvalOpen, setApprovalOpen] = useState(false);
   const [approvalFocusId, setApprovalFocusId] = useState<string | null>(null);
   const [runtimePool, setRuntimePool] = useState<RuntimePoolSummary>({
@@ -118,6 +121,15 @@ function AppShell() {
   // 新会话、重命名、正在运行的会话在刷新时用这份覆盖值穿透滞后的后端快照，
   // 一旦后端确认(名称与时间一致/会话出现)即清除，避免多个各自为政的缓存。
   const sessionOverridesRef = useRef<Map<string, { name?: string; updatedAt?: number; agentId?: string }>>(new Map());
+
+  const activeSessionFor = (agentId: string) => activeSessionByAgent[agentId] ?? null;
+  const setActiveSessionFor = (agentId: string, sessionId: string | null) => {
+    setActiveSessionByAgent((prev) => ({ ...prev, [agentId]: sessionId }));
+  };
+  const titleFor = (agentId: string) => titleByAgent[agentId] ?? '';
+  const setTitleFor = (agentId: string, title: string) => {
+    setTitleByAgent((prev) => ({ ...prev, [agentId]: title }));
+  };
 
   useEffect(() => api.on('state', (s) => setState(s as Record<string, unknown>)), [api]);
   useEffect(() => api.on('approval', (p) => {
@@ -152,9 +164,9 @@ function AppShell() {
         }
         return next;
       });
-      if (p.sessionId === activeGeneralSession) setGeneralTitle(p.title);
+      if (p.sessionId === activeSessionFor('general')) setTitleFor('general', p.title);
     }
-  }), [api, activeGeneralSession]);
+  }), [api, activeSessionByAgent]);
   useEffect(() => {
     const off = api.on('runtime-pool', (p: any) => setRuntimePool(mapRuntimePool(p, pending)));
     api.getRuntimePool?.().then((p: any) => setRuntimePool(mapRuntimePool(p, pending))).catch(() => {});
@@ -174,7 +186,13 @@ function AppShell() {
         await refreshApprovals();
         api.listAgents?.().then((list: Array<{ id: string; name: string }>) => {
           if (cancelled || !Array.isArray(list) || !list.length) return;
-          setAgents(list.map((a) => ({ id: a.id as ScreenId, name: a.name, status: 'idle', surfaceType: (a as { surfaceType?: string }).surfaceType })));
+          setAgents(list.map((a) => ({
+            id: a.id as ScreenId,
+            name: a.name,
+            status: 'idle',
+            surfaceType: (a as { surfaceType?: string }).surfaceType
+              ?? (a.id === 'general' ? 'chat' : a.id === 'contract-review' ? 'workflow' : undefined),
+          })));
         }).catch(() => {});
       } catch {
         // 本地主体初始化失败时仍保留默认壳,不阻塞渲染
@@ -229,7 +247,7 @@ function AppShell() {
     }
   };
 
-  const refreshSessions = (agentId: string, activeId = activeGeneralSession) => {
+  const refreshSessions = (agentId: string, activeId = activeSessionFor(agentId)) => {
     // 以 sessions 数组为唯一真相源：刷新只做“原地更新元数据 + 补齐新会话 + 移除已删除”，
     // 不重新排序，从而避免后端滞后的时间戳把会话来回挪动。
     api.listChatSessions?.()?.then((list: any[]) => {
@@ -294,15 +312,16 @@ function AppShell() {
         return next;
       });
       const active = (fetchedByProfile[agentId] ?? []).find((s) => s.id === activeId);
-      if (active) setGeneralTitle(active.name);
+      if (active) setTitleFor(agentId, active.name);
     }).catch(() => {});
   };
 
   const onNewSession = async (agentId: string) => {
-    if (agentId === 'general') {
-      setActiveGeneralSession(null);
-      setGeneralTitle('');
-      setScreen('general');
+    const isChatAgent = agents.find((agent) => agent.id === agentId)?.surfaceType === 'chat';
+    if (isChatAgent) {
+      setActiveSessionFor(agentId, null);
+      setTitleFor(agentId, '');
+      setScreen(agentId as ScreenId);
       return;
     }
     setWorkflow({ status: 'idle' });
@@ -318,12 +337,13 @@ function AppShell() {
   };
 
   const onOpenSession = (agentId: string, sessionId: string) => {
-    if (agentId !== 'general') {
+    const isChatAgent = agents.find((agent) => agent.id === agentId)?.surfaceType === 'chat';
+    if (!isChatAgent) {
       navigate(agentId as ScreenId);
       return;
     }
-    setScreen('general');
-    setActiveGeneralSession(sessionId);
+    setScreen(agentId as ScreenId);
+    setActiveSessionFor(agentId, sessionId);
     refreshSessions(agentId, sessionId);
   };
 
@@ -334,14 +354,14 @@ function AppShell() {
       const list = prev[agentId] ?? [];
       return { ...prev, [agentId]: list.map((s) => (s.id === sessionId ? { ...s, name: title } : s)) };
     });
-    if (sessionId === activeGeneralSession) setGeneralTitle(title);
+    if (sessionId === activeSessionFor(agentId)) setTitleFor(agentId, title);
     api.setChatTitle?.(sessionId, title)?.then(() => refreshSessions(agentId));
   };
 
   const onDeleteSession = (agentId: string, sessionId: string) => {
     sessionOverridesRef.current.delete(sessionId);
     api.deleteChatSession?.(sessionId).then(() => {
-      if (sessionId === activeGeneralSession) setActiveGeneralSession(null);
+      if (sessionId === activeSessionFor(agentId)) setActiveSessionFor(agentId, null);
       refreshSessions(agentId);
     });
   };
@@ -400,7 +420,7 @@ function AppShell() {
 
   const releaseRuntimeSession = async (sessionId: string) => {
     await api.releaseSessionSlot(sessionId);
-    if (sessionId === activeGeneralSession) setActiveGeneralSession(null);
+    if (sessionId === activeSessionFor('general')) setActiveSessionFor('general', null);
     refreshSessions('general');
   };
 
@@ -459,15 +479,15 @@ function AppShell() {
   const generalSurface = (
     <GeneralChatSurface
       api={api}
-      sessionId={activeGeneralSession}
+      sessionId={activeSessionFor('general')}
       active={screen === 'general'}
-      draft={screen === 'general' && activeGeneralSession === null}
+      draft={screen === 'general' && activeSessionFor('general') === null}
       onSessionCommitted={(sessionId, title) => {
-        setActiveGeneralSession(sessionId);
+        setActiveSessionFor('general', sessionId);
         // 一旦首条消息发出，立即把会话插入历史，避免等后端刷新造成延迟
         sessionOverridesRef.current.set(sessionId, { name: title ? String(title).slice(0, 24) : '新会话', updatedAt: Date.now(), agentId: 'general' });
         const name = String(title || '新会话').slice(0, 24);
-        setGeneralTitle(name);
+        setTitleFor('general', name);
         setSessions((prev) => {
           const general = prev['general'] ?? [];
           if (general.some((s) => s.id === sessionId)) return prev;
@@ -488,7 +508,7 @@ function AppShell() {
     'contract-review': derivedAgents.find((a) => a.id === 'contract-review')?.name ?? '合同审核智能体',
     chat: '法规问答 · 会话#1',
     dashboard: '舆情监控 · 会话#2',
-    general: activeGeneralSession ? `通用智能体 · ${generalTitle || '会话'}` : '通用智能体',
+    general: activeSessionFor('general') ? `通用智能体 · ${titleFor('general') || '会话'}` : '通用智能体',
   };
 
   return (
@@ -521,7 +541,7 @@ function AppShell() {
       {approvalOpen && (
         <ApprovalPanel
           proposals={pending}
-          currentSessionId={activeGeneralSession}
+          currentSessionId={activeSessionFor('general')}
           focusId={approvalFocusId}
           onDecide={decide}
           onClose={() => setApprovalOpen(false)}
