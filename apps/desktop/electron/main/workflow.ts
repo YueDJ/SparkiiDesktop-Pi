@@ -8,7 +8,7 @@ import { documentConnector, knowledgeConnector, reportConnector, type ToolDef } 
 import type { ProposalRequest } from '@sparkii/approval';
 import type { ModelTask } from '@sparkii/model-router';
 import type { Runtime } from './runtime.js';
-import { buildProfileSaddle } from './saddle.js';
+import { buildAgentSaddle } from './saddle.js';
 import { isReadOnlyBashCommand, riskOfCommand } from './general-executor.js';
 import { loadSettings, type AppSettings } from './settings.js';
 
@@ -244,7 +244,7 @@ export async function runWorkflow(
   const sessionId = randomUUID();
   const pr = rt.profileOf(profileId);
   const slot = await rt.pool.acquire(sessionId, {
-    saddle: buildProfileSaddle(pr, join(rt.dataDir, 'sessions', sessionId)),
+    saddle: buildAgentSaddle(rt.agentOf(profileId), join(rt.dataDir, 'sessions', sessionId)),
   });
   rt.chatSessions?.create?.({
     id: sessionId,

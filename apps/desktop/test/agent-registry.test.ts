@@ -6,6 +6,7 @@ describe('loadAgentRuntimes', () => {
     const agents = await loadAgentRuntimes([
       {
         id: 'general',
+        dir: 'C:/agents/general',
         manifest: {
           id: 'general',
           version: '1.0.0',
@@ -15,6 +16,7 @@ describe('loadAgentRuntimes', () => {
       },
       {
         id: 'contract-review',
+        dir: 'C:/agents/contract-review',
         manifest: {
           id: 'contract-review',
           version: '1.0.0',

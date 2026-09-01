@@ -86,6 +86,28 @@ async function makeRuntime(opts: {
         profile: { agent: { tools: [], prompts: { system: 'test' } } },
         router: { resolve: () => undefined },
       } as any),
+    agentOf: () => {
+      const pr = opts.profile ?? ({
+        dir: join(opts.dataDir, 'profiles', 'contract-review'),
+        profile: { agent: { tools: [], prompts: { system: 'test' } } },
+      } as any);
+      const dir = pr.dir ?? join(opts.dataDir, 'profiles', 'contract-review');
+      const tools = pr.profile?.agent?.tools ?? pr.agent?.tools ?? [];
+      const systemPrompt = pr.profile?.agent?.prompts?.system ?? pr.agent?.prompts?.system ?? 'test';
+      return {
+        id: 'contract-review',
+        manifest: {
+          id: 'contract-review',
+          version: '1.0.0',
+          surface: { type: 'chat' },
+          capabilities: { tools },
+        },
+        tools,
+        dir,
+        skillsDir: join(dir, 'agent', 'skills'),
+        systemPrompt,
+      };
+    },
     keyFor: async () => null,
     setKey: opts.setKey ?? (async () => {}),
   } as unknown as Runtime;

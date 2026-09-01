@@ -39,6 +39,19 @@ describe('runWorkflow broker sharing', () => {
           },
         },
       }),
+      agentOf: () => ({
+        id: 'contract-review',
+        manifest: {
+          id: 'contract-review',
+          version: '1.0.0',
+          surface: { type: 'workflow', entry: 'surface/index.tsx' },
+          capabilities: { tools: ['document.read', 'knowledge.search', 'report.export', 'read'] },
+        },
+        tools: ['document.read', 'knowledge.search', 'report.export', 'read'],
+        dir: join(rt.dataDir, 'profiles', 'contract-review'),
+        skillsDir: join(rt.dataDir, 'profiles', 'contract-review', 'agent', 'skills'),
+        systemPrompt: '你是 Sparkii Desktop 的合同审核智能体。',
+      }),
       subject: { userId: 'admin' },
       gate: {
         submit: async (req: any) => ({ id: 'p1', ...req, status: 'pending', payloadHash: 'h', createdAt: Date.now() }),
@@ -97,6 +110,19 @@ describe('runWorkflow broker sharing', () => {
     const rt = {
       dataDir,
       profileOf,
+      agentOf: (id: string) => ({
+        id,
+        manifest: {
+          id,
+          version: '1.0.0',
+          surface: { type: 'chat' },
+          capabilities: { tools: ['read'] },
+        },
+        tools: ['read'],
+        dir: join(dataDir, 'profiles', id),
+        skillsDir: join(dataDir, 'profiles', id, 'agent', 'skills'),
+        systemPrompt: `你是 ${id}。`,
+      }),
       subject: { userId: 'admin' },
       gate: {
         submit: async (req: any) => ({ id: 'p1', ...req, status: 'pending', payloadHash: 'h', createdAt: Date.now() }),

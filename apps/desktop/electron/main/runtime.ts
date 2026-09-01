@@ -100,6 +100,9 @@ export async function assemble(opts: {
         : [];
     return {
       id,
+      dir: pr.dir,
+      tools: pr.profile.agent.tools,
+      systemPrompt: pr.profile.agent.prompts.system,
       manifest: {
         id,
         displayName: manifest.displayName,

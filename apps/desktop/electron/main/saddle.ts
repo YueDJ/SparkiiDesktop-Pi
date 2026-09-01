@@ -1,6 +1,7 @@
 import { join } from 'node:path';
 import type { SessionSaddle } from '@sparkii/agent-host';
 import type { ProfileRuntime } from './runtime.js';
+import type { AgentRuntime } from './agent-registry.js';
 
 export function buildProfileSaddle(
   pr: ProfileRuntime,
@@ -14,6 +15,24 @@ export function buildProfileSaddle(
     skillsDir: join(pr.dir, 'agent', 'skills'),
     cwd,
     systemPrompt: pr.profile.agent.prompts.system,
+    workspaceRoot,
+    ...(model ? { model } : {}),
+    ...(thinkingLevel ? { thinkingLevel } : {}),
+  };
+}
+
+export function buildAgentSaddle(
+  agent: AgentRuntime,
+  cwd: string,
+  workspaceRoot?: string,
+  model?: { provider: string; modelId: string },
+  thinkingLevel?: string | null,
+): SessionSaddle {
+  return {
+    tools: agent.tools,
+    skillsDir: agent.skillsDir,
+    cwd,
+    systemPrompt: agent.systemPrompt,
     workspaceRoot,
     ...(model ? { model } : {}),
     ...(thinkingLevel ? { thinkingLevel } : {}),

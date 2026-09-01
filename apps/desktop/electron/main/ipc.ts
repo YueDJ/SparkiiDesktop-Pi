@@ -10,7 +10,7 @@ import { resolveExportPath } from './export-path.js';
 import { loadSettings, saveSettings } from './settings.js';
 import { buildProviderList } from './provider-catalog.js';
 import { autoWorkspacePath } from './workspace.js';
-import { buildProfileSaddle } from './saddle.js';
+import { buildAgentSaddle } from './saddle.js';
 import { buildAttachmentPrompt, stageAttachments } from './attachments.js';
 import { resizeImageForAttachment } from './image-resize.js';
 import { writePiModelsConfig } from './pi-model-config.js';
@@ -65,7 +65,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
 
   function buildSaddle(profileId: string, sessionId: string): SessionSaddle {
     const rec = rt.chatSessions.get(sessionId);
-    return buildProfileSaddle(rt.profileOf(profileId), anchorDir(sessionId), rec?.workspacePath);
+    return buildAgentSaddle(rt.agentOf(profileId), anchorDir(sessionId), rec?.workspacePath);
   }
 
   async function withProbeSlot<T>(fn: (client: Awaited<ReturnType<typeof rt.pool.acquire>>['client']) => Promise<T>): Promise<T> {
@@ -288,7 +288,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     const thinkingLevel = context.thinkingLevel ?? resolveThinkingLevel(settings, null, target);
     const tempKey = `new:${randomUUID()}`;
     const slot = await rt.pool.acquire(tempKey, {
-      saddle: buildProfileSaddle(rt.profileOf(profileId), anchorDir(tempKey), workspacePath, target ?? undefined, thinkingLevel),
+      saddle: buildAgentSaddle(rt.agentOf(profileId), anchorDir(tempKey), workspacePath, target ?? undefined, thinkingLevel),
       meta: {
         profileId,
         profileName: (rt.profileOf(profileId).profile as { manifest?: { displayName?: string } })?.manifest?.displayName ?? profileId,
@@ -838,7 +838,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     if (!profileId) throw new Error('no profiles installed');
     const sessionId = randomUUID();
     const slot = await rt.pool.acquire(sessionId, {
-      saddle: buildProfileSaddle(rt.profileOf(profileId), anchorDir(sessionId)),
+      saddle: buildAgentSaddle(rt.agentOf(profileId), anchorDir(sessionId)),
     });
     slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId }));
     try {
