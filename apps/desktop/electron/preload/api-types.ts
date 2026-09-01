@@ -75,7 +75,7 @@ export interface SparkiiApi {
   getRuntimePool(): Promise<RuntimePoolSnapshot>;
   cancelQueuedSession(queueId: string): Promise<{ ok: boolean }>;
   releaseSessionSlot(sessionId: string): Promise<{ ok: boolean }>;
-  listAgents(): Promise<Array<{ id: string; name: string }>>;
+  listAgents(): Promise<Array<{ id: string; name: string; surfaceType?: string }>>;
   listPendingApprovals(): Promise<unknown[]>;
   decideApproval(id: string, approved: boolean, note?: string): Promise<unknown>;
   queryAudit(filter: object): Promise<unknown[]>;

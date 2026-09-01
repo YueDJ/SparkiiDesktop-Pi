@@ -699,6 +699,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       name: pr.profile.manifest.name,
       displayName: pr.profile.manifest.displayName,
       sortOrder: pr.profile.manifest.sortOrder,
+      surfaceType: rt.agentOf(pr.profile.manifest.name).manifest.surface.type,
     }))),
   );
   ipcMain.handle('sparkii:chooseDocument', async () => {
