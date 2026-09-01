@@ -29,6 +29,7 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
     setChatModel: (sessionId, model) => invoke('setChatModel', sessionId, model) as Promise<{ ok: boolean }>,
     setChatThinkingLevel: (sessionId, level) => invoke('setChatThinkingLevel', sessionId, level) as Promise<{ ok: boolean }>,
     setChatWorkspace: (sessionId, path) => invoke('setChatWorkspace', sessionId, path) as Promise<{ ok: boolean }>,
+    updateWorkflowState: (sessionId, entry) => invoke('updateWorkflowState', sessionId, entry) as Promise<{ ok: boolean }>,
     chooseWorkspace: () => invoke('chooseWorkspace') as Promise<{ path?: string }>,
     getPathForFile: (file) => webUtils.getPathForFile(file),
     getModelOptions: (agentId) => invoke('getModelOptions', agentId) as Promise<{ defaultModel: string | null; models: string[]; provider: string; supportsImages?: Record<string, boolean>; modelRequirements?: { requires: string[]; prefers?: string[] }; compatibleModels?: string[]; incompatibleModels?: string[] }>,

@@ -102,6 +102,7 @@ function AppShell() {
   const [roles, setRoles] = useState<string[]>([]);
   const [agents, setAgents] = useState<ShellAgent[]>([{ id: 'contract-review', name: '合同审核智能体', status: 'idle' }]);
   const [sessions, setSessions] = useState<Record<string, ShellSession[]>>({});
+  const [workflowSessionId, setWorkflowSessionId] = useState<string | null>(null);
   const [activeGeneralSession, setActiveGeneralSession] = useState<string | null>(null);
   const [generalTitle, setGeneralTitle] = useState('');
   const [approvalOpen, setApprovalOpen] = useState(false);
@@ -222,7 +223,9 @@ function AppShell() {
     if (action.startsWith('run-workflow:')) {
       const profileId = action.slice('run-workflow:'.length);
       setWorkflow({ status: 'running' });
-      api.runWorkflow(profileId, { documents: state.documents });
+      api.runWorkflow(profileId, { documents: state.documents }).then((res) => {
+        if (res?.sessionId) setWorkflowSessionId(res.sessionId);
+      });
     }
   };
 
@@ -304,6 +307,14 @@ function AppShell() {
     }
     setWorkflow({ status: 'idle' });
     setState((s) => ({ ...s, documents: [] }));
+    setWorkflowSessionId(null);
+  };
+
+  const onWorkflowState = (action: string, payload: Record<string, unknown>) => {
+    if (!workflowSessionId) return;
+    api.updateWorkflowState(workflowSessionId, { action, ...payload }).catch((e) => {
+      reportError(String(e?.message ?? e), { source: '合同审核' });
+    });
   };
 
   const onOpenSession = (agentId: string, sessionId: string) => {
@@ -422,7 +433,14 @@ function AppShell() {
       <HomeView userName={userName} agents={derivedAgents} pendingApprovals={pending} onNavigate={navigate} />
     ),
     'contract-review': (
-      <ContractSurface state={state} workflow={workflow} onAction={onAction} onRequestExport={() => setScreen('approvals')} />
+      <ContractSurface
+        state={state}
+        workflow={workflow}
+        sessionId={workflowSessionId}
+        onAction={onAction}
+        onWorkflowState={onWorkflowState}
+        onRequestExport={() => setScreen('approvals')}
+      />
     ),
     approvals: (
       <div>

@@ -64,4 +64,20 @@ describe('ContractSurface', () => {
     renderSurface({ status: 'done' });
     expect(screen.getByRole('button', { name: '比对' })).toBeTruthy();
   });
+
+  it('records risk confirmation when a workflow session is active', () => {
+    const onWorkflowState = vi.fn();
+    render(
+      <ContractSurface
+        state={makeState()}
+        workflow={{ status: 'done' } as any}
+        sessionId="s1"
+        onAction={vi.fn()}
+        onWorkflowState={onWorkflowState}
+        onRequestExport={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getAllByText('确认')[0]);
+    expect(onWorkflowState).toHaveBeenCalledWith('risk_confirmed', { riskId: 'f0', stepId: 'compare' });
+  });
 });

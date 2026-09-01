@@ -593,6 +593,18 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     return { ok: true };
   });
 
+  ipcMain.handle('sparkii:updateWorkflowState', async (_e, sessionId: string, entry: Record<string, unknown>) => {
+    const open = await ensureOpenSession(sessionId);
+    pipeSessionEvents(sessionId, open);
+    const resp = await open.slot.client.send({
+      type: 'append_workflow_entry',
+      customType: 'workflow_state',
+      data: entry,
+    });
+    if (!resp.success) throw new Error(resp.error ?? 'append workflow_state failed');
+    return { ok: true };
+  });
+
   ipcMain.handle('sparkii:chooseWorkspace', async () => {
     const win = getWindow();
     const result = win

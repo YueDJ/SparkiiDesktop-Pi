@@ -67,6 +67,7 @@ export interface SparkiiApi {
   setChatModel(sessionId: string, model: string | null): Promise<{ ok: boolean }>;
   setChatThinkingLevel(sessionId: string, level: string | null): Promise<{ ok: boolean }>;
   setChatWorkspace(sessionId: string, path: string | null): Promise<{ ok: boolean }>;
+  updateWorkflowState(sessionId: string, entry: Record<string, unknown>): Promise<{ ok: boolean }>;
   chooseWorkspace(): Promise<{ path?: string }>;
   getPathForFile(file: File): string;
   getModelOptions(agentId?: string): Promise<{ defaultModel: string | null; models: string[]; provider: string; supportsImages?: Record<string, boolean>; modelRequirements?: { requires: string[]; prefers?: string[] }; compatibleModels?: string[]; incompatibleModels?: string[] }>;
