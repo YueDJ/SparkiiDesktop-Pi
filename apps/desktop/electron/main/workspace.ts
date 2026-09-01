@@ -23,6 +23,10 @@ export function autoWorkspacePath(desktop: string, now: Date): string {
   return join(desktop, workspaceName(now));
 }
 
+export function defaultWorkspacePath(documents: string, agentId: string, sessionId: string): string {
+  return join(documents, 'Sparkii', 'workspaces', agentId, sessionId);
+}
+
 export async function ensureWorkspaceDir(path: string): Promise<void> {
   await mkdir(path, { recursive: true });
 }

@@ -2,7 +2,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
-import { workspaceName, autoWorkspacePath, ensureWorkspaceDir, randomWorkspaceToken, formatWorkspaceTimestamp } from '../electron/main/workspace.js';
+import { workspaceName, autoWorkspacePath, defaultWorkspacePath, ensureWorkspaceDir, randomWorkspaceToken, formatWorkspaceTimestamp } from '../electron/main/workspace.js';
 
 describe('workspace naming', () => {
   it('matches Sparkii + 4 token chars + minute timestamp', () => {
@@ -20,6 +20,11 @@ describe('workspace naming', () => {
   });
   it('auto path joins desktop', () => {
     expect(autoWorkspacePath('C:/Users/x/Desktop', new Date('2026-08-25T17:10:00'))).toMatch(/^C:[\\/]Users[\\/]x[\\/]Desktop[\\/]Sparkii[^\\/]+202608251710$/);
+  });
+  it('default path is documents-scoped per agent and session', () => {
+    expect(defaultWorkspacePath('C:/Users/x/Documents', 'contract-review', 's1')).toMatch(
+      /^C:[\\/]Users[\\/]x[\\/]Documents[\\/]Sparkii[\\/]workspaces[\\/]contract-review[\\/]s1$/,
+    );
   });
   it('ensureWorkspaceDir creates the folder lazily', async () => {
     const dir = join(mkdtempSync(join(tmpdir(), 'ws-test-')), 'SparkiiXyZ9202608251710');
