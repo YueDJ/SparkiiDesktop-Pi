@@ -240,11 +240,19 @@ export async function runWorkflow(
   input: Record<string, unknown>,
   broker: ReturnType<typeof createBroker>,
   profileId: string,
-): Promise<void> {
+): Promise<string> {
   const sessionId = randomUUID();
   const pr = rt.profileOf(profileId);
   const slot = await rt.pool.acquire(sessionId, {
     saddle: buildProfileSaddle(pr, join(rt.dataDir, 'sessions', sessionId)),
+  });
+  rt.chatSessions?.create?.({
+    id: sessionId,
+    profileId,
+    kind: 'workflow',
+    currentStep: null,
+    workspaceKind: 'auto',
+    workspacePath: join(rt.dataDir, 'sessions', sessionId),
   });
   slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId }));
   try {
@@ -263,10 +271,26 @@ export async function runWorkflow(
     let finalState: Record<string, unknown> = {};
     for await (const e of new LinearRunner().run(def, ctx)) {
       win?.webContents.send('sparkii:event:workflow', { ...e, sessionId });
+      if (e.type === 'step_started') {
+        rt.chatSessions?.update?.(sessionId, { currentStep: e.stepId });
+        await slot.client?.send?.({
+          type: 'append_workflow_entry',
+          customType: 'workflow_step_start',
+          data: { stepId: e.stepId, startedAt: new Date().toISOString() },
+        }).catch(() => {});
+      }
+      if (e.type === 'step_completed') {
+        await slot.client?.send?.({
+          type: 'append_workflow_entry',
+          customType: 'workflow_step_end',
+          data: { stepId: e.stepId, status: 'completed', finishedAt: new Date().toISOString() },
+        }).catch(() => {});
+      }
       if (e.type === 'workflow_completed') finalState = e.result as Record<string, unknown>;
     }
     win?.webContents.send('sparkii:event:state', { workflow: { result: finalState }, sessionId });
   } finally {
     await rt.pool.release(sessionId);
   }
+  return sessionId;
 }

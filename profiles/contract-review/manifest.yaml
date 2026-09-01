@@ -2,6 +2,13 @@ name: contract-review
 displayName: 合同审核智能体
 sortOrder: 20
 version: 1.0.0
+surface:
+  type: workflow
+  entry: surface.tsx
+capabilities:
+  tools: [document.read, knowledge.search, report.export]
+modelRequirements:
+  requires: [reasoning, vision]
 modelRouting:
   tasks:
     default:

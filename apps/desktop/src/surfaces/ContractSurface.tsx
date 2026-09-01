@@ -3,17 +3,22 @@ import { Button, Card, RiskBadge, Tabs, WorkflowSteps, type WorkflowStep } from 
 import { widgetRegistry } from '../composer/registry.js';
 import { WorkflowStatus, type WorkflowStatusState } from '../workbench/WorkflowStatus.js';
 import { formatReport, parseRiskFindings, stepStatus } from './contract.js';
+import { StepViews } from './contract/StepViews.js';
 
 export interface ContractSurfaceProps {
   state: Record<string, unknown>;
   workflow: WorkflowStatusState;
+  sessionId?: string | null;
   onAction(action: string): void;
+  onWorkflowState?(action: string, payload: Record<string, unknown>): void;
   onRequestExport(): void;
 }
 
 export function ContractSurface(props: ContractSurfaceProps) {
-  const { state, workflow, onAction, onRequestExport } = props;
+  const { state, workflow, sessionId, onAction, onWorkflowState, onRequestExport } = props;
   const [tab, setTab] = useState<'report' | 'original'>('report');
+  const [selectedStep, setSelectedStep] = useState<string | null>(null);
+  const [reviewed, setReviewed] = useState<Record<string, 'confirmed' | 'ignored'>>({});
   const FileUpload = widgetRegistry['file-upload'];
   const ActionButton = widgetRegistry['action-button'];
 
@@ -22,6 +27,8 @@ export function ContractSurface(props: ContractSurfaceProps) {
     label: s.label,
     state: s.state === 'pending' ? 'idle' : s.state,
   }));
+  const activeStepId = selectedStep
+    ?? (workflow.status === 'done' ? 'report' : workflow.step ?? 'upload');
   const rawCompare = (state.workflow as Record<string, unknown> | undefined)?.['result'] as Record<string, unknown> | undefined;
   const findings = parseRiskFindings(rawCompare?.['compare']);
   const report = formatReport(rawCompare?.['report']);
@@ -32,6 +39,18 @@ export function ContractSurface(props: ContractSurfaceProps) {
     <div>
       <WorkflowStatus state={workflow} />
       <WorkflowSteps steps={steps} />
+      <nav className="contract-step-nav" aria-label="审核步骤">
+        {steps.map((step) => (
+          <button
+            key={step.id}
+            type="button"
+            className={`contract-step-nav-item${activeStepId === step.id ? ' active' : ''}`}
+            onClick={() => setSelectedStep(step.id)}
+          >
+            {step.label}
+          </button>
+        ))}
+      </nav>
 
       {workflow.status === 'idle' && (
         <Card className="contract-idle-card">
@@ -42,6 +61,8 @@ export function ContractSurface(props: ContractSurfaceProps) {
           </div>
         </Card>
       )}
+
+      <StepViews stepId={activeStepId} state={state} />
 
       <div className="split-pane">
         <Card className="contract-pane">
@@ -91,6 +112,29 @@ export function ContractSurface(props: ContractSurfaceProps) {
                   <RiskBadge risk={f.level === 'high' ? '高风险' : f.level === 'mid' ? '中风险' : '低风险'} />
                   <span>{f.title}</span>
                   {f.advice && <span className="ui-muted contract-advice">{f.advice}</span>}
+                  {sessionId && (
+                    <span className="contract-finding-actions">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReviewed((prev) => ({ ...prev, [f.id]: 'confirmed' }));
+                          onWorkflowState?.('risk_confirmed', { riskId: f.id, stepId: 'compare' });
+                        }}
+                      >
+                        确认
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReviewed((prev) => ({ ...prev, [f.id]: 'ignored' }));
+                          onWorkflowState?.('risk_ignored', { riskId: f.id, stepId: 'compare' });
+                        }}
+                      >
+                        忽略
+                      </button>
+                      {reviewed[f.id] && <span className="ui-muted">{reviewed[f.id] === 'confirmed' ? '已确认' : '已忽略'}</span>}
+                    </span>
+                  )}
                 </div>
               ))
             )}

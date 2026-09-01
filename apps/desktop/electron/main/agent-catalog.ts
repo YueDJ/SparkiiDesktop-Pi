@@ -3,11 +3,13 @@ export interface AgentCatalogEntry {
   name: string;
   displayName?: string;
   sortOrder?: number;
+  surfaceType?: string;
 }
 
 export interface AgentListItem {
   id: string;
   name: string;
+  surfaceType?: string;
 }
 
 export function sortAgents(entries: AgentCatalogEntry[]): AgentListItem[] {
@@ -17,5 +19,5 @@ export function sortAgents(entries: AgentCatalogEntry[]): AgentListItem[] {
       const bo = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
       return ao - bo || a.id.localeCompare(b.id);
     })
-    .map((entry) => ({ id: entry.id, name: entry.displayName ?? entry.name }));
+    .map((entry) => ({ id: entry.id, name: entry.displayName ?? entry.name, surfaceType: entry.surfaceType }));
 }

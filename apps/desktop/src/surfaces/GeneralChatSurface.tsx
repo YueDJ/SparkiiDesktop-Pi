@@ -213,6 +213,8 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
   const [provider, setProvider] = useState<string>('deepseek');
   const [supportsImages, setSupportsImages] = useState<Record<string, boolean>>({});
   const [visionWarning, setVisionWarning] = useState<string | null>(null);
+  const [compatibleModels, setCompatibleModels] = useState<Set<string>>(new Set());
+  const [modelWarning, setModelWarning] = useState<string | null>(null);
   const [thinkingLevels, setThinkingLevels] = useState<string[]>([...THINKING_LEVELS]);
   const [thinkingLevel, setThinkingLevel] = useState<string | null>(null);
   const [workspacePath, setWorkspacePath] = useState<string | null>(null);
@@ -271,7 +273,7 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
   };
 
   const refreshModelOptions = () => {
-    api.getModelOptions().then((r: any) => {
+    api.getModelOptions('general').then((r: any) => {
       const nextProvider = r.provider ?? 'deepseek';
       const nextModels = r.models ?? [];
       const nextDefault = r.defaultModel ?? null;
@@ -279,6 +281,7 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
       setDefaultModel(nextDefault);
       setProvider(nextProvider);
       setSupportsImages(r.supportsImages ?? {});
+      setCompatibleModels(new Set(r.compatibleModels ?? []));
       if (!sessionId) {
         setThinkingLevel(null);
         setThinkingLevels([...THINKING_LEVELS]);
@@ -394,6 +397,9 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
     setVisionWarning(hasImage && selectedModel && supportsImages[selectedModel] === false
       ? '当前模型不支持图片输入，发送后图片将被忽略，建议切换为支持视觉的模型。'
       : null);
+    setModelWarning(selectedModel && compatibleModels.size > 0 && !compatibleModels.has(selectedModel)
+      ? '当前模型不满足该智能体的能力要求，部分功能可能不可用。'
+      : null);
 
     if (busy && sessionId) {
       api.promptSession(sessionId, display, { behavior: 'followUp' }, chatAttachments.length ? chatAttachments : undefined)
@@ -467,6 +473,9 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
   const onModelChange = (next: string | null) => {
     setModel(next);
     setVisionWarning(null);
+    setModelWarning(next && compatibleModels.size > 0 && !compatibleModels.has(next)
+      ? '当前模型不满足该智能体的能力要求，部分功能可能不可用。'
+      : null);
     if (sessionId) void api.setChatModel(sessionId, next);
     refreshThinkingLevels(next);
   };
@@ -549,6 +558,11 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
       {visionWarning && (
         <div className="muted chat-vision-warning" data-testid="vision-warning" role="alert">
           {visionWarning}
+        </div>
+      )}
+      {modelWarning && (
+        <div className="muted chat-model-warning" data-testid="model-warning" role="alert">
+          {modelWarning}
         </div>
       )}
       <Composer

@@ -3,10 +3,13 @@ import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 export type WorkspaceKind = 'auto' | 'user';
+export type SessionKind = 'chat' | 'workflow' | 'dashboard';
 
 export interface ChatSessionRecord {
   id: string;
   profileId: string;
+  kind: SessionKind;
+  currentStep: string | null;
   workspaceKind: WorkspaceKind;
   workspacePath: string;
   model: string | null;
@@ -35,6 +38,8 @@ export class ChatSessionStore {
       CREATE TABLE IF NOT EXISTS chat_sessions (
         id TEXT PRIMARY KEY,
         profile_id TEXT NOT NULL,
+        kind TEXT NOT NULL DEFAULT 'chat',
+        current_step TEXT,
         workspace_kind TEXT NOT NULL,
         workspace_path TEXT NOT NULL,
         model TEXT,
@@ -67,25 +72,32 @@ export class ChatSessionStore {
     if (!columns.some((c) => c.name === 'sort_order')) {
       this.db.exec('ALTER TABLE chat_sessions ADD COLUMN sort_order REAL');
     }
+    if (!columns.some((c) => c.name === 'kind')) {
+      this.db.exec("ALTER TABLE chat_sessions ADD COLUMN kind TEXT NOT NULL DEFAULT 'chat'");
+    }
+    if (!columns.some((c) => c.name === 'current_step')) {
+      this.db.exec('ALTER TABLE chat_sessions ADD COLUMN current_step TEXT');
+    }
   }
 
-  create(rec: { id: string; profileId: string; workspaceKind: WorkspaceKind; workspacePath: string; model?: string | null; thinkingLevel?: string | null; piSessionFile?: string | null; pinned?: boolean; archived?: boolean; sortOrder?: number | null }): ChatSessionRecord {
+  create(rec: { id: string; profileId: string; kind?: SessionKind; currentStep?: string | null; workspaceKind: WorkspaceKind; workspacePath: string; model?: string | null; thinkingLevel?: string | null; piSessionFile?: string | null; pinned?: boolean; archived?: boolean; sortOrder?: number | null }): ChatSessionRecord {
     const now = Date.now();
     const row: Row = {
       id: rec.id, profileId: rec.profileId,
+      kind: rec.kind ?? 'chat', currentStep: rec.currentStep ?? null,
       workspaceKind: rec.workspaceKind, workspacePath: rec.workspacePath,
       model: rec.model ?? null, thinkingLevel: rec.thinkingLevel ?? null, piSessionFile: rec.piSessionFile ?? null,
       pinned: rec.pinned ?? false, archived: rec.archived ?? false, sortOrder: rec.sortOrder ?? null, createdAt: now, updatedAt: now,
     };
     this.db.prepare(
-      `INSERT INTO chat_sessions (id, profile_id, workspace_kind, workspace_path, model, thinking_level, pi_session_file, pinned, archived, sort_order, created_at, updated_at)
-       VALUES (@id, @profileId, @workspaceKind, @workspacePath, @model, @thinkingLevel, @piSessionFile, @pinned, @archived, @sortOrder, @createdAt, @updatedAt)`,
+      `INSERT INTO chat_sessions (id, profile_id, kind, current_step, workspace_kind, workspace_path, model, thinking_level, pi_session_file, pinned, archived, sort_order, created_at, updated_at)
+       VALUES (@id, @profileId, @kind, @currentStep, @workspaceKind, @workspacePath, @model, @thinkingLevel, @piSessionFile, @pinned, @archived, @sortOrder, @createdAt, @updatedAt)`,
     ).run({ ...row, pinned: row.pinned ? 1 : 0, archived: row.archived ? 1 : 0 });
     return row;
   }
 
   list(profileId?: string): ChatSessionRecord[] {
-    const sql = 'SELECT id, profile_id AS profileId, workspace_kind AS workspaceKind, workspace_path AS workspacePath, model, thinking_level AS thinkingLevel, pi_session_file AS piSessionFile, pinned, archived, sort_order AS sortOrder, created_at AS createdAt, updated_at AS updatedAt FROM chat_sessions';
+    const sql = 'SELECT id, profile_id AS profileId, kind, current_step AS currentStep, workspace_kind AS workspaceKind, workspace_path AS workspacePath, model, thinking_level AS thinkingLevel, pi_session_file AS piSessionFile, pinned, archived, sort_order AS sortOrder, created_at AS createdAt, updated_at AS updatedAt FROM chat_sessions';
     if (profileId) {
       return (this.db.prepare(`${sql} WHERE profile_id = ? ORDER BY updated_at DESC`).all(profileId) as unknown as Row[]).map(toRecord);
     }
@@ -94,17 +106,17 @@ export class ChatSessionStore {
 
   get(id: string): ChatSessionRecord | undefined {
     const row = this.db.prepare(
-      'SELECT id, profile_id AS profileId, workspace_kind AS workspaceKind, workspace_path AS workspacePath, model, thinking_level AS thinkingLevel, pi_session_file AS piSessionFile, pinned, archived, sort_order AS sortOrder, created_at AS createdAt, updated_at AS updatedAt FROM chat_sessions WHERE id = ?',
+      'SELECT id, profile_id AS profileId, kind, current_step AS currentStep, workspace_kind AS workspaceKind, workspace_path AS workspacePath, model, thinking_level AS thinkingLevel, pi_session_file AS piSessionFile, pinned, archived, sort_order AS sortOrder, created_at AS createdAt, updated_at AS updatedAt FROM chat_sessions WHERE id = ?',
     ).get(id) as unknown as Row | undefined;
     return row ? toRecord(row) : undefined;
   }
 
-  update(id: string, patch: Partial<Pick<ChatSessionRecord, 'model' | 'thinkingLevel' | 'workspaceKind' | 'workspacePath' | 'piSessionFile' | 'pinned' | 'archived' | 'sortOrder'>>): ChatSessionRecord | undefined {
+  update(id: string, patch: Partial<Pick<ChatSessionRecord, 'kind' | 'currentStep' | 'model' | 'thinkingLevel' | 'workspaceKind' | 'workspacePath' | 'piSessionFile' | 'pinned' | 'archived' | 'sortOrder'>>): ChatSessionRecord | undefined {
     const cur = this.get(id);
     if (!cur) return undefined;
     const next: Row = { ...cur, ...patch, updatedAt: Date.now() };
     this.db.prepare(
-      `UPDATE chat_sessions SET workspace_kind=@workspaceKind, workspace_path=@workspacePath, model=@model, thinking_level=@thinkingLevel, pi_session_file=@piSessionFile, pinned=@pinned, archived=@archived, sort_order=@sortOrder, updated_at=@updatedAt WHERE id=@id`,
+      `UPDATE chat_sessions SET kind=@kind, current_step=@currentStep, workspace_kind=@workspaceKind, workspace_path=@workspacePath, model=@model, thinking_level=@thinkingLevel, pi_session_file=@piSessionFile, pinned=@pinned, archived=@archived, sort_order=@sortOrder, updated_at=@updatedAt WHERE id=@id`,
     ).run({ ...next, pinned: next.pinned ? 1 : 0, archived: next.archived ? 1 : 0 });
     return next;
   }

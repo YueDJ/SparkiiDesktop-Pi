@@ -210,6 +210,9 @@ export async function createPiSdkSessionHost(
       setSessionName: async (name) => {
         session.setSessionName(name);
       },
+      appendWorkflowEntry: async (customType, data) => {
+        session.sessionManager.appendCustomEntry(customType, data);
+      },
       setApiKey: async (provider, apiKey) => {
         await modelRuntime.setRuntimeApiKey(provider, apiKey);
       },

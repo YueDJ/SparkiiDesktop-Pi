@@ -8,6 +8,18 @@ export const manifestSchema = z.object({
   displayName: z.string().optional(),
   sortOrder: z.number().optional(),
   extends: z.string().optional(),
+  surface: z.object({
+    type: z.enum(['chat', 'workflow', 'dashboard', 'custom']),
+    entry: z.string().optional(),
+  }).optional(),
+  capabilities: z.object({
+    entry: z.string().optional(),
+    tools: z.array(z.string()).optional(),
+  }).optional(),
+  modelRequirements: z.object({
+    requires: z.array(z.string()),
+    prefers: z.array(z.string()).optional(),
+  }).optional(),
   modelRouting: z.object({
     tasks: z.record(z.string(), z.array(modelTarget)),
   }),

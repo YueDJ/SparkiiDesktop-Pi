@@ -56,7 +56,28 @@ describe('ContractSurface', () => {
   it('marks the active workflow step', () => {
     const { container } = renderSurface({ status: 'running', step: 'compare' });
     expect(container.querySelector('.ui-workflow-steps')).toBeTruthy();
-    const stepEl = screen.getByText('比对').closest('.ui-workflow-step');
+    const stepEl = screen.getAllByText('比对')[0].closest('.ui-workflow-step');
     expect(stepEl?.getAttribute('data-state')).toBe('active');
+  });
+
+  it('renders a clickable workflow step nav', () => {
+    renderSurface({ status: 'done' });
+    expect(screen.getByRole('button', { name: '比对' })).toBeTruthy();
+  });
+
+  it('records risk confirmation when a workflow session is active', () => {
+    const onWorkflowState = vi.fn();
+    render(
+      <ContractSurface
+        state={makeState()}
+        workflow={{ status: 'done' } as any}
+        sessionId="s1"
+        onAction={vi.fn()}
+        onWorkflowState={onWorkflowState}
+        onRequestExport={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getAllByText('确认')[0]);
+    expect(onWorkflowState).toHaveBeenCalledWith('risk_confirmed', { riskId: 'f0', stepId: 'compare' });
   });
 });

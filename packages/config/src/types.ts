@@ -6,6 +6,18 @@ export interface ProfileManifest {
   displayName?: string;
   sortOrder?: number;
   extends?: string;
+  surface?: {
+    type: 'chat' | 'workflow' | 'dashboard' | 'custom';
+    entry?: string;
+  };
+  capabilities?: {
+    entry?: string;
+    tools?: string[];
+  };
+  modelRequirements?: {
+    requires: string[];
+    prefers?: string[];
+  };
   modelRouting: {
     tasks: Record<string, Array<{ provider: string; modelId: string }>>;
   };

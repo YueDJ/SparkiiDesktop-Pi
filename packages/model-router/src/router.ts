@@ -1,4 +1,4 @@
-import type { ModelTask, ModelTarget } from './types.js';
+import type { ModelCapability, ModelDescriptor, ModelRequirement, ModelTask, ModelTarget } from './types.js';
 
 export function normalizeRouting(raw: Record<string, ModelTarget[]>): Record<ModelTask, ModelTarget[]> {
   const out = { default: raw.default ?? [], chat: [], extract: [], report: [], coding: [], title: [] } as Record<ModelTask, ModelTarget[]>;
@@ -14,4 +14,36 @@ export class ModelRouter {
     const chain = this.routing[task] ?? this.routing.default;
     return chain.find(available) ?? null;
   }
+}
+
+export function findCompatibleModels(
+  models: ModelDescriptor[],
+  requirement: ModelRequirement,
+): ModelDescriptor[] {
+  return models.filter((model) =>
+    requirement.requires.every((capability) =>
+      model.capabilities.includes(capability as ModelCapability),
+    ),
+  );
+}
+
+export function recommendModel(
+  models: ModelDescriptor[],
+  requirement: ModelRequirement,
+  preferredKey?: string | null,
+): ModelDescriptor | null {
+  if (preferredKey) {
+    const preferred = models.find(
+      (model) => `${model.provider}/${model.modelId}` === preferredKey,
+    );
+    if (
+      preferred &&
+      requirement.requires.every((capability) =>
+        preferred.capabilities.includes(capability as ModelCapability),
+      )
+    ) {
+      return preferred;
+    }
+  }
+  return findCompatibleModels(models, requirement)[0] ?? null;
 }

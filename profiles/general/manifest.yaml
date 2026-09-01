@@ -2,6 +2,12 @@ name: general
 displayName: 通用智能体
 sortOrder: 10
 version: 1.0.0
+surface:
+  type: chat
+capabilities:
+  tools: [read, ls, grep, find, bash, edit, write]
+modelRequirements:
+  requires: [chat, toolCall]
 modelRouting:
   tasks:
     coding:

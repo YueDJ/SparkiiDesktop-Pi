@@ -16,8 +16,10 @@ import { Keyring } from "./keyring.js";
 import { loadSettings } from "./settings.js";
 import { loadApiKey, saveApiKey } from "./settings.js";
 import { registerGeneralExecutor } from "./general-executor.js";
-import { firstProfileWithKnowledge } from "./profile-catalog.js";
 import { resolveRuntimeToolsDir } from "./runtime-layout.js";
+import { loadAgentRuntimes, type AgentRuntime } from "./agent-registry.js";
+import { generalAgentTools } from "./agent-capabilities/general.js";
+import { contractReviewAgentTools } from "./agent-capabilities/contract-review.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -30,10 +32,12 @@ export interface ProfileRuntime {
 
 export interface Runtime {
   profiles: Map<string, ProfileRuntime>;
+  agents: Map<string, AgentRuntime>;
   gate: ApprovalGate; executor: ConnectorExecutor; audit: AuditStore;
   pool: PiRuntimePool; subject: Subject;
   chatSessions: ChatSessionStore; errors: ErrorStore; dataDir: string; keyring: Keyring; piAgentDir: string;
   profileOf(id: string): ProfileRuntime;
+  agentOf(id: string): AgentRuntime;
   keyFor(providerId: string): Promise<string | null>;
   setKey(providerId: string, key: string): Promise<void>;
 }
@@ -80,13 +84,41 @@ export async function assemble(opts: {
       dir,
     });
   }
+  const agents = await loadAgentRuntimes([...profiles.entries()].map(([id, pr]) => {
+    const manifest = pr.profile.manifest;
+    const surface = manifest.surface ?? (
+      id === 'general'
+        ? { type: 'chat' as const }
+        : id === 'contract-review'
+          ? { type: 'workflow' as const, entry: 'surface.tsx' }
+          : { type: 'chat' as const }
+    );
+    const fallbackTools = id === 'general'
+      ? generalAgentTools
+      : id === 'contract-review'
+        ? contractReviewAgentTools
+        : [];
+    return {
+      id,
+      manifest: {
+        id,
+        displayName: manifest.displayName,
+        version: manifest.version,
+        sortOrder: manifest.sortOrder,
+        surface,
+        capabilities: manifest.capabilities ?? { tools: fallbackTools },
+        modelRequirements: manifest.modelRequirements,
+      },
+    };
+  }));
   const audit = new AuditStore(join(opts.dataDir, "audit.db"));
   const gate = new ApprovalGate({ audit });
   for (const [id, pr] of profiles) {
     gate.configureProfile(id, { policy: pr.profile.security.approval, rbac: pr.rbac });
   }
   const executor = new ConnectorExecutor(audit);
-  registerConnectorHandlers(executor);
+  const installedTools = new Set([...agents.values()].flatMap((agent) => agent.tools));
+  registerConnectorHandlers(executor, installedTools);
   const chatSessions = new ChatSessionStore(join(opts.dataDir, "sessions.db"));
   const errors = new ErrorStore(join(opts.dataDir, "errors.db"));
   const keyring = new Keyring(join(opts.dataDir, "keyring"));
@@ -98,8 +130,11 @@ export async function assemble(opts: {
     },
     markWorkspaceCreated: () => {},
   });
-  const knowledgeProfile = firstProfileWithKnowledge(profiles.values());
-  if (knowledgeProfile) await knowledgeConnector.init({ corpus: knowledgeProfile.profile.agent.knowledge });
+  for (const [id, pr] of profiles) {
+    if (pr.profile.agent.knowledge.length) {
+      await knowledgeConnector.init({ corpus: pr.profile.agent.knowledge, profileId: id });
+    }
+  }
   const entry = resolvePiRuntimeEntry();
   const env = {
     PI_CODING_AGENT_DIR: piAgentDir,
@@ -117,13 +152,18 @@ export async function assemble(opts: {
   });
   const keyStore = createKeyStore(keyring);
   return {
-    profiles, gate, executor, audit, pool,
+    profiles, agents, gate, executor, audit, pool,
     subject: { userId: userInfo().username, roles: ["admin", "reviewer"] },
     chatSessions, errors, dataDir: opts.dataDir, keyring, piAgentDir,
     profileOf: (id) => {
       const pr = profiles.get(id);
       if (!pr) throw new Error(`unknown profile ${id}`);
       return pr;
+    },
+    agentOf: (id) => {
+      const agent = agents.get(id);
+      if (!agent) throw new Error(`unknown agent ${id}`);
+      return agent;
     },
     keyFor: keyStore.keyFor,
     setKey: keyStore.setKey,

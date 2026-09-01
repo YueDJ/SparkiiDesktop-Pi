@@ -25,6 +25,7 @@ export interface PiRuntimeSession {
   setThinkingLevel(level: string): void;
   getThinkingLevel(): string;
   getAvailableThinkingLevels(): string[];
+  appendWorkflowEntry?(customType: string, data: unknown): Promise<void>;
   listModels(provider?: string): Promise<Array<{ provider: string; modelId: string; supportsImages: boolean }>>;
   listProviders(): Promise<PiProviderInfo[]>;
   subscribe(callback: (event: any) => void): () => void;
@@ -173,6 +174,10 @@ async function handleCommand(host: PiRuntimeSessionHost, command: RpcCommand): P
       return session.getThinkingLevel();
     case "list_thinking_levels":
       return session.getAvailableThinkingLevels();
+    case "append_workflow_entry":
+      if (!session.appendWorkflowEntry) throw new Error('append_workflow_entry unsupported');
+      await session.appendWorkflowEntry(command.customType, command.data);
+      return undefined;
     case "list_models":
       return await session.listModels(command.provider);
     case "list_providers":
