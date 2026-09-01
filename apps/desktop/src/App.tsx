@@ -173,7 +173,7 @@ function AppShell() {
         await refreshApprovals();
         api.listAgents?.().then((list: Array<{ id: string; name: string }>) => {
           if (cancelled || !Array.isArray(list) || !list.length) return;
-          setAgents(list.map((a) => ({ id: a.id as ScreenId, name: a.name, status: 'idle' })));
+          setAgents(list.map((a) => ({ id: a.id as ScreenId, name: a.name, status: 'idle', surfaceType: (a as { surfaceType?: string }).surfaceType })));
         }).catch(() => {});
       } catch {
         // 本地主体初始化失败时仍保留默认壳,不阻塞渲染

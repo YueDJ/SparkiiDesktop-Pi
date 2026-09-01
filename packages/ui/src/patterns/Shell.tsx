@@ -18,6 +18,7 @@ export interface ShellAgent {
   id: ScreenId;
   name: string;
   status: AgentStatus;
+  surfaceType?: string;
   queuePosition?: number;
 }
 
