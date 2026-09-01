@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Button, Card, RiskBadge, Tabs, WorkflowSteps, type WorkflowStep } from '@sparkii/ui';
-import { widgetRegistry } from '../composer/registry.js';
-import { WorkflowStatus, type WorkflowStatusState } from '../workbench/WorkflowStatus.js';
-import { formatReport, parseRiskFindings, stepStatus } from './contract.js';
-import { StepViews } from './contract/StepViews.js';
+import { widgetRegistry } from '../../src/composer/registry.js';
+import { WorkflowStatus, type WorkflowStatusState } from '../../src/workbench/WorkflowStatus.js';
+import { formatReport, parseRiskFindings, stepStatus } from '../../src/surfaces/contract.js';
+import { StepViews } from './StepViews.js';
 
 export interface ContractSurfaceProps {
   state: Record<string, unknown>;

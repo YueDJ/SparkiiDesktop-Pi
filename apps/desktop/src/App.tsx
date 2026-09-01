@@ -7,9 +7,9 @@ import { ApprovalCenter } from './trust/ApprovalCenter.js';
 import { ApprovalPanel } from './trust/ApprovalPanel.js';
 import { AuditView } from './audit/AuditView.js';
 import type { WorkflowStatusState } from './workbench/WorkflowStatus.js';
-import { ContractSurface } from './surfaces/ContractSurface.js';
 import { HomeView } from './surfaces/HomeView.js';
-import { GeneralChatSurface } from './surfaces/GeneralChatSurface.js';
+import { ContractSurface } from '../agents/contract-review/surface.js';
+import { GeneralChatSurface } from '../agents/general/surface.js';
 
 export function sessionDisplayName(s: { title?: string; firstMessage?: string; updatedAt?: number }): string {
   if (s.title) return s.title;
