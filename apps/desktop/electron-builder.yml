@@ -13,6 +13,12 @@ extraResources:
     to: profiles
   - from: runtime/portable-git.7z.exe
     to: runtime/portable-git.7z.exe
+  - from: runtime/tools/fd.exe
+    to: runtime/tools/fd.exe
+  - from: runtime/tools/rg.exe
+    to: runtime/tools/rg.exe
+  - from: runtime/tools/licenses
+    to: runtime/tools/licenses
 win:
   icon: build/icon.ico
   target:

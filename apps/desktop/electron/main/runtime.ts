@@ -1,4 +1,4 @@
-import { dirname, join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
 import { existsSync } from "node:fs";
 import { userInfo } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -17,6 +17,7 @@ import { loadSettings } from "./settings.js";
 import { loadApiKey, saveApiKey } from "./settings.js";
 import { registerGeneralExecutor } from "./general-executor.js";
 import { firstProfileWithKnowledge } from "./profile-catalog.js";
+import { resolveRuntimeToolsDir } from "./runtime-layout.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -100,7 +101,10 @@ export async function assemble(opts: {
   const knowledgeProfile = firstProfileWithKnowledge(profiles.values());
   if (knowledgeProfile) await knowledgeConnector.init({ corpus: knowledgeProfile.profile.agent.knowledge });
   const entry = resolvePiRuntimeEntry();
-  const env = { PI_CODING_AGENT_DIR: piAgentDir };
+  const env = {
+    PI_CODING_AGENT_DIR: piAgentDir,
+    PATH: [resolveRuntimeToolsDir(), process.env.PATH].filter(Boolean).join(delimiter),
+  };
   const settings = await loadSettings(opts.dataDir);
   const rawMaxAgents = Number(settings.maxAgents ?? process.env.SPARKII_MAX_AGENTS ?? 4);
   const maxAgents = Number.isFinite(rawMaxAgents) && rawMaxAgents > 0 ? Math.floor(rawMaxAgents) : 4;

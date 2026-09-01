@@ -1,11 +1,19 @@
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { needsProvision, resolveRuntimePaths } from './runtime-layout.js';
+import {
+  needsProvision,
+  needsSearchTools,
+  resolveRuntimeToolsDir,
+  resolveRuntimePaths,
+  resolveSearchToolPaths,
+  SEARCH_TOOL_FILENAMES,
+} from './runtime-layout.js';
 
 export interface EnsureRuntimeOptions {
   archivePath?: string | null;
   env?: NodeJS.ProcessEnv;
+  toolsDir?: string | null;
 }
 
 export function runtimeArchivePath(
@@ -22,48 +30,106 @@ export function runtimeArchivePath(
   return null;
 }
 
+export function runtimeToolsPath(
+  env: NodeJS.ProcessEnv = process.env,
+  resourcesPath?: string,
+): string | null {
+  const candidates = [
+    env.SPARKII_RUNTIME_TOOLS_DIR,
+    resourcesPath ? join(resourcesPath, 'runtime', 'tools') : undefined,
+  ];
+  for (const candidate of candidates) {
+    if (candidate && existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
 export async function ensureRuntime(opts: EnsureRuntimeOptions = {}): Promise<void> {
   const env = opts.env ?? process.env;
-  if (!needsProvision(env)) return;
-  const archivePath = opts.archivePath ?? runtimeArchivePath(env);
-  if (!archivePath || !existsSync(archivePath)) return;
-  const paths = resolveRuntimePaths(env);
-  await extract(archivePath, paths.portableGitDir);
+  if (needsProvision(env)) {
+    const archivePath = opts.archivePath ?? runtimeArchivePath(env);
+    if (archivePath && existsSync(archivePath)) {
+      await extract(archivePath, resolveRuntimePaths(env).portableGitDir);
+    }
+  }
+  ensureSearchTools(env, opts.toolsDir);
+}
+
+function ensureSearchTools(
+  env: NodeJS.ProcessEnv,
+  toolsDir: string | null | undefined,
+): void {
+  if (!needsSearchTools(env)) return;
+  if (!toolsDir || !existsSync(toolsDir)) return;
+  const runtimeToolsDir = resolveRuntimeToolsDir(env);
+  const missing = SEARCH_TOOL_FILENAMES.filter((filename) => !existsSync(join(toolsDir, filename)));
+  if (missing.length > 0) {
+    throw new Error(`search tools missing from ${toolsDir}: ${missing.join(', ')}`);
+  }
+  mkdirSync(runtimeToolsDir, { recursive: true });
+  for (const filename of SEARCH_TOOL_FILENAMES) {
+    copyFileSync(join(toolsDir, filename), join(runtimeToolsDir, filename));
+  }
 }
 
 export interface RuntimeVerification {
   root: string;
   bashPath: string;
   gitPath: string;
+  fdPath: string;
+  rgPath: string;
   ready: boolean;
   bashVersion: string | null;
   gitVersion: string | null;
+  fdReady: boolean;
+  rgReady: boolean;
+  fdVersion: string | null;
+  rgVersion: string | null;
   error: string | null;
 }
 
 export async function verifyRuntime(env: NodeJS.ProcessEnv = process.env): Promise<RuntimeVerification> {
   const paths = resolveRuntimePaths(env);
+  const searchPaths = resolveSearchToolPaths(env);
+  const fdReady = existsSync(searchPaths.fdPath);
+  const rgReady = existsSync(searchPaths.rgPath);
   const ready = existsSync(paths.bashPath) && existsSync(paths.gitPath);
   if (!ready) {
     return {
       root: paths.root,
       bashPath: paths.bashPath,
       gitPath: paths.gitPath,
+      fdPath: searchPaths.fdPath,
+      rgPath: searchPaths.rgPath,
       ready: false,
       bashVersion: null,
       gitVersion: null,
+      fdReady,
+      rgReady,
+      fdVersion: null,
+      rgVersion: null,
       error: 'runtime not provisioned',
     };
   }
-  const bashVersion = await capture(paths.bashPath, ['--version']);
-  const gitVersion = await capture(paths.bashPath, ['-c', 'git --version']);
+  const [bashVersion, gitVersion, fdVersion, rgVersion] = await Promise.all([
+    capture(paths.bashPath, ['--version']),
+    capture(paths.bashPath, ['-c', 'git --version']),
+    fdReady ? capture(searchPaths.fdPath, ['--version']) : Promise.resolve(null),
+    rgReady ? capture(searchPaths.rgPath, ['--version']) : Promise.resolve(null),
+  ]);
   return {
     root: paths.root,
     bashPath: paths.bashPath,
     gitPath: paths.gitPath,
+    fdPath: searchPaths.fdPath,
+    rgPath: searchPaths.rgPath,
     ready: true,
     bashVersion,
     gitVersion,
+    fdReady,
+    rgReady,
+    fdVersion,
+    rgVersion,
     error: null,
   };
 }

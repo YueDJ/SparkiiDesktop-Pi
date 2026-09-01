@@ -2,7 +2,7 @@
 
 - 日期：2026-08-31
 - 状态：设计已与用户逐点确认，本文档待用户审阅
-- 范围：把 Sparkii Desktop 做成可分发产品所需的自带运行时；**本轮仅 Portable Git（bash + git + coreutils）**
+- 范围：把 Sparkii Desktop 做成可分发产品所需的自带运行时；**本轮包含 Portable Git（bash + git + coreutils）以及 Pi 搜索工具 fd/rg**
 - 关联：本文档取代 `2026-08-31-self-contained-runtime-distribution.md`（初始决策记录）；并取代 `2026-08-31-shell-selection.md` 中「Git Bash 优先、PowerShell 兜底」的成品行为
 
 ## 1. 背景与目标
@@ -21,13 +21,15 @@
 4. **Pi SDK 内部会 `spawn("git" / "npm")`，但仅用于「技能/插件包管理」与「TUI footer 分支显示」，在 Sparkii（技能静态捆绑 + headless 嵌入）下基本不触发。** 因此本轮无需为 Pi 单独注入 git；agent 的 git 操作都经 bash 完成（见第 7 节）。
 5. **`powershell` 当前不是任何 profile 的一等工具。** `general` profile 只有 `bash`；`contract-review` 没有 shell 工具。整套 `resolvePowerShell`/`resolveShellChoice`/`buildProfileSaddle` 替换，存在的唯一目的就是「机器上没有 Git Bash 时降级到 PowerShell」。
 
-结论：Sparkii 自己的运行时只需要 **Portable Git**（提供 bash + git + coreutils）。Node、uv、Python 都是「agent 帮用户跑项目」的可选语言运行时，不属于本轮「让 Sparkii 零安装跑起来」的范围。
+结论：Sparkii 自己的运行时只需要 **Portable Git**（提供 bash + git + coreutils），以及 Pi 的 `find`/`grep` 工具会使用的 **fd/rg**。Node、uv、Python 都是「agent 帮用户跑项目」的可选语言运行时，不属于本轮「让 Sparkii 零安装跑起来」的范围。
 
 ## 3. 组件范围（本轮）
 
 | 组件 | 本轮 | 说明 |
 | --- | --- | --- |
 | Portable Git for Windows | 打包 | 提供 `bash.exe` + `git.exe` + coreutils，满足 `bash` 工具（git 随 bash 使用） |
+| fd for Windows | 打包 | Pi 的 `find` 工具使用；版本 10.5.0 |
+| ripgrep for Windows | 打包 | Pi 的 `grep` 工具使用；版本 15.2.0 |
 | Node 运行时 | 不打包 | Pi 跑在 Electron Node；agent 的 `node/npm` 属可选语言运行时，后续单独评估 |
 | uv + 预建 Python venv | 不打包 | Sparkii 无 Python 依赖；属可选语言运行时，后续单独评估 |
 
@@ -44,23 +46,32 @@
       cmd\git.exe
       usr\bin\ ...          # coreutils（ls/cat/grep/...）
       mingw64\bin\ ...
+    tools\                  # fd/rg 运行时工具
+      fd.exe
+      rg.exe
 ```
 
 - 运行时根：`%LOCALAPPDATA%\SparkiiDesktop\runtime`（与现有 `data\` 同级，复用 `DATA_APP_DIR = 'SparkiiDesktop'`）。
 - 固定可执行路径：
   - bash：`<runtimeRoot>\portable-git\bin\bash.exe`
   - git：`<runtimeRoot>\portable-git\cmd\git.exe`
+  - fd：`<runtimeRoot>\tools\fd.exe`
+  - rg：`<runtimeRoot>\tools\rg.exe`
 - **单一固定路径，无分支**：生产与 dev 共用同一路径解析；不存在 `app.isPackaged` 分支，也不存在「探测系统 Git Bash」的兜底。
 
 ## 5. 打包与安装时解压
 
 - 安装包通过 electron-builder `extraResources` 携带 Portable Git 官方自解压包（约 56MB，解压后约 389MB）到 `resources/runtime/`。
+- 安装包同时携带 `resources/runtime/tools/fd.exe`、`resources/runtime/tools/rg.exe` 及其许可证文件。
 - **主路径（安装器解压，零首次等待）**：NSIS 安装器在文件安装完成后，通过自定义 `customInstall` 宏静默执行 `resources\runtime\portable-git.7z.exe -o"%LOCALAPPDATA%\SparkiiDesktop\runtime\portable-git" -y`。解压发生在安装进度期间，安装完成即运行时已就位，首次启动零解压、零等待、零弹窗。
+- NSIS 同时把 `fd.exe`/`rg.exe` 复制到 `%LOCALAPPDATA%\SparkiiDesktop\runtime\tools`，并清理旧版可能残留在 `data\pi-agent\bin` 下的同名文件。
 - **兜底（首次启动补解压）**：`ensureRuntime()` 保持幂等——若 `<runtimeRoot>\portable-git\bin\bash.exe` 或 `cmd\git.exe` 缺失（用户误删 LOCALAPPDATA 或安装器解压失败），首次启动静默补解压。运行时代码不感知打包/未打包差异。
-- **卸载清理**：NSIS `customUnInstall` 仅删除 `%LOCALAPPDATA%\SparkiiDesktop\runtime\portable-git`，不触碰 `data\` 用户数据。
+- 首次启动兜底同时检查 `fd.exe`/`rg.exe`，若缺失则从 `resources/runtime/tools` 复制到 `<runtimeRoot>\tools`。
+- **卸载清理**：NSIS `customUnInstall` 仅删除 `%LOCALAPPDATA%\SparkiiDesktop\runtime\portable-git` 和 `runtime\tools` 下由 Sparkii 放置的 `fd.exe`/`rg.exe`，不触碰 `data\` 用户数据。
 - 解压失败不阻断安装：安装器解压尽力而为，失败仅 `DetailPrint` 记录，交由首次启动兜底。
 - 解压未完成时 `bash` 不可用：`bash` handler 返回清晰错误，**不做 PowerShell 降级**。
 - dev 环境：由 `pnpm ensure:runtime` 下载并解压到同一 `%LOCALAPPDATA%\SparkiiDesktop\runtime\portable-git`，与生产共享路径。
+- dev 环境：`pnpm ensure:runtime` 同时下载 fd/rg 并复制到 `<runtimeRoot>\tools`，与生产共享同一目标路径。
 
 ## 6. shell 简化（取代 shell-selection 的兜底）
 
@@ -74,17 +85,20 @@
 
 - `bash`：`general-executor.runShell` 用绝对路径 `spawn(<runtimeRoot>\portable-git\bin\bash.exe, ['-c', cmd])`。
 - `git`：**随 bash 自带**。agent 的 `git pull` / `clone` / `status` 等都作为 bash 命令执行，Portable Git 的 bash 自带 git 与 coreutils，无需单独注入。
+- `fd`/`rg`：放在 `<runtimeRoot>\tools`，并在 Pi 子进程环境变量 `PATH` 中前置该目录；Pi 的 `ensureTool("fd"/"rg")` 会通过系统 PATH 找到它们，且优先于联网自动下载。
 - 未来若实现「Pi 自己通过 git 安装/更新技能」，再在 `runtime.ts` 的子进程 `env` 里把 `portable-git\cmd` 加进 PATH（一行即可）；本轮不做。
-- 验收（冒烟）：`bash -c "git --version && ls && grep --version"` 通过。
+- 验收（冒烟）：`bash -c "git --version && ls && grep --version"` 通过，`fd --version` 与 `rg --version` 通过。
 
 ## 8. 更新策略
 
 - 本轮：运行时随主程序发布、安装器解压一次即可（见第 5 节）；不建版本清单、不做重解压、不做独立运行时更新通道。
+- 本轮：fd/rg 同样随主程序发布，版本由 `ensure-runtime.mjs` 固定并校验 SHA256，运行时不联网更新。
 - 后续确有需要时再引入版本标记与运行时独立更新；第 4 节的可写目录布局已为其预留。
 
 ## 9. 许可合规
 
 - Portable Git 原样分发（不做手拼裁剪）：完整携带其 `licenses/` 目录 + `THIRD-PARTY-NOTICES` + 源码提供承诺（指向精确的 Git-for-Windows / MSYS2 版本）。
+- fd/rg 以 `apps/desktop/runtime/tools/licenses` 携带各自许可证；fd 为 Apache-2.0/MIT，ripgrep 为 MIT/Unlicense。
 - bash/git 以独立进程被 Electron 聚合调用，属「mere aggregation」，不使 Sparkii 传染为 GPL。
 - 公开发布前需过法务确认，属发布门禁而非本轮工程范围。
 

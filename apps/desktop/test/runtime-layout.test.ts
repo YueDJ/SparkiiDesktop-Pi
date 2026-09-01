@@ -2,7 +2,14 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { needsProvision, resolveRuntimePaths, resolveRuntimeRoot } from '../electron/main/runtime-layout.js';
+import {
+  needsProvision,
+  needsSearchTools,
+  resolveRuntimePaths,
+  resolveRuntimeRoot,
+  resolveRuntimeToolsDir,
+  resolveSearchToolPaths,
+} from '../electron/main/runtime-layout.js';
 
 function provision(root: string, { bash = true, git = true } = {}): void {
   const portableGit = join(root, 'portable-git');
@@ -49,5 +56,37 @@ describe('needsProvision', () => {
     const root = mkdtempSync(join(tmpdir(), 'sparkii-rt-'));
     provision(root);
     expect(needsProvision({ SPARKII_RUNTIME_ROOT: root })).toBe(false);
+  });
+});
+
+describe('search tool paths', () => {
+  it('uses LOCALAPPDATA\\SparkiiDesktop\\runtime\\tools by default', () => {
+    const toolsDir = resolveRuntimeToolsDir({ LOCALAPPDATA: 'C:/Users/x/AppData/Local' });
+    expect(toolsDir).toBe(join('C:/Users/x/AppData/Local', 'SparkiiDesktop', 'runtime', 'tools'));
+  });
+
+  it('honors SPARKII_RUNTIME_ROOT override', () => {
+    expect(resolveRuntimeToolsDir({ SPARKII_RUNTIME_ROOT: 'D:/sparkii/runtime' }))
+      .toBe(join('D:/sparkii/runtime', 'tools'));
+  });
+
+  it('locates fd.exe and rg.exe under the resolved tools dir', () => {
+    const paths = resolveSearchToolPaths({ LOCALAPPDATA: 'C:/Users/x/AppData/Local' });
+    expect(paths.fdPath).toBe(join(paths.toolsDir, 'fd.exe'));
+    expect(paths.rgPath).toBe(join(paths.toolsDir, 'rg.exe'));
+  });
+
+  it('reports missing search tools', () => {
+    const root = mkdtempSync(join(tmpdir(), 'sparkii-search-'));
+    expect(needsSearchTools({ SPARKII_RUNTIME_ROOT: root })).toBe(true);
+  });
+
+  it('reports search tools ready when both files exist', () => {
+    const root = mkdtempSync(join(tmpdir(), 'sparkii-search-'));
+    const toolsDir = join(root, 'tools');
+    mkdirSync(toolsDir, { recursive: true });
+    writeFileSync(join(toolsDir, 'fd.exe'), 'x');
+    writeFileSync(join(toolsDir, 'rg.exe'), 'x');
+    expect(needsSearchTools({ SPARKII_RUNTIME_ROOT: root })).toBe(false);
   });
 });

@@ -4,6 +4,8 @@ import { join } from 'node:path';
 export const APP_DIR_NAME = 'SparkiiDesktop';
 export const RUNTIME_DIR_NAME = 'runtime';
 export const PORTABLE_GIT_DIR_NAME = 'portable-git';
+export const TOOLS_DIR_NAME = 'tools';
+export const SEARCH_TOOL_FILENAMES = ['fd.exe', 'rg.exe'] as const;
 
 export interface RuntimePaths {
   root: string;
@@ -38,4 +40,28 @@ export function resolveRuntimePaths(env: NodeJS.ProcessEnv = process.env): Runti
 export function needsProvision(env: NodeJS.ProcessEnv = process.env): boolean {
   const paths = resolveRuntimePaths(env);
   return !(existsSync(paths.bashPath) && existsSync(paths.gitPath));
+}
+
+export interface SearchToolPaths {
+  toolsDir: string;
+  fdPath: string;
+  rgPath: string;
+}
+
+export function resolveRuntimeToolsDir(env: NodeJS.ProcessEnv = process.env): string {
+  return join(resolveRuntimeRoot(env), TOOLS_DIR_NAME);
+}
+
+export function resolveSearchToolPaths(env: NodeJS.ProcessEnv = process.env): SearchToolPaths {
+  const toolsDir = resolveRuntimeToolsDir(env);
+  return {
+    toolsDir,
+    fdPath: join(toolsDir, 'fd.exe'),
+    rgPath: join(toolsDir, 'rg.exe'),
+  };
+}
+
+export function needsSearchTools(env: NodeJS.ProcessEnv = process.env): boolean {
+  const paths = resolveSearchToolPaths(env);
+  return !(existsSync(paths.fdPath) && existsSync(paths.rgPath));
 }

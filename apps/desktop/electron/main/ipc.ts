@@ -831,7 +831,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   ipcMain.handle('sparkii:diagnostics', async () => ({
     logs: await logger.export(),
     audit: await rt.audit.exportJsonl(),
-    runtime: await verifyRuntime(),
+    runtime: await verifyRuntime(process.env),
   }));
   ipcMain.handle('sparkii:listErrors', () => rt.errors.list());
   ipcMain.handle('sparkii:appendError', (_e, rec: { id: string; message: string; source: string; createdAt: number }) => rt.errors.append(rec));

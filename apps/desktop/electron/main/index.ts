@@ -8,7 +8,7 @@ import { Logger } from './logger.js';
 import { attachRecovery } from './recovery.js';
 import { defaultDataDir } from './paths.js';
 import { loadSettings } from './settings.js';
-import { ensureRuntime, runtimeArchivePath, verifyRuntime } from './runtime-provision.js';
+import { ensureRuntime, runtimeArchivePath, runtimeToolsPath, verifyRuntime } from './runtime-provision.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -39,11 +39,14 @@ app.whenReady().then(async () => {
   const logger = new Logger(join(dataDir, 'logs'), !app.isPackaged);
   const settings = await loadSettings(dataDir);
   logger.level = settings.logLevel ?? 'info';
-  await ensureRuntime({ archivePath: runtimeArchivePath(process.env, process.resourcesPath) }).catch((e) => {
+  await ensureRuntime({
+    archivePath: runtimeArchivePath(process.env, process.resourcesPath),
+    toolsDir: runtimeToolsPath(process.env, process.resourcesPath),
+  }).catch((e) => {
     void logger.log({ level: 'error', msg: 'runtime ensure failed', ctx: { error: e instanceof Error ? e.message : String(e) } });
   });
-  const runtimeCheck = await verifyRuntime().catch(() => null);
-  void logger.log({ level: 'info', msg: 'runtime verify', ctx: (runtimeCheck ?? { error: 'verify failed' }) as unknown as Record<string, unknown> });
+  const runtimeCheck = await verifyRuntime(process.env).catch(() => null);
+  void logger.log({ level: 'debug', msg: 'runtime verify', ctx: (runtimeCheck ?? { error: 'verify failed' }) as unknown as Record<string, unknown> });
   const single = process.env.SPARKII_PROFILE_DIR;
   const profileRoot = single
     ? dirname(single)
