@@ -3,6 +3,7 @@ import { Button, Card, RiskBadge, Tabs, WorkflowSteps, type WorkflowStep } from 
 import { widgetRegistry } from '../composer/registry.js';
 import { WorkflowStatus, type WorkflowStatusState } from '../workbench/WorkflowStatus.js';
 import { formatReport, parseRiskFindings, stepStatus } from './contract.js';
+import { StepViews } from './contract/StepViews.js';
 
 export interface ContractSurfaceProps {
   state: Record<string, unknown>;
@@ -57,6 +58,8 @@ export function ContractSurface(props: ContractSurfaceProps) {
           </div>
         </Card>
       )}
+
+      <StepViews stepId={activeStepId} state={state} />
 
       <div className="split-pane">
         <Card className="contract-pane">
