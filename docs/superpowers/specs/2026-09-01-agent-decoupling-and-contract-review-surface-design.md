@@ -38,13 +38,13 @@
 10. **合同审核 surface 自己维护 `stepId → StepView` 映射**。workflow 负责执行顺序，UI 负责步骤内容展示。
 11. **中间步骤产出不重复落盘**。Pi JSONL 是过程和结果的唯一事实源；workspace `output/` 只放用户明确要的产物。
 12. **JSONL 使用 `workflow_step_start/end` 建立步骤时间线，使用 `workflow_state` 记录非 Pi 自然事件的业务状态**。
+13. **通用智能体与其他 Agent 同等级**。它使用平台标准 `chat` surface，没有 `alwaysIncluded` 或 `kind: base` 这类特殊身份；是否交付由 delivery manifest 决定。
 
 ## Architecture Overview
 
 ```text
 Platform Core（始终存在）
   Pi Runtime
-  General Agent (base)
   Session Store
   Approval / Audit / RBAC
   Runtime Pool
@@ -52,7 +52,10 @@ Platform Core（始终存在）
   Workspace Manager
   Settings / Theme / Error Center
 
-Agent Package（每个垂直智能体一个）
+Agent Package（每个智能体一个）
+  general
+  contract-review
+  future agents...
   manifest.yaml
   surface view
   capabilities view
@@ -79,13 +82,19 @@ Delivery Manifest（未来单独设计）
 agents/
   general/
     manifest.yaml
-    surface.tsx
     capabilities.ts
+    prompts/
+      system.md
+    security/
+      roles.yaml
+      approval.yaml
   contract-review/
     manifest.yaml
     surface.tsx
     capabilities.ts
 ```
+
+`general` 使用平台标准 `chat` surface，因此不需要自己的 `surface.tsx`。`contract-review` 是 workflow surface，保留自己的 `surface.tsx`。
 
 从现有 `profiles/` 平滑演进，不要求一次重命名。迁移完成后，`agents/<id>/manifest.yaml` 是每个 Agent 的唯一入口。
 
@@ -97,7 +106,6 @@ manifest 只放声明和路径引用，不包含实现代码：
 id: contract-review
 displayName: 合同审核智能体
 version: 1.0.0
-kind: vertical
 sortOrder: 20
 
 surface:
@@ -124,9 +132,19 @@ modelRequirements:
 
 ```yaml
 id: general
-kind: base
+displayName: 通用智能体
+version: 1.0.0
+sortOrder: 10
+
 surface:
   type: chat
+
+capabilities:
+  entry: capabilities.ts
+  tools: [read, ls, grep, find, bash, edit, write]
+
+modelRequirements:
+  requires: [chat, toolCall]
 ```
 
 ### 统一注册表
@@ -146,6 +164,32 @@ AgentRegistry
 ### 加载原则
 
 manifest 是唯一事实源。构建期根据所有 Agent 的 manifest，分别生成 renderer 侧 surface 绑定和 main 侧 capabilities 绑定。运行期不做任意文件动态 import。
+
+## General Agent Split
+
+通用智能体是普通 Agent，不放在 Platform Core。
+
+### 归属
+
+- **General Agent Package** 持有 `manifest.yaml`、`capabilities.ts`、`prompts/system.md`、`security/`。
+- **Platform Standard ChatSurface** 持有消息流、工具卡片、模型选择、context、workspace、队列、附件和停止/发送。
+- **Platform Core** 只提供 Pi 能力、session、审批、审计、运行池、模型目录和 workspace。
+
+### 职责
+
+```text
+general
+  surface: platform standard chat
+  capabilities: read, ls, grep, find, bash, edit, write
+  modelRequirements: chat, toolCall
+  session kind: chat
+```
+
+平台渲染 `general` 时，不写 `agentId === 'general'`。它只是发现当前 Agent 的 `surface.type = chat`，然后渲染标准 `ChatSurface`。
+
+### 现有 GeneralChatSurface 迁移
+
+现有 `GeneralChatSurface` 升级为平台标准 `ChatSurface`，并继续复用 `ChatMessage`、`ToolCard`、`Composer`、`LifecycleCard`、`Markdown`、`pi-timeline` 等 UI 组件。`App.tsx` 中 `activeGeneralSession`、`generalTitle` 和单独渲染 `generalSurface` 等特判全部移除。
 
 ## Subsystem 2: Agent Surface Contract
 
@@ -194,6 +238,7 @@ chooseWorkspace
 - `chat / workflow / dashboard` 是平台提供的默认实现。
 - 极少数复杂 Agent 提供自定义实现，但必须实现同一契约。
 - 平台仍然统一控制会话、审批、错误和运行状态。
+- `general` 使用平台标准 `chat` surface；`contract-review` 使用 `workflow` surface。
 
 ## Subsystem 3: Agent Capabilities Contract
 
@@ -234,7 +279,7 @@ knowledge.search
 report.export
 ```
 
-通用智能体直接使用平台常驻的完整 Pi 能力。
+通用智能体的 capabilities 返回平台通用工具清单 `read / ls / grep / find / bash / edit / write`。平台解析这些工具并统一执行 workspace 限制、审批和审计，而不是对 `general` 做特殊分支。
 
 ## Subsystem 4: Model Capability Catalog & Selection
 
@@ -498,6 +543,7 @@ ReviewStepView
 ## Self-Review Notes
 
 - 本 spec 覆盖已确认的 Agent 边界、模型能力目录、session/workspace 统一和合同审核 surface。
+- `general` 已从 Platform Core 移出，作为普通 Agent 使用平台标准 `chat` surface，无 `alwaysIncluded` 或 `kind: base`。
 - 逻辑上只有一个 Agent Registry；surface 和 capabilities 被明确描述为同一 Agent 的两个进程视图。
 - 中间步骤产出不重复落盘，恢复来源为 Pi JSONL + DB metadata + workspace 文件。
 - `workflow_step_start/end` 建立时间线，`workflow_state` 补充用户复核和产物路径，避免依赖解析模型自由文本。
