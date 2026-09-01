@@ -467,7 +467,7 @@ function AppShell() {
   );
 
   const surfaceTitles: Partial<Record<ScreenId, string>> = {
-    'contract-review': '合同审核 · 会话#3',
+    'contract-review': derivedAgents.find((a) => a.id === 'contract-review')?.name ?? '合同审核智能体',
     chat: '法规问答 · 会话#1',
     dashboard: '舆情监控 · 会话#2',
     general: activeGeneralSession ? `通用智能体 · ${generalTitle || '会话'}` : '通用智能体',
