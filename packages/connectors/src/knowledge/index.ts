@@ -51,9 +51,10 @@ export function buildIndexFromLines(lines: string[]): Bm25Index {
   return new Bm25Index(lines.map((text, i) => ({ id: `chunk-${i}`, text })));
 }
 
-let index: Bm25Index | null = null;
+const indexes = new Map<string, Bm25Index>();
 
-const handler: ToolHandler = async (args) => {
+const handler: ToolHandler = async (args, ctx) => {
+  const index = indexes.get(ctx.profileId) ?? indexes.get('default');
   if (!index) return { ok: false, error: { code: 'CONNECTOR_NOT_INIT', message: 'knowledge corpus not loaded' } };
   return { ok: true, data: index.search(String(args.query), Number(args.topK ?? 5)) };
 };
@@ -75,7 +76,8 @@ export const knowledgeConnector: Connector = {
     handler,
   }],
   async init(cfg: unknown) {
-    const corpus = (cfg as { corpus?: Array<{ id: string; text: string }> } | undefined)?.corpus ?? [];
-    index = new Bm25Index(corpus);
+    const parsed = cfg as { corpus?: Array<{ id: string; text: string }>; profileId?: string } | undefined;
+    const corpus = parsed?.corpus ?? [];
+    indexes.set(parsed?.profileId ?? 'default', new Bm25Index(corpus));
   },
 };

@@ -16,7 +16,6 @@ import { Keyring } from "./keyring.js";
 import { loadSettings } from "./settings.js";
 import { loadApiKey, saveApiKey } from "./settings.js";
 import { registerGeneralExecutor } from "./general-executor.js";
-import { firstProfileWithKnowledge } from "./profile-catalog.js";
 import { resolveRuntimeToolsDir } from "./runtime-layout.js";
 import { loadAgentRuntimes, type AgentRuntime } from "./agent-registry.js";
 import { generalAgentTools } from "./agent-capabilities/general.js";
@@ -130,8 +129,11 @@ export async function assemble(opts: {
     },
     markWorkspaceCreated: () => {},
   });
-  const knowledgeProfile = firstProfileWithKnowledge(profiles.values());
-  if (knowledgeProfile) await knowledgeConnector.init({ corpus: knowledgeProfile.profile.agent.knowledge });
+  for (const [id, pr] of profiles) {
+    if (pr.profile.agent.knowledge.length) {
+      await knowledgeConnector.init({ corpus: pr.profile.agent.knowledge, profileId: id });
+    }
+  }
   const entry = resolvePiRuntimeEntry();
   const env = {
     PI_CODING_AGENT_DIR: piAgentDir,
