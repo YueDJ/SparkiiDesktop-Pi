@@ -56,7 +56,12 @@ describe('ContractSurface', () => {
   it('marks the active workflow step', () => {
     const { container } = renderSurface({ status: 'running', step: 'compare' });
     expect(container.querySelector('.ui-workflow-steps')).toBeTruthy();
-    const stepEl = screen.getByText('比对').closest('.ui-workflow-step');
+    const stepEl = screen.getAllByText('比对')[0].closest('.ui-workflow-step');
     expect(stepEl?.getAttribute('data-state')).toBe('active');
+  });
+
+  it('renders a clickable workflow step nav', () => {
+    renderSurface({ status: 'done' });
+    expect(screen.getByRole('button', { name: '比对' })).toBeTruthy();
   });
 });
