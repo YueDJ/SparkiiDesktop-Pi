@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, cleanup, waitFor } from '@testing-library/react';
-import { GeneralChatSurface, applyChatEvent, normalizeMessages, type ChatEntry } from '../agents/general/surface.js';
+import { GeneralChatSurface, applyChatEvent, normalizeMessages, type ChatEntry } from '../agents/general/surface/index.js';
 import { ErrorProvider, createMemoryErrorStore } from '@sparkii/ui';
 
 afterEach(cleanup);

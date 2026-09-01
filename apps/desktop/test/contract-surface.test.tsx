@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import { ContractSurface } from '../agents/contract-review/surface.js';
+import { ContractSurface } from '../agents/contract-review/surface/index.js';
 
 afterEach(cleanup);
 

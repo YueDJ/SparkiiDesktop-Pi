@@ -1,21 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ChatAttachment, SparkiiApi } from '../../src/types/sparkii-api.js';
+import type { ChatAttachment, SparkiiApi } from '../../../src/types/sparkii-api.js';
 import { Button, ChatMessage, useErrors, type ComposerAttachment } from '@sparkii/ui';
-import { Composer } from '../../src/workbench/Composer.js';
-import { ToolCard } from '../../src/workbench/ToolCard.js';
-import { LifecycleCard } from '../../src/workbench/LifecycleCard.js';
-import { Markdown } from '../../src/workbench/Markdown.js';
-import { THINKING_LEVELS } from '../../src/workbench/thinking-levels.js';
+import { Composer } from '../../../src/workbench/Composer.js';
+import { ToolCard } from '../../../src/workbench/ToolCard.js';
+import { LifecycleCard } from '../../../src/workbench/LifecycleCard.js';
+import { Markdown } from '../../../src/workbench/Markdown.js';
+import { THINKING_LEVELS } from '../../../src/workbench/thinking-levels.js';
 import {
   DEFAULT_CHAT_DETAIL_LEVEL,
   isChatDetailLevel,
   shouldShowEntry,
   type ChatDetailLevel,
-} from '../../src/workbench/chat-detail-level.js';
-import * as Timeline from '../../src/workbench/pi-timeline.js';
-import type { ChatEntry } from '../../src/workbench/pi-timeline.js';
+} from '../../../src/workbench/chat-detail-level.js';
+import * as Timeline from '../../../src/workbench/pi-timeline.js';
+import type { ChatEntry } from '../../../src/workbench/pi-timeline.js';
 
-export { applyChatEvent, normalizeMessages, type ChatEntry } from '../../src/workbench/pi-timeline.js';
+export { applyChatEvent, normalizeMessages, type ChatEntry } from '../../../src/workbench/pi-timeline.js';
 
 type QueueName = 'steering' | 'followUp';
 type QueueMap = Record<QueueName, string[]>;

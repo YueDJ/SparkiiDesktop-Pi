@@ -4,8 +4,9 @@ sortOrder: 20
 version: 1.0.0
 surface:
   type: workflow
-  entry: surface.tsx
+  entry: surface/index.tsx
 capabilities:
+  entry: agent/capabilities.ts
   tools: [document.read, knowledge.search, report.export]
 modelRequirements:
   requires: [reasoning, vision]

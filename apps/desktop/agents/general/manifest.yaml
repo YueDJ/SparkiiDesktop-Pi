@@ -5,6 +5,7 @@ version: 1.0.0
 surface:
   type: chat
 capabilities:
+  entry: agent/capabilities.ts
   tools: [read, ls, grep, find, bash, edit, write]
 modelRequirements:
   requires: [chat, toolCall]

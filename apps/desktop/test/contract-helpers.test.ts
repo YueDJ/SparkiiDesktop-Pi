@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseRiskFindings, formatReport, stepStatus } from '../agents/contract-review/contract.js';
+import { parseRiskFindings, formatReport, stepStatus } from '../agents/contract-review/surface/contract.js';
 
 describe('parseRiskFindings', () => {
   it('maps rows with risk levels and advice to findings', () => {

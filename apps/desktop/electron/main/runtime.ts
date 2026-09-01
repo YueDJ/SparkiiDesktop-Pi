@@ -18,8 +18,8 @@ import { loadApiKey, saveApiKey } from "./settings.js";
 import { registerGeneralExecutor } from "./general-executor.js";
 import { resolveRuntimeToolsDir } from "./runtime-layout.js";
 import { loadAgentRuntimes, type AgentRuntime } from "./agent-registry.js";
-import { generalAgentTools } from "../../agents/general/capabilities.js";
-import { contractReviewAgentTools } from "../../agents/contract-review/capabilities.js";
+import { generalAgentTools } from "../../agents/general/agent/capabilities.js";
+import { contractReviewAgentTools } from "../../agents/contract-review/agent/capabilities.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

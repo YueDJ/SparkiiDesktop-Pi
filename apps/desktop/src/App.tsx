@@ -8,8 +8,8 @@ import { ApprovalPanel } from './trust/ApprovalPanel.js';
 import { AuditView } from './audit/AuditView.js';
 import type { WorkflowStatusState } from './workbench/WorkflowStatus.js';
 import { HomeView } from './platform/HomeView.js';
-import { ContractSurface } from '../agents/contract-review/surface.js';
-import { GeneralChatSurface } from '../agents/general/surface.js';
+import { ContractSurface } from '../agents/contract-review/surface/index.js';
+import { GeneralChatSurface } from '../agents/general/surface/index.js';
 
 export function sessionDisplayName(s: { title?: string; firstMessage?: string; updatedAt?: number }): string {
   if (s.title) return s.title;
