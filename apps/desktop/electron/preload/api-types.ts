@@ -51,7 +51,7 @@ export interface ErrorRecord {
 export interface SparkiiApi {
   getLocalSubject(): Promise<{ userId: string; roles: string[] }>;
   chooseDocument(): Promise<{ path?: string }>;
-  runWorkflow(id: string, input: Record<string, unknown>): Promise<{ ok: boolean }>;
+  runWorkflow(id: string, input: Record<string, unknown>): Promise<{ ok: boolean; sessionId?: string }>;
   prompt(text: string): Promise<{ ok: boolean }>;
   openChatSession(sessionId: string): Promise<{ messages: unknown[]; entries?: unknown[] }>;
   listChatSessions(profileId?: string): Promise<unknown[]>;

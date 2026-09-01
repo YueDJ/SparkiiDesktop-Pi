@@ -850,8 +850,8 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     return { ok: true };
   });
   ipcMain.handle('sparkii:runWorkflow', async (_e, profileId: string, input: Record<string, unknown>) => {
-    await runWorkflow(rt, getWindow, input, broker, profileId);
-    return { ok: true };
+    const sessionId = await runWorkflow(rt, getWindow, input, broker, profileId);
+    return { ok: true, sessionId };
   });
   ipcMain.handle('sparkii:diagnostics', async () => ({
     logs: await logger.export(),

@@ -13,7 +13,7 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
   return {
     getLocalSubject: () => invoke('getLocalSubject') as Promise<{ userId: string; roles: string[] }>,
     chooseDocument: () => invoke('chooseDocument') as Promise<{ path?: string }>,
-    runWorkflow: (id, input) => invoke('runWorkflow', id, input) as Promise<{ ok: boolean }>,
+    runWorkflow: (id, input) => invoke('runWorkflow', id, input) as Promise<{ ok: boolean; sessionId?: string }>,
     prompt: (text) => invoke('prompt', text) as Promise<{ ok: boolean }>,
     openChatSession: (sessionId) => invoke('openChatSession', sessionId) as Promise<{ messages: unknown[]; entries?: unknown[] }>,
     listChatSessions: (profileId) => invoke('listChatSessions', profileId) as Promise<unknown[]>,
