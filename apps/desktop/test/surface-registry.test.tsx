@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveSurface } from '../src/agent/surface-registry.js';
+import { resolveSurface } from '../src/platform/surface-registry.js';
 
 describe('resolveSurface', () => {
   it('resolves standard chat surface', () => {

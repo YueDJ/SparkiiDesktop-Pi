@@ -6,7 +6,7 @@ import type { ProfileRuntime } from '../electron/main/runtime.js';
 import { buildProfileSaddle } from '../electron/main/saddle.js';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const contractDir = join(repoRoot, 'profiles', 'contract-review');
+const contractDir = join(repoRoot, 'apps', 'desktop', 'agents', 'contract-review');
 
 describe('buildProfileSaddle', () => {
   it('assembles the contract-review saddle with tools, skills dir, prompt, and anchor cwd', async () => {

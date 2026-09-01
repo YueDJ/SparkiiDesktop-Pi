@@ -9,8 +9,8 @@ files:
   - package.json
 asar: true
 extraResources:
-  - from: ../../profiles
-    to: profiles
+  - from: ../../apps/desktop/agents
+    to: agents
   - from: runtime/portable-git.7z.exe
     to: runtime/portable-git.7z.exe
   - from: runtime/tools/fd.exe

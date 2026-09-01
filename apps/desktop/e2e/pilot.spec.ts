@@ -20,7 +20,7 @@ test('contract review pilot acceptance', async () => {
     args: ['dist-electron/main/index.js'],
     env: {
       ...process.env,
-      SPARKII_PROFILE_DIR: join(repoRoot, 'profiles/contract-review'),
+      SPARKII_PROFILE_DIR: join(repoRoot, 'apps/desktop/agents/contract-review'),
       SPARKII_DATA_DIR: dataDir,
       SPARKII_E2E_DOCUMENT: fixture,
       SPARKII_E2E_EXPORT_DIR: exportDir,

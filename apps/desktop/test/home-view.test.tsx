@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import { HomeView } from '../src/surfaces/HomeView.js';
+import { HomeView } from '../src/platform/HomeView.js';
 import type { ShellAgent } from '../src/shell/Shell.js';
 
 afterEach(cleanup);

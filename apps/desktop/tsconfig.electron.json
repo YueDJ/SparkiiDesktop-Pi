@@ -2,11 +2,11 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist-electron",
-    "rootDir": "electron",
+    "rootDir": "..",
     "lib": ["ES2022", "DOM"],
     "types": ["node"],
     "declaration": false,
     "sourceMap": true
   },
-  "include": ["electron/**/*.ts"]
+  "include": ["electron/**/*.ts", "agents/**/*.ts"]
 }

@@ -7,7 +7,7 @@ import { ApprovalCenter } from './trust/ApprovalCenter.js';
 import { ApprovalPanel } from './trust/ApprovalPanel.js';
 import { AuditView } from './audit/AuditView.js';
 import type { WorkflowStatusState } from './workbench/WorkflowStatus.js';
-import { HomeView } from './surfaces/HomeView.js';
+import { HomeView } from './platform/HomeView.js';
 import { ContractSurface } from '../agents/contract-review/surface.js';
 import { GeneralChatSurface } from '../agents/general/surface.js';
 

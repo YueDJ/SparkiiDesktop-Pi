@@ -50,7 +50,7 @@ app.whenReady().then(async () => {
   const single = process.env.SPARKII_PROFILE_DIR;
   const profileRoot = single
     ? dirname(single)
-    : (app.isPackaged ? join(process.resourcesPath, 'profiles') : join(__dirname, '../../../../profiles'));
+    : (app.isPackaged ? join(process.resourcesPath, 'agents') : join(__dirname, '../../agents'));
   const profileDirs = single
     ? [{ id: basename(single), dir: single }]
     : readdirSync(profileRoot, { withFileTypes: true })
