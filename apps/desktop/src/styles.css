@@ -203,6 +203,7 @@ table.tbl th { background: var(--color-controlBg); color: var(--color-textSecond
 .contract-header-title { font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); }
 .contract-header-file { color: var(--color-textSecondary); font-size: var(--font-size-sm); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .contract-status { color: var(--color-textSecondary); font-size: var(--font-size-sm); }
+.contract-header-right { display: flex; align-items: center; gap: var(--spacing-xs); flex: none; }
 .contract-model-bar { display: inline-flex; align-items: center; gap: var(--spacing-xs); }
 .contract-model-ws-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; }
 
@@ -233,6 +234,7 @@ table.tbl th { background: var(--color-controlBg); color: var(--color-textSecond
 .contract-collapse-btn:hover { color: var(--color-primary); border-color: var(--color-primary); background: var(--color-primaryBg); }
 .contract-panel-body { padding: var(--spacing-md); overflow: auto; flex: 1; min-height: 0; }
 .contract-panel-empty { color: var(--color-textMuted); padding: var(--spacing-lg) 0; text-align: center; }
+.contract-empty-upload { margin-top: var(--spacing-sm); }
 
 .contract-doc { display: flex; align-items: flex-start; gap: var(--spacing-sm); }
 .contract-doc-icon { width: 38px; height: 42px; border-radius: 9px; background: var(--color-riskBg); color: var(--color-risk); display: grid; place-items: center; font-size: 11px; font-weight: 700; }

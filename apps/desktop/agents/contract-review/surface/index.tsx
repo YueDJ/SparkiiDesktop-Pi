@@ -59,6 +59,10 @@ function riskLevelLabel(level: string): '高风险' | '中风险' | '低风险' 
   return level === 'high' ? '高风险' : level === 'low' ? '低风险' : '中风险';
 }
 
+function basename(path: string): string {
+  return path.split(/[\\/]/).filter(Boolean).pop() ?? path;
+}
+
 function reviewLabel(state: ReviewState): string {
   if (state === 'confirmed') return '已确认';
   if (state === 'ignored') return '已忽略';
@@ -173,8 +177,9 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
   const report = formatReport(result?.['report']);
   const inputs = session.meta.inputs ?? [];
   const firstInput = inputs[0];
-  const fileName = firstInput?.name ?? firstInput?.path?.split(/[\\/]/).pop() ?? '';
+  const fileName = firstInput?.name ?? (firstInput?.path ? basename(firstInput.path) : '');
   const [documents, setDocuments] = useState<string[]>(inputs.map((i) => i.path));
+  const [localFileName, setLocalFileName] = useState<string>('');
   const inputsKey = inputs.map((i) => i.path).join('\u0000');
   const lastInputsKey = useRef(inputsKey);
   useEffect(() => {
@@ -246,7 +251,15 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
 
   const chooseDocument = async () => {
     const res = await actions.chooseDocument();
-    if (res?.path) setDocuments((prev) => Array.from(new Set([...prev, res.path!])));
+    if (res?.path) {
+      setDocuments((prev) => Array.from(new Set([...prev, res.path!])));
+      setLocalFileName(basename(res.path));
+    }
+  };
+
+  const removeLocalDocument = () => {
+    setDocuments([]);
+    setLocalFileName('');
   };
 
   const reportNodeState = status === 'done' || status === 'failed' ? 'done' : status === 'running' ? 'active' : 'pending';
@@ -258,17 +271,42 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
     return report.blocks.map((b) => `${b.heading ? `## ${b.heading}` : ''}\n${b.body}`).join('\n\n');
   }, [report]);
 
+  const selectedName = fileName || localFileName || (documents[0] ? basename(documents[0]) : '');
+
   return (
     <div className="contract-workbench">
       <header className="contract-header">
         <div className="contract-header-main">
           <span className="contract-header-title">{props.agent.name}</span>
-          {fileName && <span className="contract-header-file">{fileName}</span>}
+          {selectedName && <span className="contract-header-file">{selectedName}</span>}
           <span className="contract-status" data-testid="workflow-status">
             {status === 'running' ? `审核中：${currentStep ?? '…'}` : status === 'done' ? '审核完成' : status === 'failed' ? '审核失败' : ''}
           </span>
         </div>
-        <ModelEffortBar agentId={props.agent.id} sessionId={sessionId} session={session} />
+        <div className="contract-header-right">
+          <ModelEffortBar agentId={props.agent.id} sessionId={sessionId} session={session} />
+          {status === 'idle' && (
+            <>
+              <button type="button" className="ui-btn ui-btn--ghost" data-testid="upload" onClick={chooseDocument}>
+                {selectedName ? '更换文件' : '选择合同文件'}
+              </button>
+              {selectedName && (
+                <button type="button" className="ui-btn ui-btn--ghost" data-testid="remove-document" onClick={removeLocalDocument}>
+                  移除
+                </button>
+              )}
+              <button
+                type="button"
+                className="ui-btn ui-btn--primary"
+                data-testid="review"
+                disabled={!documents.length}
+                onClick={() => actions.startWorkflow({ documents })}
+              >
+                开始审核
+              </button>
+            </>
+          )}
+        </div>
       </header>
 
       <div className="contract-stage">
@@ -281,19 +319,6 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
         </span>
       </div>
 
-      {status === 'idle' && (
-        <div className="contract-idle">
-          <div className="contract-idle-card">
-            <h3>上传合同并开始审核</h3>
-            <p>选择合同文件后，智能体将解析条款、检索规则并生成风险发现与审核报告。</p>
-            <div className="contract-actions">
-              <button type="button" className="ui-btn" data-testid="upload" onClick={chooseDocument}>选择合同文件</button>
-              <button type="button" className="ui-btn ui-btn--primary" data-testid="review" onClick={() => actions.startWorkflow({ documents })}>开始审核</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className={`contract-split ${leftCollapsed ? 'left-collapsed' : ''} ${rightCollapsed ? 'right-collapsed' : ''}`}>
         <section className="contract-panel contract-panel--doc">
           <header className="contract-panel-head">
@@ -304,14 +329,18 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
           <div className="contract-panel-body">
             {firstInput?.missing ? (
               <div className="contract-missing-note">无法找到原文件，风险发现与报告仍可从会话历史恢复。</div>
-            ) : fileName ? (
+            ) : selectedName ? (
               <div className="contract-doc">
                 <div className="contract-doc-icon">PDF</div>
-                <div className="contract-doc-name">{fileName}</div>
-                {firstInput?.path && <div className="contract-doc-path">{firstInput.path}</div>}
+                <div>
+                  <div className="contract-doc-name">{selectedName}</div>
+                  {(firstInput?.path || documents[0]) && <div className="contract-doc-path">{firstInput?.path ?? documents[0]}</div>}
+                </div>
               </div>
             ) : (
-              <div className="contract-panel-empty">尚未选择合同文件</div>
+              <div className="contract-panel-empty">
+                <div>尚未选择合同文件</div>
+              </div>
             )}
           </div>
         </section>

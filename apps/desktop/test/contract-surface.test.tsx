@@ -32,6 +32,32 @@ describe('ContractSurface', () => {
     expect(screen.getByTestId('review')).toBeTruthy();
   });
 
+  it('collapses the upload card into a compact file chip after choosing a file', async () => {
+    const onAction = vi.fn();
+    const chooseDocument = vi.fn().mockResolvedValue({ path: 'C:/tmp/chosen.pdf' });
+    render(
+      <ContractAgentSurface
+        agent={{ id: 'contract-review', name: '合同审核智能体', surfaceType: 'workflow' }}
+        sessionId={null}
+        mode="live"
+        session={{ entries: [], streaming: false, status: 'idle', meta: { currentStep: null } }}
+        actions={{
+          newSession: vi.fn(),
+          openSession: vi.fn(),
+          startWorkflow: onAction,
+          review: vi.fn(),
+          requestExport: vi.fn(),
+          chooseDocument,
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('upload'));
+    expect(chooseDocument).toHaveBeenCalled();
+    expect((await screen.findByTestId('upload')).textContent).toBe('更换文件');
+    expect((await screen.findAllByText('chosen.pdf')).length).toBeGreaterThan(0);
+    expect(screen.queryByText('尚未选择合同文件')).toBeNull();
+  });
+
   it('renders risk findings with levels and advice from workflow result', () => {
     renderSurface({ status: 'done' });
     expect(screen.getByText('第7条 付款条件')).toBeTruthy();

@@ -42,7 +42,7 @@ function makeApi() {
       { id: 'general', name: '通用智能体', surfaceType: 'chat' },
       { id: 'contract-review', name: '合同审核智能体', surfaceType: 'workflow' },
     ]),
-    chooseDocument: vi.fn(),
+    chooseDocument: vi.fn().mockResolvedValue({ path: 'C:/tmp/contract.pdf' }),
     runWorkflow: vi.fn().mockResolvedValue({ ok: true, sessionId: 'ws1' }),
     openChatSession: vi.fn().mockResolvedValue({ entries: [] }),
     listChatSessions: vi.fn().mockResolvedValue([]),
@@ -75,8 +75,10 @@ describe('App workflow feedback', () => {
     await screen.findByText(/工作台 · 上午好/);
     fireEvent.click(screen.getByTestId('agent-card-contract-review'));
     await screen.findByTestId('review');
+    fireEvent.click(screen.getByTestId('upload'));
+    await screen.findByText('更换文件');
     fireEvent.click(screen.getByTestId('review'));
-    expect(api.runWorkflow).toHaveBeenCalledWith('contract-review', { documents: [] });
+    expect(api.runWorkflow).toHaveBeenCalledWith('contract-review', { documents: ['C:/tmp/contract.pdf'] });
     // 让 runWorkflow 解析出 sessionId，useAgentSession 重新订阅到该会话
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
     act(() => channels['workflow']({ type: 'step_started', stepId: 'load', sessionId: 'ws1' }));
