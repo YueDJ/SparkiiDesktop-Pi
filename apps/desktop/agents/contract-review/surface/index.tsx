@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Button, Card, RiskBadge, Tabs, WorkflowSteps, type WorkflowStep } from '@sparkii/ui';
 import { widgetRegistry } from '../../../src/composer/registry.js';
 import { WorkflowStatus, type WorkflowStatusState } from '../../../src/workbench/WorkflowStatus.js';
-import { formatReport, parseRiskFindings, stepStatus } from './contract.js';
+import { formatReport, parseRiskFindings } from './contract.js';
+import { deriveSteps } from './manifest-steps.js';
 import { StepViews } from './StepViews.js';
 
 export interface ContractSurfaceProps {
@@ -22,13 +23,13 @@ export function ContractSurface(props: ContractSurfaceProps) {
   const FileUpload = widgetRegistry['file-upload'];
   const ActionButton = widgetRegistry['action-button'];
 
-  const steps: WorkflowStep[] = stepStatus(workflow).map((s) => ({
+  const steps: WorkflowStep[] = deriveSteps({ status: workflow.status, step: workflow.step, error: workflow.error }).map((s) => ({
     id: s.id,
     label: s.label,
     state: s.state === 'pending' ? 'idle' : s.state,
   }));
   const activeStepId = selectedStep
-    ?? (workflow.status === 'done' ? 'report' : workflow.step ?? 'upload');
+    ?? (workflow.status === 'done' ? 'report' : workflow.step ?? 'load');
   const rawCompare = (state.workflow as Record<string, unknown> | undefined)?.['result'] as Record<string, unknown> | undefined;
   const findings = parseRiskFindings(rawCompare?.['compare']);
   const report = formatReport(rawCompare?.['report']);
@@ -38,19 +39,7 @@ export function ContractSurface(props: ContractSurfaceProps) {
   return (
     <div>
       <WorkflowStatus state={workflow} />
-      <WorkflowSteps steps={steps} />
-      <nav className="contract-step-nav" aria-label="审核步骤">
-        {steps.map((step) => (
-          <button
-            key={step.id}
-            type="button"
-            className={`contract-step-nav-item${activeStepId === step.id ? ' active' : ''}`}
-            onClick={() => setSelectedStep(step.id)}
-          >
-            {step.label}
-          </button>
-        ))}
-      </nav>
+      <WorkflowSteps steps={steps} onStepClick={setSelectedStep} />
 
       {workflow.status === 'idle' && (
         <Card className="contract-idle-card">

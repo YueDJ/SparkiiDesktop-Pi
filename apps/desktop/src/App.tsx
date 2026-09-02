@@ -461,7 +461,19 @@ function AppShell() {
         sessionId={workflowSessionId}
         onAction={onAction}
         onWorkflowState={onWorkflowState}
-        onRequestExport={() => setScreen('approvals')}
+        onRequestExport={() => {
+          if (!workflowSessionId) {
+            setScreen('approvals');
+            return;
+          }
+          const result = (state.workflow as Record<string, unknown> | undefined)?.result as Record<string, unknown> | undefined;
+          const report = result?.report as Record<string, unknown> | undefined;
+          const compare = result?.compare;
+          void api.requestExportReport(workflowSessionId, {
+            title: typeof report?.title === 'string' ? report.title : '合同审核报告',
+            findings: Array.isArray(compare) ? compare.length : 0,
+          }).catch(() => {});
+        }}
       />
     ),
     approvals: (

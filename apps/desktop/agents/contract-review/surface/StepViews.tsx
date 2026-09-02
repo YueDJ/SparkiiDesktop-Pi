@@ -1,4 +1,4 @@
-import { Card, RiskBadge } from '@sparkii/ui';
+import { Card, RiskBadge, Markdown } from '@sparkii/ui';
 import { parseRiskFindings, formatReport } from './contract.js';
 
 export interface StepViewProps {
@@ -53,7 +53,7 @@ export function StepViews({ stepId, state }: StepViewProps) {
           {report.blocks.map((b, i) => (
             <div key={i} className="contract-block">
               {b.heading && <b className="contract-block-heading">{b.heading}</b>}
-              <div className="ui-muted contract-pre-wrap">{b.body}</div>
+              <Markdown text={b.body} />
             </div>
           ))}
         </div>

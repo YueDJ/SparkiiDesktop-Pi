@@ -605,6 +605,27 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     return { ok: true };
   });
 
+  ipcMain.handle('sparkii:requestExportReport', async (_e, sessionId: string, summary: Record<string, unknown>) => {
+    const open = await ensureOpenSession(sessionId);
+    pipeSessionEvents(sessionId, open);
+    const d = await broker.route({
+      requestId: randomUUID(),
+      toolName: 'report.export',
+      targetSystem: 'report',
+      summary: `导出合同审核报告：${String(summary?.title ?? '')}`,
+      payload: summary,
+      risk: 'write',
+    }, { sessionId, profileId: open.profileId });
+    if (d.approved && open.slot.client) {
+      await open.slot.client.send({
+        type: 'append_workflow_entry',
+        customType: 'workflow_state',
+        data: { stepId: 'report', action: 'report_exported', at: new Date().toISOString(), ...summary },
+      }).catch(() => {});
+    }
+    return { ok: true, approved: d.approved };
+  });
+
   ipcMain.handle('sparkii:chooseWorkspace', async () => {
     const win = getWindow();
     const result = win
