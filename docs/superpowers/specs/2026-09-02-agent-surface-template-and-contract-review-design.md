@@ -175,6 +175,8 @@ workflow_state
 - `surface.type === 'workflow'` → 平台 Workflow 框架 + Agent 提供的步骤视图。
 - `surface.type === 'custom'` → 解析 `manifest.surface.entry`（agent 自定义页面）。
 
+> **术语：构建期 = 源码被 Vite 打包/编译进可运行应用的阶段**（`vite build`，或 dev server 启动/热编译时）；**运行期 = 打包产物在用户机器上执行、renderer 跑 React 时**。本 spec 的「构建期生成绑定」指：agent → surface 组件映射在打包时静态确定并打进 bundle，运行期不扫 `agents/` 目录、不做动态 `import()`。能这么做的前提是 agent 随应用一起交付（运行期 side-load 已列为 Out of Scope）。
+
 ### 渲染机制（模板不 import agent 的原因）
 
 `src/surface/` 只提供契约、会话 hook、归一化器与共享框架组件，**不含任何 agent 引用**。agent 的 surface 组件由「构建期生成的绑定」在 App 边缘解析出来，再直接渲染；没有统一的 `AgentSurfaceHost`（chat 与 workflow 布局差异大，不应塞进一个万能渲染器，各 surface 自行用共享框架组件拼装）。
