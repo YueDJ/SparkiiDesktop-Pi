@@ -29,7 +29,7 @@ const GLYPHS: Record<string, string> = {
   runtime_error: '!',
 };
 
-const STATUS_LABEL: Partial<Record<LifecycleEntry['status'], string>> = {
+const STATUS_LABEL: Partial<Record<NonNullable<LifecycleEntry['status']>, string>> = {
   running: '进行中',
   ok: '完成',
   warn: '注意',

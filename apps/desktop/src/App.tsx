@@ -8,8 +8,7 @@ import { ApprovalPanel } from './trust/ApprovalPanel.js';
 import { AuditView } from './audit/AuditView.js';
 import type { WorkflowStatusState } from './workbench/WorkflowStatus.js';
 import { HomeView } from './platform/HomeView.js';
-import { ContractSurface } from '../agents/contract-review/surface/index.js';
-import { GeneralChatSurface } from '../agents/general/surface/index.js';
+import { useAgentSurface } from './platform/surface-registry.js';
 
 export function sessionDisplayName(s: { title?: string; firstMessage?: string; updatedAt?: number }): string {
   if (s.title) return s.title;
@@ -448,6 +447,9 @@ function AppShell() {
     setScreen(s);
   };
 
+  const { Surface: ContractSurface } = useAgentSurface('contract-review');
+  const { Surface: GeneralChatSurface } = useAgentSurface('general');
+
   const surfaces: Partial<Record<ScreenId, ReactNode>> = {
     home: (
       <HomeView userName={userName} agents={derivedAgents} pendingApprovals={pending} onNavigate={navigate} />
@@ -482,7 +484,7 @@ function AppShell() {
       sessionId={activeSessionFor('general')}
       active={screen === 'general'}
       draft={screen === 'general' && activeSessionFor('general') === null}
-      onSessionCommitted={(sessionId, title) => {
+      onSessionCommitted={(sessionId: string, title?: string) => {
         setActiveSessionFor('general', sessionId);
         // 一旦首条消息发出，立即把会话插入历史，避免等后端刷新造成延迟
         sessionOverridesRef.current.set(sessionId, { name: title ? String(title).slice(0, 24) : '新会话', updatedAt: Date.now(), agentId: 'general' });
