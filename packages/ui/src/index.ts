@@ -31,6 +31,7 @@ export * from './patterns/RuntimeCenter.js';
 export * from './patterns/ErrorCenter.js';
 export * from './patterns/Shell.js';
 export * from './patterns/WorkflowSteps.js';
+export * from './patterns/WorkflowStatus.js';
 export * from './patterns/RiskBadge.js';
 export * from './patterns/Countdown.js';
 export * from './patterns/ApprovalItem.js';

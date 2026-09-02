@@ -1,7 +1,5 @@
 import { useState } from 'react';
-import { Button, Card, RiskBadge, Tabs, WorkflowSteps, type WorkflowStep } from '@sparkii/ui';
-import { widgetRegistry } from '../../../src/composer/registry.js';
-import { WorkflowStatus, type WorkflowStatusState } from '../../../src/workbench/WorkflowStatus.js';
+import { Button, Card, RiskBadge, Tabs, WorkflowStatus, WorkflowSteps, type WorkflowStatusState, type WorkflowStep } from '@sparkii/ui';
 import { formatReport, parseRiskFindings } from './contract.js';
 import { deriveSteps } from './manifest-steps.js';
 import { StepViews } from './StepViews.js';
@@ -20,8 +18,6 @@ export function ContractSurface(props: ContractSurfaceProps) {
   const [tab, setTab] = useState<'report' | 'original'>('report');
   const [selectedStep, setSelectedStep] = useState<string | null>(null);
   const [reviewed, setReviewed] = useState<Record<string, 'confirmed' | 'ignored'>>({});
-  const FileUpload = widgetRegistry['file-upload'];
-  const ActionButton = widgetRegistry['action-button'];
 
   const steps: WorkflowStep[] = deriveSteps({ status: workflow.status, step: workflow.step, error: workflow.error }).map((s) => ({
     id: s.id,
@@ -45,8 +41,8 @@ export function ContractSurface(props: ContractSurfaceProps) {
         <Card className="contract-idle-card">
           <h3 className="contract-card-title">上传合同并开始审核</h3>
           <div className="contract-actions">
-            <FileUpload id="upload" bind="documents" state={state} onAction={onAction} />
-            <ActionButton id="review" action="run-workflow:contract-review" state={state} onAction={onAction} />
+            <Button id="upload" data-testid="upload" onClick={() => onAction('documents.upload')}>选择合同文件</Button>
+            <Button id="review" data-testid="review" variant="primary" onClick={() => onAction('run-workflow:contract-review')}>开始审核</Button>
           </div>
         </Card>
       )}
