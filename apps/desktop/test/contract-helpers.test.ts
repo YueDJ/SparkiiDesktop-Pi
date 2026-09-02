@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseRiskFindings, formatReport, stepStatus } from '../agents/contract-review/surface/contract.js';
+import { deriveSteps } from '../agents/contract-review/surface/manifest-steps.js';
 
 describe('parseRiskFindings', () => {
   it('maps rows with risk levels and advice to findings', () => {
@@ -46,5 +47,17 @@ describe('stepStatus', () => {
     expect(stepStatus({ status: 'done' }).every((s) => s.state === 'done')).toBe(true);
     expect(stepStatus({ status: 'idle' })[0].state).toBe('active');
     expect(stepStatus({ status: 'idle' })[1].state).toBe('pending');
+  });
+});
+
+describe('deriveSteps', () => {
+  it('yields the five backend workflow steps from the single source of truth', () => {
+    const steps = deriveSteps({ status: 'running', step: 'compare' });
+    expect(steps.map((s) => s.id)).toEqual(['load', 'search', 'extract', 'compare', 'report']);
+  });
+
+  it('marks the current running step active', () => {
+    const steps = deriveSteps({ status: 'running', step: 'compare' });
+    expect(steps.find((s) => s.id === 'compare')?.state).toBe('active');
   });
 });
