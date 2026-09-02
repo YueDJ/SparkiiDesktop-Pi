@@ -493,31 +493,42 @@ function AppShell() {
     ),
   };
 
+  // 一旦首条消息发出，立即把会话插入历史，避免等后端刷新造成延迟。
+  const commitGeneralSession = (sessionId: string, title?: string) => {
+    setActiveSessionFor('general', sessionId);
+    sessionOverridesRef.current.set(sessionId, { name: title ? String(title).slice(0, 24) : '新会话', updatedAt: Date.now(), agentId: 'general' });
+    const name = String(title || '新会话').slice(0, 24);
+    setTitleFor('general', name);
+    setSessions((prev) => {
+      const general = prev['general'] ?? [];
+      if (general.some((s) => s.id === sessionId)) return prev;
+      const pinned = general.filter((s) => s.pinned);
+      const unpinned = general.filter((s) => !s.pinned && !s.archived);
+      const arch = general.filter((s) => s.archived);
+      const sessionItem: ShellSession = { id: sessionId, name, state: '', active: true, updatedAt: Date.now() };
+      return { ...prev, general: [...pinned, sessionItem, ...unpinned, ...arch] };
+    });
+    refreshSessions('general', sessionId);
+  };
+
+  const generalActions: AgentSurfaceActions = {
+    newSession: () => onNewSession('general'),
+    openSession: (sessionId, title) => commitGeneralSession(sessionId, title),
+    startWorkflow: () => {},
+    review: () => {},
+    requestExport: () => {},
+    chooseDocument: async () => ({}),
+  };
+
   const generalSurface = (
     <GeneralChatSurface
-      api={api}
+      agent={{ id: 'general', name: '通用智能体', surfaceType: 'chat' }}
       sessionId={activeSessionFor('general')}
-      active={screen === 'general'}
+      mode="live"
+      session={{ entries: [], streaming: false, meta: {} }}
       draft={screen === 'general' && activeSessionFor('general') === null}
-      onSessionCommitted={(sessionId: string, title?: string) => {
-        setActiveSessionFor('general', sessionId);
-        // 一旦首条消息发出，立即把会话插入历史，避免等后端刷新造成延迟
-        sessionOverridesRef.current.set(sessionId, { name: title ? String(title).slice(0, 24) : '新会话', updatedAt: Date.now(), agentId: 'general' });
-        const name = String(title || '新会话').slice(0, 24);
-        setTitleFor('general', name);
-        setSessions((prev) => {
-          const general = prev['general'] ?? [];
-          if (general.some((s) => s.id === sessionId)) return prev;
-          // 新会话插到“置顶会话”之后（真正的 sticky 置顶）
-          const pinned = general.filter((s) => s.pinned);
-          const unpinned = general.filter((s) => !s.pinned && !s.archived);
-          const arch = general.filter((s) => s.archived);
-          const sessionItem: ShellSession = { id: sessionId, name, state: '', active: true, updatedAt: Date.now() };
-          return { ...prev, general: [...pinned, sessionItem, ...unpinned, ...arch] };
-        });
-        refreshSessions('general', sessionId);
-      }}
-      onNewSession={() => onNewSession('general')}
+      active={screen === 'general'}
+      actions={generalActions}
     />
   );
 

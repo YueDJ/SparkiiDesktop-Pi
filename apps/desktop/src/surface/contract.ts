@@ -68,7 +68,7 @@ export interface AgentSession {
 
 export interface AgentSurfaceActions {
   newSession(): void;
-  openSession(id: string): void;
+  openSession(id: string, title?: string): void;
   startWorkflow(payload: Record<string, unknown>): void;
   review(action: string, payload: Record<string, unknown>): void;
   requestExport(): void;
