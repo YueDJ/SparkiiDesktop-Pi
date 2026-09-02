@@ -28,6 +28,15 @@ describe('parseRiskFindings', () => {
     ]);
     expect(out[0]).toMatchObject({ id: 'r1', title: '付款周期过长', level: 'high', advice: '约定逾期违约金' });
   });
+
+  it('unwraps the new contract_risk_review result shape', () => {
+    const out = parseRiskFindings({
+      riskFindings: [
+        { id: 'r1', title: '付款周期过长', level: 'high', advice: '约定逾期违约金' },
+      ],
+    });
+    expect(out).toEqual([{ id: 'r1', title: '付款周期过长', level: 'high', advice: '约定逾期违约金' }]);
+  });
 });
 
 describe('formatReport', () => {

@@ -75,6 +75,13 @@ function structuredLevel(row: Record<string, unknown>): RiskFinding['level'] | u
 }
 
 export function parseRiskFindings(rows: unknown): RiskFinding[] {
+  if (!rows) return [];
+  if (!Array.isArray(rows) && typeof rows === 'object') {
+    const rec = rows as Record<string, unknown>;
+    if (Array.isArray(rec.riskFindings)) return parseRiskFindings(rec.riskFindings);
+    if (Array.isArray(rec.comparisons)) return parseRiskFindings(rec.comparisons);
+    return [];
+  }
   if (!Array.isArray(rows)) return [];
   return rows.map((row, i) => {
     const rec = row && typeof row === 'object' ? (row as Record<string, unknown>) : null;
