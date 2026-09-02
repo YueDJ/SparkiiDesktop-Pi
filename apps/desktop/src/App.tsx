@@ -102,9 +102,8 @@ function AgentFrame(props: {
   sessionId: string | null;
   mode: 'live' | 'history';
   buildActions: (agentId: string, session: AgentSession) => AgentSurfaceActions;
-  onDocumentNameChange: (agentId: string, name: string) => void;
 }) {
-  const { agent, active, draft, sessionId, mode, buildActions, onDocumentNameChange } = props;
+  const { agent, active, draft, sessionId, mode, buildActions } = props;
   const session = useAgentSession(agent.id, sessionId, mode);
   const { Surface } = useAgentSurface(agent.id);
   if (!Surface) return null;
@@ -117,7 +116,6 @@ function AgentFrame(props: {
           mode={mode}
           session={session}
           actions={buildActions(agent.id, session)}
-          onDocumentNameChange={(name: string) => onDocumentNameChange(agent.id, name)}
           draft={draft}
           active
         />
@@ -138,7 +136,6 @@ function AppShell() {
   const [sessions, setSessions] = useState<Record<string, ShellSession[]>>({});
   const [workflowByAgent, setWorkflowByAgent] = useState<Record<string, { sessionId: string | null; mode: 'live' | 'history' }>>({});
   const [workflowStatusByAgent, setWorkflowStatusByAgent] = useState<Record<string, WorkflowStatusState>>({});
-  const [workflowDocNameByAgent, setWorkflowDocNameByAgent] = useState<Record<string, string>>({});
   const [activeSessionByAgent, setActiveSessionByAgent] = useState<Record<string, string | null>>({});
   const [titleByAgent, setTitleByAgent] = useState<Record<string, string>>({});
   const [approvalOpen, setApprovalOpen] = useState(false);
@@ -542,10 +539,6 @@ function AppShell() {
     };
   };
 
-  const onDocumentNameChange = (agentId: string, name: string) => {
-    setWorkflowDocNameByAgent((prev) => (prev[agentId] === name ? prev : { ...prev, [agentId]: name }));
-  };
-
   const surfaces: Partial<Record<ScreenId, ReactNode>> = {
     home: (
       <HomeView userName={userName} agents={derivedAgents} pendingApprovals={pending} onNavigate={navigate} />
@@ -572,11 +565,9 @@ function AppShell() {
     settings: '设置',
   };
   const surfaceTitle = activeAgent
-    ? isChatSurface
+    ? (isChatSurface && activeSessionFor(activeAgent.id))
       ? `${activeAgent.name} · ${titleFor(activeAgent.id) || '会话'}`
-      : workflowDocNameByAgent[activeAgent.id]
-        ? `${activeAgent.name} · ${workflowDocNameByAgent[activeAgent.id]}`
-        : activeAgent.name
+      : activeAgent.name
     : staticSurfaceTitles[screen];
 
   // One always-mounted frame per agent so each agent keeps its own session (live/history) even
@@ -590,7 +581,6 @@ function AppShell() {
       sessionId={a.surfaceType === 'chat' ? activeSessionFor(a.id) : workflowFor(a.id).sessionId}
       mode={a.surfaceType === 'chat' ? 'live' : workflowFor(a.id).mode}
       buildActions={buildActions}
-      onDocumentNameChange={onDocumentNameChange}
     />
   ));
   const surfaceNode = surfaces[screen] ?? null;
