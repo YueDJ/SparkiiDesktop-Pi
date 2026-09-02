@@ -59,7 +59,7 @@ Platform Core（始终存在）
   AgentSurface 薄契约
   useAgentSession（会话打开/恢复/订阅/回放）
   Timeline Normalizer（message / tool / event / workflow_step / workflow_state / custom）
-  Surface Resolver（manifest.surface.type → Surface 组件）
+  manifest→surface 绑定（构建期由 manifest 生成，App 边缘解析）
   共享展示件（Header / StepRail / ToolCard / RiskBadge / Markdown / Composer / LifecycleCard）
 
 Agent Package（每个智能体一个）
@@ -80,8 +80,8 @@ Agent Package（每个智能体一个）
 
 ### 边界规则（硬性）
 
-- `apps/desktop/src/surface/`（平台 Surface 模板 / 引擎）**绝不** import `apps/desktop/agents/**`。它只依赖面向所有 surface 的契约与公共件。
-- Agent surface 的入口由**唯一一个组合根（composition root）**负责 import 并注入到模板：`apps/desktop/src/platform/surface-registry.tsx`（或构建期生成的 bindings）。它是全工程**唯一** import 到 `apps/desktop/agents/**` 的地方，也是它存在的意义——它是「接线层」，不是可复用的模板。
+- `apps/desktop/src/surface/`（平台 Surface 模板）**绝不** import `apps/desktop/agents/**`。它只依赖面向所有 surface 的契约、会话 hook、归一化器与共享框架组件。
+- 「哪个 agent 用哪个 surface」由 `manifest` 唯一决定，并在**构建期生成一份 `agentId → surface 组件` 的绑定**（或由 `import.meta.glob` 扫 `agents/*/manifest.yaml` 推导）。该绑定放在 App 边缘（如 `apps/desktop/src/platform/agent-surface-bindings.ts`，生成物），是**全工程唯一** import 到 `apps/desktop/agents/**` 的地方。它是派生数据，不是需要人工维护的「注册表层」。
 - `apps/desktop/agents/<id>/surface/`（Agent surface）**只**通过公开的 `AgentSurface` 契约与 `@sparkii/ui`、平台可用的公共件与平台交互；不允许 import `src/composer`、`src/workbench` 等平台内部模块。
 - 平台层**不再**出现 `agentId === 'general'` / `'contract-review'` 特判；只认 `manifest.surface.type`。
 
@@ -90,8 +90,8 @@ Agent Package（每个智能体一个）
 | 层 | 职责 | 位置 |
 | --- | --- | --- |
 | 平台 Shell + 设计系统 | 顶栏/左栏/会话抽屉/审批/审计/运行中心/错误中心/主题；共享展示件（StepRail、ToolCard、RiskBadge、Markdown、Composer、LifecycleCard） | `packages/ui/`；`apps/desktop/src/shell/`、`apps/desktop/src/trust/`、`apps/desktop/src/audit/` |
-| 平台 Surface 模板（薄） | `AgentSurface` 契约、`useAgentSession`、会话流归一化器、通用渲染引擎（模板）；**不含任何 agent 引用** | `apps/desktop/src/surface/`（新建） |
-| 平台 Surface 解析器（组合根） | 唯一 import agent surface 入口，按 `manifest.surface.type` 绑定 `agentId → surface`（标准 ChatSurface / workflow / custom entry） | `apps/desktop/src/platform/surface-registry.tsx`（已有桩，扩展） |
+| 平台 Surface 模板（薄） | `AgentSurface` 契约、`useAgentSession`、会话流归一化器、共享框架组件；**不含任何 agent 引用，无万能宿主** | `apps/desktop/src/surface/`（新建） |
+| App 边缘生成绑定 | 由 `manifest` 生成 `agentId → surface 组件`（标准 ChatSurface / workflow / custom entry）；**唯一 import agents/** 的地方 | `apps/desktop/src/platform/agent-surface-bindings.ts`（构建期生成） |
 | 合同审核 Agent | 步骤条（单一事实源化）、分步视图、业务数据模型、业务动作、step→view 映射 | `apps/desktop/agents/contract-review/surface/` |
 | 通用 Agent | `surface.type: chat`，复用平台标准 ChatSurface | `apps/desktop/agents/general/surface/` |
 
@@ -165,31 +165,29 @@ workflow_state
 
 正常恢复时：JSONL 提供步骤时间线与业务状态；DB 提供索引；workspace 提供大文件。
 
-## Subsystem 3: Surface Resolver
+## Subsystem 3: manifest → Surface Binding
 
 ### 职责
 
-组合根根据所有 Agent 的 `manifest` 建立「`agentId → Surface 绑定`」映射：
+「哪个 agent 用哪个 surface」完全由 `manifest` 决定，因此不需要人工维护的「注册表层」。构建期根据所有 Agent 的 `manifest` 生成一份 `agentId → surface 组件` 绑定（或由 `import.meta.glob` 扫 `agents/*/manifest.yaml` 推导）：
 
 - `surface.type === 'chat'` → 平台标准 ChatSurface。
-- `surface.type === 'workflow'` → 平台 Workflow 骨架 + Agent 提供的步骤视图。
+- `surface.type === 'workflow'` → 平台 Workflow 框架 + Agent 提供的步骤视图。
 - `surface.type === 'custom'` → 解析 `manifest.surface.entry`（agent 自定义页面）。
 
 ### 渲染机制（模板不 import agent 的原因）
 
-模板（`AgentSurfaceHost`）是一个**通用渲染引擎**：它接收一个 `surface` 组件作为参数并把它渲染进共享壳（头部/步骤条/时间线）。它不知道、也不需要知道任何一个具体的 agent；agent 的 surface 组件是**通过参数注入**的，而不是被 import 进来的。
-
-真正把「agent surface」注入到模板的，是唯一的组合根（`src/platform/surface-registry.tsx`）：
+`src/surface/` 只提供契约、会话 hook、归一化器与共享框架组件，**不含任何 agent 引用**。agent 的 surface 组件由「构建期生成的绑定」在 App 边缘解析出来，再直接渲染；没有统一的 `AgentSurfaceHost`（chat 与 workflow 布局差异大，不应塞进一个万能渲染器，各 surface 自行用共享框架组件拼装）。
 
 ```text
-src/surface/AgentSurfaceHost           通用引擎，无 agent 引用（generic）
-src/platform/surface-registry          组合根：唯一 import agents/**，建 agentId → surface 绑定
-  general          -> standardChatSurface      （平台标准件）
-  contract-review  -> ContractReviewSurface    （agent 自定义）
-App.tsx            -> 取当前 agent 的绑定，把 surface 组件塞给 AgentSurfaceHost 渲染
+src/surface/                             模板：契约 + hook + 归一化器 + 共享框架组件（无 agent 引用）
+src/platform/agent-surface-bindings.ts   构建期生成：agentId → %surface% 组件（唯一 import agents/**）
+  general          -> standardChatSurface     （平台标准件）
+  contract-review  -> ContractReviewSurface   （agent 自定义）
+App.tsx            -> 取当前 agent 的绑定，直接渲染该 surface 组件
 ```
 
-`App.tsx` 移除 `ContractSurface` / `GeneralChatSurface` 直接 import 与 `screen === 'general'` / `'contract-review'` 特判，改为「从组合根取绑定 → 注入模板渲染」。
+`App.tsx` 移除 `ContractSurface` / `GeneralChatSurface` 直接 import 与 `screen === 'general'` / `'contract-review'` 特判，改为「从生成绑定取当前 agent 的 surface 并渲染」。
 
 ## Subsystem 4: Contract Review Surface (Redesign)
 
@@ -264,7 +262,7 @@ Report
 
 ## Testing Strategy
 
-- **Surface Resolver**：`manifest.surface.type` 解析正确；standard vs custom 分支无误。
+- **manifest→surface 绑定**：由 `manifest.surface.type` / `entry` 正确推导出组件；standard vs custom 分支无误。
 - **Timeline Normalizer**：从 JSONL 的 `workflow_step_start/end` 切片步骤，从 `workflow_state` 恢复复核状态。
 - **useAgentSession**：live 订阅与 history 回放产生同一 entries；会话隔离。
 - **Contract Review Surface**：步骤切换、完成态回溯、模型/context/workspace 展示、风险复核（确认/忽略/升级/备注）、报告导出审批；空态 CTA。
@@ -282,7 +280,7 @@ Report
 
 ## Phasing / Delivery Order
 
-- **M1（地基）**：薄契约 + `useAgentSession` + 会话流归一化器扩展 + surface 解析（删掉 App.tsx 硬编码）；把 ChatSurface 抽成平台标准件。
+- **M1（地基）**：薄契约 + `useAgentSession` + 会话流归一化器扩展 + manifest→surface 绑定（构建期生成，删掉 App.tsx 硬编码）；把 ChatSurface 抽成平台标准件。
 - **M2（合同审核实例 · live）**：唯一执行为 workflow 定义的步骤条、结构化 StepView、Markdown 报告、真实导出审批、复核回写、类型化业务态 schema（替换正则）、空态 CTA。
 - **M3（合同审核 · history）**：打开历史会话 → 从 JSONL 归一回放 → 推导当前步骤 + 每步权威产出；默认结果导向、过程证据可展开。
 - **M4（可选 / 清理）**：通用 chat surface 收敛到同一契约（低优先级，按需做）。
