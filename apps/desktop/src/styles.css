@@ -208,6 +208,8 @@ table.tbl th { background: var(--color-controlBg); color: var(--color-textSecond
 
 .contract-stage { display: flex; align-items: center; gap: var(--spacing-xs); flex: none; }
 .contract-stage-item { display: inline-flex; align-items: center; gap: 7px; padding: 7px 12px; border-radius: var(--radius-pill); font-size: var(--font-size-sm); color: var(--color-textMuted); border: 1px solid var(--color-border); background: var(--color-surface); min-height: 32px; }
+.contract-stage-item.pending { color: var(--color-textMuted); border-color: var(--color-border); background: var(--color-surface); }
+.contract-stage-item.active { color: var(--color-primary); border-color: var(--color-primary); background: var(--color-primaryBg); font-weight: 600; }
 .contract-stage-item.done { color: var(--color-ok); border-color: #BBF7D0; background: var(--color-okBg); }
 .contract-stage-item.human.warn { color: var(--color-warn); border-color: var(--color-warn); background: var(--color-warnBg); }
 .contract-stage-item.human.ready { color: var(--color-primary); border-color: var(--color-primary); background: var(--color-primaryBg); }

@@ -219,7 +219,9 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
     if (res?.path) setDocuments((prev) => Array.from(new Set([...prev, res.path!])));
   };
 
+  const reportNodeState = status === 'done' || status === 'failed' ? 'done' : status === 'running' ? 'active' : 'pending';
   const reviewNodeState = reportMerged ? 'done' : unprocessed.length ? 'warn' : 'ready';
+  const reviewNodeClass = reviewNodeState === 'warn' ? 'warn' : reviewNodeState === 'done' ? 'done' : 'ready';
 
   const reportBlocks = useMemo(() => {
     if (!report) return '';
@@ -240,11 +242,11 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
       </header>
 
       <div className="contract-stage">
-        <span className="contract-stage-item done"><span className="contract-stage-dot" />审核</span>
+        <span className={`contract-stage-item ${reportNodeState}`}><span className="contract-stage-dot" />审核</span>
         <span className="contract-stage-sep" />
-        <span className="contract-stage-item done"><span className="contract-stage-dot" />报告</span>
+        <span className={`contract-stage-item ${reportNodeState}`}><span className="contract-stage-dot" />报告</span>
         <span className="contract-stage-sep" />
-        <span className={`contract-stage-item human ${reviewNodeState}`}>
+        <span className={`contract-stage-item human ${reviewNodeClass}`}>
           <span className="contract-stage-dot" />复核
         </span>
       </div>
