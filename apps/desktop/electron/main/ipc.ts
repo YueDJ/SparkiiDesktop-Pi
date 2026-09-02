@@ -21,6 +21,24 @@ import type { Runtime } from './runtime.js';
 import type { Logger } from './logger.js';
 import type { ChatAttachment } from '../preload/api-types.js';
 
+function parseSessionInputs(raw: string | null | undefined): { path: string; name?: string }[] | undefined {
+  if (!raw) return undefined;
+  try {
+    const arr = JSON.parse(raw) as unknown;
+    if (!Array.isArray(arr)) return undefined;
+    return arr.map((item) => {
+      if (typeof item === 'string') return { path: item };
+      const rec = (item ?? {}) as Record<string, unknown>;
+      return {
+        path: String(rec.path ?? ''),
+        ...(typeof rec.name === 'string' ? { name: rec.name } : {}),
+      };
+    });
+  } catch {
+    return undefined;
+  }
+}
+
 export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, logger: Logger) {
   const broker = createBroker(rt, getWindow);
   const win = getWindow();
@@ -341,24 +359,30 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   }
 
   ipcMain.handle('sparkii:openChatSession', async (_e, sessionId: string) => {
-    const open = openSessions.get(sessionId);
-    if (open) {
-      const [messagesResp, entriesResp] = await Promise.all([
-        open.slot.client.send({ type: 'get_messages' }),
-        open.slot.client.send({ type: 'get_session_entries' }),
-      ]);
-      return {
-        messages: (messagesResp.data ?? []) as unknown[],
-        entries: (entriesResp.data ?? []) as unknown[],
-      };
-    }
-    const rec = rt.chatSessions.get(sessionId) ?? (await listPiSessions(join(rt.piAgentDir, 'sessions'))).find((s) => s.id === sessionId);
-    if (!rec) throw new Error('session not found');
+  const open = openSessions.get(sessionId);
+  if (open) {
+    const [messagesResp, entriesResp] = await Promise.all([
+      open.slot.client.send({ type: 'get_messages' }),
+      open.slot.client.send({ type: 'get_session_entries' }),
+    ]);
+    const rec = rt.chatSessions.get(sessionId);
+    return {
+      messages: (messagesResp.data ?? []) as unknown[],
+      entries: (entriesResp.data ?? []) as unknown[],
+      inputs: parseSessionInputs(rec?.inputs),
+    };
+  }
+  const rec = rt.chatSessions.get(sessionId) ?? (await listPiSessions(join(rt.piAgentDir, 'sessions'))).find((s) => s.id === sessionId);
+  if (!rec) throw new Error('session not found');
     const file = (rec as { piSessionFile?: string | null }).piSessionFile
       ?? (rec as { path?: string }).path;
-    if (!file) return { messages: [] };
+    if (!file) return { messages: [], inputs: parseSessionInputs((rec as { inputs?: string }).inputs) };
     try {
-      return { messages: readPiSessionMessages(file), entries: readPiSessionEntries(file) };
+      return {
+        messages: readPiSessionMessages(file),
+        entries: readPiSessionEntries(file),
+        inputs: parseSessionInputs((rec as { inputs?: string }).inputs),
+      };
     } catch (e) {
       // 空会话或尚未落盘的会话（首条 assistant 才写 jsonl）没有文件，返回空消息。
       if ((e as NodeJS.ErrnoException).code === 'ENOENT') return { messages: [] };
@@ -603,6 +627,27 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     });
     if (!resp.success) throw new Error(resp.error ?? 'append workflow_state failed');
     return { ok: true };
+  });
+
+  ipcMain.handle('sparkii:requestExportReport', async (_e, sessionId: string, summary: Record<string, unknown>) => {
+    const open = await ensureOpenSession(sessionId);
+    pipeSessionEvents(sessionId, open);
+    const d = await broker.route({
+      requestId: randomUUID(),
+      toolName: 'report.export',
+      targetSystem: 'report',
+      summary: `导出合同审核报告：${String(summary?.title ?? '')}`,
+      payload: summary,
+      risk: 'write',
+    }, { sessionId, profileId: open.profileId });
+    if (d.approved && open.slot.client) {
+      await open.slot.client.send({
+        type: 'append_workflow_entry',
+        customType: 'workflow_state',
+        data: { stepId: 'report', action: 'report_exported', at: new Date().toISOString(), ...summary },
+      }).catch(() => {});
+    }
+    return { ok: true, approved: d.approved };
   });
 
   ipcMain.handle('sparkii:chooseWorkspace', async () => {

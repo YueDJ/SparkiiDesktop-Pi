@@ -114,12 +114,12 @@ button { font: inherit; color: inherit; }
 .ui-tool-card-status { margin-left: auto; flex: none; }
 .ui-tool-card-toggle { flex: none; height: var(--control-height-sm); padding: 0 var(--spacing-xs); font-size: var(--font-size-xs); }
 .ui-tool-card-detail { margin-top: var(--spacing-xs); border-top: 1px dashed var(--color-border); padding-top: var(--spacing-xs); font-size: var(--font-size-sm); max-width: 100%; overflow: hidden; }
-.ui-composer { padding: var(--spacing-xxs) var(--spacing-md) var(--spacing-md); display: flex; flex-direction: column; }
+.ui-composer { padding: var(--spacing-xxs) var(--spacing-md) var(--spacing-xxs); display: flex; flex-direction: column; }
 .ui-composer-ws-btn { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border: none; background: none; color: var(--color-textSecondary); border-radius: var(--radius-control); font-size: var(--font-size-sm); min-width: 0; cursor: pointer; }
 .ui-composer-ws-btn svg { flex: none; }
 .ui-composer-ws-btn:hover { background: var(--color-controlBg); }
 .ui-composer-ws-name { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-textSecondary); }
-.ui-composer-card { border: 1px solid var(--color-borderStrong); border-radius: var(--radius-overlay); background: var(--color-surface); box-shadow: var(--shadow-overlay); display: flex; flex-direction: column; overflow: hidden; }
+.ui-composer-card { border: 1px solid var(--color-borderStrong); border-radius: var(--radius-overlay); background: var(--color-surface); display: flex; flex-direction: column; overflow: hidden; }
 .ui-composer-input { width: 100%; min-height: var(--control-textarea-min); max-height: 33vh; border: none; background: transparent; resize: none; overflow-y: auto; padding: var(--spacing-sm) var(--spacing-md); color: var(--color-text); font: var(--font-size-md)/1.5 var(--font-body); }
 .ui-composer-input:focus { border: none; box-shadow: none; outline: none; }
 .ui-composer-input::placeholder { color: var(--color-textMuted); }

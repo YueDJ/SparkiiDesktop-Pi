@@ -6,7 +6,12 @@ export interface RiskFinding {
 }
 
 export interface ReportBlock { heading: string; body: string; }
-export interface FormattedReport { title: string; blocks: ReportBlock[]; }
+export interface FormattedReport { title: string; blocks: ReportBlock[]; riskTable?: unknown; }
+
+export interface ClauseGroup {
+  category: string;
+  clauses: { text: string; position: string }[];
+}
 
 export interface StepItem { id: string; label: string; state: 'done' | 'active' | 'pending'; }
 export interface WorkflowLike { status: string; step?: string; }
@@ -61,13 +66,28 @@ function pickAdvice(row: unknown): string | undefined {
   return undefined;
 }
 
+function structuredLevel(row: Record<string, unknown>): RiskFinding['level'] | undefined {
+  const l = typeof row.level === 'string' ? row.level.trim() : '';
+  if (/^高|^high/i.test(l)) return 'high';
+  if (/^中|^mid/i.test(l)) return 'mid';
+  if (/^低|^low/i.test(l)) return 'low';
+  return undefined;
+}
+
 export function parseRiskFindings(rows: unknown): RiskFinding[] {
   if (!Array.isArray(rows)) return [];
   return rows.map((row, i) => {
-    const title = pickTitle(row) ?? `发现 #${i + 1}`;
-    const level = pickLevel(row);
-    const advice = pickAdvice(row);
-    return { id: `f${i}`, title, level, advice };
+    const rec = row && typeof row === 'object' ? (row as Record<string, unknown>) : null;
+    const stLevel = rec ? structuredLevel(rec) : undefined;
+    const title = (typeof rec?.title === 'string' && rec.title.trim() ? rec.title.trim() : undefined)
+      ?? (typeof rec?.条款 === 'string' && rec.条款.trim() ? rec.条款.trim() : undefined)
+      ?? pickTitle(row) ?? `发现 #${i + 1}`;
+    const level = stLevel ?? pickLevel(row);
+    const advice = (typeof rec?.advice === 'string' && rec.advice.trim() ? rec.advice.trim() : undefined)
+      ?? (typeof rec?.建议 === 'string' && rec.建议.trim() ? rec.建议.trim() : undefined)
+      ?? pickAdvice(row);
+    const id = (typeof rec?.id === 'string' && rec.id.trim() ? rec.id.trim() : undefined) ?? `f${i}`;
+    return { id, title, level, advice };
   });
 }
 
@@ -82,10 +102,29 @@ export function formatReport(report: unknown): FormattedReport | null {
       heading: String((s as Record<string, unknown>)?.heading ?? ''),
       body: String((s as Record<string, unknown>)?.body ?? ''),
     }));
-    if (blocks.length === 0) return { title, blocks: [{ heading: '', body: JSON.stringify(report, null, 2) }] };
-    return { title, blocks };
+    const riskTable = r.riskTable && typeof r.riskTable === 'object' ? r.riskTable : undefined;
+    if (blocks.length === 0) return { title, blocks: [{ heading: '', body: JSON.stringify(report, null, 2) }], riskTable };
+    return { title, blocks, riskTable };
   }
   return null;
+}
+
+export function parseClauseGroups(rows: unknown): ClauseGroup[] {
+  if (!Array.isArray(rows)) return [];
+  return rows.map((row) => {
+    const rec = (row ?? {}) as Record<string, unknown>;
+    const category = typeof rec.category === 'string' ? rec.category : typeof rec.分类 === 'string' ? rec.分类 : '';
+    const clauses = Array.isArray(rec.clauses)
+      ? rec.clauses.map((c) => {
+        const cr = (c ?? {}) as Record<string, unknown>;
+        return {
+          text: typeof cr.text === 'string' ? cr.text : typeof cr.条 === 'string' ? cr.条 : '',
+          position: typeof cr.position === 'string' ? cr.position : typeof cr.位置 === 'string' ? cr.位置 : '',
+        };
+      })
+      : [];
+    return { category, clauses };
+  });
 }
 
 export function stepStatus(workflow: WorkflowLike): StepItem[] {

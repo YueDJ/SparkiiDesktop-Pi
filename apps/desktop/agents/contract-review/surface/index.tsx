@@ -1,8 +1,9 @@
-import { useState } from 'react';
-import { Button, Card, RiskBadge, Tabs, WorkflowSteps, type WorkflowStep } from '@sparkii/ui';
-import { widgetRegistry } from '../../../src/composer/registry.js';
-import { WorkflowStatus, type WorkflowStatusState } from '../../../src/workbench/WorkflowStatus.js';
-import { formatReport, parseRiskFindings, stepStatus } from './contract.js';
+import { useEffect, useRef, useState } from 'react';
+import { Button, Card, RiskBadge, Tabs, WorkflowStatus, WorkflowSteps, type WorkflowStatusState, type WorkflowStep } from '@sparkii/ui';
+import type { AgentSession, AgentSurfaceActions, AgentSurfaceProps } from '../../../src/surface/contract.js';
+import { deriveWorkflowTimeline, extractWorkflowResult } from '../../../src/surface/normalize.js';
+import { formatReport, parseRiskFindings } from './contract.js';
+import { deriveSteps } from './manifest-steps.js';
 import { StepViews } from './StepViews.js';
 
 export interface ContractSurfaceProps {
@@ -16,53 +17,93 @@ export interface ContractSurfaceProps {
 
 export function ContractSurface(props: ContractSurfaceProps) {
   const { state, workflow, sessionId, onAction, onWorkflowState, onRequestExport } = props;
+  const documents = Array.isArray(state.documents) ? state.documents : state.documents ? [state.documents] : [];
+  const rawResult = (state.workflow as Record<string, unknown> | undefined)?.['result'] as Record<string, unknown> | undefined;
+  const session: AgentSession = {
+    entries: [],
+    streaming: false,
+    status: workflow.status,
+    meta: { currentStep: workflow.step ?? null, inputs: documents.map((d) => ({ path: String(d) })) },
+    result: rawResult ?? {},
+  };
+  const actions: AgentSurfaceActions = {
+    newSession: () => {},
+    openSession: () => {},
+    startWorkflow: () => onAction('run-workflow:contract-review'),
+    review: (action, payload) => onWorkflowState?.(action, payload),
+    requestExport: () => onRequestExport(),
+    chooseDocument: async () => {
+      onAction('documents.upload');
+      return {};
+    },
+  };
+  return (
+    <ContractAgentSurface
+      agent={{ id: 'contract-review', name: '合同审核智能体', surfaceType: 'workflow' }}
+      sessionId={sessionId ?? null}
+      mode={sessionId ? 'history' : 'live'}
+      session={session}
+      actions={actions}
+    />
+  );
+}
+
+export function ContractAgentSurface(props: AgentSurfaceProps) {
+  const { sessionId, session, actions } = props;
   const [tab, setTab] = useState<'report' | 'original'>('report');
   const [selectedStep, setSelectedStep] = useState<string | null>(null);
   const [reviewed, setReviewed] = useState<Record<string, 'confirmed' | 'ignored'>>({});
-  const FileUpload = widgetRegistry['file-upload'];
-  const ActionButton = widgetRegistry['action-button'];
 
-  const steps: WorkflowStep[] = stepStatus(workflow).map((s) => ({
+  // 权威状态：live/pushed status 优先，history 从 entries 推导
+  const timeline = deriveWorkflowTimeline(session.entries);
+  const status: WorkflowStatusState['status'] = session.status && session.status !== 'idle' ? session.status : timeline.status;
+  const currentStep = session.meta.currentStep ?? timeline.step ?? null;
+  const result = session.result ?? extractWorkflowResult(session.entries);
+
+  // 输入文件
+  const inputs = (session.meta.inputs ?? []).map((i) => i.path);
+  const inputsKey = inputs.join('\u0000');
+  const [documents, setDocuments] = useState<string[]>(inputs);
+  const lastInputsKey = useRef(inputsKey);
+  useEffect(() => {
+    if (inputsKey === lastInputsKey.current) return;
+    lastInputsKey.current = inputsKey;
+    setDocuments((prev) => Array.from(new Set([...inputs, ...prev])));
+  }, [inputsKey]);
+  const docPath = documents[0] ?? '';
+
+  const steps: WorkflowStep[] = deriveSteps({ status, step: currentStep ?? undefined }).map((s) => ({
     id: s.id,
     label: s.label,
     state: s.state === 'pending' ? 'idle' : s.state,
   }));
-  const activeStepId = selectedStep
-    ?? (workflow.status === 'done' ? 'report' : workflow.step ?? 'upload');
-  const rawCompare = (state.workflow as Record<string, unknown> | undefined)?.['result'] as Record<string, unknown> | undefined;
-  const findings = parseRiskFindings(rawCompare?.['compare']);
-  const report = formatReport(rawCompare?.['report']);
-  const documents = Array.isArray(state.documents) ? state.documents : state.documents ? [state.documents] : [];
-  const docPath = String(documents[0] ?? '');
+  const activeStepId = selectedStep ?? (status === 'done' ? 'report' : currentStep ?? 'load');
+
+  const findings = parseRiskFindings(result?.['compare']);
+  const report = formatReport(result?.['report']);
+
+  const onChooseDocument = async () => {
+    const res = await actions.chooseDocument();
+    if (res?.path) setDocuments((prev) => Array.from(new Set([...prev, res.path!])));
+  };
+  const onStart = () => actions.startWorkflow({ documents });
 
   return (
     <div>
-      <WorkflowStatus state={workflow} />
-      <WorkflowSteps steps={steps} />
-      <nav className="contract-step-nav" aria-label="审核步骤">
-        {steps.map((step) => (
-          <button
-            key={step.id}
-            type="button"
-            className={`contract-step-nav-item${activeStepId === step.id ? ' active' : ''}`}
-            onClick={() => setSelectedStep(step.id)}
-          >
-            {step.label}
-          </button>
-        ))}
-      </nav>
+      <WorkflowStatus state={{ status, step: currentStep ?? undefined }} />
+      <WorkflowSteps steps={steps} onStepClick={setSelectedStep} />
 
-      {workflow.status === 'idle' && (
+      {status === 'idle' && (
         <Card className="contract-idle-card">
           <h3 className="contract-card-title">上传合同并开始审核</h3>
           <div className="contract-actions">
-            <FileUpload id="upload" bind="documents" state={state} onAction={onAction} />
-            <ActionButton id="review" action="run-workflow:contract-review" state={state} onAction={onAction} />
+            <Button id="upload" data-testid="upload" onClick={onChooseDocument}>选择合同文件</Button>
+            <Button id="review" data-testid="review" variant="primary" onClick={onStart}>开始审核</Button>
           </div>
         </Card>
       )}
 
-      <StepViews stepId={activeStepId} state={state} />
+      <StepViews stepId={activeStepId} state={{ documents, workflow: { result } }} />
 
       <div className="split-pane">
         <Card className="contract-pane">
@@ -101,7 +142,7 @@ export function ContractSurface(props: ContractSurfaceProps) {
         <Card className="contract-risk-pane">
           <div className="contract-risk-head">
             <b>风险发现</b>
-            <Button variant="primary" size="sm" onClick={onRequestExport}>导出报告 · 需审批</Button>
+            <Button variant="primary" size="sm" onClick={() => actions.requestExport()}>导出报告 · 需审批</Button>
           </div>
           <div className="contract-risk-body">
             {findings.length === 0 ? (
@@ -118,7 +159,7 @@ export function ContractSurface(props: ContractSurfaceProps) {
                         type="button"
                         onClick={() => {
                           setReviewed((prev) => ({ ...prev, [f.id]: 'confirmed' }));
-                          onWorkflowState?.('risk_confirmed', { riskId: f.id, stepId: 'compare' });
+                          actions.review('risk_confirmed', { riskId: f.id, stepId: 'compare' });
                         }}
                       >
                         确认
@@ -127,7 +168,7 @@ export function ContractSurface(props: ContractSurfaceProps) {
                         type="button"
                         onClick={() => {
                           setReviewed((prev) => ({ ...prev, [f.id]: 'ignored' }));
-                          onWorkflowState?.('risk_ignored', { riskId: f.id, stepId: 'compare' });
+                          actions.review('risk_ignored', { riskId: f.id, stepId: 'compare' });
                         }}
                       >
                         忽略
@@ -144,3 +185,5 @@ export function ContractSurface(props: ContractSurfaceProps) {
     </div>
   );
 }
+
+export default ContractAgentSurface;

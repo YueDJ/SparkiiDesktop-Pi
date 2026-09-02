@@ -8,8 +8,10 @@ import { ApprovalPanel } from './trust/ApprovalPanel.js';
 import { AuditView } from './audit/AuditView.js';
 import type { WorkflowStatusState } from './workbench/WorkflowStatus.js';
 import { HomeView } from './platform/HomeView.js';
-import { ContractSurface } from '../agents/contract-review/surface/index.js';
-import { GeneralChatSurface } from '../agents/general/surface/index.js';
+import { useAgentSurface } from './platform/surface-registry.js';
+import { extractWorkflowResult } from './surface/normalize.js';
+import { useAgentSession } from './surface/use-agent-session.js';
+import type { AgentSession, AgentSurfaceActions } from './surface/contract.js';
 
 export function sessionDisplayName(s: { title?: string; firstMessage?: string; updatedAt?: number }): string {
   if (s.title) return s.title;
@@ -90,22 +92,50 @@ export function App() {
   );
 }
 
+/** One always-mounted frame per agent: owns that agent's live/history session (so leaving and
+ *  returning keeps the stream) and renders the agent's surface only while active. Every agent —
+ *  chat, workflow or custom — reuses the same session truth source (useAgentSession). */
+function AgentFrame(props: {
+  agent: ShellAgent;
+  active: boolean;
+  draft: boolean;
+  sessionId: string | null;
+  mode: 'live' | 'history';
+  buildActions: (agentId: string, session: AgentSession) => AgentSurfaceActions;
+}) {
+  const { agent, active, draft, sessionId, mode, buildActions } = props;
+  const session = useAgentSession(agent.id, sessionId, mode);
+  const { Surface } = useAgentSurface(agent.id);
+  if (!Surface) return null;
+  return (
+    <div style={{ display: active ? 'block' : 'none', height: active ? '100%' : 'auto' }}>
+      {active && (
+        <Surface
+          agent={agent}
+          sessionId={sessionId}
+          mode={mode}
+          session={session}
+          actions={buildActions(agent.id, session)}
+          draft={draft}
+          active
+        />
+      )}
+    </div>
+  );
+}
+
 function AppShell() {
   const api = window.sparkii;
   const { reportError } = useErrors();
   const [userName, setUserName] = useState('');
-  const [state, setState] = useState<Record<string, unknown>>({ documents: [] });
   const [pending, setPending] = useState<any[]>([]);
   const [auditVersion, setAuditVersion] = useState(0);
-  const [workflow, setWorkflow] = useState<WorkflowStatusState>({ status: 'idle' });
   const [screen, setScreen] = useState<ScreenId>('home');
   const [roles, setRoles] = useState<string[]>([]);
-  const [agents, setAgents] = useState<ShellAgent[]>([
-    { id: 'general', name: '通用智能体', status: 'idle', surfaceType: 'chat' },
-    { id: 'contract-review', name: '合同审核智能体', status: 'idle', surfaceType: 'workflow' },
-  ]);
+  const [agents, setAgents] = useState<ShellAgent[]>([]);
   const [sessions, setSessions] = useState<Record<string, ShellSession[]>>({});
-  const [workflowSessionId, setWorkflowSessionId] = useState<string | null>(null);
+  const [workflowByAgent, setWorkflowByAgent] = useState<Record<string, { sessionId: string | null; mode: 'live' | 'history' }>>({});
+  const [workflowStatusByAgent, setWorkflowStatusByAgent] = useState<Record<string, WorkflowStatusState>>({});
   const [activeSessionByAgent, setActiveSessionByAgent] = useState<Record<string, string | null>>({});
   const [titleByAgent, setTitleByAgent] = useState<Record<string, string>>({});
   const [approvalOpen, setApprovalOpen] = useState(false);
@@ -130,8 +160,10 @@ function AppShell() {
   const setTitleFor = (agentId: string, title: string) => {
     setTitleByAgent((prev) => ({ ...prev, [agentId]: title }));
   };
+  const workflowFor = (agentId: string) => workflowByAgent[agentId] ?? { sessionId: null, mode: 'live' as const };
+  const workflowByAgentRef = useRef(workflowByAgent);
+  useEffect(() => { workflowByAgentRef.current = workflowByAgent; }, [workflowByAgent]);
 
-  useEffect(() => api.on('state', (s) => setState(s as Record<string, unknown>)), [api]);
   useEffect(() => api.on('approval', (p) => {
     setPending((xs) => [...xs, p]);
     // 审批是需要人工接管的时刻:新提案到达时自动弹出右侧审批抽屉,并聚焦该提案
@@ -142,12 +174,18 @@ function AppShell() {
     if (pending.length === 0 && approvalOpen) setApprovalOpen(false);
   }, [pending.length, approvalOpen]);
   useEffect(() => api.on('workflow', (e: any) => {
-    if (e.type === 'step_started') setWorkflow({ status: 'running', step: e.stepId });
-    else if (e.type === 'workflow_completed') setWorkflow({ status: 'done' });
-    else if (e.type === 'workflow_failed') {
-      setWorkflow({ status: 'failed', error: e.error?.message });
-      reportError(e.error?.message ?? '审核失败', { source: '合同审核' });
-    }
+    // Route the workflow event to the agent that owns this workflow session.
+    const agentId = Object.entries(workflowByAgentRef.current).find(([, w]) => w.sessionId === e.sessionId)?.[0];
+    if (!agentId) return;
+    setWorkflowStatusByAgent((prev) => {
+      if (e.type === 'step_started') return { ...prev, [agentId]: { status: 'running', step: e.stepId } };
+      if (e.type === 'workflow_completed') return { ...prev, [agentId]: { status: 'done' } };
+      if (e.type === 'workflow_failed') {
+        reportError(e.error?.message ?? '审核失败', { source: agentId });
+        return { ...prev, [agentId]: { status: 'failed', error: e.error?.message } };
+      }
+      return prev;
+    });
   }), [api, reportError]);
   useEffect(() => api.on('chat-event', (p: any) => {
     if (p?.sessionId) {
@@ -164,7 +202,9 @@ function AppShell() {
         }
         return next;
       });
-      if (p.sessionId === activeSessionFor('general')) setTitleFor('general', p.title);
+      for (const [agentId, sid] of Object.entries(activeSessionByAgent)) {
+        if (sid === p.sessionId) setTitleFor(agentId, p.title);
+      }
     }
   }), [api, activeSessionByAgent]);
   useEffect(() => {
@@ -190,8 +230,7 @@ function AppShell() {
             id: a.id as ScreenId,
             name: a.name,
             status: 'idle',
-            surfaceType: (a as { surfaceType?: string }).surfaceType
-              ?? (a.id === 'general' ? 'chat' : a.id === 'contract-review' ? 'workflow' : undefined),
+            surfaceType: (a as { surfaceType?: string }).surfaceType,
           })));
         }).catch(() => {});
       } catch {
@@ -233,20 +272,6 @@ function AppShell() {
     URL.revokeObjectURL(url);
   };
 
-  const onAction = async (action: string) => {
-    if (action === 'documents.upload') {
-      const { path } = await api.chooseDocument();
-      if (path) setState((s) => ({ ...s, documents: [path] }));
-    }
-    if (action.startsWith('run-workflow:')) {
-      const profileId = action.slice('run-workflow:'.length);
-      setWorkflow({ status: 'running' });
-      api.runWorkflow(profileId, { documents: state.documents }).then((res) => {
-        if (res?.sessionId) setWorkflowSessionId(res.sessionId);
-      });
-    }
-  };
-
   const refreshSessions = (agentId: string, activeId = activeSessionFor(agentId)) => {
     // 以 sessions 数组为唯一真相源：刷新只做“原地更新元数据 + 补齐新会话 + 移除已删除”，
     // 不重新排序，从而避免后端滞后的时间戳把会话来回挪动。
@@ -254,7 +279,7 @@ function AppShell() {
       const fetchedById: Record<string, ShellSession & { profileId: string }> = {};
       const fetchedByProfile: Record<string, Array<ShellSession & { profileId: string }>> = {};
       for (const s of list ?? []) {
-        const profileId = s.profileId ?? 'general';
+        const profileId = s.profileId ?? '';
         const diskName = sessionDisplayName({ title: s.title, firstMessage: s.firstMessage, updatedAt: s.updatedAt });
         const override = sessionOverridesRef.current.get(s.id);
         const name = override?.name ?? diskName;
@@ -264,7 +289,7 @@ function AppShell() {
           id: s.id,
           name,
           state: '',
-          active: profileId === 'general' && s.id === activeId,
+          active: s.id === activeId,
           pinned: s.pinned ?? false,
           archived: s.archived ?? false,
           updatedAt: Math.max(Number(s.updatedAt) || 0, override?.updatedAt ?? 0),
@@ -324,27 +349,20 @@ function AppShell() {
       setScreen(agentId as ScreenId);
       return;
     }
-    setWorkflow({ status: 'idle' });
-    setState((s) => ({ ...s, documents: [] }));
-    setWorkflowSessionId(null);
-  };
-
-  const onWorkflowState = (action: string, payload: Record<string, unknown>) => {
-    if (!workflowSessionId) return;
-    api.updateWorkflowState(workflowSessionId, { action, ...payload }).catch((e) => {
-      reportError(String(e?.message ?? e), { source: '合同审核' });
-    });
+    setWorkflowByAgent((prev) => ({ ...prev, [agentId]: { sessionId: null, mode: 'live' } }));
+    setWorkflowStatusByAgent((prev) => ({ ...prev, [agentId]: { status: 'idle' } }));
   };
 
   const onOpenSession = (agentId: string, sessionId: string) => {
     const isChatAgent = agents.find((agent) => agent.id === agentId)?.surfaceType === 'chat';
-    if (!isChatAgent) {
-      navigate(agentId as ScreenId);
+    setScreen(agentId as ScreenId);
+    if (isChatAgent) {
+      setActiveSessionFor(agentId, sessionId);
+      refreshSessions(agentId, sessionId);
       return;
     }
-    setScreen(agentId as ScreenId);
-    setActiveSessionFor(agentId, sessionId);
-    refreshSessions(agentId, sessionId);
+    setWorkflowByAgent((prev) => ({ ...prev, [agentId]: { sessionId, mode: 'history' } }));
+    refreshSessions(agentId);
   };
 
   const onRenameSession = (agentId: string, sessionId: string, title: string) => {
@@ -404,8 +422,10 @@ function AppShell() {
   };
 
   useEffect(() => {
-    refreshSessions('general');
-  }, []);
+    if (!agents.length) return;
+    for (const a of agents) refreshSessions(a.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agents]);
 
   const derivedAgents = agents.map((a) => {
     const profileId = a.id;
@@ -420,47 +440,104 @@ function AppShell() {
 
   const releaseRuntimeSession = async (sessionId: string) => {
     await api.releaseSessionSlot(sessionId);
-    if (sessionId === activeSessionFor('general')) setActiveSessionFor('general', null);
-    refreshSessions('general');
+    for (const [agentId, sid] of Object.entries(activeSessionByAgent)) {
+      if (sid === sessionId) {
+        setActiveSessionFor(agentId, null);
+        refreshSessions(agentId);
+      }
+    }
   };
 
   const cancelQueuedSession = async (queueId: string) => {
     await api.cancelQueuedSession(queueId);
   };
 
-  const statusText = workflow.status === 'running'
-    ? `正在执行:${workflow.step ?? '…'}`
-    : '';
+  const activeAgent = derivedAgents.find((a) => a.id === screen);
+  const isChatSurface = activeAgent?.surfaceType === 'chat';
 
-  const navigate = (s: ScreenId | 'contract-review') => {
-    if (s === 'general') {
-      setScreen('general');
-      refreshSessions('general');
-      return;
-    }
-    if (s === 'contract-review') {
-      setScreen('contract-review');
-      refreshSessions('contract-review');
+  const statusText = (() => {
+    if (activeAgent?.surfaceType !== 'workflow') return '';
+    const wf = workflowStatusByAgent[activeAgent.id];
+    return wf?.status === 'running' ? `正在执行:${wf.step ?? '…'}` : '';
+  })();
+
+  const navigate = (s: ScreenId) => {
+    const isAgent = agents.some((a) => a.id === s);
+    if (isAgent) {
+      setScreen(s);
+      refreshSessions(s);
       return;
     }
     // 对话/仪表板表面留档,待后端就绪后接入
-    if (s === 'chat' || s === 'dashboard') { setScreen('contract-review'); return; }
+    if (s === 'chat' || s === 'dashboard') { setScreen('home'); return; }
     setScreen(s);
+  };
+
+  // 一旦首条消息发出，立即把会话插入历史，避免等后端刷新造成延迟。
+  const commitNewSession = (agentId: string, sessionId: string, title?: string) => {
+    setActiveSessionFor(agentId, sessionId);
+    sessionOverridesRef.current.set(sessionId, { name: title ? String(title).slice(0, 24) : '新会话', updatedAt: Date.now(), agentId });
+    const name = String(title || '新会话').slice(0, 24);
+    setTitleFor(agentId, name);
+    setSessions((prev) => {
+      const list = prev[agentId] ?? [];
+      if (list.some((s) => s.id === sessionId)) return prev;
+      const pinned = list.filter((s) => s.pinned);
+      const unpinned = list.filter((s) => !s.pinned && !s.archived);
+      const arch = list.filter((s) => s.archived);
+      const sessionItem: ShellSession = { id: sessionId, name, state: '', active: true, updatedAt: Date.now() };
+      return { ...prev, [agentId]: [...pinned, sessionItem, ...unpinned, ...arch] };
+    });
+    refreshSessions(agentId, sessionId);
+  };
+
+  // Per-agent actions: chat agents use the platform standard surface; workflow agents expose the
+  // workflow lifecycle. `session` is the agent's own normalized timeline (backend truth source).
+  const buildActions = (agentId: string, session: AgentSession): AgentSurfaceActions => {
+    const isChat = agents.find((a) => a.id === agentId)?.surfaceType === 'chat';
+    if (isChat) {
+      return {
+        newSession: () => onNewSession(agentId),
+        openSession: (sessionId, title) => commitNewSession(agentId, sessionId, title),
+        startWorkflow: () => {},
+        review: () => {},
+        requestExport: () => {},
+        chooseDocument: async () => ({}),
+      };
+    }
+    return {
+      newSession: () => onNewSession(agentId),
+      openSession: (id) => onOpenSession(agentId, id),
+      startWorkflow: (payload) => {
+        setWorkflowStatusByAgent((prev) => ({ ...prev, [agentId]: { status: 'running' } }));
+        setWorkflowByAgent((prev) => ({ ...prev, [agentId]: { ...(prev[agentId] ?? { sessionId: null, mode: 'live' }), mode: 'live' } }));
+        api.runWorkflow(agentId, payload).then((res) => {
+          if (res?.sessionId) setWorkflowByAgent((prev) => ({ ...prev, [agentId]: { ...(prev[agentId] ?? { sessionId: null, mode: 'live' }), sessionId: res.sessionId ?? null } }));
+        }).catch(() => {});
+      },
+      review: (action, payload) => {
+        const sid = workflowFor(agentId).sessionId;
+        if (!sid) return;
+        api.updateWorkflowState(sid, { action, ...payload }).catch((e) => reportError(String(e?.message ?? e), { source: agentId }));
+      },
+      requestExport: () => {
+        const sid = workflowFor(agentId).sessionId;
+        if (!sid) { setScreen('approvals'); return; }
+        const result = session.result ?? extractWorkflowResult(session.entries);
+        const report = result?.['report'] as Record<string, unknown> | undefined;
+        const compare = result?.['compare'];
+        void api.requestExportReport(sid, {
+          title: typeof report?.title === 'string' ? report.title : '合同审核报告',
+          findings: Array.isArray(compare) ? compare.length : 0,
+        }).catch(() => {});
+      },
+      chooseDocument: () => api.chooseDocument(),
+    };
   };
 
   const surfaces: Partial<Record<ScreenId, ReactNode>> = {
     home: (
       <HomeView userName={userName} agents={derivedAgents} pendingApprovals={pending} onNavigate={navigate} />
-    ),
-    'contract-review': (
-      <ContractSurface
-        state={state}
-        workflow={workflow}
-        sessionId={workflowSessionId}
-        onAction={onAction}
-        onWorkflowState={onWorkflowState}
-        onRequestExport={() => setScreen('approvals')}
-      />
     ),
     approvals: (
       <div>
@@ -476,40 +553,33 @@ function AppShell() {
     ),
   };
 
-  const generalSurface = (
-    <GeneralChatSurface
-      api={api}
-      sessionId={activeSessionFor('general')}
-      active={screen === 'general'}
-      draft={screen === 'general' && activeSessionFor('general') === null}
-      onSessionCommitted={(sessionId, title) => {
-        setActiveSessionFor('general', sessionId);
-        // 一旦首条消息发出，立即把会话插入历史，避免等后端刷新造成延迟
-        sessionOverridesRef.current.set(sessionId, { name: title ? String(title).slice(0, 24) : '新会话', updatedAt: Date.now(), agentId: 'general' });
-        const name = String(title || '新会话').slice(0, 24);
-        setTitleFor('general', name);
-        setSessions((prev) => {
-          const general = prev['general'] ?? [];
-          if (general.some((s) => s.id === sessionId)) return prev;
-          // 新会话插到“置顶会话”之后（真正的 sticky 置顶）
-          const pinned = general.filter((s) => s.pinned);
-          const unpinned = general.filter((s) => !s.pinned && !s.archived);
-          const arch = general.filter((s) => s.archived);
-          const sessionItem: ShellSession = { id: sessionId, name, state: '', active: true, updatedAt: Date.now() };
-          return { ...prev, general: [...pinned, sessionItem, ...unpinned, ...arch] };
-        });
-        refreshSessions('general', sessionId);
-      }}
-      onNewSession={() => onNewSession('general')}
-    />
-  );
-
-  const surfaceTitles: Partial<Record<ScreenId, string>> = {
-    'contract-review': derivedAgents.find((a) => a.id === 'contract-review')?.name ?? '合同审核智能体',
+  const staticSurfaceTitles: Partial<Record<ScreenId, string>> = {
     chat: '法规问答 · 会话#1',
     dashboard: '舆情监控 · 会话#2',
-    general: activeSessionFor('general') ? `通用智能体 · ${titleFor('general') || '会话'}` : '通用智能体',
+    approvals: '审批中心',
+    audit: '审计',
+    settings: '设置',
   };
+  const surfaceTitle = activeAgent
+    ? (isChatSurface && activeSessionFor(activeAgent.id))
+      ? `${activeAgent.name} · ${titleFor(activeAgent.id) || '会话'}`
+      : activeAgent.name
+    : staticSurfaceTitles[screen];
+
+  // One always-mounted frame per agent so each agent keeps its own session (live/history) even
+  // when its surface is unmounted. The frame shows the surface only while the agent is active.
+  const agentFrames = derivedAgents.map((a) => (
+    <AgentFrame
+      key={a.id}
+      agent={a}
+      active={a.id === screen}
+      draft={a.surfaceType === 'chat' && activeSessionFor(a.id) == null}
+      sessionId={a.surfaceType === 'chat' ? activeSessionFor(a.id) : workflowFor(a.id).sessionId}
+      mode={a.surfaceType === 'chat' ? 'live' : workflowFor(a.id).mode}
+      buildActions={buildActions}
+    />
+  ));
+  const surfaceNode = surfaces[screen] ?? null;
 
   return (
     <>
@@ -522,7 +592,7 @@ function AppShell() {
         runtimePool={runtimePool}
         userName={userName}
         userRole={roles.length ? roles.join(' · ') : '审核员'}
-        surfaceTitle={surfaceTitles[screen]}
+        surfaceTitle={surfaceTitle}
         onNavigate={navigate}
         onNewSession={onNewSession}
         onOpenSession={onOpenSession}
@@ -535,13 +605,13 @@ function AppShell() {
         onReleaseSession={releaseRuntimeSession}
         onCancelQueuedSession={cancelQueuedSession}
       >
-        <div style={{ display: screen === 'general' ? 'block' : 'none', height: screen === 'general' ? '100%' : 'auto' }}>{generalSurface}</div>
-        {screen !== 'general' && <div>{surfaces[screen]}</div>}
+        {surfaceNode}
+        {agentFrames}
       </Shell>
       {approvalOpen && (
         <ApprovalPanel
           proposals={pending}
-          currentSessionId={activeSessionFor('general')}
+          currentSessionId={activeSessionFor(agents.find((a) => a.surfaceType === 'chat')?.id ?? '')}
           focusId={approvalFocusId}
           onDecide={decide}
           onClose={() => setApprovalOpen(false)}

@@ -39,11 +39,12 @@ function makeApi() {
     clearErrors: vi.fn().mockResolvedValue({ ok: true }),
     markAllErrorsRead: vi.fn().mockResolvedValue({ ok: true }),
     listAgents: vi.fn().mockResolvedValue([
-      { id: 'general', name: '通用智能体' },
-      { id: 'contract-review', name: '合同审核智能体' },
+      { id: 'general', name: '通用智能体', surfaceType: 'chat' },
+      { id: 'contract-review', name: '合同审核智能体', surfaceType: 'workflow' },
     ]),
     chooseDocument: vi.fn(),
-    runWorkflow: vi.fn().mockResolvedValue({ ok: true }),
+    runWorkflow: vi.fn().mockResolvedValue({ ok: true, sessionId: 'ws1' }),
+    openChatSession: vi.fn().mockResolvedValue({ entries: [] }),
     exportReport: vi.fn(),
     prompt: vi.fn().mockResolvedValue({ ok: true }),
     decideApproval: vi.fn(),
@@ -67,9 +68,11 @@ describe('App workflow feedback', () => {
     await screen.findByTestId('review');
     fireEvent.click(screen.getByTestId('review'));
     expect(api.runWorkflow).toHaveBeenCalledWith('contract-review', { documents: [] });
-    act(() => channels['workflow']({ type: 'step_started', stepId: 'load' }));
+    // 让 runWorkflow 解析出 sessionId，useAgentSession 重新订阅到该会话
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    act(() => channels['workflow']({ type: 'step_started', stepId: 'load', sessionId: 'ws1' }));
     expect(screen.getByText('审核中：load')).toBeTruthy();
-    act(() => channels['workflow']({ type: 'workflow_completed' }));
+    act(() => channels['workflow']({ type: 'workflow_completed', sessionId: 'ws1' }));
     expect(screen.getByText('审核完成')).toBeTruthy();
   });
 

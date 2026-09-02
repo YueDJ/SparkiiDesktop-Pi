@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import { ContractSurface } from '../agents/contract-review/surface/index.js';
+import { ContractSurface, ContractAgentSurface } from '../agents/contract-review/surface/index.js';
+import { normalizeSessionEntries } from '../src/surface/normalize.js';
 
 afterEach(cleanup);
 
@@ -41,7 +42,7 @@ describe('ContractSurface', () => {
 
   it('switches between report and original document panes', () => {
     renderSurface({ status: 'done' });
-    expect(screen.getByText('合同审核报告')).toBeTruthy();
+    expect(screen.getAllByText('合同审核报告').length).toBeGreaterThan(0);
     fireEvent.click(screen.getByText('原文'));
     expect(screen.getByText('C:/tmp/contract.pdf')).toBeTruthy();
   });
@@ -65,6 +66,13 @@ describe('ContractSurface', () => {
     expect(screen.getByRole('button', { name: '比对' })).toBeTruthy();
   });
 
+  it('renders a structured compare step without raw JSON', () => {
+    renderSurface({ status: 'done' });
+    fireEvent.click(screen.getByRole('button', { name: '比对' }));
+    expect(document.querySelector('pre')).toBeNull();
+    expect(screen.getAllByText('第7条 付款条件').length).toBeGreaterThan(0);
+  });
+
   it('records risk confirmation when a workflow session is active', () => {
     const onWorkflowState = vi.fn();
     render(
@@ -79,5 +87,53 @@ describe('ContractSurface', () => {
     );
     fireEvent.click(screen.getAllByText('确认')[0]);
     expect(onWorkflowState).toHaveBeenCalledWith('risk_confirmed', { riskId: 'f0', stepId: 'compare' });
+  });
+});
+
+describe('ContractAgentSurface', () => {
+  const agent = { id: 'contract-review', name: '合同审核智能体', surfaceType: 'workflow' as const };
+  const makeActions = () => ({
+    newSession: vi.fn(),
+    openSession: vi.fn(),
+    startWorkflow: vi.fn(),
+    review: vi.fn(),
+    requestExport: vi.fn(),
+    chooseDocument: vi.fn().mockResolvedValue({}),
+  });
+
+  it('renders the report from the session stream without workflow/state props', () => {
+    const entries = normalizeSessionEntries([
+      {
+        type: 'workflow_state',
+        data: { stepId: 'report', action: 'result', payload: { report: { title: '会话报告', sections: [{ heading: '结论', body: '关注' }] }, compare: [{ 条款: '第1条', 风险: '高' }] } },
+      },
+      { type: 'workflow_step_start', data: { stepId: 'report' } },
+      { type: 'workflow_step_end', data: { stepId: 'report', status: 'completed' } },
+    ]);
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s1"
+        mode="history"
+        session={{ entries, streaming: false, status: 'done', meta: { currentStep: 'report', inputs: [{ path: 'C:/tmp/a.pdf' }] } }}
+        actions={makeActions()}
+      />,
+    );
+    expect(screen.getAllByText('会话报告').length).toBeGreaterThan(0);
+  });
+
+  it('starts workflow with input documents', () => {
+    const actions = makeActions();
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId={null}
+        mode="live"
+        session={{ entries: [], streaming: false, status: 'idle', meta: { currentStep: null, inputs: [{ path: 'C:/tmp/a.pdf' }] } }}
+        actions={actions}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('review'));
+    expect(actions.startWorkflow).toHaveBeenCalledWith({ documents: ['C:/tmp/a.pdf'] });
   });
 });
