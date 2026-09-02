@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { AgentSession } from './contract.js';
 import { normalizeSessionEntries, applySurfaceEvent } from './normalize.js';
 
-const EMPTY: AgentSession = { entries: [], streaming: false, meta: { currentStep: null } };
+const EMPTY: AgentSession = { entries: [], streaming: false, status: 'idle', meta: { currentStep: null } };
 
 export function useAgentSession(agentId: string, sessionId: string | null, mode: 'live' | 'history'): AgentSession {
   const [session, setSession] = useState<AgentSession>(EMPTY);
@@ -26,7 +26,7 @@ export function useAgentSession(agentId: string, sessionId: string | null, mode:
         // 读取失败保持空会话，不打断 UI
       });
 
-    const off = (window as any).sparkii?.on?.('chat-event', (p: any) => {
+    const offChat = (window as any).sparkii?.on?.('chat-event', (p: any) => {
       if (p?.sessionId !== sessionId || mode !== 'live') return;
       setSession((s) => ({
         ...s,
@@ -34,9 +34,22 @@ export function useAgentSession(agentId: string, sessionId: string | null, mode:
         streaming: p?.type === 'agent_start',
       }));
     });
+    const offWorkflow = (window as any).sparkii?.on?.('workflow', (e: any) => {
+      if (e?.sessionId !== sessionId) return;
+      if (e.type === 'step_started') setSession((s) => ({ ...s, status: 'running', meta: { ...s.meta, currentStep: e.stepId } }));
+      else if (e.type === 'workflow_completed') setSession((s) => ({ ...s, status: 'done' }));
+      else if (e.type === 'workflow_failed') setSession((s) => ({ ...s, status: 'failed' }));
+    });
+    const offState = (window as any).sparkii?.on?.('state', (p: any) => {
+      if (p?.sessionId !== sessionId) return;
+      const result = (p?.workflow as Record<string, unknown> | undefined)?.result as Record<string, unknown> | undefined;
+      if (result) setSession((s) => ({ ...s, result }));
+    });
     return () => {
       open = false;
-      off?.();
+      offChat?.();
+      offWorkflow?.();
+      offState?.();
     };
   }, [agentId, sessionId, mode]);
 

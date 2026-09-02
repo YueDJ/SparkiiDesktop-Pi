@@ -54,6 +54,8 @@ export type SessionEntry =
 export interface AgentSession {
   entries: SessionEntry[];
   streaming: boolean;
+  status?: 'idle' | 'running' | 'done' | 'failed';
+  result?: Record<string, unknown>;
   meta: {
     model?: string | null;
     contextUsage?: { tokens?: number | null; contextWindow?: number; percent?: number | null } | null;
