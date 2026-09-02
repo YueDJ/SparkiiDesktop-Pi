@@ -38,3 +38,6 @@ export * from './patterns/ApprovalItem.js';
 export * from './patterns/AuditTimeline.js';
 export * from './patterns/SettingsLayout.js';
 export * from './patterns/SettingsRow.js';
+export * from './patterns/pi-timeline.js';
+export * from './patterns/thinking-levels.js';
+export * from './patterns/chat-detail-level.js';

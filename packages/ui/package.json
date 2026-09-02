@@ -5,6 +5,9 @@
   "main": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./pi-timeline": "./src/patterns/pi-timeline.ts",
+    "./thinking-levels": "./src/patterns/thinking-levels.ts",
+    "./chat-detail-level": "./src/patterns/chat-detail-level.ts",
     "./styles.css": "./src/styles.css"
   },
   "scripts": { "typecheck": "tsc --noEmit -p tsconfig.json" },
