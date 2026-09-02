@@ -32,8 +32,8 @@ function makeApi() {
     clearErrors: vi.fn().mockResolvedValue({ ok: true }),
     markAllErrorsRead: vi.fn().mockResolvedValue({ ok: true }),
     listAgents: vi.fn().mockResolvedValue([
-      { id: 'general', name: '通用智能体' },
-      { id: 'contract-review', name: '合同审核智能体' },
+      { id: 'general', name: '通用智能体', surfaceType: 'chat' },
+      { id: 'contract-review', name: '合同审核智能体', surfaceType: 'workflow' },
     ]),
     listChatSessions: vi.fn().mockResolvedValue([{ id: 'g1', profileId: 'general', title: '会话 08-25 17:10', workspaceKind: 'auto', workspacePath: 'C:/ws/SparkiiXyZ9202608251710', model: null, piSessionFile: null, createdAt: 0, updatedAt: 0 }]),
     getChatSession: vi.fn().mockResolvedValue({ workspacePath: 'C:/ws/SparkiiXyZ9202608251710', workspaceKind: 'auto' }),
@@ -140,7 +140,7 @@ describe('App general agent', () => {
     expect(screen.getByText(/在的/)).toBeTruthy();
 
     fireEvent.click(screen.getByText('Sparkii'));
-    fireEvent.click(screen.getByTestId('agent-card-general'));
+    fireEvent.click(await screen.findByTestId('session-g1'));
     await screen.findByTestId('composer-input');
     expect(screen.getByText(/在的/)).toBeTruthy();
   });

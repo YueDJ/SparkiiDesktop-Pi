@@ -101,10 +101,7 @@ function AppShell() {
   const [workflow, setWorkflow] = useState<WorkflowStatusState>({ status: 'idle' });
   const [screen, setScreen] = useState<ScreenId>('home');
   const [roles, setRoles] = useState<string[]>([]);
-  const [agents, setAgents] = useState<ShellAgent[]>([
-    { id: 'general', name: '通用智能体', status: 'idle', surfaceType: 'chat' },
-    { id: 'contract-review', name: '合同审核智能体', status: 'idle', surfaceType: 'workflow' },
-  ]);
+  const [agents, setAgents] = useState<ShellAgent[]>([]);
   const [sessions, setSessions] = useState<Record<string, ShellSession[]>>({});
   const [workflowSessionId, setWorkflowSessionId] = useState<string | null>(null);
   const [workflowMode, setWorkflowMode] = useState<'live' | 'history'>('live');
@@ -132,6 +129,9 @@ function AppShell() {
   const setTitleFor = (agentId: string, title: string) => {
     setTitleByAgent((prev) => ({ ...prev, [agentId]: title }));
   };
+
+  const chatAgentId = agents.find((a) => a.surfaceType === 'chat')?.id ?? '';
+  const workflowAgentId = agents.find((a) => a.surfaceType === 'workflow')?.id ?? '';
 
   useEffect(() => api.on('approval', (p) => {
     setPending((xs) => [...xs, p]);
@@ -165,7 +165,9 @@ function AppShell() {
         }
         return next;
       });
-      if (p.sessionId === activeSessionFor('general')) setTitleFor('general', p.title);
+      for (const [agentId, sid] of Object.entries(activeSessionByAgent)) {
+        if (sid === p.sessionId) setTitleFor(agentId, p.title);
+      }
     }
   }), [api, activeSessionByAgent]);
   useEffect(() => {
@@ -191,8 +193,7 @@ function AppShell() {
             id: a.id as ScreenId,
             name: a.name,
             status: 'idle',
-            surfaceType: (a as { surfaceType?: string }).surfaceType
-              ?? (a.id === 'general' ? 'chat' : a.id === 'contract-review' ? 'workflow' : undefined),
+            surfaceType: (a as { surfaceType?: string }).surfaceType,
           })));
         }).catch(() => {});
       } catch {
@@ -241,7 +242,7 @@ function AppShell() {
       const fetchedById: Record<string, ShellSession & { profileId: string }> = {};
       const fetchedByProfile: Record<string, Array<ShellSession & { profileId: string }>> = {};
       for (const s of list ?? []) {
-        const profileId = s.profileId ?? 'general';
+        const profileId = s.profileId ?? '';
         const diskName = sessionDisplayName({ title: s.title, firstMessage: s.firstMessage, updatedAt: s.updatedAt });
         const override = sessionOverridesRef.current.get(s.id);
         const name = override?.name ?? diskName;
@@ -251,7 +252,7 @@ function AppShell() {
           id: s.id,
           name,
           state: '',
-          active: profileId === 'general' && s.id === activeId,
+          active: s.id === activeId,
           pinned: s.pinned ?? false,
           archived: s.archived ?? false,
           updatedAt: Math.max(Number(s.updatedAt) || 0, override?.updatedAt ?? 0),
@@ -386,8 +387,8 @@ function AppShell() {
   };
 
   useEffect(() => {
-    refreshSessions('general');
-  }, []);
+    if (chatAgentId) refreshSessions(chatAgentId);
+  }, [chatAgentId]);
 
   const derivedAgents = agents.map((a) => {
     const profileId = a.id;
@@ -402,8 +403,8 @@ function AppShell() {
 
   const releaseRuntimeSession = async (sessionId: string) => {
     await api.releaseSessionSlot(sessionId);
-    if (sessionId === activeSessionFor('general')) setActiveSessionFor('general', null);
-    refreshSessions('general');
+    if (chatAgentId && sessionId === activeSessionFor(chatAgentId)) setActiveSessionFor(chatAgentId, null);
+    if (chatAgentId) refreshSessions(chatAgentId);
   };
 
   const cancelQueuedSession = async (queueId: string) => {
@@ -414,40 +415,38 @@ function AppShell() {
     ? `正在执行:${workflow.step ?? '…'}`
     : '';
 
-  const navigate = (s: ScreenId | 'contract-review') => {
-    if (s === 'general') {
-      setScreen('general');
-      refreshSessions('general');
-      return;
-    }
-    if (s === 'contract-review') {
-      setScreen('contract-review');
-      refreshSessions('contract-review');
+  const navigate = (s: ScreenId) => {
+    const isAgent = agents.some((a) => a.id === s);
+    if (isAgent) {
+      setScreen(s);
+      refreshSessions(s);
       return;
     }
     // 对话/仪表板表面留档,待后端就绪后接入
-    if (s === 'chat' || s === 'dashboard') { setScreen('contract-review'); return; }
+    if (s === 'chat' || s === 'dashboard') { setScreen('home'); return; }
     setScreen(s);
   };
 
-  const ContractAgentSurface = useAgentSurface('contract-review').Surface;
-  const { Surface: GeneralChatSurface } = useAgentSurface('general');
-  const workflowSession = useAgentSession('contract-review', workflowSessionId, workflowMode);
+  const activeAgent = derivedAgents.find((a) => a.id === screen);
+  const isChatSurface = activeAgent?.surfaceType === 'chat';
+  const { Surface: ActiveSurface } = useAgentSurface(activeAgent?.id ?? '');
+  const chatSession = useAgentSession(chatAgentId, activeSessionFor(chatAgentId), 'live');
+  const workflowSession = useAgentSession(workflowAgentId, workflowSessionId, workflowMode);
 
-  const contractActions: AgentSurfaceActions = {
-    newSession: () => onNewSession('contract-review'),
-    openSession: (id) => onOpenSession('contract-review', id),
+  const contractActions = (agentId: string): AgentSurfaceActions => ({
+    newSession: () => onNewSession(agentId),
+    openSession: (id) => onOpenSession(agentId, id),
     startWorkflow: (payload) => {
       setWorkflow({ status: 'running' });
       setWorkflowMode('live');
-      api.runWorkflow('contract-review', payload).then((res) => {
+      api.runWorkflow(agentId, payload).then((res) => {
         if (res?.sessionId) setWorkflowSessionId(res.sessionId);
       }).catch(() => {});
     },
     review: (action, payload) => {
       if (!workflowSessionId) return;
       api.updateWorkflowState(workflowSessionId, { action, ...payload }).catch((e) => {
-        reportError(String(e?.message ?? e), { source: '合同审核' });
+        reportError(String(e?.message ?? e), { source: agentId });
       });
     },
     requestExport: () => {
@@ -464,20 +463,11 @@ function AppShell() {
       }).catch(() => {});
     },
     chooseDocument: () => api.chooseDocument(),
-  };
+  });
 
   const surfaces: Partial<Record<ScreenId, ReactNode>> = {
     home: (
       <HomeView userName={userName} agents={derivedAgents} pendingApprovals={pending} onNavigate={navigate} />
-    ),
-    'contract-review': (
-      <ContractAgentSurface
-        agent={{ id: 'contract-review', name: '合同审核智能体', surfaceType: 'workflow' }}
-        sessionId={workflowSessionId}
-        mode={workflowMode}
-        session={workflowSession}
-        actions={contractActions}
-      />
     ),
     approvals: (
       <div>
@@ -494,52 +484,74 @@ function AppShell() {
   };
 
   // 一旦首条消息发出，立即把会话插入历史，避免等后端刷新造成延迟。
-  const commitGeneralSession = (sessionId: string, title?: string) => {
-    setActiveSessionFor('general', sessionId);
-    sessionOverridesRef.current.set(sessionId, { name: title ? String(title).slice(0, 24) : '新会话', updatedAt: Date.now(), agentId: 'general' });
+  const commitNewSession = (agentId: string, sessionId: string, title?: string) => {
+    setActiveSessionFor(agentId, sessionId);
+    sessionOverridesRef.current.set(sessionId, { name: title ? String(title).slice(0, 24) : '新会话', updatedAt: Date.now(), agentId });
     const name = String(title || '新会话').slice(0, 24);
-    setTitleFor('general', name);
+    setTitleFor(agentId, name);
     setSessions((prev) => {
-      const general = prev['general'] ?? [];
-      if (general.some((s) => s.id === sessionId)) return prev;
-      const pinned = general.filter((s) => s.pinned);
-      const unpinned = general.filter((s) => !s.pinned && !s.archived);
-      const arch = general.filter((s) => s.archived);
+      const list = prev[agentId] ?? [];
+      if (list.some((s) => s.id === sessionId)) return prev;
+      const pinned = list.filter((s) => s.pinned);
+      const unpinned = list.filter((s) => !s.pinned && !s.archived);
+      const arch = list.filter((s) => s.archived);
       const sessionItem: ShellSession = { id: sessionId, name, state: '', active: true, updatedAt: Date.now() };
-      return { ...prev, general: [...pinned, sessionItem, ...unpinned, ...arch] };
+      return { ...prev, [agentId]: [...pinned, sessionItem, ...unpinned, ...arch] };
     });
-    refreshSessions('general', sessionId);
+    refreshSessions(agentId, sessionId);
   };
 
-  const generalActions: AgentSurfaceActions = {
-    newSession: () => onNewSession('general'),
-    openSession: (sessionId, title) => commitGeneralSession(sessionId, title),
+  const chatActions = (agentId: string): AgentSurfaceActions => ({
+    newSession: () => onNewSession(agentId),
+    openSession: (sessionId, title) => commitNewSession(agentId, sessionId, title),
+    startWorkflow: () => {},
+    review: () => {},
+    requestExport: () => {},
+    chooseDocument: async () => ({}),
+  });
+
+  const EMPTY_SESSION = { entries: [], streaming: false, status: 'idle', meta: { currentStep: null } };
+  const EMPTY_ACTIONS: AgentSurfaceActions = {
+    newSession: () => {},
+    openSession: () => {},
     startWorkflow: () => {},
     review: () => {},
     requestExport: () => {},
     chooseDocument: async () => ({}),
   };
 
-  const activeAgentIsChat = derivedAgents.find((a) => a.id === screen)?.surfaceType === 'chat';
+  const activeSessionId = activeAgent ? (isChatSurface ? activeSessionFor(activeAgent.id) : workflowSessionId) : null;
+  const activeSession = activeAgent ? (isChatSurface ? chatSession : workflowSession) : EMPTY_SESSION;
+  const activeActions = activeAgent ? (isChatSurface ? chatActions(activeAgent.id) : contractActions(activeAgent.id)) : EMPTY_ACTIONS;
+  const activeMode = activeAgent ? (isChatSurface ? 'live' : workflowMode) : 'live';
 
-  const generalSurface = (
-    <GeneralChatSurface
-      agent={{ id: 'general', name: '通用智能体', surfaceType: 'chat' }}
-      sessionId={activeSessionFor('general')}
-      mode="live"
-      session={{ entries: [], streaming: false, meta: {} }}
-      draft={activeAgentIsChat && activeSessionFor('general') === null}
-      active={activeAgentIsChat}
-      actions={generalActions}
-    />
-  );
-
-  const surfaceTitles: Partial<Record<ScreenId, string>> = {
-    'contract-review': derivedAgents.find((a) => a.id === 'contract-review')?.name ?? '合同审核智能体',
+  const staticSurfaceTitles: Partial<Record<ScreenId, string>> = {
     chat: '法规问答 · 会话#1',
     dashboard: '舆情监控 · 会话#2',
-    general: activeSessionFor('general') ? `通用智能体 · ${titleFor('general') || '会话'}` : '通用智能体',
+    approvals: '审批中心',
+    audit: '审计',
+    settings: '设置',
   };
+  const surfaceTitle = activeAgent
+    ? (isChatSurface && activeSessionFor(activeAgent.id))
+      ? `${activeAgent.name} · ${titleFor(activeAgent.id) || '会话'}`
+      : activeAgent.name
+    : staticSurfaceTitles[screen];
+
+  const agentSurfaceNode = activeAgent && ActiveSurface
+    ? (
+      <ActiveSurface
+        agent={activeAgent}
+        sessionId={activeSessionId}
+        mode={activeMode}
+        session={activeSession}
+        actions={activeActions}
+        draft={isChatSurface && activeSessionId == null}
+        active
+      />
+    )
+    : null;
+  const surfaceNode = surfaces[screen] ?? agentSurfaceNode;
 
   return (
     <>
@@ -552,7 +564,7 @@ function AppShell() {
         runtimePool={runtimePool}
         userName={userName}
         userRole={roles.length ? roles.join(' · ') : '审核员'}
-        surfaceTitle={surfaceTitles[screen]}
+        surfaceTitle={surfaceTitle}
         onNavigate={navigate}
         onNewSession={onNewSession}
         onOpenSession={onOpenSession}
@@ -565,13 +577,12 @@ function AppShell() {
         onReleaseSession={releaseRuntimeSession}
         onCancelQueuedSession={cancelQueuedSession}
       >
-        <div style={{ display: activeAgentIsChat ? 'block' : 'none', height: activeAgentIsChat ? '100%' : 'auto' }}>{generalSurface}</div>
-        {!activeAgentIsChat && <div>{surfaces[screen]}</div>}
+        {surfaceNode}
       </Shell>
       {approvalOpen && (
         <ApprovalPanel
           proposals={pending}
-          currentSessionId={activeSessionFor('general')}
+          currentSessionId={activeSessionFor(chatAgentId)}
           focusId={approvalFocusId}
           onDecide={decide}
           onClose={() => setApprovalOpen(false)}

@@ -39,8 +39,8 @@ function makeApi() {
     clearErrors: vi.fn().mockResolvedValue({ ok: true }),
     markAllErrorsRead: vi.fn().mockResolvedValue({ ok: true }),
     listAgents: vi.fn().mockResolvedValue([
-      { id: 'general', name: '通用智能体' },
-      { id: 'contract-review', name: '合同审核智能体' },
+      { id: 'general', name: '通用智能体', surfaceType: 'chat' },
+      { id: 'contract-review', name: '合同审核智能体', surfaceType: 'workflow' },
     ]),
     chooseDocument: vi.fn(),
     runWorkflow: vi.fn().mockResolvedValue({ ok: true, sessionId: 'ws1' }),
