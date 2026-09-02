@@ -177,6 +177,13 @@ function resolveThinkingTarget(
   return null;
 }
 
+/** Normalize a possibly `provider/modelId` string to the bare model id, for key-based lookups. */
+function modelIdOf(value: string | null | undefined): string {
+  if (!value) return '';
+  const slash = value.indexOf('/');
+  return slash >= 0 ? value.slice(slash + 1) : value;
+}
+
 export function StandardChatSurface(props: StandardChatProps) {
   const { agent, sessionId, session, actions, api: apiOverride, active = true, draft } = props;
   const api = apiOverride ?? (window.sparkii as SparkiiApi);
@@ -338,10 +345,11 @@ export function StandardChatSurface(props: StandardChatProps) {
     const chatAttachments: ChatAttachment[] = attachments.map(({ path, name, size, type }) => ({ path, name, size, type }));
     const hasImage = attachments.some((a) => a.type?.startsWith('image/'));
     const selectedModel = model ?? defaultModel;
-    setVisionWarning(hasImage && selectedModel && supportsImages[selectedModel] === false
+    const selectedModelId = modelIdOf(selectedModel);
+    setVisionWarning(hasImage && selectedModel && supportsImages[selectedModelId] === false
       ? '当前模型不支持图片输入，发送后图片将被忽略，建议切换为支持视觉的模型。'
       : null);
-    setModelWarning(selectedModel && compatibleModels.size > 0 && !compatibleModels.has(selectedModel)
+    setModelWarning(selectedModel && compatibleModels.size > 0 && !compatibleModels.has(selectedModelId)
       ? '当前模型不满足该智能体的能力要求，部分功能可能不可用。'
       : null);
 
@@ -401,7 +409,7 @@ export function StandardChatSurface(props: StandardChatProps) {
   const onModelChange = (next: string | null) => {
     setModel(next);
     setVisionWarning(null);
-    setModelWarning(next && compatibleModels.size > 0 && !compatibleModels.has(next)
+    setModelWarning(next && compatibleModels.size > 0 && !compatibleModels.has(modelIdOf(next))
       ? '当前模型不满足该智能体的能力要求，部分功能可能不可用。'
       : null);
     if (sessionId) void api.setChatModel(sessionId, next);

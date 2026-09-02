@@ -234,6 +234,23 @@ describe('StandardChatSurface behaviors', () => {
     expect(await screen.findByText('deepseek-v4-pro')).toBeTruthy();
   });
 
+  it('does not warn when the stored model is provider-prefixed but compatible', async () => {
+    const { api } = makeApi();
+    api.getChatSession = vi.fn().mockResolvedValue({ workspacePath: 'C:/ws/X', model: 'deepseek/deepseek-v4-flash', thinkingLevel: null });
+    api.getModelOptions = vi.fn().mockResolvedValue({
+      provider: 'deepseek',
+      defaultModel: 'deepseek-v4-flash',
+      models: ['deepseek-v4-flash', 'deepseek-v4-pro', 'deepseek-vision'],
+      compatibleModels: ['deepseek-v4-flash', 'deepseek-v4-pro'],
+      supportsImages: { 'deepseek-v4-flash': false },
+    });
+    render(<StandardChatSurface {...baseProps('s1', { api })} />);
+    await waitFor(() => expect(api.getChatSession).toHaveBeenCalled());
+    fireEvent.change(screen.getByTestId('composer-input'), { target: { value: '你好' } });
+    fireEvent.keyDown(screen.getByTestId('composer-input'), { key: 'Enter' });
+    expect(screen.queryByTestId('model-warning')).toBeNull();
+  });
+
   it('marks a tool card awaiting approval from approval events', async () => {
     const { api, channels } = makeApi();
     const session = { entries: [{ kind: 'tool', id: 't1', toolName: 'write', input: { path: 'C:/ws/a.txt' } }], streaming: false, meta: {} };
