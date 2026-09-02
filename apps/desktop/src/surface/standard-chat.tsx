@@ -204,7 +204,6 @@ export function StandardChatSurface(props: StandardChatProps) {
   const lastIdlePromptRef = useRef('');
   const suppressUserEventRef = useRef(false);
   const modelRef = useRef(model);
-  const seenSessIdRef = useRef<Set<string>>(new Set());
   const lastSessIdRef = useRef<string | null>(null);
   const isBusy = busy || session.streaming;
 
@@ -449,7 +448,6 @@ export function StandardChatSurface(props: StandardChatProps) {
     if (prevSessId !== sessionId) {
       lastSessIdRef.current = sessionId;
       if (prevSessId !== null) {
-        seenSessIdRef.current = new Set();
         setEntries([]);
         return; // this frame's session.entries may be stale (previous session); wait for reload
       }
@@ -457,22 +455,34 @@ export function StandardChatSurface(props: StandardChatProps) {
     }
 
     const sessionEntries = (session.entries ?? []).filter(isChatEntry);
-    const added = sessionEntries.filter((e) => !seenSessIdRef.current.has(e.id));
-    for (const e of added) seenSessIdRef.current.add(e.id);
-    if (!added.length) return;
+    if (!sessionEntries.length) return;
+
+    const confirmedUserTexts = new Set(
+      sessionEntries
+        .filter((e) => e.kind === 'message' && e.role === 'user')
+        .map((e) => (e as Extract<ChatEntry, { kind: 'message' }>).text),
+    );
 
     setEntries((prev) => {
-      // Once the authoritative timeline confirms a user message, drop the matching optimistic echo
-      // so the replay does not render the same user message twice.
-      const confirmed = new Set(
-        sessionEntries
-          .filter((e) => e.kind === 'message' && e.role === 'user')
-          .map((e) => (e as Extract<ChatEntry, { kind: 'message' }>).text),
-      );
-      const kept = confirmed.size
-        ? prev.filter((u) => !(u.kind === 'message' && u.role === 'user' && confirmed.has(u.text)))
+      // Drop optimistic/echoed user messages once the authoritative timeline confirms them.
+      const base = confirmedUserTexts.size
+        ? prev.filter((e) => !(e.kind === 'message' && e.role === 'user' && confirmedUserTexts.has(e.text)))
         : prev;
-      return [...kept, ...added];
+
+      // Replace existing session-owned entries in place (so a streaming assistant message grows
+      // in position) and append newly appearing ones, keeping chronologic order intact.
+      const byId = new Map(base.map((e, i) => [e.id, i]));
+      const next = [...base];
+      const appended: ChatEntry[] = [];
+      for (const s of sessionEntries) {
+        const idx = byId.get(s.id);
+        if (idx !== undefined) {
+          next[idx] = s;
+        } else {
+          appended.push(s);
+        }
+      }
+      return appended.length ? [...next, ...appended] : next;
     });
   }, [sessionId, session.entries]);
 

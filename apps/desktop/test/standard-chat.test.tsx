@@ -332,4 +332,27 @@ describe('StandardChatSurface behaviors', () => {
     const order = Array.from(document.querySelectorAll('.ui-chat-message')).map((el) => el.textContent?.trim());
     expect(order).toEqual(['第一问', '第一答', '第二问', '第二答']);
   });
+
+  it('keeps the user message and grows a streaming assistant reply in place', async () => {
+    const { api } = makeApi();
+    const view = render(<StandardChatSurface {...baseProps('s1', { api, session: { entries: [], streaming: false, meta: {} } })} />);
+
+    fireEvent.change(screen.getByTestId('composer-input'), { target: { value: '你好' } });
+    fireEvent.keyDown(screen.getByTestId('composer-input'), { key: 'Enter' });
+
+    // First streaming delta.
+    view.rerender(<StandardChatSurface {...baseProps('s1', {
+      api,
+      session: { entries: [{ kind: 'message', id: 'a1', role: 'assistant', text: '第一行', streaming: true }], streaming: true, meta: {} },
+    })} />);
+    // Second streaming delta continues the SAME entry (same id), so text should grow.
+    view.rerender(<StandardChatSurface {...baseProps('s1', {
+      api,
+      session: { entries: [{ kind: 'message', id: 'a1', role: 'assistant', text: '第一行\n第二行', streaming: true }], streaming: true, meta: {} },
+    })} />);
+
+    expect(screen.getByText('你好')).toBeTruthy();
+    // The streaming assistant entry grows in place: the second delta (第二行) is rendered.
+    expect(screen.getByText(/第二行/)).toBeTruthy();
+  });
 });
