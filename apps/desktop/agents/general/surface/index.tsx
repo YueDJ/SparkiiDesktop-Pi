@@ -586,3 +586,5 @@ export function GeneralChatSurface(props: GeneralChatSurfaceProps) {
     </div>
   );
 }
+
+export default GeneralChatSurface;
