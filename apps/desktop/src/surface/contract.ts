@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react';
+import type { ChatEntry } from '@sparkii/ui';
 
 export interface AgentDescriptor {
   id: string;
@@ -6,50 +7,26 @@ export interface AgentDescriptor {
   surfaceType: string;
 }
 
-export type SessionEntry =
-  | {
-      kind: 'message';
-      id: string;
-      role: 'user' | 'assistant';
-      text: string;
-      thinking?: string;
-      streaming: boolean;
-    }
-  | {
-      kind: 'tool';
-      id: string;
-      toolName: string;
-      input: unknown;
-      result?: unknown;
-      awaitingApproval?: boolean;
-      toolCallId?: string;
-    }
-  | {
-      kind: 'event';
-      id: string;
-      event: string;
-      label: string;
-      detail?: string;
-      status?: string;
-      timestamp?: number;
-      payload?: unknown;
-    }
-  | {
-      kind: 'workflow_step';
-      id: string;
-      stepId: string;
-      state: 'start' | 'end';
-      status?: string;
-      timestamp?: number;
-    }
-  | {
-      kind: 'workflow_state';
-      id: string;
-      stepId: string;
-      action: string;
-      payload: Record<string, unknown>;
-      timestamp?: number;
-    };
+export interface WorkflowStepEntry {
+  kind: 'workflow_step';
+  id: string;
+  stepId: string;
+  state: 'start' | 'end';
+  status?: string;
+  timestamp?: number;
+}
+
+export interface WorkflowStateEntry {
+  kind: 'workflow_state';
+  id: string;
+  stepId: string;
+  action: string;
+  payload: Record<string, unknown>;
+  timestamp?: number;
+}
+
+/** Unified session timeline entry: the platform chat entry types plus the workflow lifecycle entries. */
+export type SessionEntry = ChatEntry | WorkflowStepEntry | WorkflowStateEntry;
 
 export interface AgentSession {
   entries: SessionEntry[];

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { AgentSession } from './contract.js';
 import { normalizeSessionEntries, applySurfaceEvent } from './normalize.js';
+import { normalizeMessages as uiNormalizeMessages } from '@sparkii/ui';
 
 const EMPTY: AgentSession = { entries: [], streaming: false, status: 'idle', meta: { currentStep: null } };
 
@@ -15,7 +16,13 @@ export function useAgentSession(agentId: string, sessionId: string | null, mode:
     (window as any).sparkii?.openChatSession?.(sessionId)
       .then((res: any) => {
         if (!open) return;
-        const entries = normalizeSessionEntries(res?.entries ?? res?.messages ?? []);
+        const rawEntries = Array.isArray(res?.entries) ? res.entries : undefined;
+        const rawMessages = Array.isArray(res?.messages) ? res.messages : undefined;
+        const entries = rawEntries?.length
+          ? normalizeSessionEntries(rawEntries)
+          : rawMessages?.length
+            ? uiNormalizeMessages(rawMessages)
+            : [];
         const inputs = Array.isArray(res?.inputs)
           ? res.inputs.map((i: any) => typeof i === 'string'
             ? { path: i }
@@ -38,11 +45,13 @@ export function useAgentSession(agentId: string, sessionId: string | null, mode:
 
     const offChat = (window as any).sparkii?.on?.('chat-event', (p: any) => {
       if (p?.sessionId !== sessionId || mode !== 'live') return;
-      setSession((s) => ({
-        ...s,
-        entries: applySurfaceEvent(s.entries, p),
-        streaming: p?.type === 'agent_start',
-      }));
+      setSession((s) => {
+        const entries = applySurfaceEvent(s.entries, p);
+        let streaming = s.streaming;
+        if (p?.type === 'agent_start') streaming = true;
+        else if (p?.type === 'agent_end' || p?.type === 'agent_settled') streaming = false;
+        return { ...s, entries, streaming };
+      });
     });
     const offWorkflow = (window as any).sparkii?.on?.('workflow', (e: any) => {
       if (e?.sessionId !== sessionId || mode !== 'live') return;

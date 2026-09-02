@@ -41,4 +41,27 @@ describe('useAgentSession', () => {
     });
     expect(result.current.meta.inputs).toEqual([{ path: 'C:/tmp/a.pdf', name: 'a.pdf' }]);
   });
+
+  it('pairs a live tool_call with its tool_result in session.entries', async () => {
+    const on = vi.fn().mockReturnValue(() => {});
+    (globalThis as any).window = {
+      sparkii: {
+        openChatSession: vi.fn().mockResolvedValue({ entries: [] }),
+        on,
+      },
+    };
+    const { result } = renderHook(() => useAgentSession('general', 's1', 'live'));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    const chatCb = on.mock.calls.find((c: any[]) => c[0] === 'chat-event')?.[1];
+    await act(async () => {
+      chatCb({ sessionId: 's1', type: 'tool_call', toolName: 'bash', toolCallId: 'c1', input: { command: 'ls' } });
+    });
+    await act(async () => {
+      chatCb({ sessionId: 's1', type: 'tool_result', toolName: 'bash', toolCallId: 'c1', result: { exitCode: 0 } });
+    });
+    expect(result.current.entries).toHaveLength(1);
+    expect(result.current.entries[0]).toMatchObject({ kind: 'tool', toolName: 'bash', result: { exitCode: 0 } });
+  });
 });

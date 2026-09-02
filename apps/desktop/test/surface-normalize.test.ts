@@ -21,6 +21,39 @@ describe('surface normalize', () => {
     expect(next.at(-1)?.kind).toBe('message');
   });
 
+  it('applies an assistant thinking delta onto entries', () => {
+    const next = applySurfaceEvent([], { type: 'message', role: 'assistant', thinkingDelta: '让我想想' });
+    expect(next.at(-1)).toMatchObject({ kind: 'message', role: 'assistant', thinking: '让我想想', streaming: true });
+  });
+
+  it('pairs tool_call with tool_result in the live stream', () => {
+    let entries = applySurfaceEvent([], { type: 'tool_call', toolName: 'bash', toolCallId: 'c1', input: { command: 'ls' } });
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ kind: 'tool', toolName: 'bash', toolCallId: 'c1' });
+    entries = applySurfaceEvent(entries, { type: 'tool_result', toolName: 'bash', toolCallId: 'c1', result: { exitCode: 0 } });
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ kind: 'tool', result: { exitCode: 0 } });
+  });
+
+  it('maps a compaction event from history into a typed lifecycle entry', () => {
+    const next = normalizeSessionEntries([{ type: 'compaction', summary: '已压缩', tokensBefore: 1000 }]);
+    expect(next.at(-1)).toMatchObject({ kind: 'event', event: 'compaction' });
+  });
+
+  it('maps a live runtime_error event into a typed lifecycle entry', () => {
+    const next = applySurfaceEvent([], { type: 'runtime_error', message: 'api rate limit' });
+    expect(next.at(-1)).toMatchObject({ kind: 'event', event: 'runtime_error' });
+  });
+
+  it('normalizes assistant toolCall and toolResult content into a paired tool entry', () => {
+    const out = normalizeSessionEntries([
+      { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', id: 'c1', name: 'bash', arguments: { command: 'ls' } }] } },
+      { type: 'message', message: { role: 'toolResult', toolCallId: 'c1', toolName: 'bash', content: [{ type: 'text', text: 'out' }] } },
+    ]);
+    const tool = out.find((e) => e.kind === 'tool') as any;
+    expect(tool).toMatchObject({ kind: 'tool', toolName: 'bash', result: { content: [{ type: 'text', text: 'out' }] } });
+  });
+
   it('derives done status when all steps completed', () => {
     const entries = normalizeSessionEntries([
       { type: 'workflow_step_start', data: { stepId: 'load' } },
