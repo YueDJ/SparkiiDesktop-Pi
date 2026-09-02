@@ -2,6 +2,11 @@ export interface RiskFinding {
   id: string;
   title: string;
   level: 'high' | 'mid' | 'low';
+  clause?: string;
+  position?: string;
+  ruleId?: string;
+  ruleText?: string;
+  reason?: string;
   advice?: string;
 }
 
@@ -94,7 +99,17 @@ export function parseRiskFindings(rows: unknown): RiskFinding[] {
       ?? (typeof rec?.建议 === 'string' && rec.建议.trim() ? rec.建议.trim() : undefined)
       ?? pickAdvice(row);
     const id = (typeof rec?.id === 'string' && rec.id.trim() ? rec.id.trim() : undefined) ?? `f${i}`;
-    return { id, title, level, advice };
+    return {
+      id,
+      title,
+      level,
+      clause: typeof rec?.clause === 'string' ? rec.clause : undefined,
+      position: typeof rec?.position === 'string' ? rec.position : undefined,
+      ruleId: typeof rec?.ruleId === 'string' ? rec.ruleId : undefined,
+      ruleText: typeof rec?.ruleText === 'string' ? rec.ruleText : undefined,
+      reason: typeof rec?.reason === 'string' ? rec.reason : undefined,
+      advice,
+    };
   });
 }
 

@@ -35,41 +35,36 @@ describe('ContractSurface', () => {
   it('renders risk findings with levels and advice from workflow result', () => {
     renderSurface({ status: 'done' });
     expect(screen.getByText('第7条 付款条件')).toBeTruthy();
-    expect(screen.getByText('高风险')).toBeTruthy();
-    expect(screen.getByText('约定逾期付款违约金上限')).toBeTruthy();
+    expect(screen.getAllByText('高风险').length).toBeGreaterThan(0);
+    expect(screen.getAllByText((_, el) => el?.textContent?.includes('约定逾期付款违约金上限') ?? false).length).toBeGreaterThan(0);
     expect(screen.getByText('第12条 违约责任')).toBeTruthy();
   });
 
-  it('switches between report and original document panes', () => {
+  it('shows the original document panel alongside the risk panel', () => {
     renderSurface({ status: 'done' });
+    expect(screen.getByText('合同原文')).toBeTruthy();
+    expect(screen.getAllByText('contract.pdf').length).toBeGreaterThan(0);
     expect(screen.getAllByText('合同审核报告').length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByText('原文'));
-    expect(screen.getByText('C:/tmp/contract.pdf')).toBeTruthy();
   });
 
-  it('requests export via the approval path', () => {
+  it('requests export via the approval path after merging', () => {
     const onRequestExport = vi.fn();
     render(<ContractSurface state={makeState()} workflow={{ status: 'done' } as any} onAction={vi.fn()} onRequestExport={onRequestExport} />);
-    fireEvent.click(screen.getByText('导出报告 · 需审批'));
+    fireEvent.click(screen.getByText('合并到报告'));
+    fireEvent.click(screen.getByText('导出报告'));
     expect(onRequestExport).toHaveBeenCalled();
   });
 
-  it('marks the active workflow step', () => {
-    const { container } = renderSurface({ status: 'running', step: 'compare' });
-    expect(container.querySelector('.ui-workflow-steps')).toBeTruthy();
-    const stepEl = screen.getAllByText('比对')[0].closest('.ui-workflow-step');
-    expect(stepEl?.getAttribute('data-state')).toBe('active');
+  it('renders the review stage in the single-page stage rail', () => {
+    renderSurface({ status: 'done' });
+    expect(screen.getByText('审核')).toBeTruthy();
+    expect(screen.getByText('报告')).toBeTruthy();
+    expect(screen.getByText('复核')).toBeTruthy();
   });
 
-  it('renders a clickable workflow step nav', () => {
-    renderSurface({ status: 'done' });
-    expect(screen.getByRole('button', { name: '比对' })).toBeTruthy();
-  });
-
-  it('renders a structured compare step without raw JSON', () => {
-    renderSurface({ status: 'done' });
-    fireEvent.click(screen.getByRole('button', { name: '比对' }));
-    expect(document.querySelector('pre')).toBeNull();
+  it('renders a structured risk view without raw JSON', () => {
+    const { container } = renderSurface({ status: 'done' });
+    expect(container.querySelector('pre')).toBeNull();
     expect(screen.getAllByText('第7条 付款条件').length).toBeGreaterThan(0);
   });
 
@@ -86,7 +81,7 @@ describe('ContractSurface', () => {
       />,
     );
     fireEvent.click(screen.getAllByText('确认')[0]);
-    expect(onWorkflowState).toHaveBeenCalledWith('risk_confirmed', { riskId: 'f0', stepId: 'compare' });
+    expect(onWorkflowState).toHaveBeenCalledWith('risk_confirmed', { riskId: 'f0', stepId: 'review' });
   });
 });
 
@@ -99,6 +94,29 @@ describe('ContractAgentSurface', () => {
     review: vi.fn(),
     requestExport: vi.fn(),
     chooseDocument: vi.fn().mockResolvedValue({}),
+  });
+
+  it('renders the single-page cockpit with review and report panels', () => {
+    const entries = normalizeSessionEntries([
+      { type: 'workflow_step_start', data: { stepId: 'review' } },
+      { type: 'workflow_step_end', data: { stepId: 'review', status: 'completed' } },
+      { type: 'workflow_state', data: { stepId: 'review', action: 'result', payload: {
+        review: { riskFindings: [{ id: 'r1', title: '付款周期过长', level: 'high', advice: '约定逾期违约金' }] },
+        report: { title: '合同审核报告', sections: [{ heading: '结论', body: '关注' }] },
+      } } },
+    ]);
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s1"
+        mode="history"
+        session={{ entries, streaming: false, status: 'done', meta: { currentStep: 'report', inputs: [{ path: 'C:/tmp/a.pdf', name: 'a.pdf' }] } }}
+        actions={makeActions()}
+      />,
+    );
+    expect(screen.getAllByText('a.pdf').length).toBeGreaterThan(0);
+    expect(screen.getByText('风险发现')).toBeTruthy();
+    expect(screen.getByText('付款周期过长')).toBeTruthy();
   });
 
   it('renders the report from the session stream without workflow/state props', () => {

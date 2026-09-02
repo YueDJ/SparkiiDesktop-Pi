@@ -39,7 +39,7 @@ export interface AgentSession {
     workspacePath?: string | null;
     currentStep?: string | null;
     /** 会话输入文件（由平台从 workspace/DB 暴露），供自定义 surface 作为输入/原文使用。 */
-    inputs?: { path: string; name?: string }[];
+    inputs?: { path: string; name?: string; missing?: boolean }[];
   };
 }
 

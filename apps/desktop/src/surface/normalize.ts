@@ -5,6 +5,8 @@ import {
 } from '@sparkii/ui';
 import type { SessionEntry, WorkflowStepEntry, WorkflowStateEntry } from './contract.js';
 
+export type { WorkflowStateEntry } from './contract.js';
+
 function asRecord(v: unknown): Record<string, unknown> {
   return v && typeof v === 'object' ? (v as Record<string, unknown>) : {};
 }
