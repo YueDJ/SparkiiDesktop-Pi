@@ -9,7 +9,9 @@ import { AuditView } from './audit/AuditView.js';
 import type { WorkflowStatusState } from './workbench/WorkflowStatus.js';
 import { HomeView } from './platform/HomeView.js';
 import { useAgentSurface } from './platform/surface-registry.js';
-import { normalizeSessionEntries, deriveWorkflowTimeline, extractWorkflowResult } from './surface/normalize.js';
+import { extractWorkflowResult } from './surface/normalize.js';
+import { useAgentSession } from './surface/use-agent-session.js';
+import type { AgentSurfaceActions } from './surface/contract.js';
 
 export function sessionDisplayName(s: { title?: string; firstMessage?: string; updatedAt?: number }): string {
   if (s.title) return s.title;
@@ -94,7 +96,6 @@ function AppShell() {
   const api = window.sparkii;
   const { reportError } = useErrors();
   const [userName, setUserName] = useState('');
-  const [state, setState] = useState<Record<string, unknown>>({ documents: [] });
   const [pending, setPending] = useState<any[]>([]);
   const [auditVersion, setAuditVersion] = useState(0);
   const [workflow, setWorkflow] = useState<WorkflowStatusState>({ status: 'idle' });
@@ -106,6 +107,7 @@ function AppShell() {
   ]);
   const [sessions, setSessions] = useState<Record<string, ShellSession[]>>({});
   const [workflowSessionId, setWorkflowSessionId] = useState<string | null>(null);
+  const [workflowMode, setWorkflowMode] = useState<'live' | 'history'>('live');
   const [activeSessionByAgent, setActiveSessionByAgent] = useState<Record<string, string | null>>({});
   const [titleByAgent, setTitleByAgent] = useState<Record<string, string>>({});
   const [approvalOpen, setApprovalOpen] = useState(false);
@@ -131,7 +133,6 @@ function AppShell() {
     setTitleByAgent((prev) => ({ ...prev, [agentId]: title }));
   };
 
-  useEffect(() => api.on('state', (s) => setState(s as Record<string, unknown>)), [api]);
   useEffect(() => api.on('approval', (p) => {
     setPending((xs) => [...xs, p]);
     // 审批是需要人工接管的时刻:新提案到达时自动弹出右侧审批抽屉,并聚焦该提案
@@ -233,20 +234,6 @@ function AppShell() {
     URL.revokeObjectURL(url);
   };
 
-  const onAction = async (action: string) => {
-    if (action === 'documents.upload') {
-      const { path } = await api.chooseDocument();
-      if (path) setState((s) => ({ ...s, documents: [path] }));
-    }
-    if (action.startsWith('run-workflow:')) {
-      const profileId = action.slice('run-workflow:'.length);
-      setWorkflow({ status: 'running' });
-      api.runWorkflow(profileId, { documents: state.documents }).then((res) => {
-        if (res?.sessionId) setWorkflowSessionId(res.sessionId);
-      });
-    }
-  };
-
   const refreshSessions = (agentId: string, activeId = activeSessionFor(agentId)) => {
     // 以 sessions 数组为唯一真相源：刷新只做“原地更新元数据 + 补齐新会话 + 移除已删除”，
     // 不重新排序，从而避免后端滞后的时间戳把会话来回挪动。
@@ -325,15 +312,8 @@ function AppShell() {
       return;
     }
     setWorkflow({ status: 'idle' });
-    setState((s) => ({ ...s, documents: [] }));
     setWorkflowSessionId(null);
-  };
-
-  const onWorkflowState = (action: string, payload: Record<string, unknown>) => {
-    if (!workflowSessionId) return;
-    api.updateWorkflowState(workflowSessionId, { action, ...payload }).catch((e) => {
-      reportError(String(e?.message ?? e), { source: '合同审核' });
-    });
+    setWorkflowMode('live');
   };
 
   const onOpenSession = (agentId: string, sessionId: string) => {
@@ -345,15 +325,7 @@ function AppShell() {
       return;
     }
     setWorkflowSessionId(sessionId);
-    api.openChatSession(sessionId).then((res: any) => {
-      const entries = normalizeSessionEntries(res?.entries ?? res?.messages ?? []);
-      const timeline = deriveWorkflowTimeline(entries);
-      const result = extractWorkflowResult(entries);
-      setWorkflow({ status: timeline.status, step: timeline.step });
-      setState((s) => ({ ...s, workflow: { result } }));
-    }).catch(() => {
-      // 历史读取失败时保持现有状态，不打断界面
-    });
+    setWorkflowMode('history');
     refreshSessions(agentId);
   };
 
@@ -458,33 +430,53 @@ function AppShell() {
     setScreen(s);
   };
 
-  const { Surface: ContractSurface } = useAgentSurface('contract-review');
+  const ContractAgentSurface = useAgentSurface('contract-review').Surface;
   const { Surface: GeneralChatSurface } = useAgentSurface('general');
+  const workflowSession = useAgentSession('contract-review', workflowSessionId, workflowMode);
+
+  const contractActions: AgentSurfaceActions = {
+    newSession: () => onNewSession('contract-review'),
+    openSession: (id) => onOpenSession('contract-review', id),
+    startWorkflow: (payload) => {
+      setWorkflow({ status: 'running' });
+      setWorkflowMode('live');
+      api.runWorkflow('contract-review', payload).then((res) => {
+        if (res?.sessionId) setWorkflowSessionId(res.sessionId);
+      }).catch(() => {});
+    },
+    review: (action, payload) => {
+      if (!workflowSessionId) return;
+      api.updateWorkflowState(workflowSessionId, { action, ...payload }).catch((e) => {
+        reportError(String(e?.message ?? e), { source: '合同审核' });
+      });
+    },
+    requestExport: () => {
+      if (!workflowSessionId) {
+        setScreen('approvals');
+        return;
+      }
+      const result = workflowSession.result ?? extractWorkflowResult(workflowSession.entries);
+      const report = result?.['report'] as Record<string, unknown> | undefined;
+      const compare = result?.['compare'];
+      void api.requestExportReport(workflowSessionId, {
+        title: typeof report?.title === 'string' ? report.title : '合同审核报告',
+        findings: Array.isArray(compare) ? compare.length : 0,
+      }).catch(() => {});
+    },
+    chooseDocument: () => api.chooseDocument(),
+  };
 
   const surfaces: Partial<Record<ScreenId, ReactNode>> = {
     home: (
       <HomeView userName={userName} agents={derivedAgents} pendingApprovals={pending} onNavigate={navigate} />
     ),
     'contract-review': (
-      <ContractSurface
-        state={state}
-        workflow={workflow}
+      <ContractAgentSurface
+        agent={{ id: 'contract-review', name: '合同审核智能体', surfaceType: 'workflow' }}
         sessionId={workflowSessionId}
-        onAction={onAction}
-        onWorkflowState={onWorkflowState}
-        onRequestExport={() => {
-          if (!workflowSessionId) {
-            setScreen('approvals');
-            return;
-          }
-          const result = (state.workflow as Record<string, unknown> | undefined)?.result as Record<string, unknown> | undefined;
-          const report = result?.report as Record<string, unknown> | undefined;
-          const compare = result?.compare;
-          void api.requestExportReport(workflowSessionId, {
-            title: typeof report?.title === 'string' ? report.title : '合同审核报告',
-            findings: Array.isArray(compare) ? compare.length : 0,
-          }).catch(() => {});
-        }}
+        mode={workflowMode}
+        session={workflowSession}
+        actions={contractActions}
       />
     ),
     approvals: (

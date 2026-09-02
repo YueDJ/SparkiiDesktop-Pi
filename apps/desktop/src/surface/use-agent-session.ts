@@ -16,11 +16,21 @@ export function useAgentSession(agentId: string, sessionId: string | null, mode:
       .then((res: any) => {
         if (!open) return;
         const entries = normalizeSessionEntries(res?.entries ?? res?.messages ?? []);
-        setSession({
+        const inputs = Array.isArray(res?.inputs)
+          ? res.inputs.map((i: any) => typeof i === 'string'
+            ? { path: i }
+            : { path: String(i?.path ?? ''), name: typeof i?.name === 'string' ? i.name : undefined })
+          : Array.isArray(res?.documents)
+            ? res.documents.map((i: any) => typeof i === 'string'
+              ? { path: i }
+              : { path: String(i?.path ?? '') })
+            : undefined;
+        setSession((s) => ({
+          ...s,
           entries,
           streaming: Boolean(res?.streaming),
-          meta: { currentStep: res?.currentStep ?? null },
-        });
+          meta: { ...s.meta, currentStep: res?.currentStep ?? null, inputs: inputs ?? s.meta.inputs },
+        }));
       })
       .catch(() => {
         // 读取失败保持空会话，不打断 UI
@@ -35,13 +45,13 @@ export function useAgentSession(agentId: string, sessionId: string | null, mode:
       }));
     });
     const offWorkflow = (window as any).sparkii?.on?.('workflow', (e: any) => {
-      if (e?.sessionId !== sessionId) return;
+      if (e?.sessionId !== sessionId || mode !== 'live') return;
       if (e.type === 'step_started') setSession((s) => ({ ...s, status: 'running', meta: { ...s.meta, currentStep: e.stepId } }));
       else if (e.type === 'workflow_completed') setSession((s) => ({ ...s, status: 'done' }));
       else if (e.type === 'workflow_failed') setSession((s) => ({ ...s, status: 'failed' }));
     });
     const offState = (window as any).sparkii?.on?.('state', (p: any) => {
-      if (p?.sessionId !== sessionId) return;
+      if (p?.sessionId !== sessionId || mode !== 'live') return;
       const result = (p?.workflow as Record<string, unknown> | undefined)?.result as Record<string, unknown> | undefined;
       if (result) setSession((s) => ({ ...s, result }));
     });

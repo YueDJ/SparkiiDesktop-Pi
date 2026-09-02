@@ -61,6 +61,8 @@ export interface AgentSession {
     contextUsage?: { tokens?: number | null; contextWindow?: number; percent?: number | null } | null;
     workspacePath?: string | null;
     currentStep?: string | null;
+    /** 会话输入文件（由平台从 workspace/DB 暴露），供自定义 surface 作为输入/原文使用。 */
+    inputs?: { path: string; name?: string }[];
   };
 }
 
@@ -70,6 +72,8 @@ export interface AgentSurfaceActions {
   startWorkflow(payload: Record<string, unknown>): void;
   review(action: string, payload: Record<string, unknown>): void;
   requestExport(): void;
+  /** 平台文件对话框；返回用户选择的文件路径（取消时无 path）。 */
+  chooseDocument(): Promise<{ path?: string }>;
 }
 
 export interface AgentSurfaceProps {
