@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeSessionEntries, applySurfaceEvent } from '../src/surface/normalize.js';
+import { normalizeSessionEntries, applySurfaceEvent, deriveWorkflowTimeline, extractWorkflowResult } from '../src/surface/normalize.js';
 
 describe('surface normalize', () => {
   it('maps workflow_step_start/end to typed entries', () => {
@@ -19,5 +19,29 @@ describe('surface normalize', () => {
     const base = normalizeSessionEntries([]);
     const next = applySurfaceEvent(base, { type: 'message', role: 'assistant', delta: '你好' });
     expect(next.at(-1)?.kind).toBe('message');
+  });
+
+  it('derives done status when all steps completed', () => {
+    const entries = normalizeSessionEntries([
+      { type: 'workflow_step_start', data: { stepId: 'load' } },
+      { type: 'workflow_step_end', data: { stepId: 'load', status: 'completed' } },
+      { type: 'workflow_step_start', data: { stepId: 'report' } },
+      { type: 'workflow_step_end', data: { stepId: 'report', status: 'completed' } },
+    ]);
+    expect(deriveWorkflowTimeline(entries)).toEqual({ status: 'done', step: 'report' });
+  });
+
+  it('derives running when a step started but not finished', () => {
+    const entries = normalizeSessionEntries([
+      { type: 'workflow_step_start', data: { stepId: 'compare' } },
+    ]);
+    expect(deriveWorkflowTimeline(entries)).toEqual({ status: 'running', step: 'compare' });
+  });
+
+  it('extracts the authoritative workflow result from workflow_state', () => {
+    const entries = normalizeSessionEntries([
+      { type: 'workflow_state', data: { stepId: 'report', action: 'result', payload: { report: { title: '报告' }, compare: [{ 条款: '第1条', 风险: '高' }] } } },
+    ]);
+    expect(extractWorkflowResult(entries)).toMatchObject({ report: { title: '报告' }, compare: [{ 条款: '第1条', 风险: '高' }] });
   });
 });

@@ -288,6 +288,13 @@ export async function runWorkflow(
       }
       if (e.type === 'workflow_completed') finalState = e.result as Record<string, unknown>;
     }
+    if (Object.keys(finalState).length > 0 && slot.client) {
+      await slot.client.send({
+        type: 'append_workflow_entry',
+        customType: 'workflow_state',
+        data: { stepId: 'report', action: 'result', payload: finalState, at: new Date().toISOString() },
+      }).catch(() => {});
+    }
     win?.webContents.send('sparkii:event:state', { workflow: { result: finalState }, sessionId });
   } finally {
     await rt.pool.release(sessionId);

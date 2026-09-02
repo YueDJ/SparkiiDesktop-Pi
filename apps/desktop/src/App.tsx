@@ -9,6 +9,7 @@ import { AuditView } from './audit/AuditView.js';
 import type { WorkflowStatusState } from './workbench/WorkflowStatus.js';
 import { HomeView } from './platform/HomeView.js';
 import { useAgentSurface } from './platform/surface-registry.js';
+import { normalizeSessionEntries, deriveWorkflowTimeline, extractWorkflowResult } from './surface/normalize.js';
 
 export function sessionDisplayName(s: { title?: string; firstMessage?: string; updatedAt?: number }): string {
   if (s.title) return s.title;
@@ -337,13 +338,23 @@ function AppShell() {
 
   const onOpenSession = (agentId: string, sessionId: string) => {
     const isChatAgent = agents.find((agent) => agent.id === agentId)?.surfaceType === 'chat';
-    if (!isChatAgent) {
-      navigate(agentId as ScreenId);
+    setScreen(agentId as ScreenId);
+    if (isChatAgent) {
+      setActiveSessionFor(agentId, sessionId);
+      refreshSessions(agentId, sessionId);
       return;
     }
-    setScreen(agentId as ScreenId);
-    setActiveSessionFor(agentId, sessionId);
-    refreshSessions(agentId, sessionId);
+    setWorkflowSessionId(sessionId);
+    api.openChatSession(sessionId).then((res: any) => {
+      const entries = normalizeSessionEntries(res?.entries ?? res?.messages ?? []);
+      const timeline = deriveWorkflowTimeline(entries);
+      const result = extractWorkflowResult(entries);
+      setWorkflow({ status: timeline.status, step: timeline.step });
+      setState((s) => ({ ...s, workflow: { result } }));
+    }).catch(() => {
+      // 历史读取失败时保持现有状态，不打断界面
+    });
+    refreshSessions(agentId);
   };
 
   const onRenameSession = (agentId: string, sessionId: string, title: string) => {

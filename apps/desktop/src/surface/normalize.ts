@@ -66,3 +66,33 @@ export function applySurfaceEvent(entries: SessionEntry[], ev: unknown): Session
   }
   return entries;
 }
+
+export interface WorkflowTimeline {
+  status: 'idle' | 'running' | 'done' | 'failed';
+  step?: string;
+}
+
+export function deriveWorkflowTimeline(entries: SessionEntry[]): WorkflowTimeline {
+  const steps = entries.filter((e): e is Extract<SessionEntry, { kind: 'workflow_step' }> => e.kind === 'workflow_step');
+  if (steps.length === 0) return { status: 'idle' };
+
+  const failed = steps.find((s) => s.state === 'end' && s.status === 'failed');
+  if (failed) return { status: 'failed', step: failed.stepId };
+
+  const starts = steps.filter((s) => s.state === 'start');
+  const ends = steps.filter((s) => s.state === 'end');
+  const lastStart = starts[starts.length - 1];
+  const lastEnd = ends[ends.length - 1];
+  if (ends.length >= starts.length && lastStart && lastEnd && lastEnd.stepId === lastStart.stepId) {
+    return { status: 'done', step: lastEnd.stepId };
+  }
+  return { status: 'running', step: lastStart?.stepId };
+}
+
+export function extractWorkflowResult(entries: SessionEntry[]): Record<string, unknown> {
+  const states = entries.filter(
+    (e): e is Extract<SessionEntry, { kind: 'workflow_state' }> => e.kind === 'workflow_state' && e.action === 'result',
+  );
+  const last = states[states.length - 1];
+  return (last?.payload ?? {}) as Record<string, unknown>;
+}
