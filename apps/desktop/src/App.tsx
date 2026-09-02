@@ -520,14 +520,16 @@ function AppShell() {
     chooseDocument: async () => ({}),
   };
 
+  const activeAgentIsChat = derivedAgents.find((a) => a.id === screen)?.surfaceType === 'chat';
+
   const generalSurface = (
     <GeneralChatSurface
       agent={{ id: 'general', name: '通用智能体', surfaceType: 'chat' }}
       sessionId={activeSessionFor('general')}
       mode="live"
       session={{ entries: [], streaming: false, meta: {} }}
-      draft={screen === 'general' && activeSessionFor('general') === null}
-      active={screen === 'general'}
+      draft={activeAgentIsChat && activeSessionFor('general') === null}
+      active={activeAgentIsChat}
       actions={generalActions}
     />
   );
@@ -563,8 +565,8 @@ function AppShell() {
         onReleaseSession={releaseRuntimeSession}
         onCancelQueuedSession={cancelQueuedSession}
       >
-        <div style={{ display: screen === 'general' ? 'block' : 'none', height: screen === 'general' ? '100%' : 'auto' }}>{generalSurface}</div>
-        {screen !== 'general' && <div>{surfaces[screen]}</div>}
+        <div style={{ display: activeAgentIsChat ? 'block' : 'none', height: activeAgentIsChat ? '100%' : 'auto' }}>{generalSurface}</div>
+        {!activeAgentIsChat && <div>{surfaces[screen]}</div>}
       </Shell>
       {approvalOpen && (
         <ApprovalPanel
