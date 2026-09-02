@@ -8,7 +8,11 @@
     "./styles.css": "./src/styles.css"
   },
   "scripts": { "typecheck": "tsc --noEmit -p tsconfig.json" },
-  "dependencies": { "@sparkii/theme": "workspace:*" },
+  "dependencies": {
+    "@sparkii/theme": "workspace:*",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
+  },
   "peerDependencies": { "react": "^19.2.8", "react-dom": "^19.2.8" },
   "devDependencies": {
     "@types/react": "^19.2.18",
