@@ -270,7 +270,9 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
             <button type="button" className="contract-collapse-btn" aria-label="收起合同原文" onClick={() => setLeftCollapsed((v) => !v)}>‹</button>
           </header>
           <div className="contract-panel-body">
-            {fileName ? (
+            {firstInput?.missing ? (
+              <div className="contract-missing-note">无法找到原文件，风险发现与报告仍可从会话历史恢复。</div>
+            ) : fileName ? (
               <div className="contract-doc">
                 <div className="contract-doc-icon">PDF</div>
                 <div className="contract-doc-name">{fileName}</div>
@@ -278,9 +280,6 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
               </div>
             ) : (
               <div className="contract-panel-empty">尚未选择合同文件</div>
-            )}
-            {firstInput?.missing && (
-              <div className="contract-missing-note">原文件缺失，但风险发现与报告仍可从会话历史恢复。</div>
             )}
           </div>
         </section>

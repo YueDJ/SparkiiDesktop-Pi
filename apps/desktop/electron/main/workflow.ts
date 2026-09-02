@@ -247,36 +247,39 @@ export async function runWorkflow(
     saddle: buildAgentSaddle(rt.agentOf(profileId), join(rt.dataDir, 'sessions', tempKey)),
   });
 
-  const freshResp = await slot.client.send({ type: 'new_session' });
-  if (!freshResp.success) throw new Error(freshResp.error ?? 'new_session failed');
-  const stateResp = await slot.client.send({ type: 'get_state' });
-  if (!stateResp.success) throw new Error(stateResp.error ?? 'get_state failed');
-  const sessionId = (stateResp.data as { sessionId?: string } | undefined)?.sessionId;
-  const sessionFile = (stateResp.data as { sessionFile?: string } | undefined)?.sessionFile;
-  if (!sessionId) throw new Error('runtime did not provide a session id');
-  rt.pool.renameSession(tempKey, sessionId);
-
-  const inputFiles = Array.isArray(input?.documents) ? JSON.stringify(input.documents) : null;
-  rt.chatSessions?.create?.({
-    id: sessionId,
-    profileId,
-    kind: 'workflow',
-    currentStep: null,
-    workspaceKind: 'auto',
-    workspacePath: join(rt.dataDir, 'sessions', sessionId),
-    inputs: inputFiles,
-    piSessionFile: sessionFile ?? null,
-  });
-  slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId }));
+  let sessionId: string | undefined;
+  let sessionFile: string | undefined;
   try {
+    const freshResp = await slot.client.send({ type: 'new_session' });
+    if (!freshResp.success) throw new Error(freshResp.error ?? 'new_session failed');
+    const stateResp = await slot.client.send({ type: 'get_state' });
+    if (!stateResp.success) throw new Error(stateResp.error ?? 'get_state failed');
+    sessionId = (stateResp.data as { sessionId?: string } | undefined)?.sessionId;
+    sessionFile = (stateResp.data as { sessionFile?: string } | undefined)?.sessionFile;
+    if (!sessionId) throw new Error('runtime did not provide a session id');
+    rt.pool.renameSession(tempKey, sessionId);
+
+    const inputFiles = Array.isArray(input?.documents) ? JSON.stringify(input.documents) : null;
+    rt.chatSessions?.create?.({
+      id: sessionId,
+      profileId,
+      kind: 'workflow',
+      currentStep: null,
+      workspaceKind: 'auto',
+      workspacePath: join(rt.dataDir, 'sessions', sessionId),
+      inputs: inputFiles,
+      piSessionFile: sessionFile ?? null,
+    });
+    slot.supervisor.onProposal((req) => broker.route(req, { sessionId: sessionId!, profileId }));
+
     const rawDef = pr.profile.agent.workflow as unknown as WorkflowDef;
     const def = resolveWorkflowTemplates(rawDef);
     const ctx: RunContext = {
-      profileId: pr.profile.manifest.name, sessionId, actor: rt.subject?.userId ?? 'agent', input,
-      sendPrompt: (text, task) => sendPrompt(rt, text, (task as ModelTask) ?? 'default', sessionId),
-      runTool: (name, args) => runTool(rt, broker, name, args, sessionId, profileId),
+      profileId: pr.profile.manifest.name, sessionId: sessionId!, actor: rt.subject?.userId ?? 'agent', input,
+      sendPrompt: (text, task) => sendPrompt(rt, text, (task as ModelTask) ?? 'default', sessionId!),
+      runTool: (name, args) => runTool(rt, broker, name, args, sessionId!, profileId),
       requestApproval: async (req) => {
-        const d = await broker.route({ ...req, requestId: randomUUID() }, { sessionId, profileId });
+        const d = await broker.route({ ...req, requestId: randomUUID() }, { sessionId: sessionId!, profileId });
         return { id: d.proposalId, status: d.approved ? 'approved' : 'denied' } as any;
       },
     };
@@ -285,7 +288,7 @@ export async function runWorkflow(
     for await (const e of new LinearRunner().run(def, ctx)) {
       win?.webContents.send('sparkii:event:workflow', { ...e, sessionId });
       if (e.type === 'step_started') {
-        rt.chatSessions?.update?.(sessionId, { currentStep: e.stepId });
+        rt.chatSessions?.update?.(sessionId!, { currentStep: e.stepId });
         await slot.client?.send?.({
           type: 'append_workflow_entry',
           customType: 'workflow_step_start',
@@ -309,8 +312,8 @@ export async function runWorkflow(
       }).catch(() => {});
     }
     win?.webContents.send('sparkii:event:state', { workflow: { result: finalState }, sessionId });
+    return sessionId;
   } finally {
-    await rt.pool.release(sessionId);
+    await rt.pool.release(sessionId ?? tempKey);
   }
-  return sessionId;
 }

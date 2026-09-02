@@ -1,0 +1,1416 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>合同审核智能体 · 单页工作台 Mockup</title>
+  <style>
+    :root {
+      --bg: #F5F7FB;
+      --surface: #FFFFFF;
+      --border: #EAF0F6;
+      --border-strong: #E2E8F0;
+      --text: #1E293B;
+      --text-2: #475569;
+      --text-3: #94A3B8;
+      --primary: #2563EB;
+      --primary-hover: #1D4ED8;
+      --primary-bg: #EFF6FF;
+      --risk: #B91C1C;
+      --risk-bg: #FEF2F2;
+      --warn: #C2410C;
+      --warn-bg: #FFF7ED;
+      --ok: #15803D;
+      --ok-bg: #F0FDF4;
+      --radius-card: 12px;
+      --radius-button: 10px;
+      --radius-pill: 999px;
+      --radius-control: 8px;
+      --shadow-card: 0 2px 8px rgba(15, 23, 42, .04);
+      --shadow-overlay: 0 8px 24px rgba(15, 23, 42, .12);
+      --font: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--text);
+      background:
+        radial-gradient(circle at 12% 0%, rgba(37, 99, 235, .06), transparent 34%),
+        var(--bg);
+      height: 100vh;
+      padding: 28px;
+      overflow: hidden;
+    }
+
+    .mock-shell {
+      max-width: 1180px;
+      height: calc(100vh - 56px);
+      margin: 0 auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow-overlay);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .mock-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex: none;
+    }
+    .mock-title {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: -.01em;
+    }
+    .mock-subtitle {
+      color: var(--text-3);
+      font-size: 12px;
+    }
+    .mock-toolbar-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 28px;
+      padding: 0 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-pill);
+      color: var(--text-2);
+      font-size: 12px;
+      background: var(--surface);
+    }
+    .chip b {
+      color: var(--text);
+      font-weight: 600;
+    }
+    .ws-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 8px;
+      border: none;
+      background: none;
+      color: var(--text-2);
+      border-radius: var(--radius-control);
+      font-size: 12px;
+      cursor: pointer;
+      max-width: 210px;
+    }
+    .ws-btn:hover {
+      background: var(--bg);
+      color: var(--text);
+    }
+    .ws-btn svg {
+      flex: none;
+      width: 14px;
+      height: 14px;
+    }
+    .ws-btn span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .context-bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      height: 28px;
+      padding: 0 10px;
+      border-radius: var(--radius-pill);
+      background: var(--bg);
+      color: var(--text-2);
+      font-size: 12px;
+      white-space: nowrap;
+      cursor: default;
+    }
+    .context-track {
+      position: relative;
+      width: 52px;
+      height: 5px;
+      border-radius: 999px;
+      background: var(--border-strong);
+      overflow: hidden;
+      flex: none;
+    }
+    .context-track > span {
+      position: absolute;
+      inset: 0 auto 0 0;
+      border-radius: inherit;
+      background: var(--primary);
+    }
+    .context-text {
+      font-variant-numeric: tabular-nums;
+    }
+    .model-alert {
+      color: var(--warn);
+      font-size: 12px;
+      line-height: 1.4;
+      max-width: 250px;
+      white-space: normal;
+    }
+    .model-effort {
+      position: relative;
+    }
+    .model-effort-trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: none;
+      background: none;
+      color: var(--text);
+      padding: 5px 8px;
+      border-radius: var(--radius-control);
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .model-effort-trigger:hover {
+      background: var(--bg);
+    }
+    .model-effort-model {
+      max-width: 150px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--text-2);
+    }
+    .model-effort-level {
+      font-weight: 600;
+      color: var(--text);
+    }
+    .model-effort-caret {
+      color: var(--text-3);
+      width: 14px;
+      height: 14px;
+    }
+    .model-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      z-index: 20;
+      width: 220px;
+      padding: 6px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-card);
+      background: var(--surface);
+      box-shadow: var(--shadow-overlay);
+    }
+    .model-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      border: none;
+      background: none;
+      color: var(--text);
+      border-radius: var(--radius-control);
+      padding: 8px 10px;
+      font-size: 12px;
+      text-align: left;
+      cursor: pointer;
+    }
+    .model-menu-item:hover {
+      background: var(--primary-bg);
+      color: var(--primary);
+    }
+    .model-menu-item .hint {
+      margin-left: auto;
+      color: var(--text-3);
+      font-size: 12px;
+    }
+    .model-menu-item .check {
+      color: var(--primary);
+    }
+
+    .workbench {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    #view-review {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      gap: 16px;
+    }
+
+    .stage-rail {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      flex: none;
+    }
+    .stage {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 12px;
+      border-radius: var(--radius-pill);
+      font-size: 12px;
+      color: var(--text-3);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      min-height: 32px;
+    }
+    .stage.active {
+      color: var(--primary);
+      border-color: var(--primary);
+      background: var(--primary-bg);
+      font-weight: 600;
+    }
+    .stage.done {
+      color: var(--ok);
+      border-color: #BBF7D0;
+      background: var(--ok-bg);
+    }
+    .stage.human {
+      color: var(--warn);
+      border-color: #FED7AA;
+      background: var(--warn-bg);
+    }
+    .stage.human.active {
+      color: var(--warn);
+      border-color: var(--warn);
+      background: var(--warn-bg);
+    }
+    .stage.human.warn {
+      color: var(--warn);
+      border-color: var(--warn);
+      background: var(--warn-bg);
+    }
+    .stage.human.ready {
+      color: var(--primary);
+      border-color: var(--primary);
+      background: var(--primary-bg);
+      font-weight: 600;
+    }
+    .stage.human.done {
+      color: var(--ok);
+      border-color: #BBF7D0;
+      background: var(--ok-bg);
+      font-weight: 600;
+    }
+    .stage-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: .45;
+    }
+    .stage.done .stage-dot {
+      background: var(--ok);
+      opacity: 1;
+    }
+    .stage.active .stage-dot {
+      opacity: 1;
+    }
+    .rail-sep {
+      width: 14px;
+      height: 1px;
+      background: var(--border-strong);
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: minmax(280px, .9fr) minmax(360px, 1.1fr);
+      gap: 16px;
+      min-height: 0;
+      flex: 1;
+      transition: grid-template-columns 180ms ease-out;
+    }
+    .split.left-collapsed {
+      grid-template-columns: 44px minmax(0, 1fr);
+    }
+    .split.right-collapsed {
+      grid-template-columns: minmax(0, 1fr) 44px;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-title {
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .panel-hint {
+      color: var(--text-3);
+      font-size: 12px;
+    }
+    .panel-body {
+      padding: 16px;
+      overflow: auto;
+      flex: 1;
+      min-height: 0;
+      scrollbar-width: thin;
+      scrollbar-color: #D7DEE9 transparent;
+    }
+    .panel-body::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    .panel-body::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .panel-body::-webkit-scrollbar-thumb {
+      background: #D7DEE9;
+      border-radius: 999px;
+      border: 2px solid transparent;
+      background-clip: content-box;
+    }
+    .panel-body::-webkit-scrollbar-thumb:hover {
+      background: #CBD5E1;
+      background-clip: content-box;
+    }
+    .collapse-btn {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-2);
+      border-radius: var(--radius-control);
+      cursor: pointer;
+      flex: none;
+      font-size: 16px;
+      line-height: 1;
+    }
+    .collapse-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--primary-bg);
+    }
+    .panel-rail-label {
+      display: none;
+      writing-mode: vertical-rl;
+      color: var(--text-3);
+      font-size: 12px;
+      letter-spacing: .06em;
+      margin: 14px auto;
+    }
+    .left-collapsed .left-panel .panel-title,
+    .left-collapsed .left-panel .panel-hint,
+    .left-collapsed .left-panel .panel-body {
+      display: none;
+    }
+    .left-collapsed .left-panel .panel-rail-label {
+      display: block;
+    }
+    .right-collapsed .right-panel .panel-title,
+    .right-collapsed .right-panel .panel-hint,
+    .right-collapsed .right-panel .panel-body {
+      display: none;
+    }
+    .right-collapsed .right-panel .panel-rail-label {
+      display: block;
+    }
+
+    .doc-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .doc-icon {
+      width: 38px;
+      height: 42px;
+      border-radius: 9px;
+      background: #FEF2F2;
+      color: var(--risk);
+      display: grid;
+      place-items: center;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .02em;
+    }
+    .doc-name {
+      font-size: 13px;
+      font-weight: 650;
+    }
+    .doc-meta {
+      color: var(--text-3);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+    .doc-body {
+      color: var(--text-2);
+      font-size: 13px;
+      line-height: 1.85;
+      white-space: pre-wrap;
+    }
+    .doc-block {
+      margin-bottom: 14px;
+    }
+    .doc-block b {
+      display: block;
+      color: var(--text);
+      font-weight: 650;
+      margin-bottom: 4px;
+    }
+
+    .risk-summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .risk-count {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: 10px 12px;
+      background: var(--surface);
+    }
+    .risk-count .num {
+      font-size: 22px;
+      font-weight: 750;
+      line-height: 1;
+    }
+    .risk-count .label {
+      color: var(--text-3);
+      font-size: 12px;
+      margin-top: 5px;
+    }
+    .risk-count.high .num { color: var(--risk); }
+    .risk-count.mid .num { color: var(--warn); }
+    .risk-count.low .num { color: var(--ok); }
+
+    .review-progress-track {
+      height: 6px;
+      border-radius: 999px;
+      background: var(--border-strong);
+      overflow: hidden;
+      margin: -4px 0 12px;
+    }
+    .review-progress-track > span {
+      display: block;
+      height: 100%;
+      width: 0;
+      border-radius: inherit;
+      background: var(--primary);
+      transition: width 180ms ease-out;
+    }
+    .filter-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .filter-btn {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-2);
+      padding: 4px 9px;
+      border-radius: var(--radius-pill);
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .filter-btn.active {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--primary-bg);
+    }
+    .batch-actions {
+      margin-left: auto;
+      display: flex;
+      gap: 6px;
+    }
+    .batch-actions .btn {
+      padding: 4px 8px;
+    }
+    .risk-check {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border: 1px solid var(--border-strong);
+      border-radius: 5px;
+      background: var(--surface);
+      cursor: pointer;
+      flex: none;
+      font-size: 11px;
+      color: transparent;
+    }
+    .risk-check.checked {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+    .warning-line {
+      color: var(--warn);
+      font-size: 12px;
+      margin-top: 8px;
+    }
+    .empty-risk {
+      border: 1px dashed var(--border);
+      border-radius: var(--radius-card);
+      padding: 22px;
+      text-align: center;
+      color: var(--text-3);
+      font-size: 12px;
+    }
+
+    .section-label {
+      font-size: 12px;
+      color: var(--text-3);
+      margin: 14px 0 8px;
+      letter-spacing: .02em;
+    }
+    .risk-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: 12px;
+      margin-bottom: 8px;
+      background: var(--surface);
+      transition: background 160ms ease-out, border-color 160ms ease-out, opacity 160ms ease-out;
+    }
+    .risk-card.confirmed {
+      background: var(--ok-bg);
+      border-color: #BBF7D0;
+    }
+    .risk-card.ignored {
+      opacity: .58;
+      background: #F8FAFC;
+      border-color: var(--border);
+    }
+    .risk-card.escalated {
+      background: var(--warn-bg);
+      border-color: #FED7AA;
+    }
+    .risk-card-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .risk-card-title {
+      font-size: 13px;
+      font-weight: 650;
+      flex: 1;
+    }
+    .risk-status {
+      color: var(--text-3);
+      font-size: 12px;
+      flex: none;
+    }
+    .risk-card.confirmed .risk-status { color: var(--ok); }
+    .risk-card.ignored .risk-status { color: var(--text-3); }
+    .risk-card.escalated .risk-status { color: var(--warn); }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      height: 22px;
+      padding: 0 8px;
+      border-radius: var(--radius-pill);
+      font-size: 11px;
+      border: 1px solid transparent;
+    }
+    .badge.high { color: var(--risk); background: var(--risk-bg); border-color: #FECACA; }
+    .badge.mid { color: var(--warn); background: var(--warn-bg); border-color: #FED7AA; }
+    .badge.low { color: var(--ok); background: var(--ok-bg); border-color: #BBF7D0; }
+    .risk-meta {
+      color: var(--text-3);
+      font-size: 12px;
+      line-height: 1.55;
+      margin-bottom: 10px;
+    }
+    .risk-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .risk-actions .btn.active {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--primary-bg);
+    }
+    .risk-actions .btn.warn.active {
+      border-color: var(--warn);
+      color: var(--warn);
+      background: var(--warn-bg);
+    }
+    .risk-actions .btn.ok.active {
+      border-color: var(--ok);
+      color: var(--ok);
+      background: var(--ok-bg);
+    }
+    .btn {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-2);
+      padding: 6px 11px;
+      border-radius: var(--radius-button);
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    .btn:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+    .btn.primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+    .btn.primary:hover {
+      background: var(--primary-hover);
+      color: #fff;
+    }
+    .btn.danger {
+      color: var(--risk);
+      border-color: #FECACA;
+      background: var(--risk-bg);
+    }
+    .risk-note {
+      margin-top: 10px;
+      padding: 8px 10px;
+      border-radius: var(--radius-control);
+      background: var(--primary-bg);
+      color: var(--text-2);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .note-editor {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .note-editor textarea {
+      width: 100%;
+      min-height: 64px;
+      resize: vertical;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-control);
+      padding: 8px 10px;
+      color: var(--text);
+      font: inherit;
+      font-size: 12px;
+      line-height: 1.55;
+      background: var(--surface);
+    }
+    .note-editor textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-bg);
+      outline: none;
+    }
+
+    .report-preview {
+      border-top: 1px dashed var(--border);
+      padding-top: 14px;
+      margin-top: 16px;
+    }
+    .report-preview h3 {
+      font-size: 15px;
+      margin: 0 0 10px;
+    }
+    .report-preview p {
+      color: var(--text-2);
+      font-size: 13px;
+      line-height: 1.7;
+      margin: 0 0 8px;
+    }
+    .report-mock {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      background: var(--surface);
+      padding: 14px;
+    }
+    .report-mock-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+    .report-mock-title {
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .report-mock-meta {
+      color: var(--text-3);
+      font-size: 11px;
+      margin-top: 3px;
+    }
+    .report-status {
+      display: inline-flex;
+      align-items: center;
+      height: 22px;
+      padding: 0 8px;
+      border-radius: var(--radius-pill);
+      color: var(--warn);
+      background: var(--warn-bg);
+      border: 1px solid #FED7AA;
+      font-size: 11px;
+    }
+    .report-summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .report-summary-item {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-control);
+      padding: 8px 9px;
+      background: var(--bg);
+    }
+    .report-summary-item .num {
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .report-summary-item .label {
+      color: var(--text-3);
+      font-size: 11px;
+      margin-top: 4px;
+    }
+    .report-section {
+      margin-bottom: 12px;
+    }
+    .report-section h4 {
+      margin: 0 0 5px;
+      font-size: 13px;
+    }
+    .report-section p {
+      margin: 0;
+      color: var(--text-2);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+    .report-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .report-table th,
+    .report-table td {
+      text-align: left;
+      padding: 7px 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .report-table th {
+      color: var(--text-3);
+      font-weight: 600;
+      background: var(--bg);
+    }
+    .report-table td:last-child,
+    .report-table th:last-child {
+      text-align: right;
+    }
+
+    .empty-state {
+      display: grid;
+      place-items: center;
+      min-height: 440px;
+      text-align: center;
+    }
+    .upload-card {
+      width: min(420px, 100%);
+      padding: 28px;
+      border: 1px dashed var(--border-strong);
+      border-radius: 16px;
+      background: var(--surface);
+      box-shadow: var(--shadow-card);
+    }
+    .upload-icon {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      background: var(--primary-bg);
+      color: var(--primary);
+      display: grid;
+      place-items: center;
+      margin: 0 auto 14px;
+      font-size: 20px;
+    }
+    .upload-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .upload-text {
+      color: var(--text-3);
+      font-size: 13px;
+      margin-bottom: 18px;
+    }
+    .upload-actions {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .hidden { display: none !important; }
+    .muted { color: var(--text-3); }
+    .loading-line {
+      height: 10px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #EDF2F7 0%, #F8FAFC 50%, #EDF2F7 100%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+    }
+    @keyframes shimmer {
+      to { background-position: -200% 0; }
+    }
+    .skeleton-row {
+      margin-bottom: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="mock-shell">
+    <div class="mock-toolbar">
+      <div>
+        <div class="mock-title">采购合同-2026-08-28</div>
+        <div class="mock-subtitle">合同审核智能体</div>
+      </div>
+      <div class="mock-toolbar-right">
+        <button class="ws-btn" title="Documents/Sparkii/workspaces/contract-review/session-8f2a">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+          </svg>
+          <span>session-8f2a</span>
+        </button>
+        <div class="context-bar" title="上下文 2,048 / 16,384 tokens">
+          <span class="context-track" aria-hidden="true"><span style="width: 12%"></span></span>
+          <span class="context-text">2,048 / 16,384 · 12%</span>
+        </div>
+        <span class="model-alert">上下文即将占满，系统正在自动压缩</span>
+        <div class="model-effort" id="model-control">
+          <button type="button" class="model-effort-trigger" id="model-trigger" aria-haspopup="menu" aria-expanded="false">
+            <span class="model-effort-model">deepseek-v4-pro</span>
+            <span class="model-effort-level">高</span>
+            <svg class="model-effort-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+          <div class="model-menu hidden" id="model-menu" role="menu">
+            <div class="model-menu-pane" id="menu-root">
+              <button type="button" class="model-menu-item" data-open="model">
+                模型
+                <span class="hint">deepseek-v4-pro</span>
+              </button>
+              <button type="button" class="model-menu-item" data-open="thinking">
+                思考强度
+                <span class="hint">高</span>
+              </button>
+            </div>
+            <div class="model-menu-pane hidden" id="menu-model">
+              <button type="button" class="model-menu-item" data-back>
+                <span>‹ 返回</span>
+              </button>
+              <button type="button" class="model-menu-item" data-model="deepseek-v4-pro">
+                deepseek-v4-pro
+                <span class="check">✓</span>
+              </button>
+              <button type="button" class="model-menu-item" data-model="deepseek-v4-flash">
+                deepseek-v4-flash
+                <span class="hint"></span>
+              </button>
+            </div>
+            <div class="model-menu-pane hidden" id="menu-thinking">
+              <button type="button" class="model-menu-item" data-back>
+                <span>‹ 返回</span>
+              </button>
+              <button type="button" class="model-menu-item" data-level="低">
+                低
+                <span class="hint"></span>
+              </button>
+              <button type="button" class="model-menu-item" data-level="中">
+                中
+                <span class="hint"></span>
+              </button>
+              <button type="button" class="model-menu-item" data-level="高">
+                高
+                <span class="check">✓</span>
+              </button>
+              <button type="button" class="model-menu-item" data-level="最高">
+                最高
+                <span class="hint"></span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="workbench" id="workbench">
+      <!-- Review state -->
+      <section id="view-review">
+        <div class="stage-rail">
+          <span class="stage done"><span class="stage-dot"></span>审核</span>
+          <span class="rail-sep"></span>
+          <span class="stage done"><span class="stage-dot"></span>报告</span>
+          <span class="rail-sep"></span>
+          <span class="stage human warn" id="review-stage"><span class="stage-dot"></span>复核</span>
+        </div>
+
+        <div class="split">
+          <article class="panel left-panel" data-panel="left">
+            <div class="panel-head">
+              <span class="panel-title">合同原文</span>
+              <span class="panel-hint">PDF · 14 页</span>
+              <button type="button" class="collapse-btn" data-collapse="left" title="收起合同原文">‹</button>
+            </div>
+            <span class="panel-rail-label">合同原文</span>
+            <div class="panel-body">
+              <div class="doc-head">
+                <div class="doc-icon">PDF</div>
+                <div>
+                  <div class="doc-name">采购合同-2026-08-28.pdf</div>
+                  <div class="doc-meta">14 页 · 2.3 MB</div>
+                </div>
+              </div>
+              <div class="doc-body">
+                <div class="doc-block">
+                  <b>第一条 合同标的</b>
+                  甲方委托乙方采购指定办公设备，具体型号、数量与金额以附件清单为准。
+                </div>
+                <div class="doc-block">
+                  <b>第七条 付款条件</b>
+                  乙方交付并经甲方验收合格后 45 日内支付全部货款。
+                </div>
+                <div class="doc-block">
+                  <b>第十二条 违约责任</b>
+                  一方违约给对方造成损失的，应当承担相应赔偿责任。
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel right-panel" data-panel="right">
+            <div class="panel-head">
+              <span class="panel-title">风险发现</span>
+              <span class="panel-hint" id="review-progress">已复核 0 / 2</span>
+              <button type="button" class="collapse-btn" data-collapse="right" title="收起风险发现">›</button>
+            </div>
+            <span class="panel-rail-label">风险发现</span>
+            <div class="panel-body">
+              <div class="risk-summary">
+                <div class="risk-count high"><div class="num">2</div><div class="label">高风险</div></div>
+                <div class="risk-count mid"><div class="num">5</div><div class="label">中风险</div></div>
+                <div class="risk-count low"><div class="num">1</div><div class="label">低风险</div></div>
+              </div>
+
+              <div class="review-progress-track" aria-hidden="true">
+                <span id="review-progress-track"></span>
+              </div>
+
+              <div class="filter-row">
+                <button type="button" class="filter-btn active" data-filter="all">全部</button>
+                <button type="button" class="filter-btn" data-filter="high">高风险</button>
+                <button type="button" class="filter-btn" data-filter="mid">中风险</button>
+                <button type="button" class="filter-btn" data-filter="low">低风险</button>
+                <button type="button" class="filter-btn" data-filter="unprocessed">未处理</button>
+                <div class="batch-actions">
+                  <button type="button" class="btn" id="batch-confirm">批量确认</button>
+                  <button type="button" class="btn" id="batch-ignore">批量忽略</button>
+                </div>
+              </div>
+
+              <div class="risk-card" data-risk-card="r1" data-level="high">
+                <div class="risk-card-head">
+                  <span class="risk-check" data-check>✓</span>
+                  <span class="badge high">高风险</span>
+                  <span class="risk-card-title">付款周期过长</span>
+                  <span class="risk-status" data-risk-status></span>
+                </div>
+                <div class="risk-meta">第 7 条 · 约定验收后 45 日付款，超出内部制度“账期 ≤ 30 天”。</div>
+                <div class="risk-actions">
+                  <button class="btn ok" data-action="confirmed">确认</button>
+                  <button class="btn" data-action="ignored">忽略</button>
+                  <button class="btn warn" data-action="escalated">升级</button>
+                  <button class="btn" data-action="note">备注</button>
+                </div>
+                <div class="note-editor hidden" data-note-editor>
+                  <textarea placeholder="填写审核意见…"></textarea>
+                  <div class="risk-actions">
+                    <button class="btn primary" data-save-note>保存</button>
+                    <button class="btn" data-cancel-note>取消</button>
+                  </div>
+                </div>
+                <div class="risk-note hidden" data-note-text></div>
+              </div>
+
+              <div class="risk-card" data-risk-card="r2" data-level="mid">
+                <div class="risk-card-head">
+                  <span class="risk-check" data-check>✓</span>
+                  <span class="badge mid">中风险</span>
+                  <span class="risk-card-title">违约责任上限缺失</span>
+                  <span class="risk-status" data-risk-status></span>
+                </div>
+                <div class="risk-meta">第 12 条 · 未约定违约金上限，建议补充“以实际损失为限”。</div>
+                <div class="risk-actions">
+                  <button class="btn ok" data-action="confirmed">确认</button>
+                  <button class="btn" data-action="ignored">忽略</button>
+                  <button class="btn warn" data-action="escalated">升级</button>
+                  <button class="btn" data-action="note">备注</button>
+                </div>
+                <div class="note-editor hidden" data-note-editor>
+                  <textarea placeholder="填写审核意见…"></textarea>
+                  <div class="risk-actions">
+                    <button class="btn primary" data-save-note>保存</button>
+                    <button class="btn" data-cancel-note>取消</button>
+                  </div>
+                </div>
+                <div class="risk-note hidden" data-note-text></div>
+              </div>
+
+              <div class="empty-risk hidden" id="empty-risk">当前筛选条件下没有风险项</div>
+
+              <div class="risk-actions" style="margin-top:14px">
+                <button class="btn primary" id="merge-report">合并到报告</button>
+                <span class="warning-line hidden" id="merge-warning">仍有 2 项高风险未处理</span>
+              </div>
+
+              <div class="section-label">报告预览</div>
+              <div class="report-preview report-mock">
+                <div class="report-mock-head">
+                  <div>
+                    <div class="report-mock-title">合同审核报告</div>
+                    <div class="report-mock-meta">2026-09-02 10:24 · deepseek-v4-pro</div>
+                  </div>
+                  <span class="report-status" id="report-status">待复核</span>
+                </div>
+
+                <div class="report-summary">
+                  <div class="report-summary-item">
+                    <div class="num" style="color:var(--risk)">2</div>
+                    <div class="label">高风险</div>
+                  </div>
+                  <div class="report-summary-item">
+                    <div class="num" style="color:var(--warn)">5</div>
+                    <div class="label">中风险</div>
+                  </div>
+                  <div class="report-summary-item">
+                    <div class="num" style="color:var(--ok)">1</div>
+                    <div class="label">低风险</div>
+                  </div>
+                </div>
+
+                <div class="report-section">
+                  <h4>结论</h4>
+                  <p>整体合同可推进，但付款周期与违约责任条款需重点调整，建议在签署前完成修订。</p>
+                </div>
+
+                <div class="report-section">
+                  <h4>风险明细</h4>
+                  <table class="report-table">
+                    <thead>
+                      <tr><th>风险项</th><th>等级</th><th>复核状态</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr data-report-row="r1"><td>付款周期过长</td><td>高风险</td><td>未处理</td></tr>
+                      <tr data-report-row="r2"><td>违约责任上限缺失</td><td>中风险</td><td>未处理</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="report-section">
+                  <h4>修改建议</h4>
+                  <p>将付款周期调整为验收后 30 日内；补充违约责任上限“以实际损失为限”。</p>
+                </div>
+              </div>
+
+              <div class="risk-actions" style="margin-top:14px">
+                <button class="btn primary" id="export-report" disabled>导出报告</button>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <script>
+    const trigger = document.getElementById('model-trigger');
+    const menu = document.getElementById('model-menu');
+    const panes = {
+      root: document.getElementById('menu-root'),
+      model: document.getElementById('menu-model'),
+      thinking: document.getElementById('menu-thinking'),
+    };
+
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const next = menu.classList.toggle('hidden');
+      trigger.setAttribute('aria-expanded', String(!next));
+    });
+
+    const showPane = (name) => {
+      Object.entries(panes).forEach(([key, pane]) => {
+        pane.classList.toggle('hidden', key !== name);
+      });
+    };
+
+    menu.addEventListener('click', (e) => {
+      const openBtn = e.target.closest('[data-open]');
+      if (openBtn) {
+        showPane(openBtn.dataset.open);
+        return;
+      }
+      const backBtn = e.target.closest('[data-back]');
+      if (backBtn) {
+        showPane('root');
+        return;
+      }
+      const modelBtn = e.target.closest('[data-model]');
+      if (modelBtn) {
+        trigger.querySelector('.model-effort-model').textContent = modelBtn.dataset.model;
+        menu.classList.add('hidden');
+        trigger.setAttribute('aria-expanded', 'false');
+        return;
+      }
+      const levelBtn = e.target.closest('[data-level]');
+      if (levelBtn) {
+        trigger.querySelector('.model-effort-level').textContent = levelBtn.dataset.level;
+        menu.classList.add('hidden');
+        trigger.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    const statusLabels = {
+      confirmed: '已确认',
+      ignored: '已忽略',
+      escalated: '已升级',
+    };
+
+    const cards = [...document.querySelectorAll('[data-risk-card]')];
+    const split = document.querySelector('.split');
+    const reviewProgress = document.getElementById('review-progress');
+    const progressTrack = document.getElementById('review-progress-track');
+    const mergeWarning = document.getElementById('merge-warning');
+    const mergeButton = document.getElementById('merge-report');
+    const exportButton = document.getElementById('export-report');
+    const reportStatus = document.getElementById('report-status');
+    const reviewStage = document.getElementById('review-stage');
+    let currentFilter = 'all';
+    let merged = false;
+
+    const cardStatus = (card) => (card.dataset.status && card.dataset.status !== 'none' ? card.dataset.status : 'none');
+    const cardLevel = (card) => card.dataset.level || '';
+
+    const updateReviewStage = () => {
+      if (merged) {
+        reviewStage.className = 'stage human done';
+        return;
+      }
+      if (cards.some((card) => cardStatus(card) === 'none')) {
+        reviewStage.className = 'stage human warn';
+        return;
+      }
+      reviewStage.className = 'stage human ready';
+    };
+
+    const updateProgress = () => {
+      const done = cards.filter((card) => cardStatus(card) !== 'none').length;
+      const total = cards.length;
+      reviewProgress.textContent = `已复核 ${done} / ${total}`;
+      progressTrack.style.width = total ? `${Math.round((done / total) * 100)}%` : '0%';
+      const unprocessedHigh = cards.filter((card) => cardLevel(card) === 'high' && cardStatus(card) === 'none').length;
+      if (unprocessedHigh > 0 && !merged) {
+        mergeWarning.textContent = `仍有 ${unprocessedHigh} 项高风险未处理`;
+        mergeWarning.classList.remove('hidden');
+      } else {
+        mergeWarning.classList.add('hidden');
+      }
+      updateReviewStage();
+    };
+
+    const renderCardState = (card) => {
+      const status = cardStatus(card);
+      card.classList.toggle('confirmed', status === 'confirmed');
+      card.classList.toggle('ignored', status === 'ignored');
+      card.classList.toggle('escalated', status === 'escalated');
+      card.querySelector('[data-risk-status]').textContent = status === 'none' ? '' : statusLabels[status];
+      card.querySelectorAll('[data-action]').forEach((btn) => {
+        if (['note', 'save-note', 'cancel-note'].includes(btn.dataset.action)) return;
+        btn.classList.toggle('active', status !== 'none' && btn.dataset.action === status);
+      });
+      updateProgress();
+    };
+
+    const applyFilter = () => {
+      let visibleCount = 0;
+      cards.forEach((card) => {
+        const status = cardStatus(card);
+        const level = cardLevel(card);
+        const visible =
+          currentFilter === 'all' ||
+          (currentFilter === 'unprocessed' && status === 'none') ||
+          (currentFilter === level);
+        card.classList.toggle('hidden', !visible);
+        if (visible) visibleCount += 1;
+      });
+      document.getElementById('empty-risk').classList.toggle('hidden', visibleCount > 0);
+    };
+
+    document.querySelectorAll('[data-collapse]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const side = btn.dataset.collapse;
+        if (side === 'left') {
+          if (split.classList.contains('left-collapsed')) {
+            split.classList.remove('left-collapsed');
+          } else {
+            split.classList.remove('right-collapsed');
+            split.classList.add('left-collapsed');
+          }
+        } else {
+          if (split.classList.contains('right-collapsed')) {
+            split.classList.remove('right-collapsed');
+          } else {
+            split.classList.remove('left-collapsed');
+            split.classList.add('right-collapsed');
+          }
+        }
+      });
+    });
+
+    document.querySelectorAll('.filter-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.filter;
+        applyFilter();
+      });
+    });
+
+    document.querySelectorAll('[data-check]').forEach((check) => {
+      check.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!merged) check.classList.toggle('checked');
+      });
+    });
+
+    document.querySelectorAll('[data-risk-card]').forEach((card) => {
+      card.addEventListener('click', (e) => {
+        if (merged) return;
+        const actionBtn = e.target.closest('[data-action]');
+        if (!actionBtn) return;
+
+        if (actionBtn.dataset.action === 'note') {
+          card.querySelector('[data-note-editor]').classList.toggle('hidden');
+          const textarea = card.querySelector('[data-note-editor] textarea');
+          if (!card.querySelector('[data-note-editor]').classList.contains('hidden')) textarea.focus();
+          return;
+        }
+
+        if (['confirmed', 'ignored', 'escalated'].includes(actionBtn.dataset.action)) {
+          card.dataset.status = cardStatus(card) === actionBtn.dataset.action ? 'none' : actionBtn.dataset.action;
+          renderCardState(card);
+          return;
+        }
+
+        if (actionBtn.dataset.action === 'save-note') {
+          const text = card.querySelector('[data-note-editor] textarea').value.trim();
+          if (text) {
+            card.querySelector('[data-note-text]').textContent = `审核意见：${text}`;
+            card.querySelector('[data-note-text]').classList.remove('hidden');
+            const noteBtn = card.querySelector('[data-action="note"]');
+            noteBtn.textContent = '已备注';
+            noteBtn.classList.add('active');
+          }
+          card.querySelector('[data-note-editor]').classList.add('hidden');
+          return;
+        }
+
+        if (actionBtn.dataset.action === 'cancel-note') {
+          card.querySelector('[data-note-editor]').classList.add('hidden');
+        }
+      });
+    });
+
+    document.getElementById('batch-confirm').addEventListener('click', () => {
+      const selected = cards.filter((card) => card.querySelector('[data-check]').classList.contains('checked'));
+      selected.forEach((card) => {
+        card.dataset.status = 'confirmed';
+        renderCardState(card);
+      });
+    });
+
+    document.getElementById('batch-ignore').addEventListener('click', () => {
+      const selected = cards.filter((card) => card.querySelector('[data-check]').classList.contains('checked'));
+      selected.forEach((card) => {
+        card.dataset.status = 'ignored';
+        renderCardState(card);
+      });
+    });
+
+    mergeButton.addEventListener('click', () => {
+      if (merged) return;
+      merged = true;
+      reportStatus.textContent = '已合并';
+      mergeButton.disabled = true;
+      exportButton.disabled = false;
+      mergeWarning.classList.add('hidden');
+      document.querySelectorAll('[data-report-row]').forEach((row) => {
+        const card = document.querySelector(`[data-risk-card="${row.dataset.reportRow}"]`);
+        const status = cardStatus(card);
+        row.lastElementChild.textContent = status === 'none' ? '未处理' : statusLabels[status];
+      });
+      updateReviewStage();
+    });
+
+    exportButton.addEventListener('click', () => {
+      if (!merged) return;
+      // 桌面端暂不弹 toast；后续由审批面板和顶部状态承接反馈。
+    });
+
+    updateProgress();
+    applyFilter();
+
+    document.addEventListener('click', (e) => {
+      if (!document.getElementById('model-control').contains(e.target)) {
+        menu.classList.add('hidden');
+        trigger.setAttribute('aria-expanded', 'false');
+        showPane('root');
+      }
+    });
+  </script>
+</body>
+</html>
