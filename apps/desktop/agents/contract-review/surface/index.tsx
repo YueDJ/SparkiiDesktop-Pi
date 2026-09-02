@@ -167,7 +167,7 @@ function ModelEffortBar({ agentId, sessionId, session }: { agentId: string; sess
 }
 
 export function ContractAgentSurface(props: AgentSurfaceProps) {
-  const { sessionId, session, actions } = props;
+  const { sessionId, session, actions, onDocumentNameChange } = props;
   const timeline = deriveWorkflowTimeline(session.entries);
   const status = session.status && session.status !== 'idle' ? session.status : timeline.status;
   const currentStep = session.meta.currentStep ?? timeline.step ?? null;
@@ -281,13 +281,14 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
   }, [report]);
 
   const selectedName = fileName || localFileName || (documents[0] ? basename(documents[0]) : '');
+  useEffect(() => {
+    onDocumentNameChange?.(selectedName);
+  }, [selectedName, onDocumentNameChange]);
 
   return (
     <div className="contract-workbench">
       <header className="contract-header">
         <div className="contract-header-main">
-          <span className="contract-header-title">{props.agent.name}</span>
-          {selectedName && <span className="contract-header-file">{selectedName}</span>}
           <span className="contract-status" data-testid="workflow-status">
             {status === 'running' ? `审核中：${currentStep ?? '…'}` : status === 'done' ? '审核完成' : status === 'failed' ? '审核失败' : ''}
           </span>

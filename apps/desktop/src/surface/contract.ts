@@ -59,6 +59,8 @@ export interface AgentSurfaceProps {
   mode: 'live' | 'history';
   session: AgentSession;
   actions: AgentSurfaceActions;
+  /** Optional callback for custom surfaces to report the active document name to the shell title. */
+  onDocumentNameChange?(name: string): void;
 }
 
 export type AgentSurfaceComponent = ComponentType<AgentSurfaceProps>;
