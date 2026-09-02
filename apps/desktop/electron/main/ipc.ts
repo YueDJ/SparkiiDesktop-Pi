@@ -1,5 +1,6 @@
 import { ipcMain, dialog, app, type BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { listPiSessions, readPiSessionEntries, readPiSessionMessages, type PiProviderInfo, type SessionSaddle } from '@sparkii/agent-host';
@@ -21,7 +22,7 @@ import type { Runtime } from './runtime.js';
 import type { Logger } from './logger.js';
 import type { ChatAttachment } from '../preload/api-types.js';
 
-function parseSessionInputs(raw: string | null | undefined): { path: string; name?: string }[] | undefined {
+function parseSessionInputs(raw: string | null | undefined): { path: string; name?: string; missing?: boolean }[] | undefined {
   if (!raw) return undefined;
   try {
     const arr = JSON.parse(raw) as unknown;
@@ -32,6 +33,7 @@ function parseSessionInputs(raw: string | null | undefined): { path: string; nam
       return {
         path: String(rec.path ?? ''),
         ...(typeof rec.name === 'string' ? { name: rec.name } : {}),
+        missing: !existsSync(String(rec.path ?? '')),
       };
     });
   } catch {

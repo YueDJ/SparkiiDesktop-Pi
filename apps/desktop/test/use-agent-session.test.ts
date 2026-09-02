@@ -42,6 +42,23 @@ describe('useAgentSession', () => {
     expect(result.current.meta.inputs).toEqual([{ path: 'C:/tmp/a.pdf', name: 'a.pdf' }]);
   });
 
+  it('marks input files that no longer exist during history replay', async () => {
+    (globalThis as any).window = {
+      sparkii: {
+        openChatSession: vi.fn().mockResolvedValue({
+          entries: [],
+          inputs: [{ path: 'C:/gone/contract.pdf', name: 'contract.pdf', missing: true }],
+        }),
+        on: vi.fn().mockReturnValue(() => {}),
+      },
+    };
+    const { result } = renderHook(() => useAgentSession('contract-review', 's1', 'history'));
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(result.current.meta.inputs).toEqual([{ path: 'C:/gone/contract.pdf', name: 'contract.pdf', missing: true }]);
+  });
+
   it('pairs a live tool_call with its tool_result in session.entries', async () => {
     const on = vi.fn().mockReturnValue(() => {});
     (globalThis as any).window = {

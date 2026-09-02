@@ -26,7 +26,11 @@ export function useAgentSession(agentId: string, sessionId: string | null, mode:
         const inputs = Array.isArray(res?.inputs)
           ? res.inputs.map((i: any) => typeof i === 'string'
             ? { path: i }
-            : { path: String(i?.path ?? ''), name: typeof i?.name === 'string' ? i.name : undefined })
+            : {
+                path: String(i?.path ?? ''),
+                name: typeof i?.name === 'string' ? i.name : undefined,
+                ...(i?.missing ? { missing: true } : {}),
+              })
           : Array.isArray(res?.documents)
             ? res.documents.map((i: any) => typeof i === 'string'
               ? { path: i }
