@@ -188,6 +188,8 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
   const [reportMerged, setReportMerged] = useState(() => wasReportMerged(session.entries));
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'high' | 'mid' | 'low' | 'unprocessed'>('all');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const processedCount = Object.values(reviewed).filter((v) => v !== 'none').length;
   const unprocessed = findings.filter((f) => !reviewed[f.id] || reviewed[f.id] === 'none');
@@ -195,6 +197,13 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
   const highCount = findings.filter((f) => f.level === 'high').length;
   const midCount = findings.filter((f) => f.level === 'mid').length;
   const lowCount = findings.filter((f) => f.level === 'low').length;
+  const filteredFindings = findings.filter((f) => {
+    const state = reviewed[f.id] ?? 'none';
+    if (filter === 'unprocessed') return state === 'none';
+    if (filter === 'all') return true;
+    return f.level === filter;
+  });
+  const hasSelection = filteredFindings.some((f) => selected.has(f.id));
 
   const applyReview = (id: string, action: Exclude<ReviewState, 'none'>) => {
     setReviewed((prev) => ({ ...prev, [id]: prev[id] === action ? 'none' : action }));
@@ -212,6 +221,27 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
   const mergeReport = () => {
     setReportMerged(true);
     actions.review('report_merged', { stepId: 'report' });
+  };
+
+  const toggleSelected = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const batchConfirm = () => {
+    for (const f of filteredFindings) {
+      if (selected.has(f.id)) applyReview(f.id, 'confirmed');
+    }
+  };
+
+  const batchIgnore = () => {
+    for (const f of filteredFindings) {
+      if (selected.has(f.id)) applyReview(f.id, 'ignored');
+    }
   };
 
   const chooseDocument = async () => {
@@ -299,15 +329,41 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
               <div className="contract-risk-count low"><div className="num">{lowCount}</div><div className="label">低风险</div></div>
             </div>
             <div className="contract-progress"><span style={{ width: `${findings.length ? Math.round((processedCount / findings.length) * 100) : 0}%` }} /></div>
+            <div className="contract-filter-row">
+              {(['all', 'high', 'mid', 'low', 'unprocessed'] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={`contract-filter-btn ${filter === value ? 'active' : ''}`}
+                  onClick={() => setFilter(value)}
+                >
+                  {value === 'all' ? '全部' : value === 'high' ? '高风险' : value === 'mid' ? '中风险' : value === 'low' ? '低风险' : '未处理'}
+                </button>
+              ))}
+              <div className="contract-batch-actions">
+                <button type="button" className="ui-btn" disabled={!hasSelection} onClick={batchConfirm}>批量确认</button>
+                <button type="button" className="ui-btn" disabled={!hasSelection} onClick={batchIgnore}>批量忽略</button>
+              </div>
+            </div>
             {findings.length === 0 ? (
               <div className="contract-empty">运行审核后，风险发现会显示在这里</div>
             ) : (
-              findings.map((f) => {
+              filteredFindings.map((f) => {
                 const state = reviewed[f.id] ?? 'none';
                 const note = notes[f.id];
                 return (
                   <article key={f.id} className={`contract-risk-card ${state}`}>
                     <div className="contract-risk-card-head">
+                      <span
+                        className={`contract-risk-check ${selected.has(f.id) ? 'checked' : ''}`}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`选择 ${f.title}`}
+                        onClick={() => toggleSelected(f.id)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleSelected(f.id); }}
+                      >
+                        ✓
+                      </span>
                       <RiskBadge risk={riskLevelLabel(f.level)} />
                       <b className="contract-risk-card-title">{f.title}</b>
                       <span className="contract-risk-status">{reviewLabel(state)}</span>

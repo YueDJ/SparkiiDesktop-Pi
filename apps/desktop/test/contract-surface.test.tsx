@@ -83,6 +83,27 @@ describe('ContractSurface', () => {
     fireEvent.click(screen.getAllByText('确认')[0]);
     expect(onWorkflowState).toHaveBeenCalledWith('risk_confirmed', { riskId: 'f0', stepId: 'review' });
   });
+
+  it('filters risk cards and applies a batch confirmation', () => {
+    const onWorkflowState = vi.fn();
+    render(
+      <ContractSurface
+        state={makeState()}
+        workflow={{ status: 'done' } as any}
+        sessionId="s1"
+        onAction={vi.fn()}
+        onWorkflowState={onWorkflowState}
+        onRequestExport={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('全部')).toBeTruthy();
+    fireEvent.click(screen.getAllByRole('button', { name: '高风险' })[0]);
+    expect(screen.getByText('第7条 付款条件')).toBeTruthy();
+    expect(screen.queryByText('第12条 违约责任')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '选择 第7条 付款条件' }));
+    fireEvent.click(screen.getByText('批量确认'));
+    expect(onWorkflowState).toHaveBeenCalledWith('risk_confirmed', { riskId: 'f0', stepId: 'review' });
+  });
 });
 
 describe('ContractAgentSurface', () => {

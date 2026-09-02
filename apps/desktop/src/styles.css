@@ -251,12 +251,19 @@ table.tbl th { background: var(--color-controlBg); color: var(--color-textSecond
 .contract-progress { height: 6px; border-radius: 999px; background: var(--color-borderStrong); overflow: hidden; margin-bottom: var(--spacing-sm); }
 .contract-progress > span { display: block; height: 100%; background: var(--color-primary); transition: width 180ms ease-out; }
 .contract-empty { border: 1px dashed var(--color-border); border-radius: var(--radius-card); padding: var(--spacing-lg); text-align: center; color: var(--color-textMuted); font-size: var(--font-size-sm); }
+.contract-filter-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: var(--spacing-sm); }
+.contract-filter-btn { border: 1px solid var(--color-border); background: var(--color-surface); color: var(--color-textSecondary); padding: 4px 9px; border-radius: var(--radius-pill); font-size: var(--font-size-xs); cursor: pointer; }
+.contract-filter-btn.active { border-color: var(--color-primary); color: var(--color-primary); background: var(--color-primaryBg); }
+.contract-batch-actions { margin-left: auto; display: flex; gap: 6px; }
+.contract-batch-actions .ui-btn { padding: 4px 8px; font-size: var(--font-size-xs); }
 
 .contract-risk-card { border: 1px solid var(--color-border); border-radius: var(--radius-card); padding: var(--spacing-sm); margin-bottom: var(--spacing-xs); background: var(--color-surface); }
 .contract-risk-card.confirmed { background: var(--color-okBg); border-color: #BBF7D0; }
 .contract-risk-card.ignored { opacity: .58; background: #F8FAFC; }
 .contract-risk-card.escalated { background: var(--color-warnBg); border-color: #FED7AA; }
 .contract-risk-card-head { display: flex; align-items: center; gap: var(--spacing-xs); margin-bottom: var(--spacing-xs); }
+.contract-risk-check { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border: 1px solid var(--color-borderStrong); border-radius: 5px; background: var(--color-surface); cursor: pointer; flex: none; font-size: 11px; color: transparent; user-select: none; }
+.contract-risk-check.checked { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
 .contract-risk-card-title { font-size: var(--font-size-md); font-weight: 650; flex: 1; min-width: 0; }
 .contract-risk-status { color: var(--color-textMuted); font-size: var(--font-size-xs); flex: none; }
 .contract-risk-meta { color: var(--color-textSecondary); font-size: var(--font-size-sm); line-height: 1.55; margin-bottom: 4px; overflow-wrap: anywhere; }
