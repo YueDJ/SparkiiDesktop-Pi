@@ -179,6 +179,8 @@ workflow_state
 
 > **分层澄清**：`src/surface/` = 可复用平台模板（契约/会话 hook/归一化器/共享框架组件），**绝不 import agent**；`src/platform/` = 应用装配/接线层（含 `agent-surface-bindings.ts` 这个唯一的 agent-import 点），它不是「平台核心」，所以可以 import agent，且仅此一处、且为生成物。
 
+> **模板与绑定关系**：两者是**单向依赖**——生成绑定 import 模板（用其契约类型 + 标准 chat 表面 agent-free 件），模板**绝不** import 绑定或任何 agent。它们通过 `AgentSurfaceComponent` 这一个契约类型「对上」：模板定义类型，绑定产出满足该类型的组件值，App 把该值交给模板的渲染框架。
+
 ### 渲染机制（模板不 import agent 的原因）
 
 `src/surface/` 只提供契约、会话 hook、归一化器与共享框架组件，**不含任何 agent 引用**。agent 的 surface 组件由「构建期生成的绑定」在 App 边缘解析出来，再直接渲染；没有统一的 `AgentSurfaceHost`（chat 与 workflow 布局差异大，不应塞进一个万能渲染器，各 surface 自行用共享框架组件拼装）。
