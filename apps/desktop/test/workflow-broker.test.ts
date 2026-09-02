@@ -4,6 +4,69 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createBroker, resolveWorkflowTemplates, runWorkflow } from '../electron/main/workflow.js';
 
+it('uses the runtime session id for the workflow session record', async () => {
+  const send = vi.fn();
+  const getWindow = () => ({ webContents: { send } }) as any;
+  const rt = {
+    dataDir: mkdtempSync(join(tmpdir(), 'wf-identity-')),
+    profileOf: () => ({
+      profile: {
+        manifest: { name: 'contract-review' },
+        security: { approval: { timeoutMs: 50 } },
+        agent: {
+          tools: ['read'],
+          prompts: { system: 'sys' },
+          workflow: { version: 1, engine: 'linear', steps: [] },
+        },
+      },
+    }),
+    agentOf: () => ({
+      id: 'contract-review',
+      tools: ['read'],
+      dir: 'C:/x',
+      skillsDir: 'C:/x/skills',
+      systemPrompt: 'sys',
+    }),
+    subject: { userId: 'admin' },
+    gate: {
+      submit: async () => ({ id: 'p1', status: 'pending', payloadHash: 'h', createdAt: Date.now() }),
+      expire: async (id: string) => ({ id, status: 'expired' }),
+    },
+    pool: {
+      acquire: async () => ({
+        client: {
+          send: async (cmd: any) => {
+            if (cmd.type === 'new_session') return { success: true };
+            if (cmd.type === 'get_state') {
+              return { success: true, data: { sessionId: 'pi-workflow-1', sessionFile: 'C:/pi/sessions/pi-workflow-1.jsonl' } };
+            }
+            return { success: true };
+          },
+        },
+        supervisor: { onProposal: () => {} },
+      }),
+      renameSession: vi.fn(),
+      get: () => undefined,
+      release: async () => {},
+    },
+    chatSessions: {
+      create: vi.fn(),
+      update: vi.fn(),
+    },
+  } as any;
+
+  const broker = createBroker(rt, getWindow);
+  const id = await runWorkflow(rt, getWindow, { documents: [] }, broker, 'contract-review');
+
+  expect(id).toBe('pi-workflow-1');
+  expect(rt.pool.renameSession).toHaveBeenCalledWith(expect.stringContaining('new:'), 'pi-workflow-1');
+  expect(rt.chatSessions.create).toHaveBeenCalledWith(expect.objectContaining({
+    id: 'pi-workflow-1',
+    profileId: 'contract-review',
+    piSessionFile: 'C:/pi/sessions/pi-workflow-1.jsonl',
+  }));
+});
+
 it('resolves skill ref and llm template to prompt content', () => {
   const def = {
     version: 1, engine: 'linear',
@@ -60,10 +123,26 @@ describe('runWorkflow broker sharing', () => {
       pool: {
         acquire: async (_sessionId: string, opts?: { saddle?: unknown }) => {
           acquiredSaddles.push(opts?.saddle);
-          return { client: {}, supervisor: { onProposal: () => {} } };
+          return {
+            client: {
+              send: async (cmd: any) => {
+                if (cmd.type === 'new_session') return { success: true };
+                if (cmd.type === 'get_state') {
+                  return { success: true, data: { sessionId: 'wf-session', sessionFile: 'C:/wf/session.jsonl' } };
+                }
+                return { success: true };
+              },
+            },
+            supervisor: { onProposal: () => {} },
+          };
         },
+        renameSession: vi.fn(),
         get: (_sessionId: string) => undefined,
         release: async (_sessionId: string) => {},
+      },
+      chatSessions: {
+        create: vi.fn(),
+        update: vi.fn(),
       },
     } as any;
 
@@ -129,9 +208,25 @@ describe('runWorkflow broker sharing', () => {
         expire: async (id: string) => ({ id, status: 'expired' }),
       },
       pool: {
-        acquire: async () => ({ client: {}, supervisor: { onProposal: () => {} } }),
+        acquire: async () => ({
+          client: {
+            send: async (cmd: any) => {
+              if (cmd.type === 'new_session') return { success: true };
+              if (cmd.type === 'get_state') {
+                return { success: true, data: { sessionId: 'wf-session', sessionFile: 'C:/wf/session.jsonl' } };
+              }
+              return { success: true };
+            },
+          },
+          supervisor: { onProposal: () => {} },
+        }),
+        renameSession: vi.fn(),
         get: () => undefined,
         release: async () => {},
+      },
+      chatSessions: {
+        create: vi.fn(),
+        update: vi.fn(),
       },
     } as any;
 

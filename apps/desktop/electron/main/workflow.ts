@@ -241,11 +241,21 @@ export async function runWorkflow(
   broker: ReturnType<typeof createBroker>,
   profileId: string,
 ): Promise<string> {
-  const sessionId = randomUUID();
   const pr = rt.profileOf(profileId);
-  const slot = await rt.pool.acquire(sessionId, {
-    saddle: buildAgentSaddle(rt.agentOf(profileId), join(rt.dataDir, 'sessions', sessionId)),
+  const tempKey = `new:${randomUUID()}`;
+  const slot = await rt.pool.acquire(tempKey, {
+    saddle: buildAgentSaddle(rt.agentOf(profileId), join(rt.dataDir, 'sessions', tempKey)),
   });
+
+  const freshResp = await slot.client.send({ type: 'new_session' });
+  if (!freshResp.success) throw new Error(freshResp.error ?? 'new_session failed');
+  const stateResp = await slot.client.send({ type: 'get_state' });
+  if (!stateResp.success) throw new Error(stateResp.error ?? 'get_state failed');
+  const sessionId = (stateResp.data as { sessionId?: string } | undefined)?.sessionId;
+  const sessionFile = (stateResp.data as { sessionFile?: string } | undefined)?.sessionFile;
+  if (!sessionId) throw new Error('runtime did not provide a session id');
+  rt.pool.renameSession(tempKey, sessionId);
+
   const inputFiles = Array.isArray(input?.documents) ? JSON.stringify(input.documents) : null;
   rt.chatSessions?.create?.({
     id: sessionId,
@@ -255,6 +265,7 @@ export async function runWorkflow(
     workspaceKind: 'auto',
     workspacePath: join(rt.dataDir, 'sessions', sessionId),
     inputs: inputFiles,
+    piSessionFile: sessionFile ?? null,
   });
   slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId }));
   try {
