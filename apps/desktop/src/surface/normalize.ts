@@ -62,6 +62,18 @@ export function normalizeSessionEntries(entries: unknown[]): SessionEntry[] {
 
 /** Apply a single live event onto the current timeline (chat + workflow lifecycle). */
 export function applySurfaceEvent(entries: SessionEntry[], ev: unknown): SessionEntry[] {
+  const rec = asRecord(ev);
+  // Keep user messages in the live timeline so it mirrors the authoritative JSONL the same way
+  // the history replay does (live and history share one normalized entry shape).
+  if (String(rec.type) === 'message' && String(rec.role) === 'user') {
+    const text = typeof rec.text === 'string' ? rec.text : typeof rec.delta === 'string' ? rec.delta : '';
+    if (!text) return entries;
+    const last = entries[entries.length - 1];
+    // Guard against a replay that already carried the same user message and is followed by its
+    // live echo (same text, consecutive) being appended twice.
+    if (last && last.kind === 'message' && last.role === 'user' && last.text === text) return entries;
+    return [...entries, { kind: 'message', id: `u-${Date.now()}-${Math.random()}`, role: 'user', text, streaming: false }];
+  }
   const w = workflowEntryFor(ev);
   if (w) return [...entries, w];
   return uiApplyChatEvent(entries as ChatEntry[], ev);

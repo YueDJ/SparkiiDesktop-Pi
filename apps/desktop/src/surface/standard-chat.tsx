@@ -13,7 +13,6 @@ import {
   DEFAULT_CHAT_DETAIL_LEVEL,
   isChatDetailLevel,
   shouldShowEntry,
-  findLastUnresolvedTool,
   type ChatEntry,
   type ChatDetailLevel,
   type ComposerAttachment,
@@ -182,7 +181,7 @@ export function StandardChatSurface(props: StandardChatProps) {
   const { agent, sessionId, session, actions, api: apiOverride, active = true, draft } = props;
   const api = apiOverride ?? (window.sparkii as SparkiiApi);
   const { reportError } = useErrors();
-  const [entries, setEntries] = useState<ChatEntry[]>([]);
+  const [pendingApprovals, setPendingApprovals] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [stopping, setStopping] = useState(false);
   const [queues, setQueues] = useState<QueueMap>({ steering: [], followUp: [] });
@@ -201,10 +200,7 @@ export function StandardChatSurface(props: StandardChatProps) {
   const [contextUsage, setContextUsage] = useState<{ tokens?: number | null; contextWindow?: number; percent?: number | null } | null>(null);
   const [isCompacting, setIsCompacting] = useState(false);
   const [detailLevel, setDetailLevel] = useState<ChatDetailLevel>(DEFAULT_CHAT_DETAIL_LEVEL);
-  const lastIdlePromptRef = useRef('');
-  const suppressUserEventRef = useRef(false);
   const modelRef = useRef(model);
-  const lastSessIdRef = useRef<string | null>(null);
   const isBusy = busy || session.streaming;
 
   useEffect(() => { modelRef.current = model; }, [model]);
@@ -272,6 +268,7 @@ export function StandardChatSurface(props: StandardChatProps) {
   useEffect(() => {
     setBusy(false);
     setStopping(false);
+    setPendingApprovals(new Set());
     setQueues({ steering: [], followUp: [] });
     setDrafts({ steering: [], followUp: [] });
     setModel(null);
@@ -308,25 +305,14 @@ export function StandardChatSurface(props: StandardChatProps) {
         reportError(typeof p?.message === 'string' ? p.message : 'Pi 运行时错误', { source: agent.name });
         return;
       }
-      if (p?.type === 'message' && p?.role === 'user') {
-        const text = typeof p?.text === 'string' ? p.text : '';
-        if (suppressUserEventRef.current && lastIdlePromptRef.current && text.endsWith(lastIdlePromptRef.current)) {
-          suppressUserEventRef.current = false;
-          return;
-        }
-        if (!text) return;
-        setEntries((xs) => [...xs, { kind: 'message', id: `u${Date.now()}-${Math.random()}`, role: 'user', text, streaming: false }]);
-        return;
-      }
       if (p?.type === 'compaction_start' || p?.type === 'compaction_end' || p?.type === 'agent_settled') refreshContext();
     });
     const off2 = api.on('approval', (p: any) => {
       if (p?.sessionId !== sessionId || !p?.toolName) return;
-      setEntries((xs) => {
-        const idx = findLastUnresolvedTool(xs, p.toolName, p.toolCallId);
-        if (idx < 0) return xs;
-        const next = [...xs];
-        next[idx] = { ...(next[idx] as Extract<ChatEntry, { kind: 'tool' }>), awaitingApproval: true };
+      setPendingApprovals((xs) => {
+        const next = new Set(xs);
+        if (typeof p?.toolCallId === 'string') next.add(p.toolCallId);
+        if (typeof p?.toolName === 'string') next.add(p.toolName);
         return next;
       });
     });
@@ -361,13 +347,10 @@ export function StandardChatSurface(props: StandardChatProps) {
 
     if (isBusy && sessionId) {
       api.promptSession(sessionId, display, { behavior: 'followUp' }, chatAttachments.length ? chatAttachments : undefined)
-        .catch((e: any) => reportError(String(e?.message ?? e), { source: agent.name }));
+      .catch((e: any) => reportError(String(e?.message ?? e), { source: agent.name }));
       return;
     }
 
-    lastIdlePromptRef.current = display;
-    suppressUserEventRef.current = true;
-    setEntries((xs) => [...xs, { kind: 'message', id: `u${Date.now()}`, role: 'user', text: display, streaming: false }]);
     setBusy(true);
 
     api.promptSession(
@@ -438,53 +421,20 @@ export function StandardChatSurface(props: StandardChatProps) {
       }
     });
   };
-
-  // Grow a single, chronologically-ordered timeline: append newly-arriving authoritative session
-  // entries in order (assistant/tool/event/history user messages) and append user messages at the
-  // moment they are sent/echoed. This keeps each assistant reply below the user message that
-  // triggered it. When switching between committed sessions we drop the previous timeline.
-  useEffect(() => {
-    const prevSessId = lastSessIdRef.current;
-    if (prevSessId !== sessionId) {
-      lastSessIdRef.current = sessionId;
-      if (prevSessId !== null) {
-        setEntries([]);
-        return; // this frame's session.entries may be stale (previous session); wait for reload
-      }
-      // null -> first committed session: keep optimistic user messages and resume merging
+  // The authoritative timeline is props.session.entries, normalized once by useAgentSession from
+  // Pi's JSONL (live event increments and history replay produce the same ordered entries). We
+  // render it directly, overlaying only the live approval state. There is no local/optimistic
+  // timeline, so the display stays 1:1 with the session truth source.
+  const entries = (session.entries ?? []).filter(isChatEntry).map((e) => {
+    if (
+      e.kind === 'tool'
+      && !e.awaitingApproval
+      && (pendingApprovals.has(e.toolName) || (e.toolCallId ? pendingApprovals.has(e.toolCallId) : false))
+    ) {
+      return { ...e, awaitingApproval: true };
     }
-
-    const sessionEntries = (session.entries ?? []).filter(isChatEntry);
-    if (!sessionEntries.length) return;
-
-    const confirmedUserTexts = new Set(
-      sessionEntries
-        .filter((e) => e.kind === 'message' && e.role === 'user')
-        .map((e) => (e as Extract<ChatEntry, { kind: 'message' }>).text),
-    );
-
-    setEntries((prev) => {
-      // Drop optimistic/echoed user messages once the authoritative timeline confirms them.
-      const base = confirmedUserTexts.size
-        ? prev.filter((e) => !(e.kind === 'message' && e.role === 'user' && confirmedUserTexts.has(e.text)))
-        : prev;
-
-      // Replace existing session-owned entries in place (so a streaming assistant message grows
-      // in position) and append newly appearing ones, keeping chronologic order intact.
-      const byId = new Map(base.map((e, i) => [e.id, i]));
-      const next = [...base];
-      const appended: ChatEntry[] = [];
-      for (const s of sessionEntries) {
-        const idx = byId.get(s.id);
-        if (idx !== undefined) {
-          next[idx] = s;
-        } else {
-          appended.push(s);
-        }
-      }
-      return appended.length ? [...next, ...appended] : next;
-    });
-  }, [sessionId, session.entries]);
+    return e;
+  });
 
   if (!sessionId && !draft) {
     return (

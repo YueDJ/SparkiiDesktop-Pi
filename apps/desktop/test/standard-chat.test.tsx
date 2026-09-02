@@ -269,9 +269,9 @@ describe('StandardChatSurface behaviors', () => {
   });
 
   it('renders a user message appended by Pi for steering or follow-up', async () => {
-    const { api, channels } = makeApi();
-    render(<StandardChatSurface {...baseProps('s1', { api })} />);
-    act(() => channels['chat-event']({ sessionId: 's1', type: 'message', role: 'user', text: '先检查一下结果' }));
+    const { api } = makeApi();
+    const session = { entries: [{ kind: 'message', id: 'u9', role: 'user', text: '先检查一下结果', streaming: false }], streaming: false, meta: {} };
+    render(<StandardChatSurface {...baseProps('s1', { api, session })} />);
     expect(screen.getByText('先检查一下结果')).toBeTruthy();
   });
 
@@ -289,39 +289,22 @@ describe('StandardChatSurface behaviors', () => {
     expect(screen.queryByText('模型切换')).toBeNull();
   });
 
-  it('does not duplicate the local user message when Pi echoes the idle prompt', async () => {
-    const { api, channels } = makeApi();
-    render(<StandardChatSurface {...baseProps('s1', { api })} />);
-    fireEvent.change(screen.getByTestId('composer-input'), { target: { value: '请创建 hello.txt' } });
-    fireEvent.keyDown(screen.getByTestId('composer-input'), { key: 'Enter' });
-    act(() => channels['chat-event']({ sessionId: 's1', type: 'message', role: 'user', text: '请创建 hello.txt' }));
+  it('renders an echoed user message once from the single timeline', async () => {
+    const { api } = makeApi();
+    const session = { entries: [{ kind: 'message', id: 'u1', role: 'user', text: '请创建 hello.txt', streaming: false }], streaming: false, meta: {} };
+    render(<StandardChatSurface {...baseProps('s1', { api, session })} />);
     expect(screen.getAllByText('请创建 hello.txt')).toHaveLength(1);
   });
 
   it('keeps each assistant reply below its triggering user message across turns', async () => {
-    const { api, channels } = makeApi();
-    const view = render(<StandardChatSurface {...baseProps('s1', { api, session: { entries: [], streaming: false, meta: {} } })} />);
-
-    // Turn 1: user sends -> optimistic user message appears first.
-    fireEvent.change(screen.getByTestId('composer-input'), { target: { value: '第一问' } });
-    fireEvent.keyDown(screen.getByTestId('composer-input'), { key: 'Enter' });
-
-    // Assistant reply arrives in the authoritative timeline.
-    view.rerender(<StandardChatSurface {...baseProps('s1', {
-      api,
-      session: { entries: [{ kind: 'message', id: 'a1', role: 'assistant', text: '第一答', streaming: false }], streaming: false, meta: {} },
-    })} />);
-    act(() => channels['chat-event']({ sessionId: 's1', type: 'agent_end' }));
-
-    // Turn 2: user sends again (busy cleared by agent_end).
-    fireEvent.change(screen.getByTestId('composer-input'), { target: { value: '第二问' } });
-    fireEvent.keyDown(screen.getByTestId('composer-input'), { key: 'Enter' });
-
-    view.rerender(<StandardChatSurface {...baseProps('s1', {
+    const { api } = makeApi();
+    render(<StandardChatSurface {...baseProps('s1', {
       api,
       session: {
         entries: [
+          { kind: 'message', id: 'u1', role: 'user', text: '第一问', streaming: false },
           { kind: 'message', id: 'a1', role: 'assistant', text: '第一答', streaming: false },
+          { kind: 'message', id: 'u2', role: 'user', text: '第二问', streaming: false },
           { kind: 'message', id: 'a2', role: 'assistant', text: '第二答', streaming: false },
         ],
         streaming: false,
@@ -333,26 +316,40 @@ describe('StandardChatSurface behaviors', () => {
     expect(order).toEqual(['第一问', '第一答', '第二问', '第二答']);
   });
 
-  it('keeps the user message and grows a streaming assistant reply in place', async () => {
+  it('keeps the user message and grows a streaming assistant reply from the single timeline', async () => {
     const { api } = makeApi();
-    const view = render(<StandardChatSurface {...baseProps('s1', { api, session: { entries: [], streaming: false, meta: {} } })} />);
+    const baseSession = { entries: [{ kind: 'message', id: 'u1', role: 'user', text: '你好', streaming: false }], streaming: false, meta: {} };
+    const view = render(<StandardChatSurface {...baseProps('s1', { api, session: baseSession })} />);
+    expect(screen.getByText('你好')).toBeTruthy();
 
-    fireEvent.change(screen.getByTestId('composer-input'), { target: { value: '你好' } });
-    fireEvent.keyDown(screen.getByTestId('composer-input'), { key: 'Enter' });
-
-    // First streaming delta.
+    // The single timeline (JSONL) grows: first streaming delta.
     view.rerender(<StandardChatSurface {...baseProps('s1', {
       api,
-      session: { entries: [{ kind: 'message', id: 'a1', role: 'assistant', text: '第一行', streaming: true }], streaming: true, meta: {} },
+      session: {
+        entries: [
+          { kind: 'message', id: 'u1', role: 'user', text: '你好', streaming: false },
+          { kind: 'message', id: 'a1', role: 'assistant', text: '第一行', streaming: true },
+        ],
+        streaming: true,
+        meta: {},
+      },
     })} />);
-    // Second streaming delta continues the SAME entry (same id), so text should grow.
+    expect(screen.getByText(/第一行/)).toBeTruthy();
+
+    // Second streaming delta continues the SAME assistant entry, so its text grows.
     view.rerender(<StandardChatSurface {...baseProps('s1', {
       api,
-      session: { entries: [{ kind: 'message', id: 'a1', role: 'assistant', text: '第一行\n第二行', streaming: true }], streaming: true, meta: {} },
+      session: {
+        entries: [
+          { kind: 'message', id: 'u1', role: 'user', text: '你好', streaming: false },
+          { kind: 'message', id: 'a1', role: 'assistant', text: '第一行\n第二行', streaming: true },
+        ],
+        streaming: true,
+        meta: {},
+      },
     })} />);
 
     expect(screen.getByText('你好')).toBeTruthy();
-    // The streaming assistant entry grows in place: the second delta (第二行) is rendered.
     expect(screen.getByText(/第二行/)).toBeTruthy();
   });
 });

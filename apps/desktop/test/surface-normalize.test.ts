@@ -21,6 +21,19 @@ describe('surface normalize', () => {
     expect(next.at(-1)?.kind).toBe('message');
   });
 
+  it('keeps a user message in the live timeline (mirrors the JSONL)', () => {
+    const base = normalizeSessionEntries([{ type: 'message', message: { role: 'user', content: [{ type: 'text', text: '先' }] } }]);
+    const next = applySurfaceEvent(base, { type: 'message', role: 'user', text: '先检查一下结果' });
+    expect(next.at(-1)).toMatchObject({ kind: 'message', role: 'user', text: '先检查一下结果' });
+  });
+
+  it('does not double-echo the same consecutive user message', () => {
+    const base = normalizeSessionEntries([]);
+    const once = applySurfaceEvent(base, { type: 'message', role: 'user', text: '你好' });
+    const twice = applySurfaceEvent(once, { type: 'message', role: 'user', text: '你好' });
+    expect(twice).toHaveLength(1);
+  });
+
   it('applies an assistant thinking delta onto entries', () => {
     const next = applySurfaceEvent([], { type: 'message', role: 'assistant', thinkingDelta: '让我想想' });
     expect(next.at(-1)).toMatchObject({ kind: 'message', role: 'assistant', thinking: '让我想想', streaming: true });

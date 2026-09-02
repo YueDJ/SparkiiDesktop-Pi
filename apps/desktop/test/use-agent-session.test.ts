@@ -64,4 +64,24 @@ describe('useAgentSession', () => {
     expect(result.current.entries).toHaveLength(1);
     expect(result.current.entries[0]).toMatchObject({ kind: 'tool', toolName: 'bash', result: { exitCode: 0 } });
   });
+
+  it('keeps a live user message in session.entries (JSONL truth source)', async () => {
+    const on = vi.fn().mockReturnValue(() => {});
+    (globalThis as any).window = {
+      sparkii: {
+        openChatSession: vi.fn().mockResolvedValue({ entries: [] }),
+        on,
+      },
+    };
+    const { result } = renderHook(() => useAgentSession('general', 's1', 'live'));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    const chatCb = on.mock.calls.find((c: any[]) => c[0] === 'chat-event')?.[1];
+    await act(async () => {
+      chatCb({ sessionId: 's1', type: 'message', role: 'user', text: '检查一下结果' });
+    });
+    expect(result.current.entries).toHaveLength(1);
+    expect(result.current.entries[0]).toMatchObject({ kind: 'message', role: 'user', text: '检查一下结果' });
+  });
 });
