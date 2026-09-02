@@ -288,7 +288,7 @@ export async function runWorkflow(
       }
       if (e.type === 'workflow_completed') finalState = e.result as Record<string, unknown>;
     }
-    if (Object.keys(finalState).length > 0 && slot.client) {
+    if (Object.keys(finalState).length > 0 && slot.client?.send) {
       await slot.client.send({
         type: 'append_workflow_entry',
         customType: 'workflow_state',
