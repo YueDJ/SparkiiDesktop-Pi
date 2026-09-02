@@ -202,6 +202,7 @@ table.tbl th { background: var(--color-controlBg); color: var(--color-textSecond
 .contract-header-main { display: flex; align-items: center; gap: var(--spacing-xs); min-width: 0; }
 .contract-header-title { font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); }
 .contract-header-file { color: var(--color-textSecondary); font-size: var(--font-size-sm); max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.contract-status { color: var(--color-textSecondary); font-size: var(--font-size-sm); }
 .contract-model-bar { display: inline-flex; align-items: center; gap: var(--spacing-xs); }
 .contract-model-ws-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; }
 

@@ -166,6 +166,7 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
   const { sessionId, session, actions } = props;
   const timeline = deriveWorkflowTimeline(session.entries);
   const status = session.status && session.status !== 'idle' ? session.status : timeline.status;
+  const currentStep = session.meta.currentStep ?? timeline.step ?? null;
   const result = session.result ?? extractWorkflowResult(session.entries);
   const reviewPayload = (result?.['review'] ?? result?.['compare'] ?? result) as unknown;
   const findings = parseRiskFindings(reviewPayload);
@@ -231,6 +232,9 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
         <div className="contract-header-main">
           <span className="contract-header-title">{props.agent.name}</span>
           {fileName && <span className="contract-header-file">{fileName}</span>}
+          <span className="contract-status" data-testid="workflow-status">
+            {status === 'running' ? `审核中：${currentStep ?? '…'}` : status === 'done' ? '审核完成' : status === 'failed' ? '审核失败' : ''}
+          </span>
         </div>
         <ModelEffortBar agentId={props.agent.id} sessionId={sessionId} session={session} />
       </header>

@@ -279,7 +279,11 @@ function AppShell() {
       const fetchedById: Record<string, ShellSession & { profileId: string }> = {};
       const fetchedByProfile: Record<string, Array<ShellSession & { profileId: string }>> = {};
       for (const s of list ?? []) {
-        const profileId = s.profileId ?? '';
+        let profileId = s.profileId ?? '';
+        if (!profileId) {
+          const owner = Object.entries(workflowByAgentRef.current).find(([, w]) => w.sessionId === s.id)?.[0];
+          profileId = owner ?? '';
+        }
         const diskName = sessionDisplayName({ title: s.title, firstMessage: s.firstMessage, updatedAt: s.updatedAt });
         const override = sessionOverridesRef.current.get(s.id);
         const name = override?.name ?? diskName;

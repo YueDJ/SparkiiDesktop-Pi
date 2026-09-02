@@ -45,6 +45,7 @@ function makeApi() {
     chooseDocument: vi.fn(),
     runWorkflow: vi.fn().mockResolvedValue({ ok: true, sessionId: 'ws1' }),
     openChatSession: vi.fn().mockResolvedValue({ entries: [] }),
+    listChatSessions: vi.fn().mockResolvedValue([]),
     exportReport: vi.fn(),
     prompt: vi.fn().mockResolvedValue({ ok: true }),
     decideApproval: vi.fn(),
@@ -59,6 +60,14 @@ function makeApi() {
 }
 
 describe('App workflow feedback', () => {
+  it('groups workflow sessions under contract-review', async () => {
+    const { api } = makeApi();
+    api.listChatSessions = vi.fn().mockResolvedValue([{ id: 'pi-workflow-1', title: '采购合同', updatedAt: 1 }]);
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+    expect(await screen.findByText('采购合同')).toBeTruthy();
+  });
+
   it('shows workflow status from workflow events', async () => {
     const { api, channels } = makeApi();
     render(<App />);
