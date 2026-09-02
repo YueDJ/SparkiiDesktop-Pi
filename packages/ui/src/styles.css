@@ -114,7 +114,7 @@ button { font: inherit; color: inherit; }
 .ui-tool-card-status { margin-left: auto; flex: none; }
 .ui-tool-card-toggle { flex: none; height: var(--control-height-sm); padding: 0 var(--spacing-xs); font-size: var(--font-size-xs); }
 .ui-tool-card-detail { margin-top: var(--spacing-xs); border-top: 1px dashed var(--color-border); padding-top: var(--spacing-xs); font-size: var(--font-size-sm); max-width: 100%; overflow: hidden; }
-.ui-composer { padding: var(--spacing-xxs) var(--spacing-md) var(--spacing-md); display: flex; flex-direction: column; }
+.ui-composer { padding: var(--spacing-xxs) var(--spacing-md) var(--spacing-xs); display: flex; flex-direction: column; }
 .ui-composer-ws-btn { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border: none; background: none; color: var(--color-textSecondary); border-radius: var(--radius-control); font-size: var(--font-size-sm); min-width: 0; cursor: pointer; }
 .ui-composer-ws-btn svg { flex: none; }
 .ui-composer-ws-btn:hover { background: var(--color-controlBg); }
