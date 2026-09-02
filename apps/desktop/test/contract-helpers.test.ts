@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseRiskFindings, formatReport, stepStatus } from '../agents/contract-review/surface/contract.js';
+import { parseRiskFindings, formatReport, stepStatus, parseClauseGroups } from '../agents/contract-review/surface/contract.js';
 import { deriveSteps } from '../agents/contract-review/surface/manifest-steps.js';
 
 describe('parseRiskFindings', () => {
@@ -21,6 +21,13 @@ describe('parseRiskFindings', () => {
     expect(parseRiskFindings([])).toEqual([]);
     expect(parseRiskFindings(undefined)).toEqual([]);
   });
+
+  it('prefers structured id/title/level/advice fields', () => {
+    const out = parseRiskFindings([
+      { id: 'r1', title: '付款周期过长', level: 'high', clause: '第7条', ruleId: 'rg-01', ruleText: '账期≤30天', advice: '约定逾期违约金' },
+    ]);
+    expect(out[0]).toMatchObject({ id: 'r1', title: '付款周期过长', level: 'high', advice: '约定逾期违约金' });
+  });
 });
 
 describe('formatReport', () => {
@@ -32,6 +39,20 @@ describe('formatReport', () => {
   it('falls back to a single block for plain strings and null', () => {
     expect(formatReport('hello')!.blocks[0].body).toBe('hello');
     expect(formatReport(null)).toBeNull();
+  });
+
+  it('carries through a structured risk table', () => {
+    const r = formatReport({ title: '报告', sections: [{ heading: '结论', body: '重点关注' }], riskTable: { totals: { high: 2 } } });
+    expect(r?.title).toBe('报告');
+    expect(r?.riskTable).toEqual({ totals: { high: 2 } });
+  });
+});
+
+describe('parseClauseGroups', () => {
+  it('parses typed clause groups', () => {
+    const out = parseClauseGroups([{ category: '付款', clauses: [{ text: '第7条 约定账期30天', position: 'p12' }] }]);
+    expect(out[0].category).toBe('付款');
+    expect(out[0].clauses[0].text).toBe('第7条 约定账期30天');
   });
 });
 
