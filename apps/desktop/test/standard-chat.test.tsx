@@ -297,4 +297,39 @@ describe('StandardChatSurface behaviors', () => {
     act(() => channels['chat-event']({ sessionId: 's1', type: 'message', role: 'user', text: '请创建 hello.txt' }));
     expect(screen.getAllByText('请创建 hello.txt')).toHaveLength(1);
   });
+
+  it('keeps each assistant reply below its triggering user message across turns', async () => {
+    const { api, channels } = makeApi();
+    const view = render(<StandardChatSurface {...baseProps('s1', { api, session: { entries: [], streaming: false, meta: {} } })} />);
+
+    // Turn 1: user sends -> optimistic user message appears first.
+    fireEvent.change(screen.getByTestId('composer-input'), { target: { value: '第一问' } });
+    fireEvent.keyDown(screen.getByTestId('composer-input'), { key: 'Enter' });
+
+    // Assistant reply arrives in the authoritative timeline.
+    view.rerender(<StandardChatSurface {...baseProps('s1', {
+      api,
+      session: { entries: [{ kind: 'message', id: 'a1', role: 'assistant', text: '第一答', streaming: false }], streaming: false, meta: {} },
+    })} />);
+    act(() => channels['chat-event']({ sessionId: 's1', type: 'agent_end' }));
+
+    // Turn 2: user sends again (busy cleared by agent_end).
+    fireEvent.change(screen.getByTestId('composer-input'), { target: { value: '第二问' } });
+    fireEvent.keyDown(screen.getByTestId('composer-input'), { key: 'Enter' });
+
+    view.rerender(<StandardChatSurface {...baseProps('s1', {
+      api,
+      session: {
+        entries: [
+          { kind: 'message', id: 'a1', role: 'assistant', text: '第一答', streaming: false },
+          { kind: 'message', id: 'a2', role: 'assistant', text: '第二答', streaming: false },
+        ],
+        streaming: false,
+        meta: {},
+      },
+    })} />);
+
+    const order = Array.from(document.querySelectorAll('.ui-chat-message')).map((el) => el.textContent?.trim());
+    expect(order).toEqual(['第一问', '第一答', '第二问', '第二答']);
+  });
 });

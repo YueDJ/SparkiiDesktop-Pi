@@ -123,7 +123,7 @@ describe('App general agent', () => {
     fireEvent.click(await screen.findByText('旧会话'));
 
     await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
-    expect(screen.getByText('历史消息')).toBeTruthy();
+    expect(await screen.findByText('历史消息')).toBeTruthy();
   });
 
   it('keeps a streaming reply when leaving and returning to general chat', async () => {

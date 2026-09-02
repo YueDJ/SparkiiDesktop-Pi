@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { AgentSurfaceProps, SessionEntry } from './contract.js';
 import type { ChatAttachment, SparkiiApi } from '../types/sparkii-api.js';
 import {
@@ -13,6 +13,7 @@ import {
   DEFAULT_CHAT_DETAIL_LEVEL,
   isChatDetailLevel,
   shouldShowEntry,
+  findLastUnresolvedTool,
   type ChatEntry,
   type ChatDetailLevel,
   type ComposerAttachment,
@@ -181,8 +182,7 @@ export function StandardChatSurface(props: StandardChatProps) {
   const { agent, sessionId, session, actions, api: apiOverride, active = true, draft } = props;
   const api = apiOverride ?? (window.sparkii as SparkiiApi);
   const { reportError } = useErrors();
-  const [localUser, setLocalUser] = useState<ChatEntry[]>([]);
-  const [pendingApprovals, setPendingApprovals] = useState<Set<string>>(new Set());
+  const [entries, setEntries] = useState<ChatEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [stopping, setStopping] = useState(false);
   const [queues, setQueues] = useState<QueueMap>({ steering: [], followUp: [] });
@@ -204,6 +204,8 @@ export function StandardChatSurface(props: StandardChatProps) {
   const lastIdlePromptRef = useRef('');
   const suppressUserEventRef = useRef(false);
   const modelRef = useRef(model);
+  const seenSessIdRef = useRef<Set<string>>(new Set());
+  const lastSessIdRef = useRef<string | null>(null);
   const isBusy = busy || session.streaming;
 
   useEffect(() => { modelRef.current = model; }, [model]);
@@ -269,8 +271,6 @@ export function StandardChatSurface(props: StandardChatProps) {
   };
 
   useEffect(() => {
-    setLocalUser([]);
-    setPendingApprovals(new Set());
     setBusy(false);
     setStopping(false);
     setQueues({ steering: [], followUp: [] });
@@ -316,17 +316,18 @@ export function StandardChatSurface(props: StandardChatProps) {
           return;
         }
         if (!text) return;
-        setLocalUser((xs) => [...xs, { kind: 'message', id: `u${Date.now()}-${Math.random()}`, role: 'user', text, streaming: false }]);
+        setEntries((xs) => [...xs, { kind: 'message', id: `u${Date.now()}-${Math.random()}`, role: 'user', text, streaming: false }]);
         return;
       }
       if (p?.type === 'compaction_start' || p?.type === 'compaction_end' || p?.type === 'agent_settled') refreshContext();
     });
     const off2 = api.on('approval', (p: any) => {
       if (p?.sessionId !== sessionId || !p?.toolName) return;
-      setPendingApprovals((xs) => {
-        const next = new Set(xs);
-        if (typeof p?.toolCallId === 'string') next.add(p.toolCallId);
-        if (typeof p?.toolName === 'string') next.add(p.toolName);
+      setEntries((xs) => {
+        const idx = findLastUnresolvedTool(xs, p.toolName, p.toolCallId);
+        if (idx < 0) return xs;
+        const next = [...xs];
+        next[idx] = { ...(next[idx] as Extract<ChatEntry, { kind: 'tool' }>), awaitingApproval: true };
         return next;
       });
     });
@@ -367,7 +368,7 @@ export function StandardChatSurface(props: StandardChatProps) {
 
     lastIdlePromptRef.current = display;
     suppressUserEventRef.current = true;
-    if (sessionId) setLocalUser((xs) => [...xs, { kind: 'message', id: `u${Date.now()}`, role: 'user', text: display, streaming: false }]);
+    setEntries((xs) => [...xs, { kind: 'message', id: `u${Date.now()}`, role: 'user', text: display, streaming: false }]);
     setBusy(true);
 
     api.promptSession(
@@ -439,29 +440,41 @@ export function StandardChatSurface(props: StandardChatProps) {
     });
   };
 
-  // Timeline comes from the authoritative session; local non-session user messages (optimistic
-  // sends + Pi steering/follow-up echoes) and pending approval overlays are merged on top.
-  const entries = useMemo<ChatEntry[]>(() => {
-    const base = (session.entries ?? []).filter(isChatEntry).map((e) => {
-      if (e.kind === 'tool' && !e.awaitingApproval && (pendingApprovals.has(e.toolName) || (e.toolCallId ? pendingApprovals.has(e.toolCallId) : false))) {
-        return { ...e, awaitingApproval: true };
-      }
-      return e;
-    });
-    return [...base, ...localUser];
-  }, [session.entries, pendingApprovals, localUser]);
-
-  // Drop optimistic/echoed user messages once the backend confirms them in the timeline.
+  // Grow a single, chronologically-ordered timeline: append newly-arriving authoritative session
+  // entries in order (assistant/tool/event/history user messages) and append user messages at the
+  // moment they are sent/echoed. This keeps each assistant reply below the user message that
+  // triggered it. When switching between committed sessions we drop the previous timeline.
   useEffect(() => {
-    setLocalUser((prev) => {
-      const sessionUserTexts = (session.entries ?? [])
-        .filter(isChatEntry)
-        .filter((e) => e.kind === 'message' && e.role === 'user')
-        .map((e) => (e as Extract<ChatEntry, { kind: 'message' }>).text);
-      if (!sessionUserTexts.length) return prev;
-      return prev.filter((u) => u.kind !== 'message' || !sessionUserTexts.includes(u.text));
+    const prevSessId = lastSessIdRef.current;
+    if (prevSessId !== sessionId) {
+      lastSessIdRef.current = sessionId;
+      if (prevSessId !== null) {
+        seenSessIdRef.current = new Set();
+        setEntries([]);
+        return; // this frame's session.entries may be stale (previous session); wait for reload
+      }
+      // null -> first committed session: keep optimistic user messages and resume merging
+    }
+
+    const sessionEntries = (session.entries ?? []).filter(isChatEntry);
+    const added = sessionEntries.filter((e) => !seenSessIdRef.current.has(e.id));
+    for (const e of added) seenSessIdRef.current.add(e.id);
+    if (!added.length) return;
+
+    setEntries((prev) => {
+      // Once the authoritative timeline confirms a user message, drop the matching optimistic echo
+      // so the replay does not render the same user message twice.
+      const confirmed = new Set(
+        sessionEntries
+          .filter((e) => e.kind === 'message' && e.role === 'user')
+          .map((e) => (e as Extract<ChatEntry, { kind: 'message' }>).text),
+      );
+      const kept = confirmed.size
+        ? prev.filter((u) => !(u.kind === 'message' && u.role === 'user' && confirmed.has(u.text)))
+        : prev;
+      return [...kept, ...added];
     });
-  }, [session.entries]);
+  }, [sessionId, session.entries]);
 
   if (!sessionId && !draft) {
     return (
