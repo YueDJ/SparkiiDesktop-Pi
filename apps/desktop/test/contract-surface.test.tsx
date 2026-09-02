@@ -41,7 +41,7 @@ describe('ContractSurface', () => {
 
   it('switches between report and original document panes', () => {
     renderSurface({ status: 'done' });
-    expect(screen.getByText('合同审核报告')).toBeTruthy();
+    expect(screen.getAllByText('合同审核报告').length).toBeGreaterThan(0);
     fireEvent.click(screen.getByText('原文'));
     expect(screen.getByText('C:/tmp/contract.pdf')).toBeTruthy();
   });
@@ -63,6 +63,13 @@ describe('ContractSurface', () => {
   it('renders a clickable workflow step nav', () => {
     renderSurface({ status: 'done' });
     expect(screen.getByRole('button', { name: '比对' })).toBeTruthy();
+  });
+
+  it('renders a structured compare step without raw JSON', () => {
+    renderSurface({ status: 'done' });
+    fireEvent.click(screen.getByRole('button', { name: '比对' }));
+    expect(document.querySelector('pre')).toBeNull();
+    expect(screen.getAllByText('第7条 付款条件').length).toBeGreaterThan(0);
   });
 
   it('records risk confirmation when a workflow session is active', () => {
