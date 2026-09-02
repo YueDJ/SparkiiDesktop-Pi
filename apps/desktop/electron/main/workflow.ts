@@ -246,6 +246,7 @@ export async function runWorkflow(
   const slot = await rt.pool.acquire(sessionId, {
     saddle: buildAgentSaddle(rt.agentOf(profileId), join(rt.dataDir, 'sessions', sessionId)),
   });
+  const inputFiles = Array.isArray(input?.documents) ? JSON.stringify(input.documents) : null;
   rt.chatSessions?.create?.({
     id: sessionId,
     profileId,
@@ -253,6 +254,7 @@ export async function runWorkflow(
     currentStep: null,
     workspaceKind: 'auto',
     workspacePath: join(rt.dataDir, 'sessions', sessionId),
+    inputs: inputFiles,
   });
   slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId }));
   try {

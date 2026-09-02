@@ -27,4 +27,18 @@ describe('useAgentSession', () => {
     const { result } = renderHook(() => useAgentSession('general', null, 'live'));
     expect(result.current.entries).toEqual([]);
   });
+
+  it('populates meta.inputs from the loaded session', async () => {
+    (globalThis as any).window = {
+      sparkii: {
+        openChatSession: vi.fn().mockResolvedValue({ entries: [], inputs: [{ path: 'C:/tmp/a.pdf', name: 'a.pdf' }] }),
+        on: vi.fn().mockReturnValue(() => {}),
+      },
+    };
+    const { result } = renderHook(() => useAgentSession('contract-review', 's1', 'history'));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(result.current.meta.inputs).toEqual([{ path: 'C:/tmp/a.pdf', name: 'a.pdf' }]);
+  });
 });
