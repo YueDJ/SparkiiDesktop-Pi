@@ -201,4 +201,21 @@ describe('ContractAgentSurface', () => {
     fireEvent.click(screen.getByTestId('review'));
     expect(actions.startWorkflow).toHaveBeenCalledWith({ documents: ['C:/tmp/a.pdf'] });
   });
+
+  it('offers a new session action instead of reusing the active review', () => {
+    const actions = makeActions();
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s1"
+        mode="history"
+        session={{ entries: [], streaming: false, status: 'done', meta: { currentStep: 'report', inputs: [{ path: 'C:/tmp/a.pdf', name: 'a.pdf' }] } }}
+        actions={actions}
+      />,
+    );
+    expect(screen.getByTestId('new-review')).toBeTruthy();
+    expect(screen.queryByTestId('upload')).toBeNull();
+    fireEvent.click(screen.getByTestId('new-review'));
+    expect(actions.newSession).toHaveBeenCalled();
+  });
 });

@@ -195,6 +195,15 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [filter, setFilter] = useState<'all' | 'high' | 'mid' | 'low' | 'unprocessed'>('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    setReviewed(initialReviewState(session.entries));
+    setNotes(initialNotes(session.entries));
+    setReportMerged(wasReportMerged(session.entries));
+    setFilter('all');
+    setSelected(new Set());
+    setLocalFileName('');
+    setDocuments(inputs.map((i) => i.path));
+  }, [sessionId, inputsKey, session.entries]);
 
   const processedCount = Object.values(reviewed).filter((v) => v !== 'none').length;
   const unprocessed = findings.filter((f) => !reviewed[f.id] || reviewed[f.id] === 'none');
@@ -305,6 +314,11 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
                 开始审核
               </button>
             </>
+          )}
+          {status !== 'idle' && (
+            <button type="button" className="ui-btn" data-testid="new-review" onClick={() => actions.newSession()}>
+              新会话
+            </button>
           )}
         </div>
       </header>
