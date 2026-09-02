@@ -80,7 +80,8 @@ Agent Package（每个智能体一个）
 
 ### 边界规则（硬性）
 
-- `apps/desktop/src/surface/`（平台模板）**绝不** import `apps/desktop/agents/**`。
+- `apps/desktop/src/surface/`（平台 Surface 模板 / 引擎）**绝不** import `apps/desktop/agents/**`。它只依赖面向所有 surface 的契约与公共件。
+- Agent surface 的入口由**唯一一个组合根（composition root）**负责 import 并注入到模板：`apps/desktop/src/platform/surface-registry.tsx`（或构建期生成的 bindings）。它是全工程**唯一** import 到 `apps/desktop/agents/**` 的地方，也是它存在的意义——它是「接线层」，不是可复用的模板。
 - `apps/desktop/agents/<id>/surface/`（Agent surface）**只**通过公开的 `AgentSurface` 契约与 `@sparkii/ui`、平台可用的公共件与平台交互；不允许 import `src/composer`、`src/workbench` 等平台内部模块。
 - 平台层**不再**出现 `agentId === 'general'` / `'contract-review'` 特判；只认 `manifest.surface.type`。
 
@@ -89,7 +90,8 @@ Agent Package（每个智能体一个）
 | 层 | 职责 | 位置 |
 | --- | --- | --- |
 | 平台 Shell + 设计系统 | 顶栏/左栏/会话抽屉/审批/审计/运行中心/错误中心/主题；共享展示件（StepRail、ToolCard、RiskBadge、Markdown、Composer、LifecycleCard） | `packages/ui/`；`apps/desktop/src/shell/`、`apps/desktop/src/trust/`、`apps/desktop/src/audit/` |
-| 平台 Surface 模板（薄） | `AgentSurface` 契约、`useAgentSession`、会话流归一化器、surface 解析 | `apps/desktop/src/surface/`（新建） |
+| 平台 Surface 模板（薄） | `AgentSurface` 契约、`useAgentSession`、会话流归一化器、通用渲染引擎（模板）；**不含任何 agent 引用** | `apps/desktop/src/surface/`（新建） |
+| 平台 Surface 解析器（组合根） | 唯一 import agent surface 入口，按 `manifest.surface.type` 绑定 `agentId → surface`（标准 ChatSurface / workflow / custom entry） | `apps/desktop/src/platform/surface-registry.tsx`（已有桩，扩展） |
 | 合同审核 Agent | 步骤条（单一事实源化）、分步视图、业务数据模型、业务动作、step→view 映射 | `apps/desktop/agents/contract-review/surface/` |
 | 通用 Agent | `surface.type: chat`，复用平台标准 ChatSurface | `apps/desktop/agents/general/surface/` |
 
@@ -167,13 +169,27 @@ workflow_state
 
 ### 职责
 
-构建期根据所有 Agent 的 `manifest` 生成「`agentId → Surface 组件`」映射：
+组合根根据所有 Agent 的 `manifest` 建立「`agentId → Surface 绑定`」映射：
 
 - `surface.type === 'chat'` → 平台标准 ChatSurface。
-- `surface.type === 'workflow'` → 平台 WorkflowSurface 骨架 + Agent 提供的步骤视图。
-- `surface.type === 'custom'` → 解析 `manifest.surface.entry`。
+- `surface.type === 'workflow'` → 平台 Workflow 骨架 + Agent 提供的步骤视图。
+- `surface.type === 'custom'` → 解析 `manifest.surface.entry`（agent 自定义页面）。
 
-`App.tsx` 移除 `ContractSurface` / `GeneralChatSurface` 直接 import 与 `screen === 'general'` / `'contract-review'` 特判，改为通过 Resolver 渲染当前 Agent。
+### 渲染机制（模板不 import agent 的原因）
+
+模板（`AgentSurfaceHost`）是一个**通用渲染引擎**：它接收一个 `surface` 组件作为参数并把它渲染进共享壳（头部/步骤条/时间线）。它不知道、也不需要知道任何一个具体的 agent；agent 的 surface 组件是**通过参数注入**的，而不是被 import 进来的。
+
+真正把「agent surface」注入到模板的，是唯一的组合根（`src/platform/surface-registry.tsx`）：
+
+```text
+src/surface/AgentSurfaceHost           通用引擎，无 agent 引用（generic）
+src/platform/surface-registry          组合根：唯一 import agents/**，建 agentId → surface 绑定
+  general          -> standardChatSurface      （平台标准件）
+  contract-review  -> ContractReviewSurface    （agent 自定义）
+App.tsx            -> 取当前 agent 的绑定，把 surface 组件塞给 AgentSurfaceHost 渲染
+```
+
+`App.tsx` 移除 `ContractSurface` / `GeneralChatSurface` 直接 import 与 `screen === 'general'` / `'contract-review'` 特判，改为「从组合根取绑定 → 注入模板渲染」。
 
 ## Subsystem 4: Contract Review Surface (Redesign)
 
