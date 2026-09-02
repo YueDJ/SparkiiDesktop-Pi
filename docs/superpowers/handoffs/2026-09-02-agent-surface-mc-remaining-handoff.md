@@ -31,12 +31,14 @@
 
 ### 推荐路线（二选一）
 
-**路线 A（推荐，最贴近设计原意，工作量更大）**：让 `standard-chat` **真正消费 `AgentSurfaceProps.session`**，不再自拉流。
+**路线 A（推荐，最贴近设计原意，工作量更大）**：让 `standard-chat` **真正消费 `AgentSurfaceProps.session`**，不再自拉流，并**彻底删除 `GeneralChatSurface` 适配器、把全部 general-chat 用例迁到标准件**。
 
 1. 让 `useAgentSession` 的 `session.entries` 承载完整 chat 时间线。当前 `src/surface/normalize.ts` 只归一 `message`/`workflow_step`/`workflow_state`，缺 `tool`/`event`/`thinking`。可增强 `normalize.ts`（对齐 `@sparkii/ui/pi-timeline`），或让 `use-agent-session.ts` 直接复用 `@sparkii/ui` 的 `normalizeSessionEntries`/`applyChatEvent`（`pi-timeline` 已在公共件内）。
 2. `standard-chat` 用 `props.session.entries` 渲染、`props.session.streaming` 控制 busy；队列/草稿/上下文等仍从 `window.sparkii` 订阅。
-3. 完成后 general 可卸载/重挂，App 无需常挂载。
-4. `App.tsx` 改为：`activeAgent = derivedAgents.find(a => a.id === screen)` → `useAgentSurface(activeAgent.id)` 单一 `Surface`；会话/动作按 `activeAgent.surfaceType` 组装；`navigate` 用「agent id 集合 / manifest 表面类型」判断，去掉逐字面量分支。
+3. **删除 `agents/general/surface/index.tsx` 里的 `GeneralChatSurface` 适配器**；该入口默认导出保持为 `StandardChatSurface`，另保留 `applyChatEvent`/`normalizeMessages`/`ChatEntry` 等公共 RE-EXPORT（供需直接引用者或测试）。
+4. **把 `general-chat-surface.test.tsx` 的 22 个既有行为用例整体迁移/收编到 `standard-chat.test.tsx`**：改为直接渲染 `StandardChatSurface` 并**喂 `session`（session.entries/streaming/meta）+ `actions`（newSession/openSession）**，不再通过 `GeneralChatSurface` 适配器；迁移后**删除 `general-chat-surface.test.tsx`**。补足 `use-agent-session`/`surface-normalize` 对 tool/event/thinking delta/toolCall→toolResult 的覆盖。
+5. 完成后 general 可卸载/重挂，App 无需常挂载。
+6. `App.tsx` 改为：`activeAgent = derivedAgents.find(a => a.id === screen)` → `useAgentSurface(activeAgent.id)` 单一 `Surface`；`session`/`actions` 按 `activeAgent.surfaceType` 组装（chat 交给 `useAgentSession('general', sessionId, mode)` 产出的真实 session）；`navigate` 用「屏幕是否为 agent surface（来自 agents 列表）+ manifest surfaceType」判断，去掉逐字面量分支。
 
 **路线 B（轻量，只去 App 渲染层）**：保留 general 常挂载，仅把 `useAgentSurface('general'/'contract-review')` 换成 `useAgentSurface(activeAgent.id)`（`activeAgent` 来自 `derivedAgents.find(a => a.id === screen)`），渲染用单个 `Surface` + `surfaceType` 组装 props。接受 `navigate`/会话接线仍按 agent 区分（App-shell 固有职责）。
 
