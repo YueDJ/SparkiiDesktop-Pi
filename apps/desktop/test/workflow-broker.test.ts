@@ -83,6 +83,23 @@ it('resolves skill ref and llm template to prompt content', () => {
   expect(report?.template).toContain('report');
 });
 
+it('resolves the two visible business skills plus hidden tools', () => {
+  const def = {
+    version: 1,
+    engine: 'linear',
+    steps: [
+      { id: 'load', type: 'tool', ref: 'document.read', map: { documents: 'documents' } },
+      { id: 'search', type: 'tool', ref: 'knowledge.search', map: { query: 'load.text' } },
+      { id: 'review', type: 'skill', ref: 'contract_risk_review', inputs: { from: ['load', 'search'] } },
+      { id: 'report', type: 'skill', ref: 'contract_report', inputs: { from: 'review' } },
+    ],
+  } as any;
+  const resolved = resolveWorkflowTemplates(def);
+  expect(resolved.steps.map((s) => s.id)).toEqual(['load', 'search', 'review', 'report']);
+  expect(resolved.steps.find((s) => s.id === 'review')?.template).toContain('contract_risk_review');
+  expect(resolved.steps.find((s) => s.id === 'report')?.template).toContain('contract_report');
+});
+
 describe('runWorkflow broker sharing', () => {
   it('completes the human step when the shared broker decides approval', async () => {
     const send = vi.fn();
