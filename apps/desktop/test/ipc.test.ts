@@ -43,6 +43,14 @@ function fakeSafeStorage() {
   } as any;
 }
 
+async function waitUntil(predicate: () => boolean, timeoutMs = 2000): Promise<void> {
+  const start = Date.now();
+  while (!predicate()) {
+    if (Date.now() - start > timeoutMs) throw new Error('timed out waiting');
+    await new Promise((r) => setTimeout(r, 10));
+  }
+}
+
 let dirs: string[] = [];
 afterEach(async () => {
   vi.useRealTimers();
@@ -562,6 +570,73 @@ describe('ipc provider handlers', () => {
     expect(sent.some((c) => c.type === 'set_session_name')).toBe(false);
 
     vi.useRealTimers();
+  });
+
+  it('stops forwarding client events after the workflow slot is released', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    const listeners = new Set<(event: any) => void>();
+    const sent: any[] = [];
+    const windowSent: any[] = [];
+    const client = {
+      onEvent: (cb: (event: any) => void) => {
+        listeners.add(cb);
+        return () => { listeners.delete(cb); };
+      },
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'new_session') return { success: true };
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 'wf-done', sessionFile: '/tmp/w.jsonl', isStreaming: false } };
+        }
+        return { success: true };
+      },
+    };
+    const sessions = new Map<string, { id: string; profileId: string; kind?: string }>();
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      getWindow: () => ({
+        on: () => {},
+        isDestroyed: () => false,
+        webContents: { send: (...args: unknown[]) => { windowSent.push(args); } },
+      }),
+      profile: {
+        dir: join(dataDir, 'profiles', 'contract-review'),
+        profile: {
+          manifest: { name: 'contract-review', displayName: '合同审核' },
+          security: { approval: { timeoutMs: 60_000 } },
+          agent: {
+            tools: ['read'],
+            prompts: { system: 'sys' },
+            workflow: { version: 1, engine: 'linear', steps: [] },
+          },
+        },
+        router: { resolve: () => undefined },
+      } as any,
+    });
+    (rt as any).chatSessions.create = (rec: { id: string; profileId: string; kind?: string }) => {
+      sessions.set(rec.id, rec);
+    };
+    (rt as any).chatSessions.get = (id: string) => sessions.get(id) ?? null;
+
+    const handlers = await registeredHandlers();
+    const result = await handlers.get('sparkii:runWorkflow')!(null, 'contract-review', { documents: [] });
+    expect(result).toEqual({ ok: true, sessionId: 'wf-done' });
+    await waitUntil(() => (rt.pool.release as ReturnType<typeof vi.fn>).mock.calls.length > 0);
+    expect(rt.pool.release).toHaveBeenCalledTimes(1);
+
+    windowSent.length = 0;
+    for (const cb of listeners) cb({ type: 'agent_settled' });
+    expect(windowSent.some((c) => c[0] === 'sparkii:event:chat-event' && c[1]?.sessionId === 'wf-done')).toBe(false);
+
+    const opened = await handlers.get('sparkii:openChatSession')!(null, 'wf-done');
+    expect(sent.some((c) => c.type === 'get_session_entries')).toBe(false);
+    expect(opened).toMatchObject({ messages: [] });
   });
 
   it('workflow selectModel routes to settings active provider and default model', async () => {

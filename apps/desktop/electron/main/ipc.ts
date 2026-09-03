@@ -916,6 +916,12 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         openSessions.set(id, entry);
         pipeSessionEvents(id, entry);
       },
+      async beforeRelease(id) {
+        const open = openSessions.get(id);
+        if (!open) return;
+        open.offEvents?.();
+        openSessions.delete(id);
+      },
     });
     return { ok: true, sessionId };
   });

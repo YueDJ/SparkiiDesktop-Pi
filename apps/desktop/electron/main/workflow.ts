@@ -240,7 +240,10 @@ export async function runWorkflow(
   input: Record<string, unknown>,
   broker: ReturnType<typeof createBroker>,
   profileId: string,
-  opts?: { onReady?: (sessionId: string, slot: Awaited<ReturnType<Runtime['pool']['acquire']>>) => void },
+  opts?: {
+    onReady?: (sessionId: string, slot: Awaited<ReturnType<Runtime['pool']['acquire']>>) => void;
+    beforeRelease?: (sessionId: string) => void | Promise<void>;
+  },
 ): Promise<string> {
   const pr = rt.profileOf(profileId);
   const tempKey = `new:${randomUUID()}`;
@@ -274,12 +277,13 @@ export async function runWorkflow(
     slot.supervisor.onProposal((req) => broker.route(req, { sessionId: sessionId!, profileId }));
     opts?.onReady?.(sessionId, slot);
   } catch (err) {
+    if (sessionId) await opts?.beforeRelease?.(sessionId);
     await rt.pool.release(sessionId ?? tempKey);
     throw err;
   }
 
   const readySessionId = sessionId;
-  void runWorkflowLoop(rt, slot, broker, pr, readySessionId, profileId, input).catch(() => {});
+  void runWorkflowLoop(rt, slot, broker, pr, readySessionId, profileId, input, opts?.beforeRelease).catch(() => {});
   return readySessionId;
 }
 
@@ -291,6 +295,7 @@ async function runWorkflowLoop(
   sessionId: string,
   profileId: string,
   input: Record<string, unknown>,
+  beforeRelease?: (sessionId: string) => void | Promise<void>,
 ): Promise<void> {
   try {
     const rawDef = pr.profile.agent.workflow as unknown as WorkflowDef;
@@ -329,6 +334,7 @@ async function runWorkflowLoop(
       }
     }
   } finally {
+    await beforeRelease?.(sessionId);
     await rt.pool.release(sessionId);
   }
 }
