@@ -218,10 +218,11 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     const win = getWindow();
     entry.offEvents = entry.slot.client.onEvent((ev) => {
       win?.webContents.send('sparkii:event:chat-event', { ...ev, sessionId });
-      if (ev.type === 'agent_settled') {
+      const rec = rt.chatSessions.get(sessionId);
+      if (ev.type === 'agent_settled' && rec?.kind !== 'workflow') {
         scheduleIdleRelease(sessionId);
       }
-      if (ev.type === 'agent_end' && !titledSessions.has(sessionId)) {
+      if (ev.type === 'agent_end' && rec?.kind !== 'workflow' && !titledSessions.has(sessionId)) {
         titledSessions.add(sessionId);
         void maybeGenerateTitle(sessionId, entry.profileId, entry.slot).catch(() => {});
       }
@@ -909,7 +910,13 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     return { ok: true };
   });
   ipcMain.handle('sparkii:runWorkflow', async (_e, profileId: string, input: Record<string, unknown>) => {
-    const sessionId = await runWorkflow(rt, getWindow, input, broker, profileId);
+    const sessionId = await runWorkflow(rt, getWindow, input, broker, profileId, {
+      onReady(id, slot) {
+        const entry = { slot, profileId };
+        openSessions.set(id, entry);
+        pipeSessionEvents(id, entry);
+      },
+    });
     return { ok: true, sessionId };
   });
   ipcMain.handle('sparkii:diagnostics', async () => ({

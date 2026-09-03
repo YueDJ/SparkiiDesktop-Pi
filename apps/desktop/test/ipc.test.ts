@@ -45,6 +45,7 @@ function fakeSafeStorage() {
 
 let dirs: string[] = [];
 afterEach(async () => {
+  vi.useRealTimers();
   for (const dir of dirs) await rm(dir, { recursive: true, force: true });
   dirs = [];
   vi.unstubAllGlobals();
@@ -55,8 +56,9 @@ async function makeRuntime(opts: {
   piAgentDir: string;
   client: { send: (command: any) => Promise<any>; onEvent?: (cb: (event: any) => void) => () => void };
   setKey?: (providerId: string, key: string) => Promise<void>;
-  chatSession?: { profileId: string; model: string | null; piSessionFile?: string | null };
+  chatSession?: { profileId: string; model: string | null; piSessionFile?: string | null; kind?: string };
   profile?: unknown;
+  getWindow?: () => { webContents: { send: (...args: unknown[]) => void } } | null;
 }): Promise<Runtime> {
   const rt = {
     profiles: new Map(),
@@ -111,7 +113,7 @@ async function makeRuntime(opts: {
     keyFor: async () => null,
     setKey: opts.setKey ?? (async () => {}),
   } as unknown as Runtime;
-  registerIpc(rt, () => null, { export: async () => '' } as any);
+  registerIpc(rt, (opts.getWindow ?? (() => null)) as any, { export: async () => '' } as any);
   return rt;
 }
 
@@ -465,6 +467,100 @@ describe('ipc provider handlers', () => {
     expect(rt.pool.release).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(60_000);
     expect(rt.pool.release).toHaveBeenCalledWith('s1');
+    vi.useRealTimers();
+  });
+
+  it('does not idle-release or title a workflow session after agent_settled', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    const events: Array<(e: any) => void> = [];
+    const sent: any[] = [];
+    const windowSent: any[] = [];
+    const client = {
+      onEvent: (cb: (event: any) => void) => {
+        events.push(cb);
+        return () => {};
+      },
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'new_session') return { success: true };
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 'wf-1', sessionFile: '/tmp/w.jsonl', isStreaming: false } };
+        }
+        if (command.type === 'get_messages') {
+          return { success: true, data: [{ role: 'user', text: '审核合同' }] };
+        }
+        if (command.type === 'complete') {
+          return { success: true, data: '自动标题' };
+        }
+        return { success: true };
+      },
+    };
+    const sessions = new Map<string, { id: string; profileId: string; kind?: string }>();
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      getWindow: () => ({
+        on: () => {},
+        isDestroyed: () => false,
+        webContents: { send: (...args: unknown[]) => { windowSent.push(args); } },
+      }),
+      profile: {
+        dir: join(dataDir, 'profiles', 'contract-review'),
+        profile: {
+          manifest: { name: 'contract-review', displayName: '合同审核' },
+          security: { approval: { timeoutMs: 60_000 } },
+          agent: {
+            tools: ['read'],
+            prompts: { system: 'sys' },
+            workflow: {
+              version: 1,
+              engine: 'linear',
+              steps: [{ id: 'review', type: 'skill', ref: 'contract_risk_review', template: 'review' }],
+            },
+          },
+        },
+        router: { resolve: () => undefined },
+      } as any,
+    });
+    (rt as any).chatSessions.create = (rec: { id: string; profileId: string; kind?: string }) => {
+      sessions.set(rec.id, rec);
+    };
+    (rt as any).chatSessions.get = (id: string) => sessions.get(id) ?? null;
+    (rt as any).gate = {
+      submit: async (req: any) => ({ id: 'p1', ...req, status: 'pending', payloadHash: 'h', createdAt: Date.now() }),
+      expire: async (id: string) => ({ id, status: 'expired' }),
+    };
+
+    const handlers = await registeredHandlers();
+    const runWorkflowHandler = handlers.get('sparkii:runWorkflow');
+    const result = await Promise.race([
+      runWorkflowHandler!(null, 'contract-review', { documents: [] }),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('runWorkflow IPC did not return sessionId before the runner finished')), 1000);
+      }),
+    ]);
+
+    expect(result).toEqual({ ok: true, sessionId: 'wf-1' });
+    expect(events.length).toBeGreaterThan(0);
+
+    vi.useFakeTimers();
+    for (const cb of events) cb({ type: 'agent_settled' });
+    expect(windowSent.some((c) => c[0] === 'sparkii:event:chat-event' && c[1]?.type === 'agent_settled')).toBe(true);
+
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(rt.pool.release).not.toHaveBeenCalled();
+
+    for (const cb of events) cb({ type: 'agent_end' });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(sent.some((c) => c.type === 'complete')).toBe(false);
+    expect(sent.some((c) => c.type === 'set_session_name')).toBe(false);
+
     vi.useRealTimers();
   });
 

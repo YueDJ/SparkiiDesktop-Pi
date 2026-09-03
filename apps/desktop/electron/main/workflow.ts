@@ -240,6 +240,7 @@ export async function runWorkflow(
   input: Record<string, unknown>,
   broker: ReturnType<typeof createBroker>,
   profileId: string,
+  opts?: { onReady?: (sessionId: string, slot: Awaited<ReturnType<Runtime['pool']['acquire']>>) => void },
 ): Promise<string> {
   const pr = rt.profileOf(profileId);
   const tempKey = `new:${randomUUID()}`;
@@ -271,24 +272,41 @@ export async function runWorkflow(
       piSessionFile: sessionFile ?? null,
     });
     slot.supervisor.onProposal((req) => broker.route(req, { sessionId: sessionId!, profileId }));
+    opts?.onReady?.(sessionId, slot);
+  } catch (err) {
+    await rt.pool.release(sessionId ?? tempKey);
+    throw err;
+  }
 
+  const readySessionId = sessionId;
+  void runWorkflowLoop(rt, slot, broker, pr, readySessionId, profileId, input).catch(() => {});
+  return readySessionId;
+}
+
+async function runWorkflowLoop(
+  rt: Runtime,
+  slot: Awaited<ReturnType<Runtime['pool']['acquire']>>,
+  broker: ReturnType<typeof createBroker>,
+  pr: ReturnType<Runtime['profileOf']>,
+  sessionId: string,
+  profileId: string,
+  input: Record<string, unknown>,
+): Promise<void> {
+  try {
     const rawDef = pr.profile.agent.workflow as unknown as WorkflowDef;
     const def = resolveWorkflowTemplates(rawDef);
     const ctx: RunContext = {
-      profileId: pr.profile.manifest.name, sessionId: sessionId!, actor: rt.subject?.userId ?? 'agent', input,
-      sendPrompt: (text, task) => sendPrompt(rt, text, (task as ModelTask) ?? 'default', sessionId!),
-      runTool: (name, args) => runTool(rt, broker, name, args, sessionId!, profileId),
+      profileId: pr.profile.manifest.name, sessionId, actor: rt.subject?.userId ?? 'agent', input,
+      sendPrompt: (text, task) => sendPrompt(rt, text, (task as ModelTask) ?? 'default', sessionId),
+      runTool: (name, args) => runTool(rt, broker, name, args, sessionId, profileId),
       requestApproval: async (req) => {
-        const d = await broker.route({ ...req, requestId: randomUUID() }, { sessionId: sessionId!, profileId });
+        const d = await broker.route({ ...req, requestId: randomUUID() }, { sessionId, profileId });
         return { id: d.proposalId, status: d.approved ? 'approved' : 'denied' } as any;
       },
     };
-    const win = getWindow();
-    let finalState: Record<string, unknown> = {};
     for await (const e of new LinearRunner().run(def, ctx)) {
-      win?.webContents.send('sparkii:event:workflow', { ...e, sessionId });
       if (e.type === 'step_started') {
-        rt.chatSessions?.update?.(sessionId!, { currentStep: e.stepId });
+        rt.chatSessions?.update?.(sessionId, { currentStep: e.stepId });
         await slot.client?.send?.({
           type: 'append_workflow_entry',
           customType: 'workflow_step_start',
@@ -299,21 +317,18 @@ export async function runWorkflow(
         await slot.client?.send?.({
           type: 'append_workflow_entry',
           customType: 'workflow_step_end',
-          data: { stepId: e.stepId, status: 'completed', finishedAt: new Date().toISOString() },
+          data: { stepId: e.stepId, status: 'completed', finishedAt: new Date().toISOString(), output: e.output },
         }).catch(() => {});
       }
-      if (e.type === 'workflow_completed') finalState = e.result as Record<string, unknown>;
+      if (e.type === 'workflow_failed') {
+        await slot.client?.send?.({
+          type: 'append_workflow_entry',
+          customType: 'workflow_step_end',
+          data: { stepId: e.stepId, status: 'failed', error: e.error, finishedAt: new Date().toISOString() },
+        }).catch(() => {});
+      }
     }
-    if (Object.keys(finalState).length > 0 && slot.client?.send) {
-      await slot.client.send({
-        type: 'append_workflow_entry',
-        customType: 'workflow_state',
-        data: { stepId: 'report', action: 'result', payload: finalState, at: new Date().toISOString() },
-      }).catch(() => {});
-    }
-    win?.webContents.send('sparkii:event:state', { workflow: { result: finalState }, sessionId });
-    return sessionId;
   } finally {
-    await rt.pool.release(sessionId ?? tempKey);
+    await rt.pool.release(sessionId);
   }
 }
