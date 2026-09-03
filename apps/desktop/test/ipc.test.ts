@@ -787,6 +787,33 @@ describe('ipc provider handlers', () => {
     expect(sent).toContainEqual({ type: 'set_model', provider: 'zai', modelId: 'glm-5' });
   });
 
+  it('workflow selectModel prefers the session-selected model', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    await writeFile(
+      join(dataDir, 'settings.json'),
+      JSON.stringify({ activeProviderId: 'deepseek', defaultModel: 'deepseek-v4-flash' }),
+      'utf8',
+    );
+    const sent: any[] = [];
+    const rt = {
+      dataDir,
+      chatSessions: { get: () => ({ model: 'deepseek/deepseek-v4-pro' }) },
+      pool: {
+        get: () => ({
+          send: async (command: any) => {
+            sent.push(command);
+            return { success: true };
+          },
+        }),
+      },
+      keyFor: async () => null,
+    } as any;
+
+    await selectModel(rt, 'extract', 's1');
+    expect(sent).toContainEqual({ type: 'set_model', provider: 'deepseek', modelId: 'deepseek-v4-pro' });
+  });
+
   it('listThinkingLevels probes a model and returns available thinking levels', async () => {
     const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
     dirs.push(dataDir);

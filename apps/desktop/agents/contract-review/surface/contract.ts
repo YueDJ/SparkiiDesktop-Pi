@@ -79,8 +79,57 @@ function structuredLevel(row: Record<string, unknown>): RiskFinding['level'] | u
   return undefined;
 }
 
+function extractJsonValue(text: string): unknown | undefined {
+  const trimmed = text.trim();
+  if (!trimmed) return undefined;
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    // continue
+  }
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced?.[1]) {
+    try {
+      return JSON.parse(fenced[1].trim());
+    } catch {
+      // continue
+    }
+  }
+  const brace = trimmed.indexOf('{');
+  const bracket = trimmed.indexOf('[');
+  const start = brace < 0 ? bracket : bracket < 0 ? brace : Math.min(brace, bracket);
+  if (start < 0) return undefined;
+  const open = trimmed[start];
+  const close = open === '{' ? '}' : ']';
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < trimmed.length; i++) {
+    const ch = trimmed[i];
+    if (inString) {
+      if (escape) { escape = false; continue; }
+      if (ch === '\\') { escape = true; continue; }
+      if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') { inString = true; continue; }
+    if (ch === open) depth++;
+    else if (ch === close) {
+      depth--;
+      if (depth === 0) {
+        try { return JSON.parse(trimmed.slice(start, i + 1)); } catch { return undefined; }
+      }
+    }
+  }
+  return undefined;
+}
+
 export function parseRiskFindings(rows: unknown): RiskFinding[] {
   if (!rows) return [];
+  if (typeof rows === 'string') {
+    const extracted = extractJsonValue(rows);
+    return extracted !== undefined ? parseRiskFindings(extracted) : [];
+  }
   if (!Array.isArray(rows) && typeof rows === 'object') {
     const rec = rows as Record<string, unknown>;
     if (Array.isArray(rec.riskFindings)) return parseRiskFindings(rec.riskFindings);
@@ -113,9 +162,99 @@ export function parseRiskFindings(rows: unknown): RiskFinding[] {
   });
 }
 
+export interface ExportTable {
+  headers: string[];
+  rows: string[][];
+}
+
+export interface ExportSection {
+  heading: string;
+  body?: string;
+  table?: ExportTable;
+}
+
+export function captureReportHtml(root: Element): string {
+  const clone = root.cloneNode(true) as HTMLElement;
+  const walk = (live: Element, copy: Element) => {
+    const cs = getComputedStyle(live);
+    copy.setAttribute('style', [
+      `color:${cs.color}`,
+      `background-color:${cs.backgroundColor}`,
+      `font-weight:${cs.fontWeight}`,
+      `font-size:${cs.fontSize}`,
+      `text-align:${cs.textAlign}`,
+    ].join(';'));
+    [...live.children].forEach((child, index) => {
+      if (copy.children[index]) walk(child, copy.children[index]);
+    });
+  };
+  walk(root, clone);
+  return clone.outerHTML;
+}
+
+export function reportExportPath(workspacePath: string | null | undefined, title: string): string | undefined {
+  const workspace = workspacePath?.trim();
+  if (!workspace) return undefined;
+  const safe = (title.replace(/[<>:"/\\|?*]/g, '').trim() || '合同审核报告');
+  return `${workspace.replace(/[/\\]+$/, '')}/${safe}.docx`;
+}
+
+export function buildExportDocument(input: {
+  title?: string;
+  sections?: Array<{ heading: string; body: string }>;
+  findings: RiskFinding[];
+  reviewed?: Record<string, string>;
+  workspacePath?: string | null;
+}): { title: string; format: 'docx'; sections: ExportSection[]; path?: string } {
+  const title = input.title?.trim() || '合同审核报告';
+  const reviewed = input.reviewed ?? {};
+  const reviewLabel = (id: string) => {
+    const state = reviewed[id];
+    if (state === 'confirmed') return '已确认';
+    if (state === 'ignored') return '已忽略';
+    if (state === 'escalated') return '已升级';
+    return '未处理';
+  };
+  const high = input.findings.filter((f) => f.level === 'high');
+  const mid = input.findings.filter((f) => f.level === 'mid');
+  const low = input.findings.filter((f) => f.level === 'low');
+  const groups: Array<{ heading: string; items: RiskFinding[] }> = [
+    { heading: '高风险', items: high },
+    { heading: '中风险', items: mid },
+    { heading: '低风险', items: low },
+  ];
+  const findingRow = (f: RiskFinding): string[] => [
+    [f.title, [f.clause, f.reason].filter(Boolean).join(' · ')].filter(Boolean).join('\n'),
+    f.position ?? '—',
+    reviewLabel(f.id),
+  ];
+  const narrative = (input.sections ?? []).filter((s) => s.heading && s.heading !== '风险明细');
+  const sections: ExportSection[] = [
+    {
+      heading: '风险摘要',
+      table: { headers: ['高风险', '中风险', '低风险'], rows: [[String(high.length), String(mid.length), String(low.length)]] },
+    },
+    ...narrative,
+    ...groups.filter((g) => g.items.length).map((g) => ({
+      heading: `${g.heading}（${g.items.length}）`,
+      table: { headers: ['风险项', '位置', '复核'], rows: g.items.map(findingRow) },
+    })),
+  ];
+  const workspace = input.workspacePath?.trim();
+  const safe = title.replace(/[<>:"/\\|?*]/g, '').trim() || '合同审核报告';
+  const path = workspace
+    ? `${workspace.replace(/[/\\]+$/, '')}/${safe}.docx`
+    : undefined;
+  return { title, format: 'docx', sections, ...(path ? { path } : {}) };
+}
+
 export function formatReport(report: unknown): FormattedReport | null {
   if (!report) return null;
-  if (typeof report === 'string') return { title: '报告', blocks: [{ heading: '', body: report }] };
+  if (typeof report === 'string') {
+    const extracted = extractJsonValue(report);
+    if (extracted !== undefined && typeof extracted === 'object') return formatReport(extracted);
+    return { title: '报告', blocks: [{ heading: '', body: report }] };
+  }
   if (typeof report === 'object') {
     const r = report as Record<string, unknown>;
     const title = typeof r.title === 'string' ? r.title : '报告';

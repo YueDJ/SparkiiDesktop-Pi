@@ -129,16 +129,17 @@ export async function selectModel(
   const client = rt.pool.get(sessionId);
   if (!client) throw new Error(`unknown session ${sessionId}`);
   const settings = await loadSettings(rt.dataDir);
+  const chosen = override ?? rt.chatSessions?.get?.(sessionId)?.model ?? null;
   let provider: string;
   let modelId: string;
-  if (override) {
-    const slash = override.indexOf('/');
+  if (chosen) {
+    const slash = chosen.indexOf('/');
     if (slash >= 0) {
-      provider = override.slice(0, slash);
-      modelId = override.slice(slash + 1);
+      provider = chosen.slice(0, slash);
+      modelId = chosen.slice(slash + 1);
     } else {
       provider = settings.activeProviderId ?? 'deepseek';
-      modelId = override;
+      modelId = chosen;
     }
   } else {
     const target = resolveModelTarget(settings, task);
@@ -159,10 +160,11 @@ export async function selectModel(
 async function sendPrompt(rt: Runtime, text: string, task: ModelTask, sessionId: string): Promise<string> {
   const client = rt.pool.get(sessionId);
   if (!client) throw new Error(`unknown session ${sessionId}`);
-  const target = await selectModel(rt, task, sessionId);
+  const rec = rt.chatSessions?.get?.(sessionId);
+  const target = await selectModel(rt, task, sessionId, rec?.model);
   if (target) {
     const settings = await loadSettings(rt.dataDir);
-    await applyThinkingLevel(client, resolveThinkingLevel(settings, null, target));
+    await applyThinkingLevel(client, resolveThinkingLevel(settings, rec, target));
   }
 
   let acc = '';
@@ -217,17 +219,21 @@ async function runTool(
   return { ok: d.approved, data: d.result };
 }
 
+/** Workflow saddle only exposes tool-step refs plus read. Other agent tools stay on the executor. */
+export function workflowRuntimeTools(agentTools: string[], def: WorkflowDef): string[] {
+  const stepTools = new Set(def.steps.filter((s) => s.type === 'tool').map((s) => s.ref));
+  return agentTools.filter((t) => stepTools.has(t) || t === 'read');
+}
+
 export function resolveWorkflowTemplates(def: WorkflowDef): WorkflowDef {
   return {
     ...def,
     steps: def.steps.map((step) => {
       if (step.type === 'skill' && step.ref) {
-        // /skill:NAME expands the skill file into the prompt (pi-native), so the
-        // agent follows the actual skill content instead of hunting for the file.
-        return { ...step, template: `/skill:${step.ref}\n请严格遵循上述 skill 的内容完成本步骤，并将结果直接返回。` };
+        return { ...step, template: `/skill:${step.ref}` };
       }
       if (step.type === 'llm' && step.template) {
-        return { ...step, template: `/skill:${step.template}\n严格遵循上述 skill 的内容完成本步骤。若 skill 要求调用写工具，请直接调用（工具调用会自动弹出审批请求，无需先在对话中征询用户），并将结果直接返回。` };
+        return { ...step, template: `/skill:${step.template}` };
       }
       return step;
     }),
@@ -246,9 +252,28 @@ export async function runWorkflow(
   },
 ): Promise<string> {
   const pr = rt.profileOf(profileId);
+  const agent = rt.agentOf(profileId);
+  const rawDef = pr.profile.agent.workflow as unknown as WorkflowDef;
+  const runtimeAgent = { ...agent, tools: workflowRuntimeTools(agent.tools, rawDef) };
+  const workspacePath = typeof input.workspacePath === 'string' && input.workspacePath.trim()
+    ? input.workspacePath
+    : undefined;
+  const sessionModel = typeof input.model === 'string' && input.model.trim() ? input.model : null;
+  const sessionThinking = typeof input.thinkingLevel === 'string' && input.thinkingLevel.trim()
+    ? input.thinkingLevel
+    : null;
+  const settings = await loadSettings(rt.dataDir);
+  const target = resolveSessionModel(settings, sessionModel ? { model: sessionModel } : null);
+  const thinkingLevel = sessionThinking ?? resolveThinkingLevel(settings, { thinkingLevel: sessionThinking }, target);
   const tempKey = `new:${randomUUID()}`;
   const slot = await rt.pool.acquire(tempKey, {
-    saddle: buildAgentSaddle(rt.agentOf(profileId), join(rt.dataDir, 'sessions', tempKey)),
+    saddle: buildAgentSaddle(
+      runtimeAgent,
+      join(rt.dataDir, 'sessions', tempKey),
+      workspacePath,
+      target ?? undefined,
+      thinkingLevel,
+    ),
   });
 
   let sessionId: string | undefined;
@@ -269,8 +294,10 @@ export async function runWorkflow(
       profileId,
       kind: 'workflow',
       currentStep: null,
-      workspaceKind: 'auto',
-      workspacePath: join(rt.dataDir, 'sessions', sessionId),
+      workspaceKind: input.workspaceKind === 'user' || (!input.workspaceKind && workspacePath) ? 'user' : 'auto',
+      workspacePath: workspacePath ?? join(rt.dataDir, 'sessions', sessionId),
+      model: sessionModel ?? (target ? modelTargetKey(target) : null),
+      thinkingLevel: sessionThinking ?? thinkingLevel,
       inputs: inputFiles,
       piSessionFile: sessionFile ?? null,
     });

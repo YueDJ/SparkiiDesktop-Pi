@@ -8,7 +8,6 @@ import { ApprovalPanel } from './trust/ApprovalPanel.js';
 import { AuditView } from './audit/AuditView.js';
 import { HomeView } from './platform/HomeView.js';
 import { useAgentSurface } from './platform/surface-registry.js';
-import { extractWorkflowResult } from './surface/normalize.js';
 import { useAgentSession } from './surface/use-agent-session.js';
 import type { AgentSession, AgentSurfaceActions } from './surface/contract.js';
 
@@ -473,7 +472,7 @@ function AppShell() {
 
   // Per-agent actions: chat agents use the platform standard surface; workflow agents expose the
   // workflow lifecycle. `session` is the agent's own normalized timeline (backend truth source).
-  const buildActions = (agentId: string, session: AgentSession): AgentSurfaceActions => {
+  const buildActions = (agentId: string, _session: AgentSession): AgentSurfaceActions => {
     const isChat = agents.find((a) => a.id === agentId)?.surfaceType === 'chat';
     if (isChat) {
       return {
@@ -499,19 +498,10 @@ function AppShell() {
         if (!sid) return;
         api.updateWorkflowState(sid, { action, ...payload }).catch((e) => reportError(String(e?.message ?? e), { source: agentId }));
       },
-      requestExport: () => {
+      requestExport: (payload) => {
         const sid = workflowFor(agentId).sessionId;
         if (!sid) { setScreen('approvals'); return; }
-        const result = session.result ?? extractWorkflowResult(session.entries);
-        const report = result?.['report'] as Record<string, unknown> | undefined;
-        const review = result?.['review'];
-        const reviewFindings = review && typeof review === 'object' && !Array.isArray(review)
-          ? (review as Record<string, unknown>).riskFindings
-          : review;
-        void api.requestExportReport(sid, {
-          title: typeof report?.title === 'string' ? report.title : '合同审核报告',
-          findings: Array.isArray(reviewFindings) ? reviewFindings.length : 0,
-        }).catch(() => {});
+        void api.requestExportReport(sid, payload ?? {}).catch(() => {});
       },
       chooseDocument: () => api.chooseDocument(),
     };

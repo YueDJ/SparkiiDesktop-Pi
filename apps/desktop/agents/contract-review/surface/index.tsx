@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Markdown, ModelEffortControl, RiskBadge, THINKING_LEVELS } from '@sparkii/ui';
+import { ContextUsageBar, Markdown, ModelEffortControl, RiskBadge, THINKING_LEVELS } from '@sparkii/ui';
 import type { AgentSession, AgentSurfaceActions, AgentSurfaceProps, CustomSessionEntry } from '../../../src/surface/contract.js';
 import { deriveWorkflowTimeline, extractWorkflowResult } from '../../../src/surface/normalize.js';
-import { formatReport, parseRiskFindings } from './contract.js';
+import { captureReportHtml, formatReport, parseRiskFindings, reportExportPath } from './contract.js';
+import { bytesToBase64, documentFromHtml } from './report-docx.js';
 import './styles.css';
 
 type ReviewState = 'none' | 'confirmed' | 'ignored' | 'escalated';
@@ -20,6 +21,8 @@ interface SparkiiWindowApi {
   listThinkingLevels?(providerId: string, modelId: string): Promise<string[]>;
   chooseWorkspace?(): Promise<{ path?: string }>;
   setChatWorkspace?(sessionId: string, path: string | null): Promise<unknown>;
+  on?(event: string, cb: (payload: unknown) => void): () => void;
+  appendError?(rec: { id: string; message: string; source: string; createdAt: number }): Promise<unknown>;
 }
 
 function sparkiiApi(): SparkiiWindowApi {
@@ -95,7 +98,17 @@ function reviewLabel(state: ReviewState): string {
   return '未处理';
 }
 
-function ModelEffortBar({ agentId, sessionId, session }: { agentId: string; sessionId: string | null; session: AgentSession }) {
+function ModelEffortBar({
+  agentId,
+  sessionId,
+  session,
+  onPrefs,
+}: {
+  agentId: string;
+  sessionId: string | null;
+  session: AgentSession;
+  onPrefs?: (prefs: { workspacePath: string | null; model: string | null; thinkingLevel: string | null }) => void;
+}) {
   const api = sparkiiApi();
   const [models, setModels] = useState<string[]>([]);
   const [defaultModel, setDefaultModel] = useState<string | null>(null);
@@ -105,32 +118,53 @@ function ModelEffortBar({ agentId, sessionId, session }: { agentId: string; sess
   const [thinkingLevels, setThinkingLevels] = useState<string[]>([...THINKING_LEVELS]);
   const [workspacePath, setWorkspacePath] = useState<string | null>(session.meta.workspacePath ?? null);
   const [contextUsage, setContextUsage] = useState<{ tokens?: number | null; contextWindow?: number; percent?: number | null } | null>(session.meta.contextUsage ?? null);
-  const initialized = useRef(false);
 
   useEffect(() => {
     setModel(session.meta.model ?? null);
     setWorkspacePath(session.meta.workspacePath ?? null);
-    setContextUsage(session.meta.contextUsage ?? null);
+    if (session.meta.contextUsage) setContextUsage(session.meta.contextUsage);
   }, [session.meta.model, session.meta.workspacePath, session.meta.contextUsage]);
 
   useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
+    onPrefs?.({ workspacePath, model, thinkingLevel });
+  }, [onPrefs, workspacePath, model, thinkingLevel]);
+
+  useEffect(() => {
     void api.getModelOptions?.(agentId).then((r) => {
       if (!r) return;
       setModels(Array.isArray(r.models) ? r.models : []);
       setDefaultModel(r.defaultModel ?? null);
       setProvider(r.provider ?? 'deepseek');
-      if (!sessionId) return;
+    }).catch(() => {});
+  }, [agentId]);
+
+  useEffect(() => {
+    if (!sessionId) {
+      setContextUsage(null);
+      return;
+    }
+    const refresh = () => {
       void api.getChatSession?.(sessionId).then((rec) => {
         if (!rec) return;
-        setWorkspacePath(rec.workspacePath ?? null);
-        setThinkingLevel(rec.thinkingLevel ?? null);
+        if (rec.workspacePath) setWorkspacePath(rec.workspacePath);
+        if (rec.thinkingLevel !== undefined) setThinkingLevel(rec.thinkingLevel ?? null);
         if (rec.model) setModel(rec.model);
       }).catch(() => {});
-      void api.getChatState?.(sessionId).then((state) => setContextUsage(state?.contextUsage ?? null)).catch(() => {});
-    }).catch(() => {});
-  }, [agentId, sessionId]);
+      void api.getChatState?.(sessionId).then((state) => {
+        if (state?.contextUsage) setContextUsage(state.contextUsage);
+      }).catch(() => {});
+    };
+    refresh();
+    const off = api.on?.('chat-event', (p: any) => {
+      if (p?.sessionId !== sessionId) return;
+      if (p?.type === 'agent_end' || p?.type === 'agent_settled' || p?.type === 'compaction_end' || p?.type === 'message') refresh();
+    });
+    const timer = setInterval(refresh, 3000);
+    return () => {
+      off?.();
+      clearInterval(timer);
+    };
+  }, [sessionId]);
 
   const refreshThinkingLevels = (nextModel: string | null) => {
     const target = nextModel ?? defaultModel;
@@ -142,14 +176,25 @@ function ModelEffortBar({ agentId, sessionId, session }: { agentId: string; sess
     }).catch(() => setThinkingLevels([...THINKING_LEVELS]));
   };
 
+  const publishPrefs = (next: { workspacePath?: string | null; model?: string | null; thinkingLevel?: string | null }) => {
+    const prefs = {
+      workspacePath: next.workspacePath !== undefined ? next.workspacePath : workspacePath,
+      model: next.model !== undefined ? next.model : model,
+      thinkingLevel: next.thinkingLevel !== undefined ? next.thinkingLevel : thinkingLevel,
+    };
+    onPrefs?.(prefs);
+  };
+
   const onModelChange = (next: string | null) => {
     setModel(next);
+    publishPrefs({ model: next });
     if (sessionId) void api.setChatModel?.(sessionId, next);
     refreshThinkingLevels(next);
   };
 
   const onThinkingLevelChange = (next: string | null) => {
     setThinkingLevel(next);
+    publishPrefs({ thinkingLevel: next });
     if (sessionId) void api.setChatThinkingLevel?.(sessionId, next);
   };
 
@@ -162,22 +207,29 @@ function ModelEffortBar({ agentId, sessionId, session }: { agentId: string; sess
       <button
         type="button"
         className="ui-composer-ws-btn"
+        data-testid="workspace"
         title={workspacePath ?? ''}
         onClick={() => {
           void api.chooseWorkspace?.().then(({ path } = {}) => {
             if (!path) return;
             setWorkspacePath(path);
+            publishPrefs({ workspacePath: path });
             if (sessionId) void api.setChatWorkspace?.(sessionId, path);
           });
         }}
       >
         <span className="contract-model-ws-name">{workspaceName}</span>
       </button>
-      <div className="ui-composer-context" title="上下文占用">
-        {contextUsage
-          ? `${contextUsage.tokens ?? '—'} / ${contextUsage.contextWindow ?? '—'}`
-          : '上下文 —'}
-      </div>
+      <ContextUsageBar
+        contextUsage={contextUsage && {
+          ...contextUsage,
+          percent: contextUsage.percent ?? (
+            typeof contextUsage.tokens === 'number' && contextUsage.contextWindow
+              ? (contextUsage.tokens / contextUsage.contextWindow) * 100
+              : null
+          ),
+        }}
+      />
       <ModelEffortControl
         model={model}
         defaultModel={defaultModel}
@@ -222,6 +274,10 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [filter, setFilter] = useState<'all' | 'high' | 'mid' | 'low' | 'unprocessed'>('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [runPrefs, setRunPrefs] = useState<{ workspacePath: string | null; model: string | null; thinkingLevel: string | null }>({
+    workspacePath: null, model: null, thinkingLevel: null,
+  });
+  const previewRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     setFilter('all');
     setSelected(new Set());
@@ -331,7 +387,7 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
           </span>
         </div>
         <div className="contract-header-right">
-          <ModelEffortBar agentId={props.agent.id} sessionId={sessionId} session={session} />
+          <ModelEffortBar agentId={props.agent.id} sessionId={sessionId} session={session} onPrefs={setRunPrefs} />
           {status === 'idle' && (
             <>
               <button type="button" className="ui-btn ui-btn--ghost" data-testid="upload" onClick={chooseDocument}>
@@ -347,7 +403,12 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
                 className="ui-btn ui-btn--primary"
                 data-testid="review"
                 disabled={!documents.length}
-                onClick={() => actions.startWorkflow({ documents })}
+                onClick={() => actions.startWorkflow({
+                  documents,
+                  workspacePath: runPrefs.workspacePath,
+                  model: runPrefs.model,
+                  thinkingLevel: runPrefs.thinkingLevel,
+                })}
               >
                 开始审核
               </button>
@@ -511,13 +572,10 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
             {report ? (
               <>
                 <div className="contract-section-label">报告预览</div>
-                <div className="contract-report contract-report-mock">
+                <div className="contract-report contract-report-mock" data-testid="report-preview" ref={previewRef}>
                   <div className="contract-report-head contract-report-mock-head">
-                    <div>
-                      <div className="contract-report-mock-title">{report.title}</div>
-                      <div className="contract-report-mock-meta">deepseek-v4-pro</div>
-                    </div>
-                    <span className={`contract-report-status ${reportMerged ? 'done' : ''}`}>{reportMerged ? '已合并' : '待复核'}</span>
+                    <div className="contract-report-mock-title">{report.title}</div>
+                    {selectedName ? <div className="contract-report-mock-meta">{selectedName}</div> : null}
                   </div>
                   <div className="contract-report-summary">
                     <div className="contract-report-summary-item">
@@ -533,32 +591,61 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
                       <div className="label">低风险</div>
                     </div>
                   </div>
-                  {report.blocks.map((block, index) => (
+                  {report.blocks.filter((b) => b.heading && b.heading !== '风险明细').map((block, index) => (
                     <div className="contract-report-section" key={index}>
                       <h4>{block.heading}</h4>
                       <Markdown text={block.body} />
                     </div>
                   ))}
-                  <div className="contract-report-section">
-                    <h4>风险明细</h4>
-                    <table className="contract-report-table">
-                      <thead>
-                        <tr><th>风险项</th><th>等级</th><th>复核状态</th></tr>
-                      </thead>
-                      <tbody>
-                        {findings.map((f) => (
-                          <tr key={f.id}>
-                            <td>{f.title}</td>
-                            <td>{riskLevelLabel(f.level)}</td>
-                            <td>{reviewLabel(reviewed[f.id] ?? 'none')}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  {(['high', 'mid', 'low'] as const).map((level) => {
+                    const items = findings.filter((f) => f.level === level);
+                    if (!items.length) return null;
+                    return (
+                      <div className="contract-report-section" key={level} data-testid={`report-risk-${level}`}>
+                        <h4>{riskLevelLabel(level)}（{items.length}）</h4>
+                        <table className="contract-report-table">
+                          <thead>
+                            <tr><th>风险项</th><th>位置</th><th>复核</th></tr>
+                          </thead>
+                          <tbody>
+                            {items.map((f) => (
+                              <tr key={f.id}>
+                                <td>
+                                  <div>{f.title}</div>
+                                  {(f.clause || f.reason) && <div className="contract-risk-meta">{[f.clause, f.reason].filter(Boolean).join(' · ')}</div>}
+                                </td>
+                                <td>{f.position ?? '—'}</td>
+                                <td>{reviewLabel(reviewed[f.id] ?? 'none')}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className="contract-risk-actions contract-report-actions">
-                  <button type="button" className="ui-btn ui-btn--primary" disabled={!reportMerged} onClick={() => actions.requestExport()}>导出报告</button>
+                  <button type="button" className="ui-btn ui-btn--primary" disabled={!reportMerged} onClick={() => {
+                    void (async () => {
+                      try {
+                        const html = previewRef.current ? captureReportHtml(previewRef.current) : '';
+                        const bytes = await documentFromHtml(report.title, html);
+                        actions.requestExport({
+                          title: report.title,
+                          format: 'docx',
+                          content: bytesToBase64(bytes),
+                          path: reportExportPath(runPrefs.workspacePath ?? session.meta.workspacePath, report.title),
+                        });
+                      } catch (e) {
+                        void sparkiiApi().appendError?.({
+                          id: `export-${Date.now()}`,
+                          message: e instanceof Error ? e.message : String(e),
+                          source: '合同审核智能体',
+                          createdAt: Date.now(),
+                        });
+                      }
+                    })();
+                  }}>导出报告</button>
                 </div>
               </>
             ) : reportPending ? (

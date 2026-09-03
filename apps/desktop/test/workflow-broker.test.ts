@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createBroker, resolveWorkflowTemplates, runWorkflow } from '../electron/main/workflow.js';
+import { createBroker, resolveWorkflowTemplates, runWorkflow, workflowRuntimeTools } from '../electron/main/workflow.js';
 
 async function waitUntil(predicate: () => boolean, timeoutMs = 2000): Promise<void> {
   const start = Date.now();
@@ -138,6 +138,47 @@ it('uses the runtime session id for the workflow session record', async () => {
   }));
 });
 
+it('keeps only workflow tool-step tools plus read on the runtime saddle', () => {
+  expect(workflowRuntimeTools(
+    ['document.read', 'knowledge.search', 'report.export', 'read'],
+    {
+      version: 1,
+      engine: 'linear',
+      steps: [
+        { id: 'load', type: 'tool', ref: 'document.read' },
+        { id: 'search', type: 'tool', ref: 'knowledge.search' },
+        { id: 'review', type: 'skill', ref: 'contract_risk_review' },
+      ],
+    } as any,
+  )).toEqual(['document.read', 'knowledge.search', 'read']);
+});
+
+it('persists the caller workspace and model on the workflow session', async () => {
+  const { rt, getWindow, sessionId } = makeHarness({ steps: [] });
+  const acquire = rt.pool.acquire;
+  const saddles: unknown[] = [];
+  rt.pool.acquire = async (key: string, opts?: { saddle?: unknown }) => {
+    saddles.push(opts?.saddle);
+    return acquire(key, opts);
+  };
+  const broker = createBroker(rt, getWindow);
+  await runWorkflow(rt, getWindow, {
+    documents: [],
+    workspacePath: 'C:/ws/contract',
+    model: 'deepseek/deepseek-v4-pro',
+  }, broker, 'contract-review');
+  expect(rt.chatSessions.create).toHaveBeenCalledWith(expect.objectContaining({
+    id: sessionId,
+    workspacePath: 'C:/ws/contract',
+    workspaceKind: 'user',
+    model: 'deepseek/deepseek-v4-pro',
+  }));
+  expect(saddles[0]).toMatchObject({
+    workspaceRoot: 'C:/ws/contract',
+    model: { provider: 'deepseek', modelId: 'deepseek-v4-pro' },
+  });
+});
+
 it('resolves skill ref and llm template to prompt content', () => {
   const def = {
     version: 1, engine: 'linear',
@@ -149,9 +190,10 @@ it('resolves skill ref and llm template to prompt content', () => {
   const resolved = resolveWorkflowTemplates(def);
   const extract = resolved.steps.find((s) => s.id === 'extract');
   const report = resolved.steps.find((s) => s.id === 'report');
-  expect(extract?.template).toContain('clause_extract');
+  expect(extract?.template).toBe('/skill:clause_extract');
+  expect(extract?.template).not.toContain('\n');
   expect(extract?.template).not.toContain('抽取条款');
-  expect(report?.template).toContain('report');
+  expect(report?.template).toBe('/skill:report');
 });
 
 it('resolves the two visible business skills plus hidden tools', () => {
@@ -245,7 +287,7 @@ describe('runWorkflow broker sharing', () => {
 
     expect(acquiredSaddles).toHaveLength(1);
     expect(acquiredSaddles[0]).toMatchObject({
-      tools: ['document.read', 'knowledge.search', 'report.export', 'read'],
+      tools: ['read'],
       systemPrompt: expect.stringContaining('合同审核智能体'),
     });
     expect(acquiredSaddles[0]?.skillsDir?.split(/[\\/]/).slice(-2).join('/')).toBe('agent/skills');

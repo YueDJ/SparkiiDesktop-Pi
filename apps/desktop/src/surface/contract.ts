@@ -38,7 +38,7 @@ export interface AgentSurfaceActions {
   openSession(id: string, title?: string): void;
   startWorkflow(payload: Record<string, unknown>): void;
   review(action: string, payload: Record<string, unknown>): void;
-  requestExport(): void;
+  requestExport(payload?: Record<string, unknown>): void;
   /** 平台文件对话框；返回用户选择的文件路径（取消时无 path）。 */
   chooseDocument(): Promise<{ path?: string }>;
 }

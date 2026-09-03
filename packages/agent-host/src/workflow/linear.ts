@@ -13,7 +13,7 @@ export class LinearRunner implements WorkflowRunner {
           state[step.id] = r.data;
         } else if (step.type === 'skill' || step.type === 'llm') {
           const task = step.type === 'llm' ? 'report' : 'extract';
-          const text = await ctx.sendPrompt(`${step.template ?? ''}\n\n${JSON.stringify(resolveInputs(step, state))}`, task);
+          const text = await ctx.sendPrompt(skillPrompt(step.template ?? '', resolveInputs(step, state)), task);
           state[step.id] = text;
         } else if (step.type === 'human') {
           const p = await ctx.requestApproval({ toolName: 'workflow.approval', targetSystem: 'workflow', summary: `step ${step.id}`, payload: { stepId: step.id, data: resolveInputs(step, state) }, risk: 'high-risk' });
@@ -28,6 +28,14 @@ export class LinearRunner implements WorkflowRunner {
     }
     yield { type: 'workflow_completed', result: state };
   }
+}
+
+/** Pi expands `/skill:name args` only when a space follows the name. */
+export function skillPrompt(template: string, inputs: unknown): string {
+  const payload = JSON.stringify(inputs);
+  const head = template.trimEnd();
+  if (head.startsWith('/skill:')) return `${head} ${payload}`;
+  return `${template}\n\n${payload}`;
 }
 
 function resolveInputs(step: WorkflowDef['steps'][number], state: Record<string, unknown>): unknown {

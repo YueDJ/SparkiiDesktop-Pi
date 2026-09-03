@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { ContractSurface, ContractAgentSurface } from '../agents/contract-review/surface/index.js';
 import { extractWorkflowResult, normalizeSessionEntries } from '../src/surface/normalize.js';
 
@@ -73,7 +73,15 @@ describe('ContractSurface', () => {
     expect(screen.getAllByText('合同审核报告').length).toBeGreaterThan(0);
   });
 
-  it('requests export via the approval path after merging', () => {
+  it('uses the source filename as the report subtitle, not the model name', () => {
+    renderSurface({ status: 'done' });
+    const preview = screen.getByTestId('report-preview');
+    expect(preview.textContent).toContain('contract.pdf');
+    expect(preview.textContent).not.toMatch(/deepseek/i);
+    expect(preview.querySelector('.contract-report-status')).toBeNull();
+  });
+
+  it('requests export via the approval path after merging', async () => {
     const onRequestExport = vi.fn();
     const agent = { id: 'contract-review', name: '合同审核智能体', surfaceType: 'workflow' as const };
     const first = normalizeSessionEntries([
@@ -115,14 +123,50 @@ describe('ContractSurface', () => {
       />,
     );
     fireEvent.click(screen.getByText('导出报告'));
-    expect(onRequestExport).toHaveBeenCalled();
+    await waitFor(() => expect(onRequestExport).toHaveBeenCalled());
+  });
+
+  it('exports a ready document built from the preview, not html', async () => {
+    const onRequestExport = vi.fn();
+    const agent = { id: 'contract-review', name: '合同审核智能体', surfaceType: 'workflow' as const };
+    const entries = normalizeSessionEntries([
+      { type: 'custom', id: 'c1', customType: 'workflow_step_end', data: { stepId: 'review', status: 'completed', output: { riskFindings: [
+        { id: 'r1', title: '付款周期过长', level: 'high', clause: '第7条', position: 'p12' },
+      ] } } },
+      { type: 'custom', id: 'c2', customType: 'workflow_step_end', data: { stepId: 'report', status: 'completed', output: { title: '合同审核报告', sections: [{ heading: '结论', body: '- 约定逾期付款违约金\n- 限定赔偿范围' }] } } },
+      { type: 'custom', id: 'c3', customType: 'workflow_state', data: { stepId: 'report', action: 'report_merged' } },
+    ]);
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s1"
+        mode="history"
+        session={{ entries, streaming: false, status: 'done', result: extractWorkflowResult(entries), meta: { currentStep: 'report' } }}
+        actions={{
+          newSession: vi.fn(),
+          openSession: vi.fn(),
+          startWorkflow: vi.fn(),
+          review: vi.fn(),
+          requestExport: onRequestExport,
+          chooseDocument: vi.fn().mockResolvedValue({}),
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByText('导出报告'));
+    await waitFor(() => {
+      expect(onRequestExport).toHaveBeenCalledWith(expect.objectContaining({
+        format: 'docx',
+        content: expect.stringMatching(/^UEs/),
+      }));
+    });
+    expect(onRequestExport.mock.calls[0][0].html).toBeUndefined();
   });
 
   it('renders the review stage in the single-page stage rail', () => {
     renderSurface({ status: 'done' });
     expect(screen.getByText('审核')).toBeTruthy();
     expect(screen.getByText('报告')).toBeTruthy();
-    expect(screen.getByText('复核')).toBeTruthy();
+    expect(screen.getAllByText('复核').length).toBeGreaterThan(0);
   });
 
   it('renders a structured risk view without raw JSON', () => {
@@ -230,7 +274,7 @@ describe('ContractAgentSurface', () => {
       />,
     );
     fireEvent.click(screen.getByTestId('review'));
-    expect(actions.startWorkflow).toHaveBeenCalledWith({ documents: ['C:/tmp/a.pdf'] });
+    expect(actions.startWorkflow).toHaveBeenCalledWith(expect.objectContaining({ documents: ['C:/tmp/a.pdf'] }));
   });
 
   it('offers a new session action instead of reusing the active review', () => {
@@ -373,5 +417,96 @@ describe('ContractAgentSurface', () => {
     expect(screen.queryByText('a.pdf')).toBeNull();
     expect(screen.queryByText('b.pdf')).toBeNull();
     expect((screen.getByTestId('review') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('loads context usage after a session id appears', async () => {
+    const getChatState = vi.fn().mockResolvedValue({
+      contextUsage: { tokens: 12800, contextWindow: 200000, percent: 6 },
+    });
+    (window as any).sparkii = {
+      getModelOptions: async () => ({ models: [], defaultModel: null, provider: 'deepseek' }),
+      getChatState,
+      getChatSession: async () => ({}),
+      on: () => () => {},
+    };
+    const actions = makeActions();
+    const { rerender } = render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId={null}
+        mode="live"
+        session={{ entries: [], streaming: false, status: 'idle', meta: { currentStep: null } }}
+        actions={actions}
+      />,
+    );
+    expect(screen.getByTestId('context-bar').textContent).toMatch(/—/);
+    rerender(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s-live"
+        mode="live"
+        session={{ entries: [], streaming: false, status: 'running', meta: { currentStep: 'review' } }}
+        actions={actions}
+      />,
+    );
+    await waitFor(() => expect(getChatState).toHaveBeenCalledWith('s-live'));
+    await waitFor(() => {
+      const bar = screen.getByTestId('context-bar');
+      expect(bar.textContent).toMatch(/12,800/);
+      expect(bar.textContent).toMatch(/200,000/);
+      expect(bar.textContent).toMatch(/6%/);
+    });
+    delete (window as any).sparkii;
+  });
+
+  it('passes workspace and model into startWorkflow', async () => {
+    (window as any).sparkii = {
+      getModelOptions: async () => ({ models: ['deepseek-v4-pro'], defaultModel: 'deepseek-v4-pro', provider: 'deepseek' }),
+      chooseWorkspace: async () => ({ path: 'C:/ws/contract' }),
+      on: () => () => {},
+    };
+    const startWorkflow = vi.fn();
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId={null}
+        mode="live"
+        session={{ entries: [], streaming: false, status: 'idle', meta: { currentStep: null } }}
+        actions={{ ...makeActions(), startWorkflow, chooseDocument: vi.fn().mockResolvedValue({ path: 'C:/tmp/a.pdf' }) }}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('upload'));
+    await screen.findByText('更换文件');
+    fireEvent.click(screen.getByTestId('workspace'));
+    await waitFor(() => expect(screen.getByTestId('workspace').textContent).toContain('contract'));
+    fireEvent.click(screen.getByTestId('review'));
+    await waitFor(() => expect(startWorkflow).toHaveBeenCalledWith(expect.objectContaining({
+      documents: ['C:/tmp/a.pdf'],
+      workspacePath: 'C:/ws/contract',
+    })));
+    delete (window as any).sparkii;
+  });
+
+  it('lists report risks by level with clause and position', () => {
+    const entries = normalizeSessionEntries([
+      { type: 'custom', id: 'c1', customType: 'workflow_step_end', data: { stepId: 'review', status: 'completed', output: { riskFindings: [
+        { id: 'r1', title: '付款周期过长', level: 'high', clause: '第7条 付款条件', position: 'p12' },
+        { id: 'r2', title: '验收边界不清', level: 'mid', clause: '第12条', position: 'p20' },
+      ] } } },
+      { type: 'custom', id: 'c2', customType: 'workflow_step_end', data: { stepId: 'report', status: 'completed', output: { title: '合同审核报告', sections: [{ heading: '结论', body: '关注付款' }] } } },
+    ]);
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s1"
+        mode="history"
+        session={{ entries, streaming: false, status: 'done', result: extractWorkflowResult(entries), meta: { currentStep: 'report' } }}
+        actions={makeActions()}
+      />,
+    );
+    expect(screen.getByTestId('report-risk-high')).toBeTruthy();
+    expect(screen.getByTestId('report-risk-high').textContent).toContain('付款周期过长');
+    expect(screen.getByTestId('report-risk-high').textContent).toContain('p12');
+    expect(screen.getByTestId('report-risk-mid').textContent).toContain('验收边界不清');
   });
 });

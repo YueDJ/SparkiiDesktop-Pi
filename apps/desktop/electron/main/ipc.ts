@@ -10,7 +10,7 @@ import { sortAgents } from './agent-catalog.js';
 import { resolveExportPath } from './export-path.js';
 import { loadSettings, saveSettings } from './settings.js';
 import { buildProviderList } from './provider-catalog.js';
-import { autoWorkspacePath } from './workspace.js';
+import { autoWorkspacePath, ensureWorkspaceDir } from './workspace.js';
 import { buildAgentSaddle } from './saddle.js';
 import { buildAttachmentPrompt, stageAttachments } from './attachments.js';
 import { resizeImageForAttachment } from './image-resize.js';
@@ -807,11 +807,13 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     let result: unknown;
     if (out.status === 'approved' && out.toolName !== 'workflow.approval') {
       if (out.toolName === 'report.export') {
-        const path = await resolveExportPath(getWindow, process.env, (win, opts) =>
+        const payload = (out.payload ?? {}) as Record<string, unknown>;
+        const suggested = typeof payload.path === 'string' && payload.path.trim() ? payload.path : undefined;
+        const path = suggested ?? await resolveExportPath(getWindow, process.env, (win, opts) =>
           dialog.showSaveDialog(win as BrowserWindow, opts),
         );
         if (path) {
-          out.payload = { ...(out.payload as Record<string, unknown>), path };
+          out.payload = { ...payload, path };
           out = await rt.executor.execute(out, { actor: rt.subject.userId });
           result = out.execution?.result;
         } else {
@@ -917,7 +919,16 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     return { ok: true };
   });
   ipcMain.handle('sparkii:runWorkflow', async (_e, profileId: string, input: Record<string, unknown>) => {
-    const sessionId = await runWorkflow(rt, getWindow, input, broker, profileId, {
+    const requestedWorkspace = typeof input.workspacePath === 'string' && input.workspacePath.trim()
+      ? input.workspacePath
+      : undefined;
+    const workspacePath = requestedWorkspace ?? autoWorkspacePath(app.getPath('desktop'), new Date());
+    await ensureWorkspaceDir(workspacePath);
+    const sessionId = await runWorkflow(rt, getWindow, {
+      ...input,
+      workspacePath,
+      workspaceKind: requestedWorkspace ? 'user' : 'auto',
+    }, broker, profileId, {
       onReady(id, slot) {
         inFlightWorkflowRuns.add(id);
         const entry = { slot, profileId };

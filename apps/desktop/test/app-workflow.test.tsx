@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, act, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, act, cleanup, waitFor } from '@testing-library/react';
 import { App } from '../src/App.js';
 
 afterEach(cleanup);
@@ -80,7 +80,7 @@ describe('App workflow feedback', () => {
     fireEvent.click(screen.getByTestId('upload'));
     await screen.findByText('更换文件');
     fireEvent.click(screen.getByTestId('review'));
-    expect(api.runWorkflow).toHaveBeenCalledWith('contract-review', { documents: ['C:/tmp/contract.pdf'] });
+    expect(api.runWorkflow).toHaveBeenCalledWith('contract-review', expect.objectContaining({ documents: ['C:/tmp/contract.pdf'] }));
     // 让 runWorkflow 解析出 sessionId，useAgentSession 重新订阅到该会话
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
     act(() => channels['chat-event']({
@@ -161,6 +161,12 @@ describe('App workflow feedback', () => {
       },
     }));
     fireEvent.click(screen.getByText('导出报告'));
-    expect(api.requestExportReport).toHaveBeenCalledWith('ws1', expect.objectContaining({ findings: 1 }));
+    await waitFor(() => {
+      expect(api.requestExportReport).toHaveBeenCalledWith('ws1', expect.objectContaining({
+        title: '合同审核报告',
+        content: expect.stringMatching(/^UEs/),
+      }));
+    });
+    expect(api.requestExportReport.mock.calls[0][1].html).toBeUndefined();
   });
 });
