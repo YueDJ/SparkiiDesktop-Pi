@@ -43,8 +43,6 @@ export interface ShellProps {
   runtimePool?: RuntimePoolSummary;
   userName?: string;
   userRole?: string;
-  surfaceTitle?: string;
-  surfaceActions?: ReactNode;
   onNavigate(screen: ScreenId): void;
   onNewSession(agentId: string): void;
   onOpenSession?(agentId: string, sessionId: string): void;
@@ -83,7 +81,7 @@ function isRunningStatus(status: string | undefined): boolean {
 }
 
 export function Shell(props: ShellProps) {
-  const { active, agents, sessions, pendingApprovals, statusText, runtimePool, userName = 'admin', userRole = '审核员', surfaceTitle, surfaceActions, onNavigate, onNewSession, onOpenSession, children } = props;
+  const { active, agents, sessions, pendingApprovals, statusText, runtimePool, userName = 'admin', userRole = '审核员', onNavigate, onNewSession, onOpenSession, children } = props;
   const { unreadCount, toast, dismissToast } = useErrors();
   const [drawer, setDrawer] = useState<DrawerKind>(null);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
@@ -266,12 +264,6 @@ export function Shell(props: ShellProps) {
           </div>
         </aside>
         <main className="ui-surface">
-          {surfaceTitle && (
-            <div className="ui-surface-head">
-              <b>{surfaceTitle}</b>
-              {surfaceActions && <span className="ui-surface-head-right">{surfaceActions}</span>}
-            </div>
-          )}
           <div className="ui-surface-body">{children}</div>
         </main>
       </div>

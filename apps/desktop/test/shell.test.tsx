@@ -27,7 +27,6 @@ function makeProps(): ShellProps {
     },
     pendingApprovals: 2,
     statusText: '正在比对 12 条',
-    surfaceTitle: '合同审核 · 会话#3',
     onNavigate: vi.fn(),
     onNewSession: vi.fn(),
     children: <div data-testid="surface">surface</div>,

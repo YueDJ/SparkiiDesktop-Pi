@@ -557,19 +557,6 @@ function AppShell() {
     ),
   };
 
-  const staticSurfaceTitles: Partial<Record<ScreenId, string>> = {
-    chat: '法规问答 · 会话#1',
-    dashboard: '舆情监控 · 会话#2',
-    approvals: '审批中心',
-    audit: '审计',
-    settings: '设置',
-  };
-  const surfaceTitle = activeAgent
-    ? (isChatSurface && activeSessionFor(activeAgent.id))
-      ? `${activeAgent.name} · ${titleFor(activeAgent.id) || '会话'}`
-      : activeAgent.name
-    : staticSurfaceTitles[screen];
-
   // One always-mounted frame per agent so each agent keeps its own session (live/history) even
   // when its surface is unmounted. The frame shows the surface only while the agent is active.
   const agentFrames = derivedAgents.map((a) => (
@@ -596,7 +583,6 @@ function AppShell() {
         runtimePool={runtimePool}
         userName={userName}
         userRole={roles.length ? roles.join(' · ') : '审核员'}
-        surfaceTitle={surfaceTitle}
         onNavigate={navigate}
         onNewSession={onNewSession}
         onOpenSession={onOpenSession}
