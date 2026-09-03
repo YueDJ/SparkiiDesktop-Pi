@@ -2,6 +2,16 @@
 .contract-header-title { font-size: 14px; font-weight: 700; letter-spacing: -.01em; }
 .contract-header-subtitle { color: var(--color-textMuted); font-size: 12px; }
 
+.contract-split.left-collapsed .contract-panel--doc .contract-panel-head b,
+.contract-split.left-collapsed .contract-panel--doc .contract-panel-hint,
+.contract-split.left-collapsed .contract-panel--doc .contract-missing,
+.contract-split.left-collapsed .contract-panel--doc .contract-panel-body { display: none; }
+.contract-split.left-collapsed .contract-panel--doc .contract-panel-head { justify-content: center; padding: 8px; }
+.contract-split.right-collapsed .contract-panel--risk .contract-panel-head b,
+.contract-split.right-collapsed .contract-panel--risk .contract-panel-hint,
+.contract-split.right-collapsed .contract-panel--risk .contract-panel-body { display: none; }
+.contract-split.right-collapsed .contract-panel--risk .contract-panel-head { justify-content: center; padding: 8px; }
+
 .contract-doc-meta { color: var(--color-textMuted); font-size: var(--font-size-xs); margin-top: 2px; }
 .contract-doc-body { color: var(--color-textSecondary); font-size: 13px; line-height: 1.85; white-space: pre-wrap; margin-top: var(--spacing-md); }
 .contract-doc-block { margin-bottom: 14px; }

@@ -348,7 +348,7 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
           <header className="contract-panel-head">
             <b>合同原文</b>
             {firstInput?.missing && <span className="contract-missing">无法找到原文件</span>}
-            <button type="button" className="contract-collapse-btn" aria-label="收起合同原文" onClick={() => setLeftCollapsed((v) => !v)}>‹</button>
+            <button type="button" className="contract-collapse-btn" aria-label={leftCollapsed ? '展开合同原文' : '收起合同原文'} onClick={() => setLeftCollapsed((v) => !v)}>{leftCollapsed ? '›' : '‹'}</button>
           </header>
           <div className="contract-panel-body">
             {firstInput?.missing ? (
@@ -381,7 +381,7 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
           <header className="contract-panel-head">
             <b>风险发现</b>
             <span className="contract-panel-hint">已复核 {processedCount} / {findings.length}</span>
-            <button type="button" className="contract-collapse-btn" aria-label="收起风险发现" onClick={() => setRightCollapsed((v) => !v)}>›</button>
+            <button type="button" className="contract-collapse-btn" aria-label={rightCollapsed ? '展开风险发现' : '收起风险发现'} onClick={() => setRightCollapsed((v) => !v)}>{rightCollapsed ? '‹' : '›'}</button>
           </header>
           <div className="contract-panel-body">
             <div className="contract-risk-summary">
