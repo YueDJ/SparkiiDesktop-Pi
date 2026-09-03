@@ -368,7 +368,7 @@ export function StandardChatSurface(props: StandardChatProps) {
       chatAttachments.length ? chatAttachments : undefined,
       sessionId ? undefined : { profileId: agent.id, workspacePath, model, thinkingLevel },
     ).then((res: any) => {
-      if (!sessionId && res?.sessionId) actions.openSession(res.sessionId, text);
+      if (!sessionId && res?.sessionId) actions.openSession(res.sessionId);
     }).catch((e: any) => {
       reportError(String(e?.message ?? e), { source: agent.name });
       setBusy(false);

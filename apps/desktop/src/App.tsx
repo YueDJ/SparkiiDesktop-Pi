@@ -459,6 +459,12 @@ function AppShell() {
   const activeAgent = derivedAgents.find((a) => a.id === screen);
   const isChatSurface = activeAgent?.surfaceType === 'chat';
 
+  const topbarTitle = activeAgent
+    ? isChatSurface
+      ? (titleFor(activeAgent.id) || '新对话')
+      : activeAgent.name
+    : undefined;
+
   const statusText = (() => {
     if (activeAgent?.surfaceType !== 'workflow') return '';
     const wf = workflowStatusByAgent[activeAgent.id];
@@ -480,8 +486,8 @@ function AppShell() {
   // 一旦首条消息发出，立即把会话插入历史，避免等后端刷新造成延迟。
   const commitNewSession = (agentId: string, sessionId: string, title?: string) => {
     setActiveSessionFor(agentId, sessionId);
-    sessionOverridesRef.current.set(sessionId, { name: title ? String(title).slice(0, 24) : '新会话', updatedAt: Date.now(), agentId });
-    const name = String(title || '新会话').slice(0, 24);
+    sessionOverridesRef.current.set(sessionId, { name: title ? String(title).slice(0, 24) : '新对话', updatedAt: Date.now(), agentId });
+    const name = String(title || '新对话').slice(0, 24);
     setTitleFor(agentId, name);
     setSessions((prev) => {
       const list = prev[agentId] ?? [];
@@ -580,6 +586,7 @@ function AppShell() {
         sessions={sessions}
         pendingApprovals={pending.length}
         statusText={statusText}
+        title={topbarTitle}
         runtimePool={runtimePool}
         userName={userName}
         userRole={roles.length ? roles.join(' · ') : '审核员'}

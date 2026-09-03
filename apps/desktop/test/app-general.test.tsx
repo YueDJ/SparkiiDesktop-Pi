@@ -159,7 +159,7 @@ describe('App general agent', () => {
     await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
     // 会话应立即出现在左侧历史里，无需切换后再出现
     expect(screen.getByTestId('session-g1')).toBeTruthy();
-    expect(screen.getAllByText('你好').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('新对话').length).toBeGreaterThan(0);
   });
 
   it('renames a session and updates the history list immediately', async () => {
@@ -178,7 +178,7 @@ describe('App general agent', () => {
     fireEvent.keyDown(input, { key: 'Enter' });
     await waitFor(() => expect(api.setChatTitle).toHaveBeenCalledWith('g1', '新标题'));
     // 后端仍返回旧标题，但左侧历史应立即显示新标题
-    expect(screen.getByText('新标题')).toBeTruthy();
+    expect(screen.getAllByText('新标题').length).toBeGreaterThan(0);
   });
 
   it('keeps the generated session title after a refresh', async () => {

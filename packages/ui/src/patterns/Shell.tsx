@@ -40,6 +40,7 @@ export interface ShellProps {
   sessions: Record<string, ShellSession[]>;
   pendingApprovals: number;
   statusText: string;
+  title?: string;
   runtimePool?: RuntimePoolSummary;
   userName?: string;
   userRole?: string;
@@ -81,7 +82,7 @@ function isRunningStatus(status: string | undefined): boolean {
 }
 
 export function Shell(props: ShellProps) {
-  const { active, agents, sessions, pendingApprovals, statusText, runtimePool, userName = 'admin', userRole = '审核员', onNavigate, onNewSession, onOpenSession, children } = props;
+  const { active, agents, sessions, pendingApprovals, statusText, title: titleProp, runtimePool, userName = 'admin', userRole = '审核员', onNavigate, onNewSession, onOpenSession, children } = props;
   const { unreadCount, toast, dismissToast } = useErrors();
   const [drawer, setDrawer] = useState<DrawerKind>(null);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
@@ -110,7 +111,7 @@ export function Shell(props: ShellProps) {
   const activeAgent = agents.find((a) => a.id === active);
   const runningCount = agents.filter((a) => a.status === 'running').length;
   const queueCount = agents.filter((a) => a.status === 'queued').length;
-  const title = activeAgent?.name ?? TITLES[active] ?? '工作台';
+  const title = titleProp ?? activeAgent?.name ?? TITLES[active] ?? '工作台';
   const fallbackRuntimePool: RuntimePoolSummary = runtimePool ?? {
     active: runningCount,
     queued: queueCount,
