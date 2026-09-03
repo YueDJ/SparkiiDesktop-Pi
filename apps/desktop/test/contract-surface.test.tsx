@@ -318,4 +318,60 @@ describe('ContractAgentSurface', () => {
     );
     expect(screen.getByText('报告生成中…')).toBeTruthy();
   });
+
+  it('resets filter, selection, and documents when sessionId changes', () => {
+    const actions = makeActions();
+    const entriesA = normalizeSessionEntries([
+      { type: 'custom', id: 'c1', customType: 'workflow_step_end', data: { stepId: 'review', status: 'completed', output: { riskFindings: [
+        { id: 'r1', title: '付款周期过长', level: 'high' },
+        { id: 'r2', title: '违约范围过宽', level: 'mid' },
+      ] } } },
+    ]);
+    const { rerender } = render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s-a"
+        mode="history"
+        session={{ entries: entriesA, streaming: false, status: 'done', result: extractWorkflowResult(entriesA), meta: { currentStep: 'review', inputs: [{ path: 'C:/tmp/a.pdf', name: 'a.pdf' }] } }}
+        actions={actions}
+      />,
+    );
+    fireEvent.click(screen.getAllByRole('button', { name: '高风险' })[0]);
+    expect(screen.queryByText('违约范围过宽')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '选择 付款周期过长' }));
+    expect(screen.getByRole('button', { name: '选择 付款周期过长' }).className).toMatch(/checked/);
+
+    const entriesB = normalizeSessionEntries([
+      { type: 'custom', id: 'c2', customType: 'workflow_step_end', data: { stepId: 'review', status: 'completed', output: { riskFindings: [
+        { id: 'r1', title: '付款周期过长', level: 'high' },
+        { id: 'r2', title: '违约范围过宽', level: 'mid' },
+      ] } } },
+    ]);
+    rerender(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s-b"
+        mode="history"
+        session={{ entries: entriesB, streaming: false, status: 'done', result: extractWorkflowResult(entriesB), meta: { currentStep: 'review', inputs: [{ path: 'C:/tmp/b.pdf', name: 'b.pdf' }] } }}
+        actions={actions}
+      />,
+    );
+    expect(screen.getByRole('button', { name: '全部' }).className).toMatch(/active/);
+    expect(screen.getAllByText('违约范围过宽').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: '选择 付款周期过长' }).className).not.toMatch(/checked/);
+    expect(screen.queryByText('a.pdf')).toBeNull();
+
+    rerender(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId={null}
+        mode="live"
+        session={{ entries: [], streaming: false, status: 'idle', meta: { currentStep: null, inputs: [] } }}
+        actions={actions}
+      />,
+    );
+    expect(screen.queryByText('a.pdf')).toBeNull();
+    expect(screen.queryByText('b.pdf')).toBeNull();
+    expect((screen.getByTestId('review') as HTMLButtonElement).disabled).toBe(true);
+  });
 });

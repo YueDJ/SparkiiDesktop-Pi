@@ -72,6 +72,10 @@ function hasStepStart(entries: AgentSession['entries'], stepId: string): boolean
   return entries.some((e) => e.kind === 'custom' && e.customType === 'workflow_step_start' && String(e.data.stepId) === stepId);
 }
 
+function hasStepEnd(entries: AgentSession['entries'], stepId: string): boolean {
+  return entries.some((e) => e.kind === 'custom' && e.customType === 'workflow_step_end' && String(e.data.stepId) === stepId);
+}
+
 function hasStepOutput(result: Record<string, unknown>, stepId: string): boolean {
   return Object.prototype.hasOwnProperty.call(result, stepId);
 }
@@ -199,8 +203,8 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
   const reviewed = initialReviewState(session.entries);
   const notes = initialNotes(session.entries);
   const reportMerged = wasReportMerged(session.entries);
-  const reviewPending = hasStepStart(session.entries, 'review') && !hasStepOutput(result, 'review');
-  const reportPending = hasStepStart(session.entries, 'report') && !hasStepOutput(result, 'report');
+  const reviewPending = hasStepStart(session.entries, 'review') && !hasStepEnd(session.entries, 'review') && !hasStepOutput(result, 'review');
+  const reportPending = hasStepStart(session.entries, 'report') && !hasStepEnd(session.entries, 'report') && !hasStepOutput(result, 'report');
   const inputs = session.meta.inputs ?? [];
   const firstInput = inputs[0];
   const fileName = firstInput?.name ?? (firstInput?.path ? basename(firstInput.path) : '');
@@ -218,6 +222,14 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [filter, setFilter] = useState<'all' | 'high' | 'mid' | 'low' | 'unprocessed'>('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    setFilter('all');
+    setSelected(new Set());
+    setNoteDraft({});
+    setLocalFileName('');
+    setDocuments(inputs.map((i) => i.path));
+    lastInputsKey.current = inputsKey;
+  }, [sessionId]);
 
   const processedCount = Object.values(reviewed).filter((v) => v !== 'none').length;
   const unprocessed = findings.filter((f) => !reviewed[f.id] || reviewed[f.id] === 'none');
