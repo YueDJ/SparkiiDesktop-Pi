@@ -18,8 +18,6 @@ import { loadApiKey, saveApiKey } from "./settings.js";
 import { registerGeneralExecutor } from "./general-executor.js";
 import { resolveRuntimeToolsDir } from "./runtime-layout.js";
 import { loadAgentRuntimes, type AgentRuntime } from "./agent-registry.js";
-import { generalAgentTools } from "../../agents/general/agent/capabilities.js";
-import { contractReviewAgentTools } from "../../agents/contract-review/agent/capabilities.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -86,18 +84,7 @@ export async function assemble(opts: {
   }
   const agents = await loadAgentRuntimes([...profiles.entries()].map(([id, pr]) => {
     const manifest = pr.profile.manifest;
-    const surface = manifest.surface ?? (
-      id === 'general'
-        ? { type: 'chat' as const }
-        : id === 'contract-review'
-          ? { type: 'workflow' as const, entry: 'surface.tsx' }
-          : { type: 'chat' as const }
-    );
-    const fallbackTools = id === 'general'
-      ? generalAgentTools
-      : id === 'contract-review'
-        ? contractReviewAgentTools
-        : [];
+    const surface = manifest.surface ?? { type: 'chat' as const };
     return {
       id,
       dir: pr.dir,
@@ -109,7 +96,7 @@ export async function assemble(opts: {
         version: manifest.version,
         sortOrder: manifest.sortOrder,
         surface,
-        capabilities: manifest.capabilities ?? { tools: fallbackTools },
+        capabilities: manifest.capabilities ?? { tools: [] },
         modelRequirements: manifest.modelRequirements,
       },
     };

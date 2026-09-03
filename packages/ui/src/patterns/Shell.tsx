@@ -11,11 +11,12 @@ import { ErrorCenterPanel, useErrors } from './ErrorCenter.js';
 import { TextField } from '../primitives/TextField.js';
 import { GearIcon, MoonIcon, SunIcon, UserIcon, ShieldIcon, SearchIcon, CloseIcon, MinimizeIcon, MaximizeIcon, WindowRestoreIcon, BellIcon, SparkiiMark } from '../icons/index.js';
 
-export type ScreenId = 'home' | 'contract-review' | 'chat' | 'dashboard' | 'general' | 'approvals' | 'audit' | 'settings';
+export type PlatformScreen = 'home' | 'approvals' | 'audit' | 'settings';
+export type ScreenId = PlatformScreen | string;
 export type AgentStatus = 'running' | 'idle' | 'queued';
 
 export interface ShellAgent {
-  id: ScreenId;
+  id: string;
   name: string;
   status: AgentStatus;
   surfaceType?: string;
@@ -164,7 +165,7 @@ export function Shell(props: ShellProps) {
 
   const startNewSession = (agentId: string) => {
     onNewSession(agentId);
-    if (agents.some((a) => a.id === agentId)) onNavigate(agentId as ScreenId);
+    if (agents.some((a) => a.id === agentId)) onNavigate(agentId);
   };
 
   const startRename = (agentId: string, sessionId: string) => {
@@ -247,7 +248,7 @@ export function Shell(props: ShellProps) {
             <SessionList
               groups={groups}
               filter={search}
-              onOpen={(agentId, id) => (onOpenSession ? onOpenSession(agentId, id) : onNavigate(agentId as ScreenId))}
+              onOpen={(agentId, id) => (onOpenSession ? onOpenSession(agentId, id) : onNavigate(agentId))}
               onRename={props.onRenameSession ? (agentId, id) => startRename(agentId, id) : undefined}
               onDelete={props.onDeleteSession ? (agentId, id) => props.onDeleteSession!(agentId, id) : undefined}
               onPin={props.onPinSession ? (agentId, id, pinned) => props.onPinSession!(agentId, id, pinned) : undefined}

@@ -7,26 +7,16 @@ export interface AgentDescriptor {
   surfaceType: string;
 }
 
-export interface WorkflowStepEntry {
-  kind: 'workflow_step';
+export interface CustomSessionEntry {
+  kind: 'custom';
   id: string;
-  stepId: string;
-  state: 'start' | 'end';
-  status?: string;
+  customType: string;
+  data: Record<string, unknown>;
   timestamp?: number;
 }
 
-export interface WorkflowStateEntry {
-  kind: 'workflow_state';
-  id: string;
-  stepId: string;
-  action: string;
-  payload: Record<string, unknown>;
-  timestamp?: number;
-}
-
-/** Unified session timeline entry: the platform chat entry types plus the workflow lifecycle entries. */
-export type SessionEntry = ChatEntry | WorkflowStepEntry | WorkflowStateEntry;
+/** Unified session timeline entry: the platform chat entry types plus Pi custom JSONL rows. */
+export type SessionEntry = ChatEntry | CustomSessionEntry;
 
 export interface AgentSession {
   entries: SessionEntry[];
@@ -48,7 +38,7 @@ export interface AgentSurfaceActions {
   openSession(id: string, title?: string): void;
   startWorkflow(payload: Record<string, unknown>): void;
   review(action: string, payload: Record<string, unknown>): void;
-  requestExport(): void;
+  requestExport(payload?: Record<string, unknown>): void;
   /** 平台文件对话框；返回用户选择的文件路径（取消时无 path）。 */
   chooseDocument(): Promise<{ path?: string }>;
 }

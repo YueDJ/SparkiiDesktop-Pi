@@ -10,7 +10,7 @@ import { sortAgents } from './agent-catalog.js';
 import { resolveExportPath } from './export-path.js';
 import { loadSettings, saveSettings } from './settings.js';
 import { buildProviderList } from './provider-catalog.js';
-import { autoWorkspacePath } from './workspace.js';
+import { autoWorkspacePath, ensureWorkspaceDir } from './workspace.js';
 import { buildAgentSaddle } from './saddle.js';
 import { buildAttachmentPrompt, stageAttachments } from './attachments.js';
 import { resizeImageForAttachment } from './image-resize.js';
@@ -62,6 +62,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   const titledSessions = new Set<string>();
   const appliedModelBySession = new Map<string, { provider: string; modelId: string }>();
   const idleTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  const inFlightWorkflowRuns = new Set<string>();
   const sessionIdleReleaseMs = 60_000;
 
   const anchorDir = (sessionId: string) => join(rt.dataDir, 'sessions', sessionId);
@@ -218,10 +219,11 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     const win = getWindow();
     entry.offEvents = entry.slot.client.onEvent((ev) => {
       win?.webContents.send('sparkii:event:chat-event', { ...ev, sessionId });
-      if (ev.type === 'agent_settled') {
+      const rec = rt.chatSessions.get(sessionId);
+      if (ev.type === 'agent_settled' && !inFlightWorkflowRuns.has(sessionId)) {
         scheduleIdleRelease(sessionId);
       }
-      if (ev.type === 'agent_end' && !titledSessions.has(sessionId)) {
+      if (ev.type === 'agent_end' && rec?.kind !== 'workflow' && !titledSessions.has(sessionId)) {
         titledSessions.add(sessionId);
         void maybeGenerateTitle(sessionId, entry.profileId, entry.slot).catch(() => {});
       }
@@ -291,7 +293,8 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       return { open, sessionId, workspacePath: rec?.workspacePath };
     }
 
-    const profileId = context.profileId ?? 'general';
+    const profileId = context.profileId;
+    if (!profileId) throw new Error('profileId is required');
     const now = new Date();
     const workspacePath = context.workspacePath ?? autoWorkspacePath(app.getPath('desktop'), now);
     const settings = await loadSettings(rt.dataDir);
@@ -628,6 +631,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       data: entry,
     });
     if (!resp.success) throw new Error(resp.error ?? 'append workflow_state failed');
+    if (!inFlightWorkflowRuns.has(sessionId)) scheduleIdleRelease(sessionId);
     return { ok: true };
   });
 
@@ -649,6 +653,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         data: { stepId: 'report', action: 'report_exported', at: new Date().toISOString(), ...summary },
       }).catch(() => {});
     }
+    if (!inFlightWorkflowRuns.has(sessionId)) scheduleIdleRelease(sessionId);
     return { ok: true, approved: d.approved };
   });
 
@@ -672,7 +677,9 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     const models = modelEntries.map((m) => m.modelId);
     const supportsImages: Record<string, boolean> = {};
     for (const m of modelEntries) supportsImages[m.modelId] = m.supportsImages ?? false;
-    const requirements = rt.agentOf(agentId ?? 'general').manifest.modelRequirements ?? { requires: ['chat'] };
+    const requirements = agentId
+      ? (rt.agentOf(agentId).manifest.modelRequirements ?? { requires: ['chat'] })
+      : { requires: ['chat'] };
     const descriptors = modelEntries.map((m) => ({
       provider: providerId,
       modelId: m.modelId,
@@ -716,9 +723,10 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
 
   async function ensureSessionRecord(sessionId: string, profileId?: string) {
     if (rt.chatSessions.get(sessionId)) return;
+    if (!profileId) return;
     const found = (await listPiSessions(join(rt.piAgentDir, 'sessions'))).find((s) => s.id === sessionId);
     if (!found) return;
-    rt.chatSessions.create({ id: sessionId, profileId: profileId ?? 'general', workspaceKind: 'auto', workspacePath: found.cwd });
+    rt.chatSessions.create({ id: sessionId, profileId, workspaceKind: 'auto', workspacePath: found.cwd });
   }
 
   ipcMain.handle('sparkii:setSessionPinned', async (_e, sessionId: string, pinned: boolean, profileId?: string) => {
@@ -799,11 +807,13 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     let result: unknown;
     if (out.status === 'approved' && out.toolName !== 'workflow.approval') {
       if (out.toolName === 'report.export') {
-        const path = await resolveExportPath(getWindow, process.env, (win, opts) =>
+        const payload = (out.payload ?? {}) as Record<string, unknown>;
+        const suggested = typeof payload.path === 'string' && payload.path.trim() ? payload.path : undefined;
+        const path = suggested ?? await resolveExportPath(getWindow, process.env, (win, opts) =>
           dialog.showSaveDialog(win as BrowserWindow, opts),
         );
         if (path) {
-          out.payload = { ...(out.payload as Record<string, unknown>), path };
+          out.payload = { ...payload, path };
           out = await rt.executor.execute(out, { actor: rt.subject.userId });
           result = out.execution?.result;
         } else {
@@ -909,7 +919,30 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     return { ok: true };
   });
   ipcMain.handle('sparkii:runWorkflow', async (_e, profileId: string, input: Record<string, unknown>) => {
-    const sessionId = await runWorkflow(rt, getWindow, input, broker, profileId);
+    const requestedWorkspace = typeof input.workspacePath === 'string' && input.workspacePath.trim()
+      ? input.workspacePath
+      : undefined;
+    const workspacePath = requestedWorkspace ?? autoWorkspacePath(app.getPath('desktop'), new Date());
+    await ensureWorkspaceDir(workspacePath);
+    const sessionId = await runWorkflow(rt, getWindow, {
+      ...input,
+      workspacePath,
+      workspaceKind: requestedWorkspace ? 'user' : 'auto',
+    }, broker, profileId, {
+      onReady(id, slot) {
+        inFlightWorkflowRuns.add(id);
+        const entry = { slot, profileId };
+        openSessions.set(id, entry);
+        pipeSessionEvents(id, entry);
+      },
+      async beforeRelease(id) {
+        inFlightWorkflowRuns.delete(id);
+        const open = openSessions.get(id);
+        if (!open) return;
+        open.offEvents?.();
+        openSessions.delete(id);
+      },
+    });
     return { ok: true, sessionId };
   });
   ipcMain.handle('sparkii:diagnostics', async () => ({

@@ -74,6 +74,9 @@ export function normalizeEvent(raw: any): NormalizedEvent {
       if (raw.entry?.type === 'custom_message') {
         return { type: 'entry_appended', entry: raw.entry };
       }
+      if (raw.entry?.type === 'custom') {
+        return { type: 'entry_appended', entry: raw.entry };
+      }
       return { type: 'unknown', raw };
     }
     default: return { type: 'unknown', raw };

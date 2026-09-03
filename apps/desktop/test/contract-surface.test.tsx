@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { ContractSurface, ContractAgentSurface } from '../agents/contract-review/surface/index.js';
-import { normalizeSessionEntries } from '../src/surface/normalize.js';
+import { extractWorkflowResult, normalizeSessionEntries } from '../src/surface/normalize.js';
 
 afterEach(cleanup);
 
@@ -73,19 +73,100 @@ describe('ContractSurface', () => {
     expect(screen.getAllByText('合同审核报告').length).toBeGreaterThan(0);
   });
 
-  it('requests export via the approval path after merging', () => {
+  it('uses the source filename as the report subtitle, not the model name', () => {
+    renderSurface({ status: 'done' });
+    const preview = screen.getByTestId('report-preview');
+    expect(preview.textContent).toContain('contract.pdf');
+    expect(preview.textContent).not.toMatch(/deepseek/i);
+    expect(preview.querySelector('.contract-report-status')).toBeNull();
+  });
+
+  it('requests export via the approval path after merging', async () => {
     const onRequestExport = vi.fn();
-    render(<ContractSurface state={makeState()} workflow={{ status: 'done' } as any} onAction={vi.fn()} onRequestExport={onRequestExport} />);
+    const agent = { id: 'contract-review', name: '合同审核智能体', surfaceType: 'workflow' as const };
+    const first = normalizeSessionEntries([
+      { type: 'custom', id: 'c1', customType: 'workflow_step_end', data: { stepId: 'review', status: 'completed', output: { riskFindings: [{ id: 'r1', title: '付款周期过长', level: 'high' }] } } },
+      { type: 'custom', id: 'c2', customType: 'workflow_step_end', data: { stepId: 'report', status: 'completed', output: { title: '合同审核报告', sections: [{ heading: '结论', body: '关注' }] } } },
+    ]);
+    const { rerender } = render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s1"
+        mode="history"
+        session={{ entries: first, streaming: false, result: extractWorkflowResult(first), meta: { currentStep: 'report' } }}
+        actions={{
+          newSession: vi.fn(),
+          openSession: vi.fn(),
+          startWorkflow: vi.fn(),
+          review: vi.fn(),
+          requestExport: onRequestExport,
+          chooseDocument: vi.fn().mockResolvedValue({}),
+        }}
+      />,
+    );
     fireEvent.click(screen.getByText('合并到报告'));
+    const second = [...first, { kind: 'custom' as const, id: 'w1', customType: 'workflow_state', data: { stepId: 'report', action: 'report_merged' } }];
+    rerender(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s1"
+        mode="history"
+        session={{ entries: second, streaming: false, result: extractWorkflowResult(second), meta: { currentStep: 'report' } }}
+        actions={{
+          newSession: vi.fn(),
+          openSession: vi.fn(),
+          startWorkflow: vi.fn(),
+          review: vi.fn(),
+          requestExport: onRequestExport,
+          chooseDocument: vi.fn().mockResolvedValue({}),
+        }}
+      />,
+    );
     fireEvent.click(screen.getByText('导出报告'));
-    expect(onRequestExport).toHaveBeenCalled();
+    await waitFor(() => expect(onRequestExport).toHaveBeenCalled());
+  });
+
+  it('exports a ready document built from the preview, not html', async () => {
+    const onRequestExport = vi.fn();
+    const agent = { id: 'contract-review', name: '合同审核智能体', surfaceType: 'workflow' as const };
+    const entries = normalizeSessionEntries([
+      { type: 'custom', id: 'c1', customType: 'workflow_step_end', data: { stepId: 'review', status: 'completed', output: { riskFindings: [
+        { id: 'r1', title: '付款周期过长', level: 'high', clause: '第7条', position: 'p12' },
+      ] } } },
+      { type: 'custom', id: 'c2', customType: 'workflow_step_end', data: { stepId: 'report', status: 'completed', output: { title: '合同审核报告', sections: [{ heading: '结论', body: '- 约定逾期付款违约金\n- 限定赔偿范围' }] } } },
+      { type: 'custom', id: 'c3', customType: 'workflow_state', data: { stepId: 'report', action: 'report_merged' } },
+    ]);
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s1"
+        mode="history"
+        session={{ entries, streaming: false, status: 'done', result: extractWorkflowResult(entries), meta: { currentStep: 'report' } }}
+        actions={{
+          newSession: vi.fn(),
+          openSession: vi.fn(),
+          startWorkflow: vi.fn(),
+          review: vi.fn(),
+          requestExport: onRequestExport,
+          chooseDocument: vi.fn().mockResolvedValue({}),
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByText('导出报告'));
+    await waitFor(() => {
+      expect(onRequestExport).toHaveBeenCalledWith(expect.objectContaining({
+        format: 'docx',
+        content: expect.stringMatching(/^UEs/),
+      }));
+    });
+    expect(onRequestExport.mock.calls[0][0].html).toBeUndefined();
   });
 
   it('renders the review stage in the single-page stage rail', () => {
     renderSurface({ status: 'done' });
     expect(screen.getByText('审核')).toBeTruthy();
     expect(screen.getByText('报告')).toBeTruthy();
-    expect(screen.getByText('复核')).toBeTruthy();
+    expect(screen.getAllByText('复核').length).toBeGreaterThan(0);
   });
 
   it('renders a structured risk view without raw JSON', () => {
@@ -107,7 +188,7 @@ describe('ContractSurface', () => {
       />,
     );
     fireEvent.click(screen.getAllByText('确认')[0]);
-    expect(onWorkflowState).toHaveBeenCalledWith('risk_confirmed', { riskId: 'f0', stepId: 'review' });
+    expect(onWorkflowState).toHaveBeenCalledWith('risk_confirmed', { stepId: 'review', payload: { riskId: 'f0' } });
   });
 
   it('filters risk cards and applies a batch confirmation', () => {
@@ -128,7 +209,7 @@ describe('ContractSurface', () => {
     expect(screen.getAllByText('第12条 违约责任').length).toBe(1);
     fireEvent.click(screen.getByRole('button', { name: '选择 第7条 付款条件' }));
     fireEvent.click(screen.getByText('批量确认'));
-    expect(onWorkflowState).toHaveBeenCalledWith('risk_confirmed', { riskId: 'f0', stepId: 'review' });
+    expect(onWorkflowState).toHaveBeenCalledWith('risk_confirmed', { stepId: 'review', payload: { riskId: 'f0' } });
   });
 });
 
@@ -145,12 +226,9 @@ describe('ContractAgentSurface', () => {
 
   it('renders the single-page cockpit with review and report panels', () => {
     const entries = normalizeSessionEntries([
-      { type: 'workflow_step_start', data: { stepId: 'review' } },
-      { type: 'workflow_step_end', data: { stepId: 'review', status: 'completed' } },
-      { type: 'workflow_state', data: { stepId: 'review', action: 'result', payload: {
-        review: { riskFindings: [{ id: 'r1', title: '付款周期过长', level: 'high', advice: '约定逾期违约金' }] },
-        report: { title: '合同审核报告', sections: [{ heading: '结论', body: '关注' }] },
-      } } },
+      { type: 'custom', id: 'c1', customType: 'workflow_step_start', data: { stepId: 'review' } },
+      { type: 'custom', id: 'c2', customType: 'workflow_step_end', data: { stepId: 'review', status: 'completed', output: { riskFindings: [{ id: 'r1', title: '付款周期过长', level: 'high', advice: '约定逾期违约金' }] } } },
+      { type: 'custom', id: 'c3', customType: 'workflow_step_end', data: { stepId: 'report', status: 'completed', output: { title: '合同审核报告', sections: [{ heading: '结论', body: '关注' }] } } },
     ]);
     render(
       <ContractAgentSurface
@@ -168,12 +246,9 @@ describe('ContractAgentSurface', () => {
 
   it('renders the report from the session stream without workflow/state props', () => {
     const entries = normalizeSessionEntries([
-      {
-        type: 'workflow_state',
-        data: { stepId: 'report', action: 'result', payload: { report: { title: '会话报告', sections: [{ heading: '结论', body: '关注' }] }, compare: [{ 条款: '第1条', 风险: '高' }] } },
-      },
-      { type: 'workflow_step_start', data: { stepId: 'report' } },
-      { type: 'workflow_step_end', data: { stepId: 'report', status: 'completed' } },
+      { type: 'custom', id: 'c1', customType: 'workflow_step_end', data: { stepId: 'review', status: 'completed', output: { riskFindings: [{ id: 'f0', title: '第1条', level: 'high' }] } } },
+      { type: 'custom', id: 'c2', customType: 'workflow_step_start', data: { stepId: 'report' } },
+      { type: 'custom', id: 'c3', customType: 'workflow_step_end', data: { stepId: 'report', status: 'completed', output: { title: '会话报告', sections: [{ heading: '结论', body: '关注' }] } } },
     ]);
     render(
       <ContractAgentSurface
@@ -199,7 +274,7 @@ describe('ContractAgentSurface', () => {
       />,
     );
     fireEvent.click(screen.getByTestId('review'));
-    expect(actions.startWorkflow).toHaveBeenCalledWith({ documents: ['C:/tmp/a.pdf'] });
+    expect(actions.startWorkflow).toHaveBeenCalledWith(expect.objectContaining({ documents: ['C:/tmp/a.pdf'] }));
   });
 
   it('offers a new session action instead of reusing the active review', () => {
@@ -217,5 +292,221 @@ describe('ContractAgentSurface', () => {
     expect(screen.queryByTestId('upload')).toBeNull();
     fireEvent.click(screen.getByTestId('new-review'));
     expect(actions.newSession).toHaveBeenCalled();
+  });
+
+  it('shows risk cards after a review step_end output without session.result', () => {
+    const entries = normalizeSessionEntries([
+      { type: 'custom', id: 'c1', customType: 'workflow_step_start', data: { stepId: 'review' } },
+      { type: 'custom', id: 'c2', customType: 'workflow_step_end', data: { stepId: 'review', status: 'completed', output: { riskFindings: [{ id: 'r1', title: '付款周期过长', level: 'high' }] } } },
+    ]);
+    render(<ContractAgentSurface agent={agent} sessionId="s1" mode="history"
+      session={{ entries, streaming: false, result: extractWorkflowResult(entries), meta: { currentStep: 'review' } }}
+      actions={makeActions()} />);
+    expect(screen.getAllByText('付款周期过长').length).toBeGreaterThan(0);
+  });
+
+  it('keeps confirmation after a later custom row arrives', () => {
+    const actions = makeActions();
+    const first = normalizeSessionEntries([
+      { type: 'custom', id: 'c2', customType: 'workflow_step_end', data: { stepId: 'review', status: 'completed', output: { riskFindings: [{ id: 'r1', title: '付款周期过长', level: 'high' }] } } },
+    ]);
+    const { rerender } = render(<ContractAgentSurface
+      agent={agent}
+      sessionId="s1"
+      mode="history"
+      session={{ entries: first, streaming: false, result: extractWorkflowResult(first), meta: { currentStep: 'review' } }}
+      actions={actions}
+    />);
+    fireEvent.click(screen.getAllByText('确认')[0]);
+    expect(actions.review).toHaveBeenCalledWith('risk_confirmed', { stepId: 'review', payload: { riskId: 'r1' } });
+    const second = [...first, { kind: 'custom' as const, id: 'w1', customType: 'workflow_state', data: { stepId: 'review', action: 'risk_confirmed', payload: { riskId: 'r1' } } }];
+    rerender(<ContractAgentSurface
+      agent={agent}
+      sessionId="s1"
+      mode="history"
+      session={{ entries: second, streaming: false, result: extractWorkflowResult(second), meta: { currentStep: 'review' } }}
+      actions={actions}
+    />);
+    expect(screen.getAllByText('已确认').length).toBeGreaterThan(0);
+  });
+
+  it('shows a risk skeleton after review start before step output', () => {
+    const entries = normalizeSessionEntries([
+      { type: 'custom', id: 'c1', customType: 'workflow_step_start', data: { stepId: 'review' } },
+    ]);
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s1"
+        mode="live"
+        session={{ entries, streaming: true, status: 'running', meta: { currentStep: 'review' } }}
+        actions={makeActions()}
+      />,
+    );
+    expect(screen.getByText('审核中…')).toBeTruthy();
+  });
+
+  it('shows a report skeleton after report start before step output', () => {
+    const entries = normalizeSessionEntries([
+      { type: 'custom', id: 'c1', customType: 'workflow_step_end', data: { stepId: 'review', status: 'completed', output: { riskFindings: [{ id: 'r1', title: '付款周期过长', level: 'high' }] } } },
+      { type: 'custom', id: 'c2', customType: 'workflow_step_start', data: { stepId: 'report' } },
+    ]);
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s1"
+        mode="live"
+        session={{ entries, streaming: true, status: 'running', result: extractWorkflowResult(entries), meta: { currentStep: 'report' } }}
+        actions={makeActions()}
+      />,
+    );
+    expect(screen.getByText('报告生成中…')).toBeTruthy();
+  });
+
+  it('resets filter, selection, and documents when sessionId changes', () => {
+    const actions = makeActions();
+    const entriesA = normalizeSessionEntries([
+      { type: 'custom', id: 'c1', customType: 'workflow_step_end', data: { stepId: 'review', status: 'completed', output: { riskFindings: [
+        { id: 'r1', title: '付款周期过长', level: 'high' },
+        { id: 'r2', title: '违约范围过宽', level: 'mid' },
+      ] } } },
+    ]);
+    const { rerender } = render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s-a"
+        mode="history"
+        session={{ entries: entriesA, streaming: false, status: 'done', result: extractWorkflowResult(entriesA), meta: { currentStep: 'review', inputs: [{ path: 'C:/tmp/a.pdf', name: 'a.pdf' }] } }}
+        actions={actions}
+      />,
+    );
+    fireEvent.click(screen.getAllByRole('button', { name: '高风险' })[0]);
+    expect(screen.queryByText('违约范围过宽')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '选择 付款周期过长' }));
+    expect(screen.getByRole('button', { name: '选择 付款周期过长' }).className).toMatch(/checked/);
+
+    const entriesB = normalizeSessionEntries([
+      { type: 'custom', id: 'c2', customType: 'workflow_step_end', data: { stepId: 'review', status: 'completed', output: { riskFindings: [
+        { id: 'r1', title: '付款周期过长', level: 'high' },
+        { id: 'r2', title: '违约范围过宽', level: 'mid' },
+      ] } } },
+    ]);
+    rerender(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s-b"
+        mode="history"
+        session={{ entries: entriesB, streaming: false, status: 'done', result: extractWorkflowResult(entriesB), meta: { currentStep: 'review', inputs: [{ path: 'C:/tmp/b.pdf', name: 'b.pdf' }] } }}
+        actions={actions}
+      />,
+    );
+    expect(screen.getByRole('button', { name: '全部' }).className).toMatch(/active/);
+    expect(screen.getAllByText('违约范围过宽').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: '选择 付款周期过长' }).className).not.toMatch(/checked/);
+    expect(screen.queryByText('a.pdf')).toBeNull();
+
+    rerender(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId={null}
+        mode="live"
+        session={{ entries: [], streaming: false, status: 'idle', meta: { currentStep: null, inputs: [] } }}
+        actions={actions}
+      />,
+    );
+    expect(screen.queryByText('a.pdf')).toBeNull();
+    expect(screen.queryByText('b.pdf')).toBeNull();
+    expect((screen.getByTestId('review') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('loads context usage after a session id appears', async () => {
+    const getChatState = vi.fn().mockResolvedValue({
+      contextUsage: { tokens: 12800, contextWindow: 200000, percent: 6 },
+    });
+    (window as any).sparkii = {
+      getModelOptions: async () => ({ models: [], defaultModel: null, provider: 'deepseek' }),
+      getChatState,
+      getChatSession: async () => ({}),
+      on: () => () => {},
+    };
+    const actions = makeActions();
+    const { rerender } = render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId={null}
+        mode="live"
+        session={{ entries: [], streaming: false, status: 'idle', meta: { currentStep: null } }}
+        actions={actions}
+      />,
+    );
+    expect(screen.getByTestId('context-bar').textContent).toMatch(/—/);
+    rerender(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s-live"
+        mode="live"
+        session={{ entries: [], streaming: false, status: 'running', meta: { currentStep: 'review' } }}
+        actions={actions}
+      />,
+    );
+    await waitFor(() => expect(getChatState).toHaveBeenCalledWith('s-live'));
+    await waitFor(() => {
+      const bar = screen.getByTestId('context-bar');
+      expect(bar.textContent).toMatch(/12,800/);
+      expect(bar.textContent).toMatch(/200,000/);
+      expect(bar.textContent).toMatch(/6%/);
+    });
+    delete (window as any).sparkii;
+  });
+
+  it('passes workspace and model into startWorkflow', async () => {
+    (window as any).sparkii = {
+      getModelOptions: async () => ({ models: ['deepseek-v4-pro'], defaultModel: 'deepseek-v4-pro', provider: 'deepseek' }),
+      chooseWorkspace: async () => ({ path: 'C:/ws/contract' }),
+      on: () => () => {},
+    };
+    const startWorkflow = vi.fn();
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId={null}
+        mode="live"
+        session={{ entries: [], streaming: false, status: 'idle', meta: { currentStep: null } }}
+        actions={{ ...makeActions(), startWorkflow, chooseDocument: vi.fn().mockResolvedValue({ path: 'C:/tmp/a.pdf' }) }}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('upload'));
+    await screen.findByText('更换文件');
+    fireEvent.click(screen.getByTestId('workspace'));
+    await waitFor(() => expect(screen.getByTestId('workspace').textContent).toContain('contract'));
+    fireEvent.click(screen.getByTestId('review'));
+    await waitFor(() => expect(startWorkflow).toHaveBeenCalledWith(expect.objectContaining({
+      documents: ['C:/tmp/a.pdf'],
+      workspacePath: 'C:/ws/contract',
+    })));
+    delete (window as any).sparkii;
+  });
+
+  it('lists report risks by level with clause and position', () => {
+    const entries = normalizeSessionEntries([
+      { type: 'custom', id: 'c1', customType: 'workflow_step_end', data: { stepId: 'review', status: 'completed', output: { riskFindings: [
+        { id: 'r1', title: '付款周期过长', level: 'high', clause: '第7条 付款条件', position: 'p12' },
+        { id: 'r2', title: '验收边界不清', level: 'mid', clause: '第12条', position: 'p20' },
+      ] } } },
+      { type: 'custom', id: 'c2', customType: 'workflow_step_end', data: { stepId: 'report', status: 'completed', output: { title: '合同审核报告', sections: [{ heading: '结论', body: '关注付款' }] } } },
+    ]);
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s1"
+        mode="history"
+        session={{ entries, streaming: false, status: 'done', result: extractWorkflowResult(entries), meta: { currentStep: 'report' } }}
+        actions={makeActions()}
+      />,
+    );
+    expect(screen.getByTestId('report-risk-high')).toBeTruthy();
+    expect(screen.getByTestId('report-risk-high').textContent).toContain('付款周期过长');
+    expect(screen.getByTestId('report-risk-high').textContent).toContain('p12');
+    expect(screen.getByTestId('report-risk-mid').textContent).toContain('验收边界不清');
   });
 });

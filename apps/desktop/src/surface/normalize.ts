@@ -3,67 +3,69 @@ import {
   applyChatEvent as uiApplyChatEvent,
   normalizeSessionEntries as uiNormalizeSessionEntries,
 } from '@sparkii/ui';
-import type { SessionEntry, WorkflowStepEntry, WorkflowStateEntry } from './contract.js';
+import type { CustomSessionEntry, SessionEntry } from './contract.js';
 
-export type { WorkflowStateEntry } from './contract.js';
+export type { CustomSessionEntry } from './contract.js';
 
 function asRecord(v: unknown): Record<string, unknown> {
   return v && typeof v === 'object' ? (v as Record<string, unknown>) : {};
 }
 
-function timestamp(data: Record<string, unknown>): number | undefined {
-  const s = typeof data.startedAt === 'string'
-    ? data.startedAt
-    : typeof data.finishedAt === 'string'
-      ? data.finishedAt
-      : undefined;
-  return s ? Date.parse(s) : undefined;
+function parseTimestamp(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const n = Date.parse(value);
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
 }
 
-function workflowEntryFor(raw: unknown): WorkflowStepEntry | WorkflowStateEntry | null {
+function customFrom(raw: unknown): CustomSessionEntry | null {
   const rec = asRecord(raw);
-  const type = String(rec.type ?? '');
-  const data = asRecord(rec.data);
-  if (type === 'workflow_step_start') {
-    return { kind: 'workflow_step', id: `ws-${data.stepId}-start`, stepId: String(data.stepId), state: 'start', timestamp: timestamp(data) };
-  }
-  if (type === 'workflow_step_end') {
-    return {
-      kind: 'workflow_step',
-      id: `ws-${data.stepId}-end`,
-      stepId: String(data.stepId),
-      state: 'end',
-      status: String(data.status ?? ''),
-      timestamp: timestamp(data),
-    };
-  }
-  if (type === 'workflow_state') {
-    return {
-      kind: 'workflow_state',
-      id: `wst-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      stepId: String(data.stepId),
-      action: String(data.action),
-      payload: asRecord(data.payload),
-      timestamp: typeof data.at === 'string' ? Date.parse(data.at) : undefined,
-    };
-  }
-  return null;
+  const entry = rec.type === 'entry_appended' ? asRecord(rec.entry) : rec;
+  if (String(entry.type) !== 'custom') return null;
+  return {
+    kind: 'custom',
+    id: String(entry.id ?? ''),
+    customType: String(entry.customType ?? ''),
+    data: asRecord(entry.data),
+    timestamp: parseTimestamp(entry.timestamp),
+  };
 }
 
-/** Normalize a session history into the unified timeline (chat + workflow lifecycle). */
+function stepIdOf(e: CustomSessionEntry): string {
+  return String(e.data.stepId ?? '');
+}
+
+/** Normalize a session history into the unified timeline (chat + custom JSONL rows, original order). */
 export function normalizeSessionEntries(entries: unknown[]): SessionEntry[] {
-  const workflow: SessionEntry[] = [];
-  const chat: unknown[] = [];
+  const out: SessionEntry[] = [];
+  const chatBuf: unknown[] = [];
+  const flushChat = () => {
+    if (!chatBuf.length) return;
+    out.push(...uiNormalizeSessionEntries(chatBuf));
+    chatBuf.length = 0;
+  };
   for (const e of entries) {
-    const w = workflowEntryFor(e);
-    if (w) workflow.push(w);
-    else chat.push(e);
+    const c = customFrom(e);
+    if (c) {
+      flushChat();
+      out.push(c);
+    } else {
+      chatBuf.push(e);
+    }
   }
-  return [...workflow, ...uiNormalizeSessionEntries(chat)];
+  flushChat();
+  return out;
 }
 
-/** Apply a single live event onto the current timeline (chat + workflow lifecycle). */
+/** Apply a single live event onto the current timeline (chat + custom JSONL rows). */
 export function applySurfaceEvent(entries: SessionEntry[], ev: unknown): SessionEntry[] {
+  const c = customFrom(ev);
+  if (c) {
+    if (c.id && entries.some((e) => e.id === c.id)) return entries;
+    return [...entries, c];
+  }
   const rec = asRecord(ev);
   // Keep user messages in the live timeline so it mirrors the authoritative JSONL the same way
   // the history replay does (live and history share one normalized entry shape).
@@ -76,8 +78,6 @@ export function applySurfaceEvent(entries: SessionEntry[], ev: unknown): Session
     if (last && last.kind === 'message' && last.role === 'user' && last.text === text) return entries;
     return [...entries, { kind: 'message', id: `u-${Date.now()}-${Math.random()}`, role: 'user', text, streaming: false }];
   }
-  const w = workflowEntryFor(ev);
-  if (w) return [...entries, w];
   return uiApplyChatEvent(entries as ChatEntry[], ev);
 }
 
@@ -87,24 +87,30 @@ export interface WorkflowTimeline {
 }
 
 export function deriveWorkflowTimeline(entries: SessionEntry[]): WorkflowTimeline {
-  const steps = entries.filter((e): e is WorkflowStepEntry => e.kind === 'workflow_step');
+  const steps = entries.filter((e): e is CustomSessionEntry =>
+    e.kind === 'custom' && (e.customType === 'workflow_step_start' || e.customType === 'workflow_step_end'),
+  );
   if (steps.length === 0) return { status: 'idle' };
 
-  const failed = steps.find((s) => s.state === 'end' && s.status === 'failed');
-  if (failed) return { status: 'failed', step: failed.stepId };
+  const failed = steps.find((s) => s.customType === 'workflow_step_end' && String(s.data.status ?? '') === 'failed');
+  if (failed) return { status: 'failed', step: stepIdOf(failed) };
 
-  const starts = steps.filter((s) => s.state === 'start');
-  const ends = steps.filter((s) => s.state === 'end');
+  const starts = steps.filter((s) => s.customType === 'workflow_step_start');
+  const ends = steps.filter((s) => s.customType === 'workflow_step_end');
   const lastStart = starts[starts.length - 1];
   const lastEnd = ends[ends.length - 1];
-  if (ends.length >= starts.length && lastStart && lastEnd && lastEnd.stepId === lastStart.stepId) {
-    return { status: 'done', step: lastEnd.stepId };
+  if (ends.length >= starts.length && lastStart && lastEnd && stepIdOf(lastEnd) === stepIdOf(lastStart)) {
+    return { status: 'done', step: stepIdOf(lastEnd) };
   }
-  return { status: 'running', step: lastStart?.stepId };
+  return { status: 'running', step: lastStart ? stepIdOf(lastStart) : undefined };
 }
 
 export function extractWorkflowResult(entries: SessionEntry[]): Record<string, unknown> {
-  const states = entries.filter((e): e is WorkflowStateEntry => e.kind === 'workflow_state' && e.action === 'result');
-  const last = states[states.length - 1];
-  return (last?.payload ?? {}) as Record<string, unknown>;
+  const result: Record<string, unknown> = {};
+  for (const e of entries) {
+    if (e.kind !== 'custom' || e.customType !== 'workflow_step_end') continue;
+    const stepId = stepIdOf(e);
+    if (stepId && 'output' in e.data) result[stepId] = e.data.output;
+  }
+  return result;
 }

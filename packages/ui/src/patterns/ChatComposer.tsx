@@ -81,6 +81,37 @@ function contextTitle(contextUsage: ContextUsage): string {
   return `上下文 ${formatTokens(contextUsage.tokens)} / ${formatTokens(contextUsage.contextWindow)} tokens`;
 }
 
+export function ContextUsageBar({
+  contextUsage = null,
+  isCompacting = false,
+}: {
+  contextUsage?: ContextUsage | null;
+  isCompacting?: boolean;
+}) {
+  return (
+    <div
+      className={`ui-composer-context${isCompacting ? ' ui-composer-context--compacting' : ''}`}
+      data-testid="context-bar"
+      title={contextUsage ? contextTitle(contextUsage) : '上下文暂不可用'}
+    >
+      {isCompacting ? (
+        <span className="ui-composer-context-compacting">正在压缩上下文…</span>
+      ) : contextUsage ? (
+        <>
+          <span className="ui-composer-context-track" aria-hidden="true">
+            <span style={{ width: `${Math.max(0, Math.min(100, contextUsage.percent ?? 0))}%` }} />
+          </span>
+          <span className="ui-composer-context-text">
+            {formatTokens(contextUsage.tokens)} / {formatTokens(contextUsage.contextWindow)} · {formatPercent(contextUsage.percent)}
+          </span>
+        </>
+      ) : (
+        <span className="ui-composer-context-empty">上下文 —</span>
+      )}
+    </div>
+  );
+}
+
 export function ChatComposer({ busy, stopping = false, workspacePath, onChooseWorkspace, getLocalPath, modelProps, contextUsage = null, isCompacting = false, onSend, onStop }: ChatComposerProps) {
   const [draft, setDraft] = useState('');
   const [files, setFiles] = useState<ComposerAttachment[]>([]);
@@ -197,26 +228,7 @@ export function ChatComposer({ busy, stopping = false, workspacePath, onChooseWo
               <span className="ui-composer-ws-name" data-testid="workspace-path">{name}</span>
             </button>
           </div>
-          <div
-            className={`ui-composer-context${isCompacting ? ' ui-composer-context--compacting' : ''}`}
-            data-testid="context-bar"
-            title={contextUsage ? contextTitle(contextUsage) : '上下文暂不可用'}
-          >
-            {isCompacting ? (
-              <span className="ui-composer-context-compacting">正在压缩上下文…</span>
-            ) : contextUsage ? (
-              <>
-                <span className="ui-composer-context-track" aria-hidden="true">
-                  <span style={{ width: `${Math.max(0, Math.min(100, contextUsage.percent ?? 0))}%` }} />
-                </span>
-                <span className="ui-composer-context-text">
-                  {formatTokens(contextUsage.tokens)} / {formatTokens(contextUsage.contextWindow)} · {formatPercent(contextUsage.percent)}
-                </span>
-              </>
-            ) : (
-              <span className="ui-composer-context-empty">上下文 —</span>
-            )}
-          </div>
+          <ContextUsageBar contextUsage={contextUsage} isCompacting={isCompacting} />
           <div className="ui-composer-toolbar-right">
             <ModelEffortControl {...modelProps} />
             <button

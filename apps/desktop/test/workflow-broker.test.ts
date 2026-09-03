@@ -2,7 +2,78 @@ import { describe, it, expect, vi } from 'vitest';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createBroker, resolveWorkflowTemplates, runWorkflow } from '../electron/main/workflow.js';
+import { createBroker, resolveWorkflowTemplates, runWorkflow, workflowRuntimeTools } from '../electron/main/workflow.js';
+
+async function waitUntil(predicate: () => boolean, timeoutMs = 2000): Promise<void> {
+  const start = Date.now();
+  while (!predicate()) {
+    if (Date.now() - start > timeoutMs) throw new Error('timed out waiting');
+    await new Promise((r) => setTimeout(r, 10));
+  }
+}
+
+function makeHarness(opts: {
+  steps: Array<Record<string, unknown>>;
+  sessionId?: string;
+  timeoutMs?: number;
+  profileId?: string;
+}) {
+  const send = vi.fn();
+  const getWindow = () => ({ webContents: { send } }) as any;
+  const appends: Array<{ customType: string; data: Record<string, unknown> }> = [];
+  const release = vi.fn(async () => {});
+  const sessionId = opts.sessionId ?? 'wf-session';
+  const profileId = opts.profileId ?? 'contract-review';
+  const rt = {
+    dataDir: mkdtempSync(join(tmpdir(), 'wf-harness-')),
+    profileOf: () => ({
+      dir: join(rt.dataDir, 'profiles', profileId),
+      profile: {
+        manifest: { name: profileId },
+        security: { approval: { timeoutMs: opts.timeoutMs ?? 50 } },
+        agent: {
+          tools: ['read'],
+          prompts: { system: `你是 ${profileId}。` },
+          workflow: { version: 1, engine: 'linear', steps: opts.steps },
+        },
+      },
+    }),
+    agentOf: () => ({
+      id: profileId,
+      tools: ['read'],
+      dir: join(rt.dataDir, 'profiles', profileId),
+      skillsDir: join(rt.dataDir, 'profiles', profileId, 'agent', 'skills'),
+      systemPrompt: `你是 ${profileId}。`,
+    }),
+    subject: { userId: 'admin' },
+    gate: {
+      submit: async (req: any) => ({ id: 'p1', ...req, status: 'pending', payloadHash: 'h', createdAt: Date.now() }),
+      expire: async (id: string) => ({ id, status: 'expired' }),
+    },
+    pool: {
+      acquire: async () => ({
+        client: {
+          send: async (cmd: any) => {
+            if (cmd.type === 'new_session') return { success: true };
+            if (cmd.type === 'get_state') {
+              return { success: true, data: { sessionId, sessionFile: 'C:/wf/session.jsonl' } };
+            }
+            if (cmd.type === 'append_workflow_entry') {
+              appends.push({ customType: cmd.customType, data: cmd.data });
+            }
+            return { success: true };
+          },
+        },
+        supervisor: { onProposal: () => {} },
+      }),
+      renameSession: vi.fn(),
+      get: () => undefined,
+      release,
+    },
+    chatSessions: { create: vi.fn(), update: vi.fn() },
+  } as any;
+  return { rt, getWindow, send, appends, release, sessionId, profileId };
+}
 
 it('uses the runtime session id for the workflow session record', async () => {
   const send = vi.fn();
@@ -67,6 +138,47 @@ it('uses the runtime session id for the workflow session record', async () => {
   }));
 });
 
+it('keeps only workflow tool-step tools plus read on the runtime saddle', () => {
+  expect(workflowRuntimeTools(
+    ['document.read', 'knowledge.search', 'report.export', 'read'],
+    {
+      version: 1,
+      engine: 'linear',
+      steps: [
+        { id: 'load', type: 'tool', ref: 'document.read' },
+        { id: 'search', type: 'tool', ref: 'knowledge.search' },
+        { id: 'review', type: 'skill', ref: 'contract_risk_review' },
+      ],
+    } as any,
+  )).toEqual(['document.read', 'knowledge.search', 'read']);
+});
+
+it('persists the caller workspace and model on the workflow session', async () => {
+  const { rt, getWindow, sessionId } = makeHarness({ steps: [] });
+  const acquire = rt.pool.acquire;
+  const saddles: unknown[] = [];
+  rt.pool.acquire = async (key: string, opts?: { saddle?: unknown }) => {
+    saddles.push(opts?.saddle);
+    return acquire(key, opts);
+  };
+  const broker = createBroker(rt, getWindow);
+  await runWorkflow(rt, getWindow, {
+    documents: [],
+    workspacePath: 'C:/ws/contract',
+    model: 'deepseek/deepseek-v4-pro',
+  }, broker, 'contract-review');
+  expect(rt.chatSessions.create).toHaveBeenCalledWith(expect.objectContaining({
+    id: sessionId,
+    workspacePath: 'C:/ws/contract',
+    workspaceKind: 'user',
+    model: 'deepseek/deepseek-v4-pro',
+  }));
+  expect(saddles[0]).toMatchObject({
+    workspaceRoot: 'C:/ws/contract',
+    model: { provider: 'deepseek', modelId: 'deepseek-v4-pro' },
+  });
+});
+
 it('resolves skill ref and llm template to prompt content', () => {
   const def = {
     version: 1, engine: 'linear',
@@ -78,9 +190,10 @@ it('resolves skill ref and llm template to prompt content', () => {
   const resolved = resolveWorkflowTemplates(def);
   const extract = resolved.steps.find((s) => s.id === 'extract');
   const report = resolved.steps.find((s) => s.id === 'report');
-  expect(extract?.template).toContain('clause_extract');
+  expect(extract?.template).toBe('/skill:clause_extract');
+  expect(extract?.template).not.toContain('\n');
   expect(extract?.template).not.toContain('抽取条款');
-  expect(report?.template).toContain('report');
+  expect(report?.template).toBe('/skill:report');
 });
 
 it('resolves the two visible business skills plus hidden tools', () => {
@@ -105,6 +218,8 @@ describe('runWorkflow broker sharing', () => {
     const send = vi.fn();
     const getWindow = () => ({ webContents: { send } }) as any;
     const acquiredSaddles: any[] = [];
+    const appends: Array<{ customType: string; data: Record<string, unknown> }> = [];
+    const release = vi.fn(async (_sessionId: string) => {});
     const rt = {
       dataDir: mkdtempSync(join(tmpdir(), 'wf-')),
       profileOf: (_id: string) => ({
@@ -147,6 +262,9 @@ describe('runWorkflow broker sharing', () => {
                 if (cmd.type === 'get_state') {
                   return { success: true, data: { sessionId: 'wf-session', sessionFile: 'C:/wf/session.jsonl' } };
                 }
+                if (cmd.type === 'append_workflow_entry') {
+                  appends.push({ customType: cmd.customType, data: cmd.data });
+                }
                 return { success: true };
               },
             },
@@ -155,7 +273,7 @@ describe('runWorkflow broker sharing', () => {
         },
         renameSession: vi.fn(),
         get: (_sessionId: string) => undefined,
-        release: async (_sessionId: string) => {},
+        release,
       },
       chatSessions: {
         create: vi.fn(),
@@ -165,11 +283,11 @@ describe('runWorkflow broker sharing', () => {
 
     const broker = createBroker(rt, getWindow);
     const running = runWorkflow(rt, getWindow, { documents: [] }, broker, 'contract-review');
-    await new Promise((r) => setTimeout(r, 0));
+    await waitUntil(() => send.mock.calls.some((c) => c[0] === 'sparkii:event:approval'));
 
     expect(acquiredSaddles).toHaveLength(1);
     expect(acquiredSaddles[0]).toMatchObject({
-      tools: ['document.read', 'knowledge.search', 'report.export', 'read'],
+      tools: ['read'],
       systemPrompt: expect.stringContaining('合同审核智能体'),
     });
     expect(acquiredSaddles[0]?.skillsDir?.split(/[\\/]/).slice(-2).join('/')).toBe('agent/skills');
@@ -180,11 +298,12 @@ describe('runWorkflow broker sharing', () => {
 
     expect(send).toHaveBeenCalledWith('sparkii:event:approval', expect.objectContaining({ id: 'p1' }));
     broker.decide('p1', { approved: true, status: 'approved', result: undefined });
+    await waitUntil(() => appends.some((a) => a.customType === 'workflow_step_end'));
     await running;
 
-    expect(send).toHaveBeenCalledWith('sparkii:event:state', expect.objectContaining({
-      workflow: { result: expect.objectContaining({ review: { proposalId: 'p1', status: 'approved' } }) },
-    }));
+    expect(send.mock.calls.some((c) => c[0] === 'sparkii:event:workflow')).toBe(false);
+    expect(send.mock.calls.some((c) => c[0] === 'sparkii:event:state' && (c[1] as { workflow?: unknown })?.workflow)).toBe(false);
+    expect(release).toHaveBeenCalled();
   });
 
   it('runs the workflow for the requested profile instead of contract-review', async () => {
@@ -251,5 +370,71 @@ describe('runWorkflow broker sharing', () => {
     await runWorkflow(rt, getWindow, {}, broker, 'general');
 
     expect(profileOf).toHaveBeenCalledWith('general');
+  });
+});
+
+describe('runWorkflow session id and JSONL', () => {
+  it('returns the session id before the runner finishes', async () => {
+    const { rt, getWindow, send, release } = makeHarness({
+      steps: [{ id: 'review', type: 'human', inputs: { from: 'x' } }],
+      sessionId: 'pi-workflow-1',
+      timeoutMs: 60_000,
+    });
+    const broker = createBroker(rt, getWindow);
+    const started = runWorkflow(rt, getWindow, { documents: [] }, broker, 'contract-review');
+    const id = await Promise.race([
+      started,
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('runWorkflow did not return session id before the runner finished')), 1000);
+      }),
+    ]);
+
+    expect(id).toBe('pi-workflow-1');
+    expect(release).not.toHaveBeenCalled();
+    await waitUntil(() => send.mock.calls.some((c) => c[0] === 'sparkii:event:approval'));
+    broker.decide('p1', { approved: true, status: 'approved', result: undefined });
+    await waitUntil(() => release.mock.calls.length > 0);
+  });
+
+  it('persists step output on workflow_step_end and does not write a report-named result blob', async () => {
+    const { rt, getWindow, send, appends } = makeHarness({
+      steps: [{ id: 'review', type: 'human', inputs: { from: 'x' } }],
+    });
+    const broker = createBroker(rt, getWindow);
+    const running = runWorkflow(rt, getWindow, { documents: [] }, broker, 'contract-review');
+    await waitUntil(() => send.mock.calls.some((c) => c[0] === 'sparkii:event:approval'));
+    broker.decide('p1', { approved: true, status: 'approved', result: undefined });
+    await waitUntil(() => appends.some((a) => a.customType === 'workflow_step_end'));
+    await running;
+
+    expect(appends.some((a) => a.customType === 'workflow_step_end' && (a.data as { output?: unknown }).output)).toBe(true);
+    const end = appends.find((a) => a.customType === 'workflow_step_end');
+    expect(end?.data).toMatchObject({
+      stepId: 'review',
+      status: 'completed',
+      output: { proposalId: 'p1', status: 'approved' },
+    });
+    expect(typeof end?.data.finishedAt).toBe('string');
+    expect(appends.some((a) => a.customType === 'workflow_state' && (a.data as { stepId?: string }).stepId === 'report')).toBe(false);
+    expect(send.mock.calls.some((c) => c[0] === 'sparkii:event:workflow')).toBe(false);
+  });
+
+  it('persists workflow_step_end failed status when a step throws', async () => {
+    const { rt, getWindow, appends, release } = makeHarness({
+      steps: [{ id: 'load', type: 'tool', ref: 'not.a.tool' }],
+    });
+    const broker = createBroker(rt, getWindow);
+    const running = runWorkflow(rt, getWindow, { documents: [] }, broker, 'contract-review');
+    await waitUntil(() => appends.some((a) => a.customType === 'workflow_step_end'));
+    await running;
+
+    const end = appends.find((a) => a.customType === 'workflow_step_end');
+    expect(end?.data).toMatchObject({
+      stepId: 'load',
+      status: 'failed',
+      error: expect.objectContaining({ code: 'WORKFLOW_STEP_FAILED', message: expect.stringContaining('UNKNOWN_TOOL') }),
+    });
+    expect(typeof end?.data.finishedAt).toBe('string');
+    expect(release).toHaveBeenCalled();
   });
 });

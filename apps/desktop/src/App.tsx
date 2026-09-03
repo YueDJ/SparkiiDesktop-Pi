@@ -6,10 +6,8 @@ import { SettingsView } from './shell/SettingsView.js';
 import { ApprovalCenter } from './trust/ApprovalCenter.js';
 import { ApprovalPanel } from './trust/ApprovalPanel.js';
 import { AuditView } from './audit/AuditView.js';
-import type { WorkflowStatusState } from './workbench/WorkflowStatus.js';
 import { HomeView } from './platform/HomeView.js';
 import { useAgentSurface } from './platform/surface-registry.js';
-import { extractWorkflowResult } from './surface/normalize.js';
 import { useAgentSession } from './surface/use-agent-session.js';
 import type { AgentSession, AgentSurfaceActions } from './surface/contract.js';
 
@@ -137,7 +135,6 @@ function AppShell() {
   const [agents, setAgents] = useState<ShellAgent[]>([]);
   const [sessions, setSessions] = useState<Record<string, ShellSession[]>>({});
   const [workflowByAgent, setWorkflowByAgent] = useState<Record<string, { sessionId: string | null; mode: 'live' | 'history' }>>({});
-  const [workflowStatusByAgent, setWorkflowStatusByAgent] = useState<Record<string, WorkflowStatusState>>({});
   const [activeSessionByAgent, setActiveSessionByAgent] = useState<Record<string, string | null>>({});
   const [titleByAgent, setTitleByAgent] = useState<Record<string, string>>({});
   const [approvalOpen, setApprovalOpen] = useState(false);
@@ -175,20 +172,6 @@ function AppShell() {
   useEffect(() => {
     if (pending.length === 0 && approvalOpen) setApprovalOpen(false);
   }, [pending.length, approvalOpen]);
-  useEffect(() => api.on('workflow', (e: any) => {
-    // Route the workflow event to the agent that owns this workflow session.
-    const agentId = Object.entries(workflowByAgentRef.current).find(([, w]) => w.sessionId === e.sessionId)?.[0];
-    if (!agentId) return;
-    setWorkflowStatusByAgent((prev) => {
-      if (e.type === 'step_started') return { ...prev, [agentId]: { status: 'running', step: e.stepId } };
-      if (e.type === 'workflow_completed') return { ...prev, [agentId]: { status: 'done' } };
-      if (e.type === 'workflow_failed') {
-        reportError(e.error?.message ?? '审核失败', { source: agentId });
-        return { ...prev, [agentId]: { status: 'failed', error: e.error?.message } };
-      }
-      return prev;
-    });
-  }), [api, reportError]);
   useEffect(() => api.on('chat-event', (p: any) => {
     if (p?.sessionId) {
       const ov = sessionOverridesRef.current.get(p.sessionId);
@@ -229,7 +212,7 @@ function AppShell() {
         api.listAgents?.().then((list: Array<{ id: string; name: string }>) => {
           if (cancelled || !Array.isArray(list) || !list.length) return;
           setAgents(list.map((a) => ({
-            id: a.id as ScreenId,
+            id: a.id,
             name: a.name,
             status: 'idle',
             surfaceType: (a as { surfaceType?: string }).surfaceType,
@@ -352,16 +335,15 @@ function AppShell() {
     if (isChatAgent) {
       setActiveSessionFor(agentId, null);
       setTitleFor(agentId, '');
-      setScreen(agentId as ScreenId);
+      setScreen(agentId);
       return;
     }
     setWorkflowByAgent((prev) => ({ ...prev, [agentId]: { sessionId: null, mode: 'live' } }));
-    setWorkflowStatusByAgent((prev) => ({ ...prev, [agentId]: { status: 'idle' } }));
   };
 
   const onOpenSession = (agentId: string, sessionId: string) => {
     const isChatAgent = agents.find((agent) => agent.id === agentId)?.surfaceType === 'chat';
-    setScreen(agentId as ScreenId);
+    setScreen(agentId);
     if (isChatAgent) {
       setActiveSessionFor(agentId, sessionId);
       refreshSessions(agentId, sessionId);
@@ -458,14 +440,7 @@ function AppShell() {
     await api.cancelQueuedSession(queueId);
   };
 
-  const activeAgent = derivedAgents.find((a) => a.id === screen);
-  const isChatSurface = activeAgent?.surfaceType === 'chat';
-
-  const statusText = (() => {
-    if (activeAgent?.surfaceType !== 'workflow') return '';
-    const wf = workflowStatusByAgent[activeAgent.id];
-    return wf?.status === 'running' ? `正在执行:${wf.step ?? '…'}` : '';
-  })();
+  const statusText = '';
 
   const navigate = (s: ScreenId) => {
     const isAgent = agents.some((a) => a.id === s);
@@ -474,8 +449,6 @@ function AppShell() {
       refreshSessions(s);
       return;
     }
-    // 对话/仪表板表面留档,待后端就绪后接入
-    if (s === 'chat' || s === 'dashboard') { setScreen('home'); return; }
     setScreen(s);
   };
 
@@ -499,7 +472,7 @@ function AppShell() {
 
   // Per-agent actions: chat agents use the platform standard surface; workflow agents expose the
   // workflow lifecycle. `session` is the agent's own normalized timeline (backend truth source).
-  const buildActions = (agentId: string, session: AgentSession): AgentSurfaceActions => {
+  const buildActions = (agentId: string, _session: AgentSession): AgentSurfaceActions => {
     const isChat = agents.find((a) => a.id === agentId)?.surfaceType === 'chat';
     if (isChat) {
       return {
@@ -515,7 +488,6 @@ function AppShell() {
       newSession: () => onNewSession(agentId),
       openSession: (id) => onOpenSession(agentId, id),
       startWorkflow: (payload) => {
-        setWorkflowStatusByAgent((prev) => ({ ...prev, [agentId]: { status: 'running' } }));
         setWorkflowByAgent((prev) => ({ ...prev, [agentId]: { ...(prev[agentId] ?? { sessionId: null, mode: 'live' }), mode: 'live' } }));
         api.runWorkflow(agentId, payload).then((res) => {
           if (res?.sessionId) setWorkflowByAgent((prev) => ({ ...prev, [agentId]: { ...(prev[agentId] ?? { sessionId: null, mode: 'live' }), sessionId: res.sessionId ?? null } }));
@@ -526,16 +498,10 @@ function AppShell() {
         if (!sid) return;
         api.updateWorkflowState(sid, { action, ...payload }).catch((e) => reportError(String(e?.message ?? e), { source: agentId }));
       },
-      requestExport: () => {
+      requestExport: (payload) => {
         const sid = workflowFor(agentId).sessionId;
         if (!sid) { setScreen('approvals'); return; }
-        const result = session.result ?? extractWorkflowResult(session.entries);
-        const report = result?.['report'] as Record<string, unknown> | undefined;
-        const compare = result?.['compare'];
-        void api.requestExportReport(sid, {
-          title: typeof report?.title === 'string' ? report.title : '合同审核报告',
-          findings: Array.isArray(compare) ? compare.length : 0,
-        }).catch(() => {});
+        void api.requestExportReport(sid, payload ?? {}).catch(() => {});
       },
       chooseDocument: () => api.chooseDocument(),
     };
