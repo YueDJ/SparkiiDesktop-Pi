@@ -59,6 +59,7 @@ export interface AgentSurfaceProps {
   mode: 'live' | 'history';
   session: AgentSession;
   actions: AgentSurfaceActions;
+  title?: string;
 }
 
 export type AgentSurfaceComponent = ComponentType<AgentSurfaceProps>;

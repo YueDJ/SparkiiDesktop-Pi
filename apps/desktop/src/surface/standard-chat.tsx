@@ -185,7 +185,7 @@ function modelIdOf(value: string | null | undefined): string {
 }
 
 export function StandardChatSurface(props: StandardChatProps) {
-  const { agent, sessionId, session, actions, api: apiOverride, active = true, draft } = props;
+  const { agent, sessionId, session, actions, title, api: apiOverride, active = true, draft } = props;
   const api = apiOverride ?? (window.sparkii as SparkiiApi);
   const { reportError } = useErrors();
   const [pendingApprovals, setPendingApprovals] = useState<Set<string>>(new Set());
@@ -458,6 +458,9 @@ export function StandardChatSurface(props: StandardChatProps) {
 
   return (
     <div className="chat-surface">
+      <header className="chat-surface-head">
+        <b>{title || '新对话'}</b>
+      </header>
       <div className="chat-list">
         {visibleEntries.map((e) => (
           e.kind === 'message' ? (

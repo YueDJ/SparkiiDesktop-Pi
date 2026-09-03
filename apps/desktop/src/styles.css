@@ -120,6 +120,8 @@ table.tbl th { background: var(--color-controlBg); color: var(--color-textSecond
 
 /* 通用聊天 */
 .chat-surface { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.chat-surface-head { display: flex; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--color-border); flex: none; }
+.chat-surface-head b { font-size: var(--font-size-md); font-weight: var(--font-weight-semibold); }
 .chat-list { flex: 1; overflow-y: auto; padding: var(--spacing-md); display: flex; flex-direction: column; gap: var(--spacing-sm); }
 .chat-hint { text-align: center; margin-top: var(--spacing-lg); }
 .chat-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: var(--spacing-sm); text-align: center; }

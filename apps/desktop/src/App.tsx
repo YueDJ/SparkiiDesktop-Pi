@@ -102,8 +102,9 @@ function AgentFrame(props: {
   sessionId: string | null;
   mode: 'live' | 'history';
   buildActions: (agentId: string, session: AgentSession) => AgentSurfaceActions;
+  title?: string;
 }) {
-  const { agent, active, draft, sessionId, mode, buildActions } = props;
+  const { agent, active, draft, sessionId, mode, buildActions, title } = props;
   const session = useAgentSession(agent.id, sessionId, mode);
   const { Surface } = useAgentSurface(agent.id);
   if (!Surface) return null;
@@ -116,6 +117,7 @@ function AgentFrame(props: {
           mode={mode}
           session={session}
           actions={buildActions(agent.id, session)}
+          title={title}
           draft={draft}
           active
         />
@@ -459,12 +461,6 @@ function AppShell() {
   const activeAgent = derivedAgents.find((a) => a.id === screen);
   const isChatSurface = activeAgent?.surfaceType === 'chat';
 
-  const topbarTitle = activeAgent
-    ? isChatSurface
-      ? (titleFor(activeAgent.id) || '新对话')
-      : activeAgent.name
-    : undefined;
-
   const statusText = (() => {
     if (activeAgent?.surfaceType !== 'workflow') return '';
     const wf = workflowStatusByAgent[activeAgent.id];
@@ -574,6 +570,7 @@ function AppShell() {
       sessionId={a.surfaceType === 'chat' ? activeSessionFor(a.id) : workflowFor(a.id).sessionId}
       mode={a.surfaceType === 'chat' ? 'live' : workflowFor(a.id).mode}
       buildActions={buildActions}
+      title={a.surfaceType === 'chat' ? (titleFor(a.id) || '新对话') : undefined}
     />
   ));
   const surfaceNode = surfaces[screen] ?? null;
@@ -586,7 +583,6 @@ function AppShell() {
         sessions={sessions}
         pendingApprovals={pending.length}
         statusText={statusText}
-        title={topbarTitle}
         runtimePool={runtimePool}
         userName={userName}
         userRole={roles.length ? roles.join(' · ') : '审核员'}
