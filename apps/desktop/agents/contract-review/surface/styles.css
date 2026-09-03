@@ -1,3 +1,7 @@
+.contract-header { padding: 10px 18px; border-bottom: 1px solid var(--color-border); }
+.contract-header-title { font-size: 14px; font-weight: 700; letter-spacing: -.01em; }
+.contract-header-subtitle { color: var(--color-textMuted); font-size: 12px; }
+
 .contract-doc-meta { color: var(--color-textMuted); font-size: var(--font-size-xs); margin-top: 2px; }
 .contract-doc-body { color: var(--color-textSecondary); font-size: 13px; line-height: 1.85; white-space: pre-wrap; margin-top: var(--spacing-md); }
 .contract-doc-block { margin-bottom: 14px; }
