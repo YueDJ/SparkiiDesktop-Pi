@@ -49,6 +49,16 @@ describe('normalizeEvent', () => {
     })).toEqual({ type: "message", role: "user", text: "先检查一下结果" });
   });
 
+  it("passes through custom entry_appended rows", () => {
+    expect(normalizeEvent({
+      type: "entry_appended",
+      entry: { type: "custom", customType: "workflow_step_end", data: { stepId: "review", status: "completed" }, id: "e1" },
+    })).toEqual({
+      type: "entry_appended",
+      entry: { type: "custom", customType: "workflow_step_end", data: { stepId: "review", status: "completed" }, id: "e1" },
+    });
+  });
+
   it("preserves lifecycle payloads for compaction, retries and session changes", () => {
     expect(normalizeEvent({ type: "compaction_start", reason: "threshold" }))
       .toEqual({ type: "compaction_start", reason: "threshold" });
