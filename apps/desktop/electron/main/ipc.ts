@@ -292,7 +292,8 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       return { open, sessionId, workspacePath: rec?.workspacePath };
     }
 
-    const profileId = context.profileId ?? 'general';
+    const profileId = context.profileId;
+    if (!profileId) throw new Error('profileId is required');
     const now = new Date();
     const workspacePath = context.workspacePath ?? autoWorkspacePath(app.getPath('desktop'), now);
     const settings = await loadSettings(rt.dataDir);
@@ -673,7 +674,9 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     const models = modelEntries.map((m) => m.modelId);
     const supportsImages: Record<string, boolean> = {};
     for (const m of modelEntries) supportsImages[m.modelId] = m.supportsImages ?? false;
-    const requirements = rt.agentOf(agentId ?? 'general').manifest.modelRequirements ?? { requires: ['chat'] };
+    const requirements = agentId
+      ? (rt.agentOf(agentId).manifest.modelRequirements ?? { requires: ['chat'] })
+      : { requires: ['chat'] };
     const descriptors = modelEntries.map((m) => ({
       provider: providerId,
       modelId: m.modelId,
@@ -717,9 +720,10 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
 
   async function ensureSessionRecord(sessionId: string, profileId?: string) {
     if (rt.chatSessions.get(sessionId)) return;
+    if (!profileId) return;
     const found = (await listPiSessions(join(rt.piAgentDir, 'sessions'))).find((s) => s.id === sessionId);
     if (!found) return;
-    rt.chatSessions.create({ id: sessionId, profileId: profileId ?? 'general', workspaceKind: 'auto', workspacePath: found.cwd });
+    rt.chatSessions.create({ id: sessionId, profileId, workspaceKind: 'auto', workspacePath: found.cwd });
   }
 
   ipcMain.handle('sparkii:setSessionPinned', async (_e, sessionId: string, pinned: boolean, profileId?: string) => {

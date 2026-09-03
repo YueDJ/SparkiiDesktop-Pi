@@ -213,7 +213,7 @@ function AppShell() {
         api.listAgents?.().then((list: Array<{ id: string; name: string }>) => {
           if (cancelled || !Array.isArray(list) || !list.length) return;
           setAgents(list.map((a) => ({
-            id: a.id as ScreenId,
+            id: a.id,
             name: a.name,
             status: 'idle',
             surfaceType: (a as { surfaceType?: string }).surfaceType,
@@ -336,7 +336,7 @@ function AppShell() {
     if (isChatAgent) {
       setActiveSessionFor(agentId, null);
       setTitleFor(agentId, '');
-      setScreen(agentId as ScreenId);
+      setScreen(agentId);
       return;
     }
     setWorkflowByAgent((prev) => ({ ...prev, [agentId]: { sessionId: null, mode: 'live' } }));
@@ -344,7 +344,7 @@ function AppShell() {
 
   const onOpenSession = (agentId: string, sessionId: string) => {
     const isChatAgent = agents.find((agent) => agent.id === agentId)?.surfaceType === 'chat';
-    setScreen(agentId as ScreenId);
+    setScreen(agentId);
     if (isChatAgent) {
       setActiveSessionFor(agentId, sessionId);
       refreshSessions(agentId, sessionId);
@@ -441,9 +441,6 @@ function AppShell() {
     await api.cancelQueuedSession(queueId);
   };
 
-  const activeAgent = derivedAgents.find((a) => a.id === screen);
-  const isChatSurface = activeAgent?.surfaceType === 'chat';
-
   const statusText = '';
 
   const navigate = (s: ScreenId) => {
@@ -453,8 +450,6 @@ function AppShell() {
       refreshSessions(s);
       return;
     }
-    // 对话/仪表板表面留档,待后端就绪后接入
-    if (s === 'chat' || s === 'dashboard') { setScreen('home'); return; }
     setScreen(s);
   };
 

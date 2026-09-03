@@ -51,6 +51,20 @@ describe('Shell', () => {
     expect(props.onNavigate).toHaveBeenCalledWith('chat');
   });
 
+  it('forwards arbitrary string agent ids to onNavigate without mapping them to platform screens', () => {
+    const props = makeProps();
+    props.active = 'research-bot';
+    props.agents = [{ id: 'research-bot', name: '研究助手', status: 'idle' }];
+    props.sessions = { 'research-bot': [] };
+    render(<Shell {...props} />);
+    fireEvent.click(screen.getByTestId('agent-nav-research-bot'));
+    expect(props.onNavigate).toHaveBeenCalledWith('research-bot');
+    expect(props.onNewSession).toHaveBeenCalledWith('research-bot');
+    expect(props.onNavigate).not.toHaveBeenCalledWith('home');
+    expect(props.onNavigate).not.toHaveBeenCalledWith('chat');
+    expect(props.onNavigate).not.toHaveBeenCalledWith('dashboard');
+  });
+
   it('theme toggle flips the document dark class and persists', () => {
     render(<Shell {...makeProps()} />);
     fireEvent.click(screen.getByTitle('深色/浅色'));

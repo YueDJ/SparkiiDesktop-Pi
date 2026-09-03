@@ -3,10 +3,19 @@ import { existsSync } from 'node:fs';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { listPiSessions } from '@sparkii/agent-host';
 import { Keyring } from '../electron/main/keyring.js';
 import { registerIpc } from '../electron/main/ipc.js';
 import { selectModel } from '../electron/main/workflow.js';
 import type { Runtime } from '../electron/main/runtime.js';
+
+vi.mock('@sparkii/agent-host', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sparkii/agent-host')>();
+  return {
+    ...actual,
+    listPiSessions: vi.fn(actual.listPiSessions),
+  };
+});
 
 vi.mock('electron', () => {
   const handlers = new Map<string, (...args: unknown[]) => unknown>();
@@ -66,6 +75,7 @@ async function makeRuntime(opts: {
   setKey?: (providerId: string, key: string) => Promise<void>;
   chatSession?: { profileId: string; model: string | null; piSessionFile?: string | null; kind?: string };
   profile?: unknown;
+  agentOf?: (id: string) => unknown;
   getWindow?: () => { webContents: { send: (...args: unknown[]) => void } } | null;
 }): Promise<Runtime> {
   const rt = {
@@ -96,7 +106,8 @@ async function makeRuntime(opts: {
         profile: { agent: { tools: [], prompts: { system: 'test' } } },
         router: { resolve: () => undefined },
       } as any),
-    agentOf: () => {
+    agentOf: (id: string) => {
+      if (opts.agentOf) return opts.agentOf(id);
       const pr = opts.profile ?? ({
         dir: join(opts.dataDir, 'profiles', 'contract-review'),
         profile: { agent: { tools: [], prompts: { system: 'test' } } },
@@ -1157,5 +1168,86 @@ describe('ipc provider handlers', () => {
 
     expect(onProposal).toHaveBeenCalledTimes(1);
     expect(onProposal).toHaveBeenCalledWith(expect.any(Function));
+  });
+
+  it('getModelOptions without agentId uses generic chat requirements instead of a default agent', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    const client = {
+      send: async () => ({ success: true, data: [] }),
+    };
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      agentOf: (id: string) => {
+        throw new Error(`unknown agent ${id}`);
+      },
+    });
+
+    const handlers = await registeredHandlers();
+    const getModelOptions = handlers.get('sparkii:getModelOptions');
+    const result = await getModelOptions!(null);
+
+    expect(result).toMatchObject({ modelRequirements: { requires: ['chat'] } });
+  });
+
+  it('promptSession refuses to create a session without profileId', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's-new', sessionFile: null } };
+        }
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({ dataDir, piAgentDir, client });
+
+    const handlers = await registeredHandlers();
+    const promptSession = handlers.get('sparkii:promptSession');
+    await expect(promptSession!(null, null, 'hello')).rejects.toThrow(/profileId/);
+    expect(rt.pool.acquire).not.toHaveBeenCalled();
+    expect((rt as any).chatSessions.create).not.toHaveBeenCalled();
+  });
+
+  it('ensureSessionRecord does not invent profileId general when pinning a Pi-only session', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    vi.mocked(listPiSessions).mockResolvedValueOnce([
+      {
+        id: 's-orphan',
+        path: '/tmp/sessions/s-orphan.jsonl',
+        cwd: 'C:/ws/orphan',
+        name: '孤儿会话',
+        created: new Date('2026-09-03T00:00:00.000Z'),
+        modified: new Date('2026-09-03T00:00:00.000Z'),
+        messageCount: 1,
+        firstMessage: 'hi',
+      },
+    ]);
+
+    const client = { send: async () => ({ success: true }) };
+    const rt = await makeRuntime({ dataDir, piAgentDir, client });
+    (rt as any).chatSessions.get = () => null;
+    const create = vi.fn();
+    (rt as any).chatSessions.create = create;
+
+    const handlers = await registeredHandlers();
+    const setSessionPinned = handlers.get('sparkii:setSessionPinned');
+    await setSessionPinned!(null, 's-orphan', true);
+
+    expect(create).not.toHaveBeenCalled();
   });
 });
