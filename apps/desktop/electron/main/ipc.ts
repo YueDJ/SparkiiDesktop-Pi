@@ -62,6 +62,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   const titledSessions = new Set<string>();
   const appliedModelBySession = new Map<string, { provider: string; modelId: string }>();
   const idleTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  const inFlightWorkflowRuns = new Set<string>();
   const sessionIdleReleaseMs = 60_000;
 
   const anchorDir = (sessionId: string) => join(rt.dataDir, 'sessions', sessionId);
@@ -219,7 +220,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     entry.offEvents = entry.slot.client.onEvent((ev) => {
       win?.webContents.send('sparkii:event:chat-event', { ...ev, sessionId });
       const rec = rt.chatSessions.get(sessionId);
-      if (ev.type === 'agent_settled' && rec?.kind !== 'workflow') {
+      if (ev.type === 'agent_settled' && !inFlightWorkflowRuns.has(sessionId)) {
         scheduleIdleRelease(sessionId);
       }
       if (ev.type === 'agent_end' && rec?.kind !== 'workflow' && !titledSessions.has(sessionId)) {
@@ -630,6 +631,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       data: entry,
     });
     if (!resp.success) throw new Error(resp.error ?? 'append workflow_state failed');
+    if (!inFlightWorkflowRuns.has(sessionId)) scheduleIdleRelease(sessionId);
     return { ok: true };
   });
 
@@ -651,6 +653,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         data: { stepId: 'report', action: 'report_exported', at: new Date().toISOString(), ...summary },
       }).catch(() => {});
     }
+    if (!inFlightWorkflowRuns.has(sessionId)) scheduleIdleRelease(sessionId);
     return { ok: true, approved: d.approved };
   });
 
@@ -916,11 +919,13 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   ipcMain.handle('sparkii:runWorkflow', async (_e, profileId: string, input: Record<string, unknown>) => {
     const sessionId = await runWorkflow(rt, getWindow, input, broker, profileId, {
       onReady(id, slot) {
+        inFlightWorkflowRuns.add(id);
         const entry = { slot, profileId };
         openSessions.set(id, entry);
         pipeSessionEvents(id, entry);
       },
       async beforeRelease(id) {
+        inFlightWorkflowRuns.delete(id);
         const open = openSessions.get(id);
         if (!open) return;
         open.offEvents?.();

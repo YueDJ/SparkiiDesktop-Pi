@@ -650,6 +650,116 @@ describe('ipc provider handlers', () => {
     expect(opened).toMatchObject({ messages: [] });
   });
 
+  it('idle-releases a post-run workflow slot so a later runWorkflow is not blocked', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    const listeners = new Set<(event: any) => void>();
+    let created = 0;
+    const client = {
+      onEvent: (cb: (event: any) => void) => {
+        listeners.add(cb);
+        return () => { listeners.delete(cb); };
+      },
+      send: async (command: any) => {
+        if (command.type === 'new_session') {
+          created += 1;
+          return { success: true };
+        }
+        if (command.type === 'get_state') {
+          return {
+            success: true,
+            data: {
+              sessionId: created <= 1 ? 'wf-done' : 'wf-2',
+              sessionFile: '/tmp/w.jsonl',
+              isStreaming: false,
+            },
+          };
+        }
+        return { success: true };
+      },
+    };
+    const sessions = new Map<string, { id: string; profileId: string; kind?: string }>();
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      getWindow: () => ({
+        on: () => {},
+        isDestroyed: () => false,
+        webContents: { send: () => {} },
+      }),
+      profile: {
+        dir: join(dataDir, 'profiles', 'contract-review'),
+        profile: {
+          manifest: { name: 'contract-review', displayName: '合同审核' },
+          security: { approval: { timeoutMs: 60_000 } },
+          agent: {
+            tools: ['read'],
+            prompts: { system: 'sys' },
+            workflow: { version: 1, engine: 'linear', steps: [] },
+          },
+        },
+        router: { resolve: () => undefined },
+      } as any,
+    });
+    (rt as any).chatSessions.create = (rec: { id: string; profileId: string; kind?: string }) => {
+      sessions.set(rec.id, rec);
+    };
+    (rt as any).chatSessions.get = (id: string) => sessions.get(id) ?? null;
+
+    const occupied = new Set<string>();
+    const waiters: Array<() => void> = [];
+    const slot = { client, supervisor: { onProposal: () => {} } };
+    (rt as any).pool.acquire = vi.fn(async (key: string) => {
+      while (occupied.size >= 1 && !occupied.has(key)) {
+        await new Promise<void>((resolve) => waiters.push(resolve));
+      }
+      occupied.add(key);
+      return slot;
+    });
+    (rt as any).pool.release = vi.fn(async (key: string) => {
+      occupied.delete(key);
+      const queued = waiters.splice(0);
+      for (const wake of queued) wake();
+    });
+    (rt as any).pool.get = (key?: string) => (key && occupied.has(key) ? client : undefined);
+    (rt as any).pool.renameSession = vi.fn((from: string, to: string) => {
+      if (occupied.has(from)) {
+        occupied.delete(from);
+        occupied.add(to);
+      }
+    });
+
+    const handlers = await registeredHandlers();
+    const first = await handlers.get('sparkii:runWorkflow')!(null, 'contract-review', { documents: [] });
+    expect(first).toEqual({ ok: true, sessionId: 'wf-done' });
+    await waitUntil(() => (rt.pool.release as ReturnType<typeof vi.fn>).mock.calls.length > 0);
+    expect(rt.pool.release).toHaveBeenCalledWith('wf-done');
+
+    await handlers.get('sparkii:updateWorkflowState')!(null, 'wf-done', { action: 'risk_confirmed' });
+    expect(occupied.has('wf-done')).toBe(true);
+
+    vi.useFakeTimers();
+    for (const cb of listeners) cb({ type: 'agent_settled' });
+    await vi.advanceTimersByTimeAsync(60_000);
+    vi.useRealTimers();
+
+    expect(rt.pool.release).toHaveBeenCalledTimes(2);
+    expect(occupied.has('wf-done')).toBe(false);
+
+    const second = handlers.get('sparkii:runWorkflow')!(null, 'contract-review', { documents: [] });
+    const result = await Promise.race([
+      second,
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('second runWorkflow blocked by zombie slot')), 1000);
+      }),
+    ]);
+    expect(result).toEqual({ ok: true, sessionId: 'wf-2' });
+  });
+
   it('workflow selectModel routes to settings active provider and default model', async () => {
     const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
     dirs.push(dataDir);
