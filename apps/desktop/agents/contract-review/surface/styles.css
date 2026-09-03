@@ -12,7 +12,7 @@
 .contract-split.right-collapsed .contract-panel--risk .contract-panel-body { display: none; }
 .contract-split.right-collapsed .contract-panel--risk .contract-panel-head { justify-content: center; padding: 8px; }
 .contract-split.left-collapsed.right-collapsed { grid-template-columns: 44px 44px; }
-.contract-panel-rail-label { display: none; writing-mode: vertical-rl; color: var(--color-textMuted); font-size: 12px; letter-spacing: .06em; margin: 14px auto; }
+.contract-panel-rail-label { display: none; writing-mode: vertical-rl; color: var(--color-text); font-size: var(--font-size-md); font-weight: var(--font-weight-semibold); letter-spacing: .06em; margin: 14px auto; }
 .contract-split.left-collapsed .contract-panel--doc .contract-panel-rail-label { display: block; }
 .contract-split.right-collapsed .contract-panel--risk .contract-panel-rail-label { display: block; }
 
