@@ -3,6 +3,7 @@ import { Markdown, ModelEffortControl, RiskBadge, THINKING_LEVELS } from '@spark
 import type { AgentSession, AgentSurfaceActions, AgentSurfaceProps } from '../../../src/surface/contract.js';
 import { deriveWorkflowTimeline, extractWorkflowResult, type WorkflowStateEntry } from '../../../src/surface/normalize.js';
 import { formatReport, parseRiskFindings } from './contract.js';
+import './styles.css';
 
 type ReviewState = 'none' | 'confirmed' | 'ignored' | 'escalated';
 
