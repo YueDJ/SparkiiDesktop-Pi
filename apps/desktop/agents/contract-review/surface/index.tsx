@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Markdown, ModelEffortControl, RiskBadge, THINKING_LEVELS } from '@sparkii/ui';
-import type { AgentSession, AgentSurfaceActions, AgentSurfaceProps } from '../../../src/surface/contract.js';
-import { deriveWorkflowTimeline, extractWorkflowResult, type WorkflowStateEntry } from '../../../src/surface/normalize.js';
+import type { AgentSession, AgentSurfaceActions, AgentSurfaceProps, CustomSessionEntry } from '../../../src/surface/contract.js';
+import { deriveWorkflowTimeline, extractWorkflowResult } from '../../../src/surface/normalize.js';
 import { formatReport, parseRiskFindings } from './contract.js';
 import './styles.css';
 
@@ -26,18 +26,29 @@ function sparkiiApi(): SparkiiWindowApi {
   return ((window as any).sparkii ?? {}) as SparkiiWindowApi;
 }
 
-function reviewStateEntries(entries: AgentSession['entries']): WorkflowStateEntry[] {
-  return entries.filter((e): e is WorkflowStateEntry => e.kind === 'workflow_state');
+function reviewStateEntries(entries: AgentSession['entries']): CustomSessionEntry[] {
+  return entries.filter((e): e is CustomSessionEntry => e.kind === 'custom' && e.customType === 'workflow_state');
+}
+
+function stateAction(e: CustomSessionEntry): string {
+  return String(e.data.action ?? '');
+}
+
+function statePayload(e: CustomSessionEntry): Record<string, unknown> {
+  const payload = e.data.payload;
+  return payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : {};
 }
 
 function initialReviewState(entries: AgentSession['entries']): Record<string, ReviewState> {
   const next: Record<string, ReviewState> = {};
   for (const e of reviewStateEntries(entries)) {
-    const riskId = typeof e.payload.riskId === 'string' ? e.payload.riskId : '';
+    const payload = statePayload(e);
+    const riskId = typeof payload.riskId === 'string' ? payload.riskId : '';
     if (!riskId) continue;
-    if (e.action === 'risk_confirmed') next[riskId] = 'confirmed';
-    if (e.action === 'risk_ignored') next[riskId] = 'ignored';
-    if (e.action === 'risk_escalated') next[riskId] = 'escalated';
+    const action = stateAction(e);
+    if (action === 'risk_confirmed') next[riskId] = 'confirmed';
+    if (action === 'risk_ignored') next[riskId] = 'ignored';
+    if (action === 'risk_escalated') next[riskId] = 'escalated';
   }
   return next;
 }
@@ -45,15 +56,16 @@ function initialReviewState(entries: AgentSession['entries']): Record<string, Re
 function initialNotes(entries: AgentSession['entries']): Record<string, string> {
   const next: Record<string, string> = {};
   for (const e of reviewStateEntries(entries)) {
-    const riskId = typeof e.payload.riskId === 'string' ? e.payload.riskId : '';
-    const note = typeof e.payload.note === 'string' ? e.payload.note : '';
+    const payload = statePayload(e);
+    const riskId = typeof payload.riskId === 'string' ? payload.riskId : '';
+    const note = typeof payload.note === 'string' ? payload.note : '';
     if (riskId && note) next[riskId] = note;
   }
   return next;
 }
 
 function wasReportMerged(entries: AgentSession['entries']): boolean {
-  return reviewStateEntries(entries).some((e) => e.action === 'report_merged');
+  return reviewStateEntries(entries).some((e) => stateAction(e) === 'report_merged');
 }
 
 function riskLevelLabel(level: string): '高风险' | '中风险' | '低风险' {

@@ -5,14 +5,13 @@ describe('surface normalize', () => {
   it('maps workflow_step_start/end to typed entries', () => {
     const out = normalizeSessionEntries([
       { type: 'message', message: { role: 'user', content: [{ type: 'text', text: '上传合同' }] } },
-      { type: 'workflow_step_start', data: { stepId: 'compare', startedAt: '2026-09-02T00:00:00Z' } },
-      { type: 'workflow_step_end', data: { stepId: 'compare', status: 'completed' } },
-      { type: 'workflow_state', data: { stepId: 'compare', action: 'risk_confirmed', payload: { riskId: 'f0' } } },
+      { type: 'custom', customType: 'workflow_step_start', data: { stepId: 'compare', startedAt: '2026-09-02T00:00:00Z' } },
+      { type: 'custom', customType: 'workflow_step_end', data: { stepId: 'compare', status: 'completed' } },
+      { type: 'custom', customType: 'workflow_state', data: { stepId: 'compare', action: 'risk_confirmed', payload: { riskId: 'f0' } } },
     ]);
-    expect(out.map((e) => e.kind)).toContain('workflow_step');
-    expect(out.map((e) => e.kind)).toContain('workflow_state');
-    const step = out.find((e) => e.kind === 'workflow_step') as any;
-    expect(step.state).toBe('start');
+    expect(out.map((e) => e.kind)).toContain('custom');
+    const step = out.find((e) => e.kind === 'custom' && e.customType === 'workflow_step_start') as any;
+    expect(step).toMatchObject({ kind: 'custom', customType: 'workflow_step_start', data: { stepId: 'compare' } });
   });
 
   it('applies a live message event onto entries', () => {
@@ -69,25 +68,56 @@ describe('surface normalize', () => {
 
   it('derives done status when all steps completed', () => {
     const entries = normalizeSessionEntries([
-      { type: 'workflow_step_start', data: { stepId: 'load' } },
-      { type: 'workflow_step_end', data: { stepId: 'load', status: 'completed' } },
-      { type: 'workflow_step_start', data: { stepId: 'report' } },
-      { type: 'workflow_step_end', data: { stepId: 'report', status: 'completed' } },
+      { type: 'custom', customType: 'workflow_step_start', data: { stepId: 'load' } },
+      { type: 'custom', customType: 'workflow_step_end', data: { stepId: 'load', status: 'completed' } },
+      { type: 'custom', customType: 'workflow_step_start', data: { stepId: 'report' } },
+      { type: 'custom', customType: 'workflow_step_end', data: { stepId: 'report', status: 'completed' } },
     ]);
     expect(deriveWorkflowTimeline(entries)).toEqual({ status: 'done', step: 'report' });
   });
 
   it('derives running when a step started but not finished', () => {
     const entries = normalizeSessionEntries([
-      { type: 'workflow_step_start', data: { stepId: 'compare' } },
+      { type: 'custom', customType: 'workflow_step_start', data: { stepId: 'compare' } },
     ]);
     expect(deriveWorkflowTimeline(entries)).toEqual({ status: 'running', step: 'compare' });
   });
 
   it('extracts the authoritative workflow result from workflow_state', () => {
     const entries = normalizeSessionEntries([
-      { type: 'workflow_state', data: { stepId: 'report', action: 'result', payload: { report: { title: '报告' }, compare: [{ 条款: '第1条', 风险: '高' }] } } },
+      { type: 'custom', id: 'c1', customType: 'workflow_step_end', data: { stepId: 'report', status: 'completed', output: { title: '报告' } } },
+      { type: 'custom', id: 'c2', customType: 'workflow_step_end', data: { stepId: 'compare', status: 'completed', output: [{ 条款: '第1条', 风险: '高' }] } },
     ]);
     expect(extractWorkflowResult(entries)).toMatchObject({ report: { title: '报告' }, compare: [{ 条款: '第1条', 风险: '高' }] });
+  });
+
+  it('keeps Pi custom entries in JSONL order with chat messages', () => {
+    const out = normalizeSessionEntries([
+      { type: 'message', id: 'm1', message: { role: 'user', content: [{ type: 'text', text: '开始' }] } },
+      { type: 'custom', id: 'c1', customType: 'workflow_step_start', data: { stepId: 'review' }, timestamp: '2026-09-03T00:00:00Z' },
+      { type: 'message', id: 'm2', message: { role: 'assistant', content: [{ type: 'text', text: '{}' }] } },
+      { type: 'custom', id: 'c2', customType: 'workflow_step_end', data: { stepId: 'review', status: 'completed', output: { riskFindings: [] } } },
+    ]);
+    expect(out.map((e) => e.kind)).toEqual(['message', 'custom', 'message', 'custom']);
+    expect(out[1]).toMatchObject({ kind: 'custom', id: 'c1', customType: 'workflow_step_start' });
+  });
+
+  it('applies live entry_appended the same as a JSONL custom row', () => {
+    const next = applySurfaceEvent([], {
+      type: 'entry_appended',
+      entry: { type: 'custom', id: 'c1', customType: 'workflow_step_start', data: { stepId: 'load' } },
+    });
+    expect(next[0]).toMatchObject({ kind: 'custom', customType: 'workflow_step_start', data: { stepId: 'load' } });
+  });
+
+  it('merges step outputs by stepId', () => {
+    const entries = normalizeSessionEntries([
+      { type: 'custom', id: 'c1', customType: 'workflow_step_end', data: { stepId: 'review', status: 'completed', output: { riskFindings: [{ id: 'r1' }] } } },
+      { type: 'custom', id: 'c2', customType: 'workflow_step_end', data: { stepId: 'report', status: 'completed', output: { title: '报告' } } },
+    ]);
+    expect(extractWorkflowResult(entries)).toEqual({
+      review: { riskFindings: [{ id: 'r1' }] },
+      report: { title: '报告' },
+    });
   });
 });
