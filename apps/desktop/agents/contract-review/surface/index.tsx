@@ -360,6 +360,7 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
               {leftCollapsed ? '›' : '‹'}
             </button>
           </header>
+          <span className="contract-panel-rail-label">合同原文</span>
           <div className="contract-panel-body">
             {firstInput?.missing ? (
               <div className="contract-missing-note">无法找到原文件，风险发现与报告仍可从会话历史恢复。</div>
@@ -403,6 +404,7 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
               {rightCollapsed ? '‹' : '›'}
             </button>
           </header>
+          <span className="contract-panel-rail-label">风险发现</span>
           <div className="contract-panel-body">
             <div className="contract-risk-summary">
               <div className="contract-risk-count high"><div className="num">{highCount}</div><div className="label">高风险</div></div>

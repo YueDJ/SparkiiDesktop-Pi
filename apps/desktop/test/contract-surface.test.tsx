@@ -162,7 +162,7 @@ describe('ContractAgentSurface', () => {
       />,
     );
     expect(screen.getAllByText('a.pdf').length).toBeGreaterThan(0);
-    expect(screen.getByText('风险发现')).toBeTruthy();
+    expect(screen.getAllByText('风险发现').length).toBeGreaterThan(0);
     expect(screen.getAllByText('付款周期过长').length).toBeGreaterThan(0);
   });
 
