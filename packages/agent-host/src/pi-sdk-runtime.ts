@@ -77,6 +77,16 @@ export function startPromptWithoutBlocking(
   return Promise.resolve();
 }
 
+export function appendCustomEntryAndEmit(
+  session: { sessionManager: { appendCustomEntry(type: string, data: unknown): string; getEntry(id: string): unknown }; _emit?(event: unknown): void },
+  customType: string,
+  data: unknown,
+): void {
+  const entryId = session.sessionManager.appendCustomEntry(customType, data);
+  const entry = session.sessionManager.getEntry(entryId);
+  if (entry) session._emit?.({ type: "entry_appended", entry });
+}
+
 function systemPromptExtensionFactory(getSystemPrompt: () => string | undefined) {
   return (pi: ExtensionAPI) => {
     pi.on("before_agent_start", () => {
@@ -211,7 +221,7 @@ export async function createPiSdkSessionHost(
         session.setSessionName(name);
       },
       appendWorkflowEntry: async (customType, data) => {
-        session.sessionManager.appendCustomEntry(customType, data);
+        appendCustomEntryAndEmit(session, customType, data);
       },
       setApiKey: async (provider, apiKey) => {
         await modelRuntime.setRuntimeApiKey(provider, apiKey);

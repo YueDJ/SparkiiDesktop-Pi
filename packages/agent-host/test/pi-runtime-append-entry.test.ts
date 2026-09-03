@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { appendCustomEntryAndEmit } from '../src/pi-sdk-runtime.js';
 import { createPiRuntime, type PiRuntimeSession, type PiRuntimeSessionHost } from '../src/pi-runtime.js';
 import { commandEnvelope, type PiRuntimeEnvelope } from '../src/pi-runtime-transport.js';
 
@@ -34,6 +35,43 @@ function fakeSession(): PiRuntimeSession & { emit: (event: unknown) => void } {
     dispose: vi.fn(),
   } as any;
 }
+
+describe('appendCustomEntryAndEmit', () => {
+  it('emits entry_appended with a custom entry after append', () => {
+    const listeners = new Set<(event: unknown) => void>();
+    const entries = new Map<string, unknown>();
+    const session = {
+      sessionManager: {
+        appendCustomEntry: (customType: string, data: unknown) => {
+          const id = 'entry-1';
+          entries.set(id, { type: 'custom', customType, data, id, parentId: null, timestamp: 1 });
+          return id;
+        },
+        getEntry: (id: string) => entries.get(id),
+      },
+      _emit: (event: unknown) => listeners.forEach((cb) => cb(event)),
+    };
+
+    const received: unknown[] = [];
+    listeners.add((event) => received.push(event));
+
+    appendCustomEntryAndEmit(session, 'workflow_step_start', { stepId: 'load', startedAt: 1 });
+
+    expect(received).toEqual([
+      {
+        type: 'entry_appended',
+        entry: {
+          type: 'custom',
+          customType: 'workflow_step_start',
+          data: { stepId: 'load', startedAt: 1 },
+          id: 'entry-1',
+          parentId: null,
+          timestamp: 1,
+        },
+      },
+    ]);
+  });
+});
 
 describe('append_workflow_entry command', () => {
   it('routes workflow entry to the Pi session', async () => {
