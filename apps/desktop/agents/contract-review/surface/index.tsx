@@ -68,6 +68,14 @@ function wasReportMerged(entries: AgentSession['entries']): boolean {
   return reviewStateEntries(entries).some((e) => stateAction(e) === 'report_merged');
 }
 
+function hasStepStart(entries: AgentSession['entries'], stepId: string): boolean {
+  return entries.some((e) => e.kind === 'custom' && e.customType === 'workflow_step_start' && String(e.data.stepId) === stepId);
+}
+
+function hasStepOutput(result: Record<string, unknown>, stepId: string): boolean {
+  return Object.prototype.hasOwnProperty.call(result, stepId);
+}
+
 function riskLevelLabel(level: string): '高风险' | '中风险' | '低风险' {
   return level === 'high' ? '高风险' : level === 'low' ? '低风险' : '中风险';
 }
@@ -185,9 +193,14 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
   const status = session.status && session.status !== 'idle' ? session.status : timeline.status;
   const currentStep = session.meta.currentStep ?? timeline.step ?? null;
   const result = session.result ?? extractWorkflowResult(session.entries);
-  const reviewPayload = (result?.['review'] ?? result?.['compare'] ?? result) as unknown;
+  const reviewPayload = (result?.['review'] ?? result?.['compare']) as unknown;
   const findings = parseRiskFindings(reviewPayload);
   const report = formatReport(result?.['report']);
+  const reviewed = initialReviewState(session.entries);
+  const notes = initialNotes(session.entries);
+  const reportMerged = wasReportMerged(session.entries);
+  const reviewPending = hasStepStart(session.entries, 'review') && !hasStepOutput(result, 'review');
+  const reportPending = hasStepStart(session.entries, 'report') && !hasStepOutput(result, 'report');
   const inputs = session.meta.inputs ?? [];
   const firstInput = inputs[0];
   const fileName = firstInput?.name ?? (firstInput?.path ? basename(firstInput.path) : '');
@@ -200,23 +213,11 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
     lastInputsKey.current = inputsKey;
     setDocuments((prev) => Array.from(new Set([...inputs.map((i) => i.path), ...prev])));
   }, [inputsKey]);
-  const [reviewed, setReviewed] = useState<Record<string, ReviewState>>(() => initialReviewState(session.entries));
-  const [notes, setNotes] = useState<Record<string, string>>(() => initialNotes(session.entries));
   const [noteDraft, setNoteDraft] = useState<Record<string, string | undefined>>({});
-  const [reportMerged, setReportMerged] = useState(() => wasReportMerged(session.entries));
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [filter, setFilter] = useState<'all' | 'high' | 'mid' | 'low' | 'unprocessed'>('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  useEffect(() => {
-    setReviewed(initialReviewState(session.entries));
-    setNotes(initialNotes(session.entries));
-    setReportMerged(wasReportMerged(session.entries));
-    setFilter('all');
-    setSelected(new Set());
-    setLocalFileName('');
-    setDocuments(inputs.map((i) => i.path));
-  }, [sessionId, inputsKey, session.entries]);
 
   const processedCount = Object.values(reviewed).filter((v) => v !== 'none').length;
   const unprocessed = findings.filter((f) => !reviewed[f.id] || reviewed[f.id] === 'none');
@@ -233,20 +234,17 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
   const hasSelection = filteredFindings.some((f) => selected.has(f.id));
 
   const applyReview = (id: string, action: Exclude<ReviewState, 'none'>) => {
-    setReviewed((prev) => ({ ...prev, [id]: prev[id] === action ? 'none' : action }));
-    actions.review(`risk_${action}`, { riskId: id, stepId: 'review' });
+    actions.review(`risk_${action}`, { stepId: 'review', payload: { riskId: id } });
   };
 
   const saveNote = (id: string) => {
     const text = (noteDraft[id] ?? '').trim();
     if (!text) return;
-    setNotes((prev) => ({ ...prev, [id]: text }));
     setNoteDraft((prev) => ({ ...prev, [id]: undefined }));
-    actions.review('risk_comment', { riskId: id, note: text, stepId: 'review' });
+    actions.review('risk_comment', { stepId: 'review', payload: { riskId: id, note: text } });
   };
 
   const mergeReport = () => {
-    setReportMerged(true);
     actions.review('report_merged', { stepId: 'report' });
   };
 
@@ -284,16 +282,22 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
     setLocalFileName('');
   };
 
-  const auditStageState = status === 'done' || status === 'failed'
-    ? 'done'
-    : status === 'running'
-      ? (currentStep === 'report' ? 'done' : 'active')
-      : 'pending';
-  const reportStageState = status === 'done' || status === 'failed'
-    ? 'done'
-    : status === 'running'
-      ? (currentStep === 'report' ? 'active' : 'pending')
-      : 'pending';
+  const auditStep = currentStep === 'load' || currentStep === 'search' || currentStep === 'review';
+  const reportStep = currentStep === 'report';
+  const auditStageState = status === 'failed' && auditStep
+    ? 'warn'
+    : status === 'done' || status === 'failed' || (status === 'running' && reportStep)
+      ? 'done'
+      : status === 'running' && (auditStep || !reportStep)
+        ? 'active'
+        : 'pending';
+  const reportStageState = status === 'failed' && reportStep
+    ? 'warn'
+    : status === 'done' || (status === 'failed' && !auditStep)
+      ? 'done'
+      : status === 'running' && reportStep
+        ? 'active'
+        : 'pending';
   const reviewNodeState = reportMerged ? 'done' : findings.length === 0 ? 'pending' : unprocessed.length ? 'warn' : 'ready';
   const reviewNodeClass = reviewNodeState === 'warn' ? 'warn' : reviewNodeState === 'done' ? 'done' : reviewNodeState === 'ready' ? 'ready' : 'pending';
 
@@ -441,7 +445,7 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
               </div>
             </div>
             {findings.length === 0 ? (
-              <div className="contract-empty">运行审核后，风险发现会显示在这里</div>
+              <div className="contract-empty">{reviewPending ? '审核中…' : '运行审核后，风险发现会显示在这里'}</div>
             ) : (
               filteredFindings.map((f) => {
                 const state = reviewed[f.id] ?? 'none';
@@ -492,7 +496,7 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
               {unprocessedHigh > 0 && !reportMerged && <span className="contract-warning">仍有 {unprocessedHigh} 项高风险未处理</span>}
             </div>
 
-            {report && (
+            {report ? (
               <>
                 <div className="contract-section-label">报告预览</div>
                 <div className="contract-report contract-report-mock">
@@ -545,7 +549,9 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
                   <button type="button" className="ui-btn ui-btn--primary" disabled={!reportMerged} onClick={() => actions.requestExport()}>导出报告</button>
                 </div>
               </>
-            )}
+            ) : reportPending ? (
+              <div className="contract-empty">报告生成中…</div>
+            ) : null}
           </div>
         </section>
       </div>

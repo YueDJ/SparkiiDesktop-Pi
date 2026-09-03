@@ -509,10 +509,13 @@ function AppShell() {
         if (!sid) { setScreen('approvals'); return; }
         const result = session.result ?? extractWorkflowResult(session.entries);
         const report = result?.['report'] as Record<string, unknown> | undefined;
-        const compare = result?.['compare'];
+        const review = result?.['review'];
+        const reviewFindings = review && typeof review === 'object' && !Array.isArray(review)
+          ? (review as Record<string, unknown>).riskFindings
+          : review;
         void api.requestExportReport(sid, {
           title: typeof report?.title === 'string' ? report.title : '合同审核报告',
-          findings: Array.isArray(compare) ? compare.length : 0,
+          findings: Array.isArray(reviewFindings) ? reviewFindings.length : 0,
         }).catch(() => {});
       },
       chooseDocument: () => api.chooseDocument(),

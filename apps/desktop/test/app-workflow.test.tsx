@@ -47,6 +47,8 @@ function makeApi() {
     openChatSession: vi.fn().mockResolvedValue({ entries: [] }),
     listChatSessions: vi.fn().mockResolvedValue([]),
     exportReport: vi.fn(),
+    requestExportReport: vi.fn().mockResolvedValue({ ok: true, approved: true }),
+    updateWorkflowState: vi.fn().mockResolvedValue({ ok: true }),
     prompt: vi.fn().mockResolvedValue({ ok: true }),
     decideApproval: vi.fn(),
     queryAudit: vi.fn().mockResolvedValue([]),
@@ -107,5 +109,58 @@ describe('App workflow feedback', () => {
       queue: [{ queueId: 'q1', profileId: 'contract-review', profileName: 'contract-review', label: '新会话', position: 1 }],
     }));
     expect(screen.getByText(/运行 1\/4 · 1 排队/)).toBeTruthy();
+  });
+
+  it('exports findings count from review step output', async () => {
+    const { api, channels } = makeApi();
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+    fireEvent.click(screen.getByTestId('agent-card-contract-review'));
+    await screen.findByTestId('review');
+    fireEvent.click(screen.getByTestId('upload'));
+    await screen.findByText('更换文件');
+    fireEvent.click(screen.getByTestId('review'));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    act(() => channels['chat-event']({
+      sessionId: 'ws1',
+      type: 'entry_appended',
+      entry: {
+        type: 'custom',
+        id: 'c1',
+        customType: 'workflow_step_end',
+        data: {
+          stepId: 'review',
+          status: 'completed',
+          output: { riskFindings: [{ id: 'r1', title: '付款周期过长', level: 'high' }] },
+        },
+      },
+    }));
+    act(() => channels['chat-event']({
+      sessionId: 'ws1',
+      type: 'entry_appended',
+      entry: {
+        type: 'custom',
+        id: 'c2',
+        customType: 'workflow_step_end',
+        data: {
+          stepId: 'report',
+          status: 'completed',
+          output: { title: '合同审核报告', sections: [{ heading: '结论', body: '关注' }] },
+        },
+      },
+    }));
+    fireEvent.click(screen.getByText('合并到报告'));
+    act(() => channels['chat-event']({
+      sessionId: 'ws1',
+      type: 'entry_appended',
+      entry: {
+        type: 'custom',
+        id: 'c3',
+        customType: 'workflow_state',
+        data: { stepId: 'report', action: 'report_merged' },
+      },
+    }));
+    fireEvent.click(screen.getByText('导出报告'));
+    expect(api.requestExportReport).toHaveBeenCalledWith('ws1', expect.objectContaining({ findings: 1 }));
   });
 });
