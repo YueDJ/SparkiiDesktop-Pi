@@ -60,15 +60,15 @@ describe('ContractSurface', () => {
 
   it('renders risk findings with levels and advice from workflow result', () => {
     renderSurface({ status: 'done' });
-    expect(screen.getByText('第7条 付款条件')).toBeTruthy();
+    expect(screen.getAllByText('第7条 付款条件').length).toBeGreaterThan(0);
     expect(screen.getAllByText('高风险').length).toBeGreaterThan(0);
     expect(screen.getAllByText((_, el) => el?.textContent?.includes('约定逾期付款违约金上限') ?? false).length).toBeGreaterThan(0);
-    expect(screen.getByText('第12条 违约责任')).toBeTruthy();
+    expect(screen.getAllByText('第12条 违约责任').length).toBeGreaterThan(0);
   });
 
   it('shows the original document panel alongside the risk panel', () => {
     renderSurface({ status: 'done' });
-    expect(screen.getByText('合同原文')).toBeTruthy();
+    expect(screen.getAllByText('合同原文').length).toBeGreaterThan(0);
     expect(screen.getAllByText('contract.pdf').length).toBeGreaterThan(0);
     expect(screen.getAllByText('合同审核报告').length).toBeGreaterThan(0);
   });
@@ -124,8 +124,8 @@ describe('ContractSurface', () => {
     );
     expect(screen.getByText('全部')).toBeTruthy();
     fireEvent.click(screen.getAllByRole('button', { name: '高风险' })[0]);
-    expect(screen.getByText('第7条 付款条件')).toBeTruthy();
-    expect(screen.queryByText('第12条 违约责任')).toBeNull();
+    expect(screen.getAllByText('第7条 付款条件').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('第12条 违约责任').length).toBe(1);
     fireEvent.click(screen.getByRole('button', { name: '选择 第7条 付款条件' }));
     fireEvent.click(screen.getByText('批量确认'));
     expect(onWorkflowState).toHaveBeenCalledWith('risk_confirmed', { riskId: 'f0', stepId: 'review' });
@@ -163,7 +163,7 @@ describe('ContractAgentSurface', () => {
     );
     expect(screen.getAllByText('a.pdf').length).toBeGreaterThan(0);
     expect(screen.getByText('风险发现')).toBeTruthy();
-    expect(screen.getByText('付款周期过长')).toBeTruthy();
+    expect(screen.getAllByText('付款周期过长').length).toBeGreaterThan(0);
   });
 
   it('renders the report from the session stream without workflow/state props', () => {

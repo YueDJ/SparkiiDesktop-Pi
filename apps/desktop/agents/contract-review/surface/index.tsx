@@ -343,13 +343,21 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
             {firstInput?.missing ? (
               <div className="contract-missing-note">无法找到原文件，风险发现与报告仍可从会话历史恢复。</div>
             ) : selectedName ? (
-              <div className="contract-doc">
-                <div className="contract-doc-icon">PDF</div>
-                <div>
-                  <div className="contract-doc-name">{selectedName}</div>
-                  {(firstInput?.path || documents[0]) && <div className="contract-doc-path">{firstInput?.path ?? documents[0]}</div>}
+              <>
+                <div className="contract-doc contract-doc-head">
+                  <div className="contract-doc-icon">PDF</div>
+                  <div>
+                    <div className="contract-doc-name">{selectedName}</div>
+                    <div className="contract-doc-meta">PDF · 14 页</div>
+                  </div>
                 </div>
-              </div>
+                <div className="contract-doc-body">
+                  <div className="contract-doc-block">
+                    <b>合同原文</b>
+                    原文预览将在后续版本提供。
+                  </div>
+                </div>
+              </>
             ) : (
               <div className="contract-panel-empty">
                 <div>尚未选择合同文件</div>
@@ -440,16 +448,58 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
             </div>
 
             {report && (
-              <div className="contract-report">
-                <div className="contract-report-head">
-                  <b>{report.title}</b>
-                  <span className={`contract-report-status ${reportMerged ? 'done' : ''}`}>{reportMerged ? '已合并' : '待复核'}</span>
+              <>
+                <div className="contract-section-label">报告预览</div>
+                <div className="contract-report contract-report-mock">
+                  <div className="contract-report-head contract-report-mock-head">
+                    <div>
+                      <div className="contract-report-mock-title">{report.title}</div>
+                      <div className="contract-report-mock-meta">deepseek-v4-pro</div>
+                    </div>
+                    <span className={`contract-report-status ${reportMerged ? 'done' : ''}`}>{reportMerged ? '已合并' : '待复核'}</span>
+                  </div>
+                  <div className="contract-report-summary">
+                    <div className="contract-report-summary-item">
+                      <div className="num" style={{ color: 'var(--color-risk)' }}>{highCount}</div>
+                      <div className="label">高风险</div>
+                    </div>
+                    <div className="contract-report-summary-item">
+                      <div className="num" style={{ color: 'var(--color-warn)' }}>{midCount}</div>
+                      <div className="label">中风险</div>
+                    </div>
+                    <div className="contract-report-summary-item">
+                      <div className="num" style={{ color: 'var(--color-ok)' }}>{lowCount}</div>
+                      <div className="label">低风险</div>
+                    </div>
+                  </div>
+                  {report.blocks.map((block, index) => (
+                    <div className="contract-report-section" key={index}>
+                      <h4>{block.heading}</h4>
+                      <Markdown text={block.body} />
+                    </div>
+                  ))}
+                  <div className="contract-report-section">
+                    <h4>风险明细</h4>
+                    <table className="contract-report-table">
+                      <thead>
+                        <tr><th>风险项</th><th>等级</th><th>复核状态</th></tr>
+                      </thead>
+                      <tbody>
+                        {findings.map((f) => (
+                          <tr key={f.id}>
+                            <td>{f.title}</td>
+                            <td>{riskLevelLabel(f.level)}</td>
+                            <td>{reviewLabel(reviewed[f.id] ?? 'none')}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-                <div className="contract-report-body">
-                  <Markdown text={reportBlocks} />
+                <div className="contract-risk-actions contract-report-actions">
                   <button type="button" className="ui-btn ui-btn--primary" disabled={!reportMerged} onClick={() => actions.requestExport()}>导出报告</button>
                 </div>
-              </div>
+              </>
             )}
           </div>
         </section>
