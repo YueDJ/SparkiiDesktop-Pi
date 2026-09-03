@@ -6,7 +6,6 @@ import { SettingsView } from './shell/SettingsView.js';
 import { ApprovalCenter } from './trust/ApprovalCenter.js';
 import { ApprovalPanel } from './trust/ApprovalPanel.js';
 import { AuditView } from './audit/AuditView.js';
-import type { WorkflowStatusState } from './workbench/WorkflowStatus.js';
 import { HomeView } from './platform/HomeView.js';
 import { useAgentSurface } from './platform/surface-registry.js';
 import { extractWorkflowResult } from './surface/normalize.js';
@@ -137,7 +136,6 @@ function AppShell() {
   const [agents, setAgents] = useState<ShellAgent[]>([]);
   const [sessions, setSessions] = useState<Record<string, ShellSession[]>>({});
   const [workflowByAgent, setWorkflowByAgent] = useState<Record<string, { sessionId: string | null; mode: 'live' | 'history' }>>({});
-  const [workflowStatusByAgent, setWorkflowStatusByAgent] = useState<Record<string, WorkflowStatusState>>({});
   const [activeSessionByAgent, setActiveSessionByAgent] = useState<Record<string, string | null>>({});
   const [titleByAgent, setTitleByAgent] = useState<Record<string, string>>({});
   const [approvalOpen, setApprovalOpen] = useState(false);
@@ -175,20 +173,6 @@ function AppShell() {
   useEffect(() => {
     if (pending.length === 0 && approvalOpen) setApprovalOpen(false);
   }, [pending.length, approvalOpen]);
-  useEffect(() => api.on('workflow', (e: any) => {
-    // Route the workflow event to the agent that owns this workflow session.
-    const agentId = Object.entries(workflowByAgentRef.current).find(([, w]) => w.sessionId === e.sessionId)?.[0];
-    if (!agentId) return;
-    setWorkflowStatusByAgent((prev) => {
-      if (e.type === 'step_started') return { ...prev, [agentId]: { status: 'running', step: e.stepId } };
-      if (e.type === 'workflow_completed') return { ...prev, [agentId]: { status: 'done' } };
-      if (e.type === 'workflow_failed') {
-        reportError(e.error?.message ?? '审核失败', { source: agentId });
-        return { ...prev, [agentId]: { status: 'failed', error: e.error?.message } };
-      }
-      return prev;
-    });
-  }), [api, reportError]);
   useEffect(() => api.on('chat-event', (p: any) => {
     if (p?.sessionId) {
       const ov = sessionOverridesRef.current.get(p.sessionId);
@@ -356,7 +340,6 @@ function AppShell() {
       return;
     }
     setWorkflowByAgent((prev) => ({ ...prev, [agentId]: { sessionId: null, mode: 'live' } }));
-    setWorkflowStatusByAgent((prev) => ({ ...prev, [agentId]: { status: 'idle' } }));
   };
 
   const onOpenSession = (agentId: string, sessionId: string) => {
@@ -461,11 +444,7 @@ function AppShell() {
   const activeAgent = derivedAgents.find((a) => a.id === screen);
   const isChatSurface = activeAgent?.surfaceType === 'chat';
 
-  const statusText = (() => {
-    if (activeAgent?.surfaceType !== 'workflow') return '';
-    const wf = workflowStatusByAgent[activeAgent.id];
-    return wf?.status === 'running' ? `正在执行:${wf.step ?? '…'}` : '';
-  })();
+  const statusText = '';
 
   const navigate = (s: ScreenId) => {
     const isAgent = agents.some((a) => a.id === s);
@@ -515,7 +494,6 @@ function AppShell() {
       newSession: () => onNewSession(agentId),
       openSession: (id) => onOpenSession(agentId, id),
       startWorkflow: (payload) => {
-        setWorkflowStatusByAgent((prev) => ({ ...prev, [agentId]: { status: 'running' } }));
         setWorkflowByAgent((prev) => ({ ...prev, [agentId]: { ...(prev[agentId] ?? { sessionId: null, mode: 'live' }), mode: 'live' } }));
         api.runWorkflow(agentId, payload).then((res) => {
           if (res?.sessionId) setWorkflowByAgent((prev) => ({ ...prev, [agentId]: { ...(prev[agentId] ?? { sessionId: null, mode: 'live' }), sessionId: res.sessionId ?? null } }));

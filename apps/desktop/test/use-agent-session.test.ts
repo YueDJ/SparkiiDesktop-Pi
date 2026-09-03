@@ -101,4 +101,45 @@ describe('useAgentSession', () => {
     expect(result.current.entries).toHaveLength(1);
     expect(result.current.entries[0]).toMatchObject({ kind: 'message', role: 'user', text: '检查一下结果' });
   });
+
+  it('applies chat-event custom rows even when mode is history', async () => {
+    const on = vi.fn().mockReturnValue(() => {});
+    (globalThis as any).window = {
+      sparkii: {
+        openChatSession: vi.fn().mockResolvedValue({ entries: [] }),
+        on,
+      },
+    };
+    const { result } = renderHook(() => useAgentSession('contract-review', 's1', 'history'));
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+    const chatCb = on.mock.calls.find((c: any[]) => c[0] === 'chat-event')?.[1];
+    await act(async () => {
+      chatCb({
+        sessionId: 's1',
+        type: 'entry_appended',
+        entry: { type: 'custom', id: 'c1', customType: 'workflow_step_end', data: { stepId: 'review', status: 'completed', output: { ok: true } } },
+      });
+    });
+    expect(result.current.entries).toHaveLength(1);
+    expect(result.current.result).toMatchObject({ review: { ok: true } });
+  });
+
+  it('derives result and timeline from the open snapshot', async () => {
+    (globalThis as any).window = {
+      sparkii: {
+        openChatSession: vi.fn().mockResolvedValue({
+          entries: [
+            { type: 'custom', id: 'c0', customType: 'workflow_step_start', data: { stepId: 'review' } },
+            { type: 'custom', id: 'c1', customType: 'workflow_step_end', data: { stepId: 'review', status: 'completed', output: { ok: true } } },
+          ],
+        }),
+        on: vi.fn().mockReturnValue(() => {}),
+      },
+    };
+    const { result } = renderHook(() => useAgentSession('contract-review', 's1', 'history'));
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+    expect(result.current.result).toMatchObject({ review: { ok: true } });
+    expect(result.current.status).toBe('done');
+    expect(result.current.meta.currentStep).toBe('review');
+  });
 });

@@ -1,9 +1,29 @@
 import { useEffect, useState } from 'react';
-import type { AgentSession } from './contract.js';
-import { normalizeSessionEntries, applySurfaceEvent } from './normalize.js';
+import type { AgentSession, SessionEntry } from './contract.js';
+import { applySurfaceEvent, deriveWorkflowTimeline, extractWorkflowResult, normalizeSessionEntries } from './normalize.js';
 import { normalizeMessages as uiNormalizeMessages } from '@sparkii/ui';
 
 const EMPTY: AgentSession = { entries: [], streaming: false, status: 'idle', meta: { currentStep: null } };
+
+function withWorkflowFromEntries(
+  session: AgentSession,
+  entries: SessionEntry[],
+  extra: Partial<AgentSession> = {},
+): AgentSession {
+  const timeline = deriveWorkflowTimeline(entries);
+  return {
+    ...session,
+    ...extra,
+    entries,
+    status: timeline.status,
+    result: extractWorkflowResult(entries),
+    meta: {
+      ...session.meta,
+      ...extra.meta,
+      currentStep: timeline.step ?? extra.meta?.currentStep ?? session.meta.currentStep,
+    },
+  };
+}
 
 export function useAgentSession(agentId: string, sessionId: string | null, mode: 'live' | 'history'): AgentSession {
   const [session, setSession] = useState<AgentSession>(EMPTY);
@@ -36,9 +56,7 @@ export function useAgentSession(agentId: string, sessionId: string | null, mode:
               ? { path: i }
               : { path: String(i?.path ?? '') })
             : undefined;
-        setSession((s) => ({
-          ...s,
-          entries,
+        setSession((s) => withWorkflowFromEntries(s, entries, {
           streaming: Boolean(res?.streaming),
           meta: { ...s.meta, currentStep: res?.currentStep ?? null, inputs: inputs ?? s.meta.inputs },
         }));
@@ -48,31 +66,18 @@ export function useAgentSession(agentId: string, sessionId: string | null, mode:
       });
 
     const offChat = (window as any).sparkii?.on?.('chat-event', (p: any) => {
-      if (p?.sessionId !== sessionId || mode !== 'live') return;
+      if (p?.sessionId !== sessionId) return;
       setSession((s) => {
         const entries = applySurfaceEvent(s.entries, p);
         let streaming = s.streaming;
         if (p?.type === 'agent_start') streaming = true;
         else if (p?.type === 'agent_end' || p?.type === 'agent_settled') streaming = false;
-        return { ...s, entries, streaming };
+        return withWorkflowFromEntries(s, entries, { streaming });
       });
-    });
-    const offWorkflow = (window as any).sparkii?.on?.('workflow', (e: any) => {
-      if (e?.sessionId !== sessionId || mode !== 'live') return;
-      if (e.type === 'step_started') setSession((s) => ({ ...s, status: 'running', meta: { ...s.meta, currentStep: e.stepId } }));
-      else if (e.type === 'workflow_completed') setSession((s) => ({ ...s, status: 'done' }));
-      else if (e.type === 'workflow_failed') setSession((s) => ({ ...s, status: 'failed' }));
-    });
-    const offState = (window as any).sparkii?.on?.('state', (p: any) => {
-      if (p?.sessionId !== sessionId || mode !== 'live') return;
-      const result = (p?.workflow as Record<string, unknown> | undefined)?.result as Record<string, unknown> | undefined;
-      if (result) setSession((s) => ({ ...s, result }));
     });
     return () => {
       open = false;
       offChat?.();
-      offWorkflow?.();
-      offState?.();
     };
   }, [agentId, sessionId, mode]);
 
