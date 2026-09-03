@@ -282,8 +282,8 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
     : status === 'running'
       ? (currentStep === 'report' ? 'active' : 'pending')
       : 'pending';
-  const reviewNodeState = reportMerged ? 'done' : unprocessed.length ? 'warn' : 'ready';
-  const reviewNodeClass = reviewNodeState === 'warn' ? 'warn' : reviewNodeState === 'done' ? 'done' : 'ready';
+  const reviewNodeState = reportMerged ? 'done' : findings.length === 0 ? 'pending' : unprocessed.length ? 'warn' : 'ready';
+  const reviewNodeClass = reviewNodeState === 'warn' ? 'warn' : reviewNodeState === 'done' ? 'done' : reviewNodeState === 'ready' ? 'ready' : 'pending';
 
   const reportBlocks = useMemo(() => {
     if (!report) return '';
