@@ -272,7 +272,16 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
     setLocalFileName('');
   };
 
-  const reportNodeState = status === 'done' || status === 'failed' ? 'done' : status === 'running' ? 'active' : 'pending';
+  const auditStageState = status === 'done' || status === 'failed'
+    ? 'done'
+    : status === 'running'
+      ? (currentStep === 'report' ? 'done' : 'active')
+      : 'pending';
+  const reportStageState = status === 'done' || status === 'failed'
+    ? 'done'
+    : status === 'running'
+      ? (currentStep === 'report' ? 'active' : 'pending')
+      : 'pending';
   const reviewNodeState = reportMerged ? 'done' : unprocessed.length ? 'warn' : 'ready';
   const reviewNodeClass = reviewNodeState === 'warn' ? 'warn' : reviewNodeState === 'done' ? 'done' : 'ready';
 
@@ -325,9 +334,9 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
       </header>
 
       <div className="contract-stage">
-        <span className={`contract-stage-item ${reportNodeState}`}><span className="contract-stage-dot" />审核</span>
+        <span className={`contract-stage-item ${auditStageState}`}><span className="contract-stage-dot" />审核</span>
         <span className="contract-stage-sep" />
-        <span className={`contract-stage-item ${reportNodeState}`}><span className="contract-stage-dot" />报告</span>
+        <span className={`contract-stage-item ${reportStageState}`}><span className="contract-stage-dot" />报告</span>
         <span className="contract-stage-sep" />
         <span className={`contract-stage-item human ${reviewNodeClass}`}>
           <span className="contract-stage-dot" />复核
