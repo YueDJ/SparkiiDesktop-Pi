@@ -7,8 +7,9 @@ afterEach(cleanup);
 describe('sessionDisplayName', () => {
   it('prefers title, then firstMessage, then time, then a default', () => {
     expect(sessionDisplayName({ title: 'PRD 标题', firstMessage: 'x', updatedAt: 1 })).toBe('PRD 标题');
-    expect(sessionDisplayName({ firstMessage: '帮我写一个合同审核流程' })).toBe('帮我写一个合同审核流程');
-    expect(sessionDisplayName({ firstMessage: 'a'.repeat(30) })).toBe('a'.repeat(24));
+    expect(sessionDisplayName({ firstMessage: '帮我写一个合同审核流程' })).toBe('帮我写一个合同审核流程'.slice(0, 20));
+    expect(sessionDisplayName({ firstMessage: 'a'.repeat(30) })).toBe('a'.repeat(20));
+    expect(sessionDisplayName({ title: '很长的标题'.repeat(5), firstMessage: 'x' })).toBe('很长的标题'.repeat(5));
     expect(sessionDisplayName({ updatedAt: new Date(2026, 7, 26, 10, 30).getTime() })).toContain('08/26');
     expect(sessionDisplayName({})).toBe('会话');
   });
@@ -46,7 +47,11 @@ function makeApi() {
     promptSession: vi.fn().mockResolvedValue({ ok: true, sessionId: 'g1', behavior: 'prompt' }),
     abortChat: vi.fn().mockResolvedValue({ ok: true, cleared: { steering: [], followUp: [] } }),
     queueMutate: vi.fn().mockResolvedValue({ ok: true, steering: [], followUp: [] }),
-    setChatTitle: vi.fn().mockResolvedValue({ ok: true }),
+    setChatTitle: vi.fn(async (sessionId: string, title: string) => {
+      channels['chat-event']?.({ type: 'session_title', sessionId, title });
+      return { ok: true };
+    }),
+    completeText: vi.fn().mockResolvedValue({ ok: false }),
     deleteChatSession: vi.fn().mockResolvedValue({ ok: true }),
     decideApproval: vi.fn(),
     queryAudit: vi.fn().mockResolvedValue([]),
@@ -94,7 +99,7 @@ describe('App general agent', () => {
   });
 
   it('deletes the active session and returns to empty state', async () => {
-    const { api } = makeApi();
+    const { api, channels } = makeApi();
     render(<App />);
     await screen.findByText(/工作台 · 上午好/);
     fireEvent.click(screen.getByTestId('agent-card-general'));
@@ -102,6 +107,9 @@ describe('App general agent', () => {
     fireEvent.change(input, { target: { value: '你好' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     await waitFor(() => expect(api.promptSession).toHaveBeenCalled());
+    await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
+    act(() => channels['chat-event']({ type: 'message', role: 'user', text: '你好', sessionId: 'g1' }));
+    await waitFor(() => expect(screen.getByTestId('session-g1')).toBeTruthy());
     fireEvent.contextMenu(await screen.findByTestId('session-g1'));
     fireEvent.click(screen.getByRole('menuitem', { name: /删除/ }));
     await waitFor(() => expect(api.deleteChatSession).toHaveBeenCalledWith('g1'));
@@ -148,8 +156,7 @@ describe('App general agent', () => {
   });
 
   it('keeps a brand-new session visible even before the backend persists it', async () => {
-    const { api } = makeApi();
-    // 模拟后端尚未把新会话写入磁盘：listChatSessions 一直返回空
+    const { api, channels } = makeApi();
     api.listChatSessions.mockResolvedValue([]);
     render(<App />);
     await screen.findByText(/工作台 · 上午好/);
@@ -159,9 +166,37 @@ describe('App general agent', () => {
     fireEvent.keyDown(input, { key: 'Enter' });
     await waitFor(() => expect(api.promptSession).toHaveBeenCalled());
     await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
-    // 会话应立即出现在左侧历史里，无需切换后再出现
+    act(() => channels['chat-event']({ type: 'session_title', sessionId: 'g1', title: '你好' }));
     expect(screen.getByTestId('session-g1')).toBeTruthy();
-    expect(screen.getAllByText('新对话').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('你好').length).toBeGreaterThan(0);
+  });
+
+  it('does not insert a sidebar row from openSession alone', async () => {
+    const { api } = makeApi();
+    api.listChatSessions.mockResolvedValue([]);
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+    fireEvent.click(screen.getByTestId('agent-card-general'));
+    const input = await screen.findByTestId('composer-input');
+    fireEvent.change(input, { target: { value: '你好' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
+    expect(screen.queryByTestId('session-g1')).toBeNull();
+  });
+
+  it('inserts a sidebar row when session_title arrives for the bound session', async () => {
+    const { api, channels } = makeApi();
+    api.listChatSessions.mockResolvedValue([]);
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+    fireEvent.click(screen.getByTestId('agent-card-general'));
+    const input = await screen.findByTestId('composer-input');
+    fireEvent.change(input, { target: { value: '你好' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
+    act(() => channels['chat-event']({ type: 'session_title', sessionId: 'g1', title: '占位名' }));
+    expect(await screen.findByTestId('session-g1')).toBeTruthy();
+    expect(screen.getAllByText('占位名').length).toBeGreaterThan(0);
   });
 
   it('renames a session and updates the history list immediately', async () => {
@@ -178,7 +213,7 @@ describe('App general agent', () => {
     const input = screen.getByDisplayValue('旧标题');
     fireEvent.change(input, { target: { value: '新标题' } });
     fireEvent.keyDown(input, { key: 'Enter' });
-    await waitFor(() => expect(api.setChatTitle).toHaveBeenCalledWith('g1', '新标题'));
+    await waitFor(() => expect(api.setChatTitle).toHaveBeenCalledWith('g1', '新标题', 'user'));
     // 后端仍返回旧标题，但左侧历史应立即显示新标题
     expect(screen.getAllByText('新标题').length).toBeGreaterThan(0);
   });
@@ -198,10 +233,11 @@ describe('App general agent', () => {
     fireEvent.change(input, { target: { value: '你好' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     await waitFor(() => expect(api.promptSession).toHaveBeenCalled());
+    await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
 
     persisted = true;
     act(() => channels['chat-event']({ type: 'session_title', sessionId: 'g1', title: '优胜美地山谷全景赏析' }));
-    expect(await screen.findByText('优胜美地山谷全景赏析')).toBeTruthy();
+    expect((await screen.findAllByText('优胜美地山谷全景赏析')).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByTestId('agent-nav-general'));
     await waitFor(() => expect(screen.getAllByText('优胜美地山谷全景赏析').length).toBeGreaterThan(0));
