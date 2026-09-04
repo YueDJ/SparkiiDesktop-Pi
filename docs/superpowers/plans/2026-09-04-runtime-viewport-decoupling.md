@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- **先审后改。** 未批准前不改产品代码。本文件和 spec 可以先合。
+- spec / plan 已经架构师 Approve with nits，可以改产品代码。
 - 不恢复 `workflowByAgent` / `activeSessionByAgent` / `titleByAgent`，不新开第三份 current。
 - 不改 `runWorkflow` 的点火顺序：返回 id 时 loop 可以已经在跑。不把 loop 推迟到 `openChatSession` 之后。
 - 平台生产代码不按 `'general'` / `'contract-review'` 写 bind / 标题 / 高亮 / 报错。
@@ -74,7 +74,9 @@ apps/desktop/agents/general/surface/index.tsx      # 占位名跟 onSessionCreat
 apps/desktop/test/app-workflow.test.tsx
 apps/desktop/test/app-general.test.tsx
 apps/desktop/test/contract-surface.test.tsx
+apps/desktop/test/general-surface.test.tsx
 apps/desktop/test/ipc.test.ts
+apps/desktop/test/session-id.test.ts              # 若 sessionIdChange 不并进 current-work.test
 ```
 
 不改：
@@ -186,7 +188,7 @@ startWorkflow: (payload) => {
     return res;
   }).catch((e) => {
     reportError(String(e?.message ?? e), { source: agents.find((a) => a.id === agentId)?.name ?? agentId });
-    throw e;
+    // 不再 throw：合同 onClick 的 .then(setChatTitle) 没有 catch，reject 会变成未处理拒绝；失败本来也不该公布标题
   });
   return p;
 }
@@ -236,12 +238,13 @@ Expected: 新用例 FAIL；旧用例仍应尽量绿（本步还没改 Surface）
 
 - [ ] **Step 3: Minimal implementation**
 
-按上面改 `App.tsx` + `contract.ts`。`review` / `requestExport` 的 `reportError` 保持。
+按上面改 `App.tsx` + `contract.ts`。空 catch 和 `mode !== 'live'` 那刀是删除，不是再包一层。`review` / `requestExport` 保持。
 
 - [ ] **Step 4: Run tests**
 
 Run: 同上  
-Expected: 本任务新用例 PASS；通用旧用例 PASS
+Expected: 壳侧「不抢焦点 / 二次开始 / 失败进错误中心」PASS。  
+「卸挂仍公布标题」「通用发出后立刻离开仍占位」这两条本步可以仍红——分别等 Task 3 / 3b，**不要**为了先绿把 `setChatTitle` 塞进 `App.tsx`。通用旧用例 PASS。
 
 - [ ] **Step 5: Commit**
 
@@ -265,8 +268,10 @@ follow draft only; surface startWorkflow errors
 | --- | --- |
 | assign + `mode==='live'`（bind） | 保留 `documents` / `localFileName`；不要用当时可能仍空的 `inputs` 盖掉已选文件 |
 | assign + `mode==='history'`（从草稿打开历史） | **重置**，按 B 的 inputs 装，不得留草稿文件 |
-| `leave` / `switch` | 与今天一样：清筛选、选择、笔记、本地文件名；`leave` 清 documents |
+| `leave` / `switch` | 与今天一样：清筛选、选择、笔记、本地文件名；`leave` 清 documents，并继续用 `discardSession` 丢掉上一会话 timeline（`useAgentSession` 第一帧还会吐旧条目） |
 | `stay` | 不把这次当导航 |
+
+`inputsKey` merge effect（约 301–312 行）在 assign+live 时**不要**用当时可能为空的 `inputs` 盖本地 `documents`。bind 当帧 `inputsKey` 仍为空则只更新 ref，不要 `setDocuments(inputs)`。
 
 不要用「`startWorkflow` 的 then 里写 `startedId` ref、再拿去和 props 比」当 bind 判定：App 会先 `setState`，ref 还是空的。
 
@@ -299,7 +304,7 @@ Expected: bind 保留 / 命令返回即公布 FAIL
 
 - [ ] **Step 3: Minimal implementation**
 
-只改合同 Surface 对 id 变化和标题时机的处理。
+只改合同 Surface 对 id 变化和标题时机的处理。旧的 `leftSession` / 「id 变了就清文件」整段换成新判定，不要两套并存。
 
 - [ ] **Step 4: Run tests**
 
@@ -336,7 +341,7 @@ if (!sessionId && res?.sessionId) {
 
 `agents/general`：`onSessionCreated` 里 `setChatTitle(id, placeholderOf(userText), 'agent')`。`placeholderOf` / 截断 / 短名比较仍只在 `agents/general/surface/title.ts`。
 
-短名（助手回复后那一步）仍走现有 entries effect，仅 Surface 还挂着时升级。本轮不在卸挂后补短名。
+短名（助手回复后那一步）仍走现有 entries effect，仅 Surface 还挂着时升级。本轮不在卸挂后补短名。`decideTitle` 的 placeholder 分支留下当同一挂载周期补发（现有 `general-surface`「有 entries 就公布占位」单测仍走这条）。不要只留 `onSessionCreated`、把 effect 占位删掉。
 
 不要：把 `placeholderOf` 写进 `standard-chat.tsx` 或 `App.tsx`。不要为了起名让 loop / `openChatSession` 等待。
 

@@ -1,6 +1,6 @@
 # Runtime ⊥ Viewport — Design Spec
 
-**Status:** Draft（人工审过前不改产品代码）
+**Status:** Approved（架构师 Approve with nits；可以改产品代码）
 **Date:** 2026-09-04
 **Depends on:** 当前会话真相（`2026-09-04-current-session-source-of-truth-design.md`）；会话标题公布（`2026-09-04-session-title-source-of-truth-design.md`）；运行池 / 薄契约
 **Amends:** current-session spec 的「绑定 id」规则（今天写的是「current 仍是该 Agent 的会话就回写」）；title spec 的「有 sessionId 后公布」时机（今天写的是 viewport 上已有 id）
