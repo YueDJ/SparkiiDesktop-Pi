@@ -26,7 +26,7 @@ export function openNew(agentId: string): CurrentWork {
 }
 
 export function bindSession(current: CurrentWork, sessionId: string): CurrentWork {
-  if (!isSession(current)) return current;
+  if (!isSession(current) || current.sessionId != null) return current;
   return { type: 'session', agentId: current.agentId, sessionId, mode: 'live' };
 }
 

@@ -18,7 +18,12 @@ import {
   type ComposerAttachment,
 } from '@sparkii/ui';
 
-export type StandardChatProps = AgentSurfaceProps & { api?: SparkiiApi; active?: boolean; draft?: boolean };
+export type StandardChatProps = AgentSurfaceProps & {
+  api?: SparkiiApi;
+  active?: boolean;
+  draft?: boolean;
+  onSessionCreated?(sessionId: string, userText: string): void;
+};
 
 function isChatEntry(e: SessionEntry): e is ChatEntry {
   return e.kind === 'message' || e.kind === 'tool' || e.kind === 'event';
@@ -185,7 +190,7 @@ function modelIdOf(value: string | null | undefined): string {
 }
 
 export function StandardChatSurface(props: StandardChatProps) {
-  const { agent, sessionId, session, actions, title, api: apiOverride, active = true, draft } = props;
+  const { agent, sessionId, session, actions, title, api: apiOverride, active = true, draft, onSessionCreated } = props;
   const api = apiOverride ?? (window.sparkii as SparkiiApi);
   const { reportError } = useErrors();
   const [pendingApprovals, setPendingApprovals] = useState<Set<string>>(new Set());
@@ -368,7 +373,10 @@ export function StandardChatSurface(props: StandardChatProps) {
       chatAttachments.length ? chatAttachments : undefined,
       sessionId ? undefined : { profileId: agent.id, workspacePath, model, thinkingLevel },
     ).then((res: any) => {
-      if (!sessionId && res?.sessionId) actions.openSession(res.sessionId);
+      if (!sessionId && res?.sessionId) {
+        actions.openSession(res.sessionId);
+        onSessionCreated?.(res.sessionId, display);
+      }
     }).catch((e: any) => {
       reportError(String(e?.message ?? e), { source: agent.name });
       setBusy(false);

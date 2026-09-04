@@ -3,6 +3,7 @@ import {
   openPage, openHistory, openNew, bindSession, clearCurrentSession,
   highlightedSessionId, shellActive, rowIsActive, withDerivedActive, isSession,
 } from '../src/platform/current-work.js';
+import { sessionIdChange, isWorkflowDraftBind, isWorkflowOpenFromDraft } from '../src/surface/session-id.js';
 
 describe('CurrentWork', () => {
   it('opens workflow history as history mode and chat as live', () => {
@@ -43,6 +44,26 @@ describe('CurrentWork', () => {
     expect(clearCurrentSession(openPage('settings'))).toEqual(openPage('settings'));
     expect(isSession(bound)).toBe(true);
     expect(isSession(openPage('home'))).toBe(false);
+  });
+
+  it('bindSession follows a draft only', () => {
+    const history = openHistory('contract-review', 'old', 'workflow');
+    expect(bindSession(history, 'new')).toEqual(history);
+    expect(bindSession(openPage('home'), 'new')).toEqual(openPage('home'));
+    expect(bindSession(openNew('contract-review'), 'new')).toEqual({
+      type: 'session', agentId: 'contract-review', sessionId: 'new', mode: 'live',
+    });
+  });
+
+  it('classifies session id changes without calling null→id bind', () => {
+    expect(sessionIdChange(null, 'a')).toBe('assign');
+    expect(isWorkflowDraftBind('assign', 'live')).toBe(true);
+    expect(isWorkflowOpenFromDraft('assign', 'history')).toBe(true);
+    expect(isWorkflowDraftBind('assign', 'history')).toBe(false);
+    expect(sessionIdChange('a', null)).toBe('leave');
+    expect(sessionIdChange('a', 'b')).toBe('switch');
+    expect(sessionIdChange('a', 'a')).toBe('stay');
+    expect(sessionIdChange(null, null)).toBe('stay');
   });
 
   it('derives at most one active row across groups', () => {

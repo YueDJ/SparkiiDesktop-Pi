@@ -480,14 +480,12 @@ function AppShell() {
         refreshSessions(agentId);
       },
       startWorkflow: (payload) => {
-        const work = currentRef.current;
-        if (isSession(work) && work.agentId === agentId && work.mode !== 'live') {
-          commitCurrent({ ...work, mode: 'live' });
-        }
-        api.runWorkflow(agentId, payload).then((res) => {
-          if (!res?.sessionId) return;
-          bindCurrentSession(agentId, res.sessionId);
-        }).catch(() => {});
+        return api.runWorkflow(agentId, payload).then((res) => {
+          if (res?.sessionId) bindCurrentSession(agentId, res.sessionId);
+          return res;
+        }).catch((e: any) => {
+          reportError(String(e?.message ?? e), { source: agents.find((a) => a.id === agentId)?.name ?? agentId });
+        });
       },
       review: (action, payload) => {
         const sid = currentSessionId(agentId);

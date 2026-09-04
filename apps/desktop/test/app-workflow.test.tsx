@@ -251,4 +251,114 @@ describe('App workflow feedback', () => {
     await screen.findByTestId('review');
     await waitFor(() => expect(screen.queryByTestId('session-c1')).toBeNull());
   });
+
+  it('does not steal focus when a start returns after opening history', async () => {
+    const { api, channels } = makeApi();
+    api.listChatSessions.mockResolvedValue([
+      { id: 'c1', profileId: 'contract-review', title: '合同 A', updatedAt: 2 },
+    ]);
+    api.openChatSession.mockResolvedValue({ entries: [] });
+    let finish!: (value: { ok: boolean; sessionId: string }) => void;
+    api.runWorkflow.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+    fireEvent.click(screen.getByTestId('agent-card-contract-review'));
+    await screen.findByTestId('review');
+    fireEvent.click(screen.getByTestId('upload'));
+    await screen.findByTestId('remove-document');
+    fireEvent.click(screen.getByTestId('review'));
+    await waitFor(() => expect(api.runWorkflow).toHaveBeenCalled());
+    fireEvent.click(await screen.findByText('合同 A'));
+    await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('c1'));
+    await act(async () => { finish({ ok: true, sessionId: 'ws1' }); });
+    act(() => channels['chat-event']({ type: 'session_title', sessionId: 'ws1', title: '新跑的合同' }));
+    expect(await screen.findByTestId('session-ws1')).toBeTruthy();
+    expect(screen.getByTestId('session-ws1').className).not.toMatch(/current/);
+    expect(screen.getByTestId('session-c1').className).toMatch(/current/);
+  });
+
+  it('publishes a workflow title after leaving the draft surface', async () => {
+    const { api, channels } = makeApi();
+    api.listChatSessions.mockResolvedValue([]);
+    let finish!: (value: { ok: boolean; sessionId: string }) => void;
+    api.runWorkflow.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+    fireEvent.click(screen.getByTestId('agent-card-contract-review'));
+    await screen.findByTestId('review');
+    fireEvent.click(screen.getByTestId('upload'));
+    await screen.findByTestId('remove-document');
+    fireEvent.click(screen.getByTestId('review'));
+    await waitFor(() => expect(api.runWorkflow).toHaveBeenCalled());
+    fireEvent.click(screen.getByText('Sparkii'));
+    await screen.findByText(/工作台 · 上午好/);
+    await act(async () => { finish({ ok: true, sessionId: 'ws1' }); });
+    await waitFor(() => expect(api.setChatTitle).toHaveBeenCalled());
+    expect(api.setChatTitle.mock.calls[0][0]).toBe('ws1');
+    act(() => channels['chat-event']({ type: 'session_title', sessionId: 'ws1', title: api.setChatTitle.mock.calls[0][1] }));
+    expect(await screen.findByTestId('session-ws1')).toBeTruthy();
+    expect(screen.getByTestId('session-ws1').className).not.toMatch(/current/);
+  });
+
+  it('does not replace a bound current session when start is clicked again', async () => {
+    const { api, channels } = makeApi();
+    api.runWorkflow
+      .mockResolvedValueOnce({ ok: true, sessionId: 'ws1' })
+      .mockResolvedValueOnce({ ok: true, sessionId: 'ws2' });
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+    fireEvent.click(screen.getByTestId('agent-card-contract-review'));
+    await screen.findByTestId('review');
+    fireEvent.click(screen.getByTestId('upload'));
+    await screen.findByTestId('remove-document');
+    fireEvent.click(screen.getByTestId('review'));
+    await waitFor(() => expect(api.runWorkflow).toHaveBeenCalledTimes(1));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    fireEvent.click(screen.getByTestId('review'));
+    await waitFor(() => expect(api.runWorkflow).toHaveBeenCalledTimes(2));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    act(() => channels['chat-event']({ type: 'session_title', sessionId: 'ws1', title: '第一次' }));
+    act(() => channels['chat-event']({ type: 'session_title', sessionId: 'ws2', title: '第二次' }));
+    expect(await screen.findByTestId('session-ws1')).toBeTruthy();
+    expect(await screen.findByTestId('session-ws2')).toBeTruthy();
+    expect(screen.getByTestId('session-ws1').className).toMatch(/current/);
+    expect(screen.getByTestId('session-ws2').className).not.toMatch(/current/);
+  });
+
+  it('reports a start failure through the existing error center', async () => {
+    const { api } = makeApi();
+    api.runWorkflow.mockRejectedValue(new Error('pool full'));
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+    fireEvent.click(screen.getByTestId('agent-card-contract-review'));
+    await screen.findByTestId('review');
+    fireEvent.click(screen.getByTestId('upload'));
+    await screen.findByTestId('remove-document');
+    fireEvent.click(screen.getByTestId('review'));
+    await waitFor(() => expect(api.appendError).toHaveBeenCalled());
+    expect(api.appendError.mock.calls[0][0]).toEqual(expect.objectContaining({
+      message: expect.stringContaining('pool full'),
+      source: '合同审核智能体',
+    }));
+  });
+
+  it('reopens a titled session from the directory after leaving', async () => {
+    const { api, channels } = makeApi();
+    api.listChatSessions.mockResolvedValue([]);
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+    fireEvent.click(screen.getByTestId('agent-card-contract-review'));
+    await screen.findByTestId('review');
+    fireEvent.click(screen.getByTestId('upload'));
+    await screen.findByTestId('remove-document');
+    fireEvent.click(screen.getByTestId('review'));
+    await waitFor(() => expect(api.runWorkflow).toHaveBeenCalled());
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    act(() => channels['chat-event']({ type: 'session_title', sessionId: 'ws1', title: '采购合同' }));
+    fireEvent.click(screen.getByText('Sparkii'));
+    await screen.findByText(/工作台 · 上午好/);
+    api.openChatSession.mockClear();
+    fireEvent.click(await screen.findByText('采购合同'));
+    await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('ws1'));
+  });
 });
