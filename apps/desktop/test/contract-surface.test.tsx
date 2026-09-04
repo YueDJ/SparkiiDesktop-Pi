@@ -306,6 +306,71 @@ describe('ContractAgentSurface', () => {
     expect(actions.newSession).toHaveBeenCalled();
   });
 
+  it('clears the previous file when starting a new session even if session props are stale', () => {
+    const actions = makeActions();
+    const stale = {
+      entries: [],
+      streaming: false,
+      status: 'done' as const,
+      meta: { currentStep: 'report' as const, inputs: [{ path: 'C:/tmp/a.pdf', name: 'a.pdf' }] },
+    };
+    const { rerender } = render(
+      <ContractAgentSurface agent={agent} sessionId="s1" mode="history" session={stale} actions={actions} />,
+    );
+    expect(screen.getAllByText('a.pdf').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByTestId('new-review'));
+    expect(actions.newSession).toHaveBeenCalled();
+    rerender(
+      <ContractAgentSurface agent={agent} sessionId={null} mode="live" session={stale} actions={actions} />,
+    );
+    expect(screen.queryByText('a.pdf')).toBeNull();
+    expect(screen.getByText('尚未选择合同文件')).toBeTruthy();
+    expect((screen.getByTestId('review') as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByText('合并到报告') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('names the session after the contract filename', async () => {
+    const setChatTitle = vi.fn().mockResolvedValue({ ok: true });
+    (window as any).sparkii = {
+      getModelOptions: async () => ({ models: [], defaultModel: null, provider: 'deepseek' }),
+      getChatState: async () => ({}),
+      getChatSession: async () => ({}),
+      setChatTitle,
+      on: () => () => {},
+    };
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s-title"
+        mode="live"
+        session={{ entries: [], streaming: false, status: 'running', meta: { currentStep: 'review', inputs: [{ path: 'C:/tmp/采购合同.pdf', name: '采购合同.pdf' }] } }}
+        actions={makeActions()}
+      />,
+    );
+    await waitFor(() => expect(setChatTitle).toHaveBeenCalledWith('s-title', '采购合同.pdf'));
+    delete (window as any).sparkii;
+  });
+
+  it('keeps merge enabled in history when a report exists', () => {
+    const actions = makeActions();
+    const entries = normalizeSessionEntries([
+      { type: 'custom', id: 'c2', customType: 'workflow_step_end', data: { stepId: 'report', status: 'completed', output: { title: '合同审核报告', sections: [{ heading: '结论', body: '关注' }] } } },
+    ]);
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s-hist"
+        mode="history"
+        session={{ entries, streaming: false, status: 'done', result: extractWorkflowResult(entries), meta: { currentStep: 'report', inputs: [{ path: 'C:/tmp/a.pdf', name: 'a.pdf' }] } }}
+        actions={actions}
+      />,
+    );
+    const merge = screen.getByText('合并到报告') as HTMLButtonElement;
+    expect(merge.disabled).toBe(false);
+    fireEvent.click(merge);
+    expect(actions.review).toHaveBeenCalledWith('report_merged', { stepId: 'report' });
+  });
+
   it('shows risk cards after a review step_end output without session.result', () => {
     const entries = normalizeSessionEntries([
       { type: 'custom', id: 'c1', customType: 'workflow_step_start', data: { stepId: 'review' } },
