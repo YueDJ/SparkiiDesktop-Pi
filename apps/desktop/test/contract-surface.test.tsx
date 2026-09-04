@@ -28,7 +28,8 @@ function renderSurface(workflow: { status: string; step?: string }, state: Recor
 describe('ContractSurface', () => {
   it('shows upload and start controls when idle', () => {
     renderSurface({ status: 'idle' }, { documents: [] });
-    expect(screen.getByTestId('upload')).toBeTruthy();
+    expect(screen.getByTestId('upload').textContent).toBe('选择合同文件');
+    expect(screen.queryByText('更换文件')).toBeNull();
     expect(screen.getByTestId('review')).toBeTruthy();
   });
 
@@ -60,7 +61,9 @@ describe('ContractSurface', () => {
     );
     fireEvent.click(screen.getByTestId('upload'));
     expect(chooseDocument).toHaveBeenCalledWith({ extensions: ['pdf', 'docx', 'txt'] });
-    expect((await screen.findByTestId('upload')).textContent).toBe('更换文件');
+    expect(await screen.findByTestId('remove-document')).toBeTruthy();
+    expect(screen.queryByTestId('upload')).toBeNull();
+    expect(screen.queryByText('更换文件')).toBeNull();
     expect((await screen.findAllByText('chosen.pdf')).length).toBeGreaterThan(0);
     expect(screen.queryByText('尚未选择合同文件')).toBeNull();
     await waitFor(() => expect(readDocumentBytes).toHaveBeenCalledWith('C:/tmp/chosen.pdf'));
@@ -488,7 +491,9 @@ describe('ContractAgentSurface', () => {
       />,
     );
     fireEvent.click(screen.getByTestId('upload'));
-    await screen.findByText('更换文件');
+    await screen.findByTestId('remove-document');
+    expect(screen.queryByText('更换文件')).toBeNull();
+    expect(screen.queryByTestId('upload')).toBeNull();
     fireEvent.click(screen.getByTestId('workspace'));
     await waitFor(() => expect(screen.getByTestId('workspace').textContent).toContain('contract'));
     fireEvent.click(screen.getByTestId('review'));
