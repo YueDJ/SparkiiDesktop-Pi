@@ -1,0 +1,4 @@
+{
+  "name": "Sparkii Desktop",
+  "install": "corepack enable && COREPACK_ENABLE_DOWNLOAD_PROMPT=0 pnpm install --frozen-lockfile"
+}
