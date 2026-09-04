@@ -179,7 +179,6 @@ if (isSession(work) && work.agentId === agentId)
 // bindSession 收窄后，历史 / 已有 id 自然不跟
 
 startWorkflow: (payload) => {
-  // mode→live 仅当仍是该 Agent 的草稿或已是这条 live；不要为了点火去改别人的历史 id
   const p = api.runWorkflow(agentId, payload).then((res) => {
     if (res?.sessionId) bindCurrentSession(agentId, res.sessionId);
     return res;
