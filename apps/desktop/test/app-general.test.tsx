@@ -134,10 +134,19 @@ describe('App general agent', () => {
 
     await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
     expect(await screen.findByText('历史消息')).toBeTruthy();
+    expect(screen.getByTestId('session-g1').className).toMatch(/current/);
+    expect(screen.getByTestId('session-g2').className).not.toMatch(/current/);
   });
 
-  it('keeps a streaming reply when leaving and returning to general chat', async () => {
+  it('reloads a history session after leaving to home', async () => {
     const { api, channels } = makeApi();
+    let opened = 0;
+    api.openChatSession.mockImplementation(async () => {
+      opened += 1;
+      return opened === 1
+        ? { messages: [] }
+        : { messages: [{ role: 'assistant', text: '在的' }] };
+    });
     render(<App />);
     await screen.findByText(/工作台 · 上午好/);
     fireEvent.click(screen.getByTestId('agent-card-general'));
@@ -150,9 +159,13 @@ describe('App general agent', () => {
     expect(screen.getByText(/在的/)).toBeTruthy();
 
     fireEvent.click(screen.getByText('Sparkii'));
+    expect(screen.getByTestId('session-g1').className).not.toMatch(/current/);
+    expect(screen.getByText(/工作台 · 上午好/)).toBeTruthy();
+    const opensBeforeReturn = api.openChatSession.mock.calls.length;
     fireEvent.click(await screen.findByTestId('session-g1'));
-    await screen.findByTestId('composer-input');
-    expect(screen.getByText(/在的/)).toBeTruthy();
+    await waitFor(() => expect(api.openChatSession.mock.calls.length).toBeGreaterThan(opensBeforeReturn));
+    expect(await screen.findByText(/在的/)).toBeTruthy();
+    expect(screen.getByTestId('session-g1').className).toMatch(/current/);
   });
 
   it('keeps a brand-new session visible even before the backend persists it', async () => {
@@ -213,6 +226,23 @@ describe('App general agent', () => {
     act(() => channels['chat-event']({ type: 'session_title', sessionId: 'g1', title: '占位名' }));
     expect(await screen.findByTestId('session-g1')).toBeTruthy();
     expect(screen.getAllByText('占位名').length).toBeGreaterThan(0);
+    expect(screen.getByTestId('session-g1').className).toMatch(/current/);
+  });
+
+  it('inserts a titled session on home without highlighting it', async () => {
+    const { api, channels } = makeApi();
+    api.listChatSessions.mockResolvedValue([]);
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+    fireEvent.click(screen.getByTestId('agent-card-general'));
+    const input = await screen.findByTestId('composer-input');
+    fireEvent.change(input, { target: { value: '你好' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
+    fireEvent.click(screen.getByText('Sparkii'));
+    act(() => channels['chat-event']({ type: 'session_title', sessionId: 'g1', title: '占位名' }));
+    expect(await screen.findByTestId('session-g1')).toBeTruthy();
+    expect(screen.getByTestId('session-g1').className).not.toMatch(/current/);
   });
 
   it('renames a session and updates the history list immediately', async () => {
@@ -281,6 +311,29 @@ describe('App general agent', () => {
     await act(async () => { await Promise.resolve(); });
     expect(screen.getByTestId('chat-title').textContent).toBe('新对话');
     expect(screen.getByTestId('session-g1').textContent).toContain('历史绘画标题');
+    expect(screen.getByTestId('session-g1').className).not.toMatch(/current/);
+  });
+
+  it('clears highlight on settings and on a new home-card session', async () => {
+    const { api } = makeApi();
+    api.listChatSessions.mockResolvedValue([
+      { id: 'g1', profileId: 'general', title: '旧会话', workspaceKind: 'auto', workspacePath: 'C:/ws/old', model: null, piSessionFile: null, createdAt: 0, updatedAt: 1 },
+    ]);
+    api.openChatSession.mockResolvedValue({ messages: [{ role: 'user', text: '历史消息' }] });
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+    fireEvent.click(await screen.findByText('旧会话'));
+    await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
+    expect(screen.getByTestId('session-g1').className).toMatch(/current/);
+
+    fireEvent.click(screen.getByLabelText('设置'));
+    expect(screen.getByTestId('session-g1').className).not.toMatch(/current/);
+
+    fireEvent.click(screen.getByText('Sparkii'));
+    fireEvent.click(screen.getByTestId('agent-card-general'));
+    await screen.findByTestId('composer-input');
+    expect(screen.getByTestId('chat-title').textContent).toBe('新对话');
+    expect(screen.getByTestId('session-g1').className).not.toMatch(/current/);
   });
 });
 
