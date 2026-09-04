@@ -482,6 +482,7 @@ function AppShell() {
         review: () => {},
         requestExport: () => {},
         chooseDocument: async () => ({}),
+        readDocumentBytes: async () => ({ error: 'denied' }),
       };
     }
     return {
@@ -503,7 +504,8 @@ function AppShell() {
         if (!sid) { setScreen('approvals'); return; }
         void api.requestExportReport(sid, payload ?? {}).catch(() => {});
       },
-      chooseDocument: () => api.chooseDocument(),
+      chooseDocument: (opts) => api.chooseDocument(opts),
+      readDocumentBytes: (path) => api.readDocumentBytes(path, workflowFor(agentId).sessionId),
     };
   };
 

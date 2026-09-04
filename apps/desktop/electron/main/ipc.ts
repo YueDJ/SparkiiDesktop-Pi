@@ -20,7 +20,8 @@ import { verifyRuntime } from './runtime-provision.js';
 import { mutateQueues, type QueueMutation, type QueueSnapshot } from './queue-mutation.js';
 import type { Runtime } from './runtime.js';
 import type { Logger } from './logger.js';
-import type { ChatAttachment } from '../preload/api-types.js';
+import type { ChatAttachment, ChooseDocumentOptions } from '../preload/api-types.js';
+import { DEFAULT_CHOOSE_EXTENSIONS, grantDocumentPath, readGrantedDocumentBytes } from './document-bytes.js';
 
 function parseSessionInputs(raw: string | null | undefined): { path: string; name?: string; missing?: boolean }[] | undefined {
   if (!raw) return undefined;
@@ -793,13 +794,28 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       surfaceType: rt.agentOf(pr.profile.manifest.name).manifest.surface.type,
     }))),
   );
-  ipcMain.handle('sparkii:chooseDocument', async () => {
-    if (process.env.SPARKII_E2E_DOCUMENT) return { path: process.env.SPARKII_E2E_DOCUMENT };
+  ipcMain.handle('sparkii:chooseDocument', async (_e, opts?: ChooseDocumentOptions) => {
+    if (process.env.SPARKII_E2E_DOCUMENT) {
+      grantDocumentPath(process.env.SPARKII_E2E_DOCUMENT);
+      return { path: process.env.SPARKII_E2E_DOCUMENT };
+    }
+    const extensions = Array.isArray(opts?.extensions) && opts.extensions.length
+      ? opts.extensions.map((ext) => ext.replace(/^\./, '').toLowerCase())
+      : [...DEFAULT_CHOOSE_EXTENSIONS];
     const win = getWindow();
     const result = win
-      ? await dialog.showOpenDialog(win, { properties: ['openFile'], filters: [{ name: '文档', extensions: ['pdf', 'docx', 'xlsx', 'txt', 'md'] }] })
+      ? await dialog.showOpenDialog(win, { properties: ['openFile'], filters: [{ name: '文档', extensions }] })
       : { canceled: true, filePaths: [] as string[] };
-    return result.canceled ? { } : { path: result.filePaths[0] };
+    if (result.canceled || !result.filePaths[0]) return {};
+    grantDocumentPath(result.filePaths[0]);
+    return { path: result.filePaths[0] };
+  });
+  ipcMain.handle('sparkii:readDocumentBytes', async (_e, path: string, sessionId?: string | null) => {
+    const rec = sessionId ? rt.chatSessions.get(sessionId) : null;
+    return readGrantedDocumentBytes(String(path ?? ''), {
+      inputs: parseSessionInputs(rec?.inputs),
+      workspacePath: rec?.workspacePath ?? null,
+    });
   });
   ipcMain.handle('sparkii:listPendingApprovals', () => rt.gate.listPending());
   ipcMain.handle('sparkii:decideApproval', async (_e, id: string, approved: boolean, note?: string) => {

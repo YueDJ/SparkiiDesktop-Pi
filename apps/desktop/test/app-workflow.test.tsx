@@ -43,6 +43,7 @@ function makeApi() {
       { id: 'contract-review', name: '合同审核智能体', surfaceType: 'workflow' },
     ]),
     chooseDocument: vi.fn().mockResolvedValue({ path: 'C:/tmp/contract.pdf' }),
+    readDocumentBytes: vi.fn().mockResolvedValue({ error: 'denied' }),
     runWorkflow: vi.fn().mockResolvedValue({ ok: true, sessionId: 'ws1' }),
     openChatSession: vi.fn().mockResolvedValue({ entries: [] }),
     listChatSessions: vi.fn().mockResolvedValue([]),

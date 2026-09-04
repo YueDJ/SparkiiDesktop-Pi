@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { listPiSessions } from '@sparkii/agent-host';
 import { Keyring } from '../electron/main/keyring.js';
 import { registerIpc } from '../electron/main/ipc.js';
+import { resetGrantedDocumentPaths } from '../electron/main/document-bytes.js';
 import { selectModel } from '../electron/main/workflow.js';
 import type { Runtime } from '../electron/main/runtime.js';
 
@@ -63,6 +64,7 @@ async function waitUntil(predicate: () => boolean, timeoutMs = 2000): Promise<vo
 let dirs: string[] = [];
 afterEach(async () => {
   vi.useRealTimers();
+  resetGrantedDocumentPaths();
   for (const dir of dirs) await rm(dir, { recursive: true, force: true });
   dirs = [];
   vi.unstubAllGlobals();
@@ -1386,5 +1388,36 @@ describe('ipc provider handlers', () => {
     await setSessionPinned!(null, 's-orphan', true);
 
     expect(create).not.toHaveBeenCalled();
+  });
+
+  it('chooseDocument grants the selected path for readDocumentBytes', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const file = join(dataDir, 'contract.txt');
+    await writeFile(file, 'preview-me');
+    const electron = await import('electron');
+    vi.mocked(electron.dialog.showOpenDialog).mockResolvedValueOnce({ canceled: false, filePaths: [file] } as any);
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      getWindow: () => ({
+        on: () => {},
+        isDestroyed: () => false,
+        webContents: { send: () => {} },
+      }) as any,
+    });
+    const handlers = await registeredHandlers();
+    const chosen = await handlers.get('sparkii:chooseDocument')!(null, { extensions: ['pdf', 'docx', 'txt'] });
+    expect(chosen).toEqual({ path: file });
+    expect(electron.dialog.showOpenDialog).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ filters: [{ name: '文档', extensions: ['pdf', 'docx', 'txt'] }] }),
+    );
+    const preview = await handlers.get('sparkii:readDocumentBytes')!(null, file);
+    expect(preview).toMatchObject({ kind: 'txt', fileName: 'contract.txt' });
+    expect(await handlers.get('sparkii:readDocumentBytes')!(null, join(dataDir, 'other.txt'))).toEqual({ error: 'denied' });
   });
 });

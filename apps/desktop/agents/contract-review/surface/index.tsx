@@ -4,7 +4,28 @@ import type { AgentSession, AgentSurfaceActions, AgentSurfaceProps, CustomSessio
 import { deriveWorkflowTimeline, extractWorkflowResult } from '../../../src/surface/normalize.js';
 import { captureReportHtml, formatReport, parseRiskFindings, reportExportPath } from './contract.js';
 import { bytesToBase64, documentFromHtml } from './report-docx.js';
+import { DocumentPreview, formatFileSize, kindLabel, type PreviewKind } from './DocumentPreview.js';
 import './styles.css';
+
+const PREVIEW_EXTENSIONS = ['pdf', 'docx', 'txt'];
+
+type PreviewResult = { kind: PreviewKind; fileName: string; fileSize: number; bytes: ArrayBuffer };
+type PreviewError = 'missing' | 'unsupported' | 'too_large' | 'denied';
+
+function previewErrorText(error: PreviewError): string {
+  if (error === 'missing') return '无法找到原文件';
+  if (error === 'unsupported') return '暂不支持预览该文件类型';
+  if (error === 'too_large') return '文件过大，无法预览';
+  return '无法预览该文件';
+}
+
+function kindFromName(name: string): PreviewKind | null {
+  const lower = name.toLowerCase();
+  if (lower.endsWith('.pdf')) return 'pdf';
+  if (lower.endsWith('.docx')) return 'docx';
+  if (lower.endsWith('.txt')) return 'txt';
+  return null;
+}
 
 type ReviewState = 'none' | 'confirmed' | 'ignored' | 'escalated';
 
@@ -278,6 +299,38 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
     workspacePath: null, model: null, thinkingLevel: null,
   });
   const previewRef = useRef<HTMLDivElement>(null);
+  const [docPreview, setDocPreview] = useState<PreviewResult | null>(null);
+  const [previewError, setPreviewError] = useState<PreviewError | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const previewPath = firstInput?.missing ? '' : (documents[0] || firstInput?.path || '');
+  useEffect(() => {
+    if (!previewPath) {
+      setDocPreview(null);
+      setPreviewError(null);
+      setPreviewLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setPreviewLoading(true);
+    setPreviewError(null);
+    void actions.readDocumentBytes(previewPath).then((res) => {
+      if (cancelled) return;
+      setPreviewLoading(false);
+      if ('error' in res) {
+        setDocPreview(null);
+        setPreviewError(res.error);
+        return;
+      }
+      setDocPreview(res);
+      setPreviewError(null);
+    }).catch(() => {
+      if (cancelled) return;
+      setPreviewLoading(false);
+      setDocPreview(null);
+      setPreviewError('denied');
+    });
+    return () => { cancelled = true; };
+  }, [previewPath, sessionId]);
   useEffect(() => {
     setFilter('all');
     setSelected(new Set());
@@ -338,7 +391,7 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
   };
 
   const chooseDocument = async () => {
-    const res = await actions.chooseDocument();
+    const res = await actions.chooseDocument({ extensions: PREVIEW_EXTENSIONS });
     if (res?.path) {
       setDocuments((prev) => Array.from(new Set([...prev, res.path!])));
       setLocalFileName(basename(res.path));
@@ -456,17 +509,19 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
             ) : selectedName ? (
               <>
                 <div className="contract-doc contract-doc-head">
-                  <div className="contract-doc-icon">PDF</div>
+                  <div className="contract-doc-icon">{kindLabel(docPreview?.kind ?? kindFromName(selectedName) ?? 'txt')}</div>
                   <div>
                     <div className="contract-doc-name">{selectedName}</div>
-                    <div className="contract-doc-meta">PDF · 14 页</div>
+                    <div className="contract-doc-meta">
+                      {kindLabel(docPreview?.kind ?? kindFromName(selectedName) ?? 'txt')}
+                      {docPreview ? ` · ${formatFileSize(docPreview.fileSize)}` : ''}
+                    </div>
                   </div>
                 </div>
                 <div className="contract-doc-body">
-                  <div className="contract-doc-block">
-                    <b>合同原文</b>
-                    原文预览将在后续版本提供。
-                  </div>
+                  {previewLoading && <div className="contract-doc-note">正在加载原文…</div>}
+                  {!previewLoading && previewError && <div className="contract-doc-note">{previewErrorText(previewError)}</div>}
+                  {!previewLoading && docPreview && <DocumentPreview kind={docPreview.kind} bytes={docPreview.bytes} />}
                 </div>
               </>
             ) : (
@@ -688,6 +743,7 @@ export function ContractSurface(props: ContractSurfaceProps) {
       onAction('documents.upload');
       return {};
     },
+    readDocumentBytes: async () => ({ error: 'denied' }),
   };
   return (
     <ContractAgentSurface

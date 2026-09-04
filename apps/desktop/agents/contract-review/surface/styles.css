@@ -17,9 +17,31 @@
 .contract-split.right-collapsed .contract-panel--risk .contract-panel-rail-label { display: block; }
 
 .contract-doc-meta { color: var(--color-textMuted); font-size: var(--font-size-xs); margin-top: 2px; }
-.contract-doc-body { color: var(--color-textSecondary); font-size: 13px; line-height: 1.85; white-space: pre-wrap; margin-top: var(--spacing-md); }
-.contract-doc-block { margin-bottom: 14px; }
-.contract-doc-block b { display: block; color: var(--color-text); font-weight: 650; margin-bottom: 4px; }
+.contract-doc-body { color: var(--color-textSecondary); font-size: 13px; line-height: 1.85; margin-top: var(--spacing-md); }
+.contract-doc-note { color: var(--color-textMuted); font-size: var(--font-size-sm); }
+.contract-doc-preview { margin: 0; }
+.contract-doc-preview--txt {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: inherit;
+  color: var(--color-textSecondary);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: 16px 18px;
+}
+.contract-doc-preview--pdf,
+.contract-doc-preview--docx { display: flex; flex-direction: column; gap: 12px; }
+.contract-doc-page {
+  width: 100%;
+  height: auto;
+  background: #fff;
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--color-border);
+}
+.contract-docx-wrapper { background: #fff; }
+.contract-docx-wrapper .docx-wrapper { background: transparent; padding: 0; }
+.contract-docx-wrapper .docx { width: 100% !important; box-shadow: none; }
 
 .contract-section-label { font-size: var(--font-size-xs); color: var(--color-textMuted); margin: 20px 0 10px; letter-spacing: .04em; }
 .contract-report-mock {
