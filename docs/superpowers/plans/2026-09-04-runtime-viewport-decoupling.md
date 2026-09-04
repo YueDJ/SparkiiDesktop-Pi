@@ -43,57 +43,19 @@
 | 「开始审核」`onClick` 里用返回 id 立刻 `setChatTitle` | `agents/contract-review` | 文件名策略在 Agent；必须能在卸挂后仍公布 |
 | `onSessionCreated` 上公布占位名 | `agents/general` | 占位 / 短名字符串规则仍在 general；本轮短名仍只在挂着时升级 |
 
-### 已删代码必须保持为 0（写清楚，不得拣回）
+### 本轮要删掉的代码（用不上就清，不要改名留着）
 
-PR #41（current-session-truth）已经从生产代码拿掉的符号，本轮落地后仍必须为 0 引用，不得改名留着、不得换种写法加回来：
+上一轮已经清掉的 per-agent map（`workflowByAgent` 等）现在仓库里没有，不必再删一遍，也不要写回来。本轮清的是**今天还在、改完就没用的路径**：删掉，不要注释掉，不要留一条废分支。
 
-```text
-workflowByAgent
-setWorkflowByAgent
-workflowByAgentRef
-workflowFor
-activeSessionByAgent
-setActiveSessionByAgent
-activeSessionByAgentRef
-activeSessionFor
-setActiveSessionFor
-titleByAgent
-titleFor
-setTitleFor
-bindChatSession
-useState<ScreenId>('home')   // 不得再与 current 并行
-```
+| 现在还在 | 为什么废 | 怎么清 |
+| --- | --- | --- |
+| `App.startWorkflow` 的 `.catch(() => {})` | 吞掉点火失败 | 整段空 catch 删掉，换成现有 `useErrors().reportError` |
+| `App.startWorkflow` 里 `mode !== 'live'` 就 `commitCurrent({ ...work, mode: 'live' })` | 点火去改别人的历史视口 | 整个 `if` 删掉；`live` 只由草稿 `bindSession` 带上 |
+| `bindSession` 覆盖已有 `sessionId` | 抢焦点 | 已有 id 的 session 原样返回；不要留「先覆盖再判断」 |
+| 合同 `[sessionId]` 里「id 变了就清本地文件 / `leftSession` 一把梭」 | bind 会清掉已选文件 | 换成 `sessionIdChange` + `mode`；旧的一律重置不要和新政并列留着 |
+| 合同标题只靠 `useEffect([sessionId, selectedName])` 当**唯一**公布口 | Surface 卸挂就不公布 | 主路径改到「开始审核」`onClick` 闭包；effect 只留同一挂载周期补发，不要两套都当主路径 |
 
-以及这些逻辑，不得换种写法留下：
-
-- `onNewSession` / `onOpenSession` 的 `isChatAgent` 分叉
-- `refreshSessions` 里按 per-agent current 写 `active`
-- `refreshSessions` 结束时按 liveActive 写标题
-- `session_title` 对两份 map 循环 `setTitleFor`
-- `session_title` 插入 `{ active: true }`
-- `onNewSession` 里 `list.map(s => active: false)`
-- `AgentFrame` 上 `surfaceType === 'chat' ? activeSessionFor : workflowFor`
-- 「每个 Agent 保留自己的 live/history session」这类注释
-
-本轮讨论里写过又撤掉的握手，也不得出现：
-
-```text
-runWorkflow 等 openChatSession / subscribe 再跑 loop
-allocate → bind → subscribe → start
-视口 setBusy 当「在跑」的 SoT
-runWorkflow 读取 current
-App.tsx / ipc.ts 里按文件名起名
-为合同单开第三条 current / 另一套事件通道
-```
-
-本轮新删（今日还在、落地后必须去掉）：
-
-```text
-App.startWorkflow 的 .catch(() => {})
-App.startWorkflow 里 if (mode !== 'live') 把历史改成 live
-```
-
-对照：`docs/superpowers/plans/2026-09-04-current-session-source-of-truth.md` 的「明确删除」。本 plan 不重开那次清理，只保证那些符号不再回来。
+改完后扫一眼改过的文件：没有引用的 import、变量、`leftSession` / 旧注释，一并删掉。别的空 catch（`requestExport`、`getRuntimePool`、`workflow.ts` loop）本轮不动。
 
 ---
 
@@ -483,15 +445,14 @@ pnpm --filter @sparkii/desktop test \
 
 Expected: PASS
 
-- [ ] **Step 2: Grep 废代码没有回来**
+- [ ] **Step 2: 确认该删的已经删掉**
 
 ```text
-rg "workflowByAgent|setWorkflowByAgent|workflowFor|activeSessionByAgent|setActiveSessionFor|titleByAgent|titleFor|bindChatSession" apps/desktop/src apps/desktop/electron
-rg "catch\\(\\(\\) => \\{\\}\\)" apps/desktop/src/App.tsx   # 只查 startWorkflow，不要误修 requestExport
-rg "setBusy" apps/desktop/src/App.tsx apps/desktop/agents/contract-review
-rg "openChatSession" apps/desktop/electron/main/workflow.ts  # 不得出现：loop 等打开
-rg "currentRef|current\\.type" apps/desktop/electron/main/workflow.ts
-rg "allocate|subscribe.*start|bind.*subscribe" apps/desktop/electron/main/workflow.ts apps/desktop/src/App.tsx
+# 本轮点名要删的还在就是没清干净
+rg "mode !== 'live'" apps/desktop/src/App.tsx          # startWorkflow 里那刀必须没了
+rg "leftSession" apps/desktop/agents/contract-review  # 合同旧导航判定必须没了
+# startWorkflow 不得再空吞；不要误修 requestExport
+rg -n "catch\\(\\(\\) => \\{\\}\\)" apps/desktop/src/App.tsx
 ```
 
 生产壳里按 `'contract-review'` / `'general'` 写的 bind / 标题 / 高亮分支应为 0。
