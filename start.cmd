@@ -53,9 +53,12 @@ if errorlevel 1 (
     echo [ERROR] Cannot change to %ROOT%
     goto :fail
 )
+rem better-sqlite3@13 ships win32 prebuilds. Do not compile against host Node
+rem (Node 24 + no Visual Studio would fail here on node-gyp rebuild).
 call pnpm install
 if errorlevel 1 (
     echo [ERROR] pnpm install failed. From the repo root run: pnpm install
+    echo [ERROR] If the log mentions better-sqlite3 / node-gyp / Visual Studio, delete node_modules and retry. Local install uses the package prebuild.
     goto :fail
 )
 

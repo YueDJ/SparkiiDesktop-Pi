@@ -1,6 +1,10 @@
 packages:
   - packages/*
   - apps/*
+# better-sqlite3 13 ships N-API prebuilds (including win32-x64). Do not compile it
+# against host Node — pnpm 9 treats binding.gyp as `node-gyp rebuild` and that
+# requires Visual Studio on Windows. pnpm 9 honors package.json
+# pnpm.neverBuiltDependencies; pnpm 10.26+ / 11 honor allowBuilds: false.
 allowBuilds:
   esbuild: true
   better-sqlite3: false

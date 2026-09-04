@@ -89,7 +89,7 @@ Monorepo layout (pnpm workspace):
 
 ## Quick Start
 
-Requirements: Node.js ≥ 22, pnpm ≥ 9.
+Requirements: Node.js ≥ 22, pnpm ≥ 9. Local `pnpm install` / `start.cmd` on Windows uses the better-sqlite3 package prebuild and does not need Visual Studio; packaging still needs a C++ toolchain.
 
 ```bash
 pnpm install
