@@ -528,6 +528,8 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
                   })).then((res) => {
                     const id = res?.sessionId;
                     if (!id || !name) return;
+                    if (titledSessions.current.has(id)) return;
+                    titledSessions.current.add(id);
                     void sparkiiApi().setChatTitle?.(id, contractSessionTitle(name), 'agent');
                   });
                 }}
