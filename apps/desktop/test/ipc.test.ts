@@ -1420,4 +1420,31 @@ describe('ipc provider handlers', () => {
     expect(preview).toMatchObject({ kind: 'txt', fileName: 'contract.txt' });
     expect(await handlers.get('sparkii:readDocumentBytes')!(null, join(dataDir, 'other.txt'))).toEqual({ error: 'denied' });
   });
+
+  it('setChatTitle notifies the renderer so the sidebar can show the filename', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const windowSent: any[] = [];
+    const send = vi.fn(async (command: any) => {
+      if (command.type === 'set_session_name') return { success: true };
+      return { success: true };
+    });
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send },
+      chatSession: { profileId: 'contract-review', model: null, kind: 'workflow' },
+      getWindow: () => ({
+        on: () => {},
+        isDestroyed: () => false,
+        webContents: { send: (...args: unknown[]) => { windowSent.push(args); } },
+      }) as any,
+    });
+    const handlers = await registeredHandlers();
+    const result = await handlers.get('sparkii:setChatTitle')!(null, 'wf-1', '采购合同.pdf');
+    expect(result).toEqual({ ok: true });
+    expect(windowSent.some((c) => c[0] === 'sparkii:event:chat-event' && c[1]?.type === 'session_title' && c[1]?.title === '采购合同.pdf')).toBe(true);
+  });
 });

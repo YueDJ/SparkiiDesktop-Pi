@@ -29,6 +29,15 @@ describe('ui chat patterns', () => {
     expect(onModelChange).toHaveBeenCalledWith('deepseek-v4-flash');
   });
 
+  it('opens the menu downward when placement is bottom', () => {
+    render(<ModelEffortControl model="deepseek-v4-pro" defaultModel="deepseek-v4-flash" models={['deepseek-v4-pro']} thinkingLevel="high" thinkingLevels={['low','high']} placement="bottom" onModelChange={vi.fn()} onThinkingLevelChange={vi.fn()} />);
+    fireEvent.click(screen.getByTestId('model-effort-trigger'));
+    const menu = document.querySelector('.ui-menu--fixed') as HTMLElement | null;
+    expect(menu).toBeTruthy();
+    expect(menu?.style.top).toBeTruthy();
+    expect(menu?.style.bottom).toBe('');
+  });
+
   it('thinking row drills into levels and selects one', () => {
     const onThinkingLevelChange = vi.fn();
     render(<ModelEffortControl model="deepseek-v4-pro" defaultModel="deepseek-v4-flash" models={['deepseek-v4-pro']} thinkingLevel="high" thinkingLevels={['low','high']} onModelChange={vi.fn()} onThinkingLevelChange={onThinkingLevelChange} />);

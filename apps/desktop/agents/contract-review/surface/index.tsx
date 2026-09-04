@@ -42,9 +42,12 @@ interface SparkiiWindowApi {
   listThinkingLevels?(providerId: string, modelId: string): Promise<string[]>;
   chooseWorkspace?(): Promise<{ path?: string }>;
   setChatWorkspace?(sessionId: string, path: string | null): Promise<unknown>;
+  setChatTitle?(sessionId: string, title: string): Promise<{ ok: boolean }>;
   on?(event: string, cb: (payload: unknown) => void): () => void;
   appendError?(rec: { id: string; message: string; source: string; createdAt: number }): Promise<unknown>;
 }
+
+const EMPTY_SESSION: AgentSession = { entries: [], streaming: false, status: 'idle', meta: { currentStep: null } };
 
 function sparkiiApi(): SparkiiWindowApi {
   return ((window as any).sparkii ?? {}) as SparkiiWindowApi;
@@ -257,6 +260,7 @@ function ModelEffortBar({
         models={models}
         thinkingLevel={thinkingLevel}
         thinkingLevels={thinkingLevels}
+        placement="bottom"
         onModelChange={onModelChange}
         onThinkingLevelChange={onThinkingLevelChange}
       />
@@ -265,7 +269,11 @@ function ModelEffortBar({
 }
 
 export function ContractAgentSurface(props: AgentSurfaceProps) {
-  const { sessionId, session, actions } = props;
+  const { sessionId, session: rawSession, actions } = props;
+  const [discardSession, setDiscardSession] = useState(false);
+  const prevSessionId = useRef(sessionId);
+  // 点「新会话」后平台会短暂仍传入上一会话；丢弃后只展示空白草稿。
+  const session = discardSession ? EMPTY_SESSION : rawSession;
   const timeline = deriveWorkflowTimeline(session.entries);
   const status = session.status && session.status !== 'idle' ? session.status : timeline.status;
   const currentStep = session.meta.currentStep ?? timeline.step ?? null;
@@ -286,10 +294,17 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
   const inputsKey = inputs.map((i) => i.path).join('\u0000');
   const lastInputsKey = useRef(inputsKey);
   useEffect(() => {
+    if (discardSession || !sessionId) {
+      if (!sessionId && !discardSession && inputsKey !== lastInputsKey.current) {
+        lastInputsKey.current = inputsKey;
+        setDocuments(inputs.map((i) => i.path));
+      }
+      return;
+    }
     if (inputsKey === lastInputsKey.current) return;
     lastInputsKey.current = inputsKey;
     setDocuments((prev) => Array.from(new Set([...inputs.map((i) => i.path), ...prev])));
-  }, [inputsKey]);
+  }, [inputsKey, sessionId, discardSession]);
   const [noteDraft, setNoteDraft] = useState<Record<string, string | undefined>>({});
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
@@ -299,6 +314,7 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
     workspacePath: null, model: null, thinkingLevel: null,
   });
   const previewRef = useRef<HTMLDivElement>(null);
+  const titledSessions = useRef(new Set<string>());
   const [docPreview, setDocPreview] = useState<PreviewResult | null>(null);
   const [previewError, setPreviewError] = useState<PreviewError | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -332,10 +348,19 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
     return () => { cancelled = true; };
   }, [previewPath, sessionId]);
   useEffect(() => {
+    const leftSession = Boolean(prevSessionId.current) && !sessionId;
+    prevSessionId.current = sessionId;
+    if (sessionId) setDiscardSession(false);
+    else if (leftSession) setDiscardSession(true);
     setFilter('all');
     setSelected(new Set());
     setNoteDraft({});
     setLocalFileName('');
+    if (leftSession || (!sessionId && discardSession)) {
+      setDocuments([]);
+      lastInputsKey.current = '';
+      return;
+    }
     setDocuments(inputs.map((i) => i.path));
     lastInputsKey.current = inputsKey;
   }, [sessionId]);
@@ -429,6 +454,29 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
   }, [report]);
 
   const selectedName = fileName || localFileName || (documents[0] ? basename(documents[0]) : '');
+  useEffect(() => {
+    if (!sessionId || !selectedName) return;
+    if (titledSessions.current.has(sessionId)) return;
+    titledSessions.current.add(sessionId);
+    void sparkiiApi().setChatTitle?.(sessionId, selectedName);
+  }, [sessionId, selectedName]);
+
+  const resetDraft = () => {
+    setDocuments([]);
+    setLocalFileName('');
+    setFilter('all');
+    setSelected(new Set());
+    setNoteDraft({});
+    lastInputsKey.current = '';
+  };
+
+  const startNewSession = () => {
+    resetDraft();
+    setDiscardSession(true);
+    actions.newSession();
+  };
+
+  const canMerge = !reportMerged && (findings.length > 0 || Boolean(report));
 
   return (
     <div className="contract-workbench">
@@ -471,7 +519,7 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
             </>
           )}
           {status !== 'idle' && (
-            <button type="button" className="ui-btn" data-testid="new-review" onClick={() => actions.newSession()}>
+            <button type="button" className="ui-btn" data-testid="new-review" onClick={startNewSession}>
               新会话
             </button>
           )}
@@ -623,7 +671,7 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
             )}
 
             <div className="contract-risk-actions contract-report-actions">
-              <button type="button" className="ui-btn ui-btn--primary" disabled={!findings.length || reportMerged} onClick={mergeReport}>合并到报告</button>
+              <button type="button" className="ui-btn ui-btn--primary" disabled={!canMerge} onClick={mergeReport}>合并到报告</button>
               {unprocessedHigh > 0 && !reportMerged && <span className="contract-warning">仍有 {unprocessedHigh} 项高风险未处理</span>}
             </div>
 
