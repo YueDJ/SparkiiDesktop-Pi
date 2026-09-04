@@ -256,7 +256,31 @@ describe('App general agent', () => {
     expect((await screen.findAllByText('优胜美地山谷全景赏析')).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByTestId('agent-nav-general'));
-    await waitFor(() => expect(screen.getAllByText('优胜美地山谷全景赏析').length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getByTestId('session-g1').textContent).toContain('优胜美地山谷全景赏析'));
+  });
+
+  it('resets the chat title to 新对话 on the first new-session click after opening history', async () => {
+    const { api } = makeApi();
+    const history = [
+      { id: 'g1', profileId: 'general', title: '历史绘画标题', workspaceKind: 'auto', workspacePath: 'C:/ws/old', model: null, piSessionFile: null, createdAt: 0, updatedAt: 1 },
+    ];
+    api.listChatSessions.mockResolvedValue(history);
+    api.openChatSession.mockResolvedValue({ messages: [{ role: 'user', text: '历史消息' }] });
+
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+    fireEvent.click(screen.getByTestId('agent-card-general'));
+    await screen.findByTestId('composer-input');
+    fireEvent.click(await screen.findByText('历史绘画标题'));
+    await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
+    expect((await screen.findByTestId('chat-title')).textContent).toBe('历史绘画标题');
+
+    const callsBefore = api.listChatSessions.mock.calls.length;
+    fireEvent.click(screen.getByTestId('agent-nav-general'));
+    await waitFor(() => expect(api.listChatSessions.mock.calls.length).toBeGreaterThan(callsBefore));
+    await act(async () => { await Promise.resolve(); });
+    expect(screen.getByTestId('chat-title').textContent).toBe('新对话');
+    expect(screen.getByTestId('session-g1').textContent).toContain('历史绘画标题');
   });
 });
 

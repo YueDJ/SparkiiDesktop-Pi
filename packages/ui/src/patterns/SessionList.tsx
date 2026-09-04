@@ -20,9 +20,13 @@ export interface SessionGroup {
   sessions: SessionListItem[];
 }
 
+/** 每个智能体分组默认展示的未归档会话数，超出后靠「更多」展开。 */
+export const SESSION_PREVIEW_LIMIT = 5;
+
 export interface SessionListProps {
   groups: SessionGroup[];
   filter?: string;
+  previewLimit?: number;
   onOpen(agentId: string, sessionId: string): void;
   onRename?(agentId: string, sessionId: string): void;
   onDelete?(agentId: string, sessionId: string): void;
@@ -42,11 +46,12 @@ type MenuState = { x: number; y: number; agentId: string; sessionId: string; pin
 type DragState = { agentId: string; sessionId: string };
 
 export function SessionList({
-  groups, filter = '', onOpen, onRename, onDelete, onPin, onArchive, onStop, onRelease, onReorder,
+  groups, filter = '', previewLimit = SESSION_PREVIEW_LIMIT, onOpen, onRename, onDelete, onPin, onArchive, onStop, onRelease, onReorder,
   renaming = null, renameDraft = '', onRenameChange, onRenameCommit, onRenameCancel,
 }: SessionListProps) {
   const [menu, setMenu] = useState<MenuState | null>(null);
   const [expandedArchived, setExpandedArchived] = useState<Set<string>>(new Set());
+  const [expandedMore, setExpandedMore] = useState<Set<string>>(new Set());
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [drag, setDrag] = useState<DragState | null>(null);
   const [overIndex, setOverIndex] = useState<number | null>(null);
@@ -78,6 +83,14 @@ export function SessionList({
 
   const toggleArchiveGroup = (agentId: string) => {
     setExpandedArchived((prev) => {
+      const next = new Set(prev);
+      if (next.has(agentId)) next.delete(agentId); else next.add(agentId);
+      return next;
+    });
+  };
+
+  const toggleMore = (agentId: string) => {
+    setExpandedMore((prev) => {
       const next = new Set(prev);
       if (next.has(agentId)) next.delete(agentId); else next.add(agentId);
       return next;
@@ -189,6 +202,9 @@ export function SessionList({
         const archived = archivedOf(g).filter((s) => !hasFilter || s.name.toLowerCase().includes(filter.trim().toLowerCase()));
         const showArchived = expandedArchived.has(g.agentId);
         const isCollapsed = collapsed.has(g.agentId);
+        const showAllVisible = hasFilter || expandedMore.has(g.agentId);
+        const hiddenCount = showAllVisible ? 0 : Math.max(0, visible.length - previewLimit);
+        const shown = hiddenCount > 0 ? visible.slice(0, previewLimit) : visible;
         if (hasFilter && visible.length === 0 && archived.length === 0) return null;
         return (
           <div key={g.agentId} className="ui-session-group">
@@ -205,13 +221,23 @@ export function SessionList({
                 onDragLeave={(e) => { if (drag?.agentId === g.agentId && !e.currentTarget.contains(e.relatedTarget as Node)) setOverIndex(null); }}
                 onDrop={(e) => { e.preventDefault(); handleDrop(g.agentId, overIndex ?? visible.length); }}
               >
-                {visible.map((s, i) => (
+                {shown.map((s, i) => (
                   <Fragment key={s.id}>
                     {drag?.agentId === g.agentId && overIndex === i && <div className="ui-drop-line" />}
                     {renderRow(s, g.agentId, visible)}
                   </Fragment>
                 ))}
                 {drag?.agentId === g.agentId && overIndex === visible.length && <div className="ui-drop-line" />}
+                {visible.length > previewLimit && !hasFilter && (
+                  <button
+                    type="button"
+                    className="ui-session-more"
+                    data-testid={`session-more-${g.agentId}`}
+                    onClick={() => toggleMore(g.agentId)}
+                  >
+                    {expandedMore.has(g.agentId) ? '收起' : `更多 (${hiddenCount})`}
+                  </button>
+                )}
                 {archived.length > 0 && (
                   <button type="button" className="ui-session-archived-toggle" onClick={() => toggleArchiveGroup(g.agentId)}>
                     <ArchiveIcon /> {showArchived ? '收起归档' : `已归档 (${archived.length})`}

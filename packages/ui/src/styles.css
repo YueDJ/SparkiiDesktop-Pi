@@ -233,8 +233,10 @@ button { font: inherit; color: inherit; }
 .ui-session-status { flex: none; display: inline-flex; align-items: center; }
 .ui-session-status .ui-spinner { width: 12px; height: 12px; border-width: 2px; color: var(--color-primary); }
 .ui-session-rename { flex: 1 1 auto; min-width: 0; height: var(--control-height-sm); font-size: var(--font-size-sm); }
-.ui-session-archived-toggle { display: inline-flex; align-items: center; gap: var(--spacing-xs); margin: 2px 0 0 var(--spacing-xs); border: none; background: none; color: var(--color-textMuted); font-size: var(--font-size-xs); padding: 2px var(--spacing-xs); border-radius: var(--radius-control); cursor: pointer; }
-.ui-session-archived-toggle:hover { color: var(--color-textSecondary); background: var(--color-controlBg); }
+.ui-session-archived-toggle,
+.ui-session-more { display: inline-flex; align-items: center; gap: var(--spacing-xs); margin: 2px 0 0 var(--spacing-xs); border: none; background: none; color: var(--color-textMuted); font-size: var(--font-size-xs); padding: 2px var(--spacing-xs); border-radius: var(--radius-control); cursor: pointer; }
+.ui-session-archived-toggle:hover,
+.ui-session-more:hover { color: var(--color-textSecondary); background: var(--color-controlBg); }
 .ui-agent-glyph { flex: none; width: 16px; height: 16px; color: var(--color-textMuted); }
 .ui-agent.on .ui-agent-glyph { color: var(--color-primary); }
 
