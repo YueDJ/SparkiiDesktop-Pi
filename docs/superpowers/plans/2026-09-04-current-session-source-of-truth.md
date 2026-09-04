@@ -110,7 +110,7 @@ export type CurrentWork =
   | { type: 'session'; agentId: string; sessionId: string | null; mode: SessionMode };
 
 export function openPage(page: string): CurrentWork
-// { type: 'page', page }。page 是开放 id，不枚举今天的四个壳页面。
+// { type: 'page', page }。page 是 'home' 这种短名，不是 UUID，也不枚举今天有哪几页。
 
 export function openHistory(agentId: string, sessionId: string, surfaceType?: string): CurrentWork
 // { type: 'session', ..., mode: surfaceType === 'workflow' ? 'history' : 'live' }
@@ -229,7 +229,7 @@ function commitCurrent(next: CurrentWork) {
 | `onOpenSession(agentId, sessionId)` | `commitCurrent(openHistory(agentId, sessionId, surfaceType))` |
 | `onNewSession(agentId)` | `commitCurrent(openNew(agentId))`；不要改 `sessions[].active` |
 | `onNavigate(agentId)` | `commitCurrent(openNew(agentId))` |
-| `onNavigate(非 Agent 的 pageId)` | `commitCurrent(openPage(pageId))` |
+| `onNavigate(非 Agent 的短名，如 home)` | `commitCurrent(openPage(page))` |
 | 聊天 `actions.openSession(id)` | `commitCurrent(bindSession(currentRef.current, id))` |
 | `startWorkflow` 回写 `res.sessionId` | 同上 `bindSession` |
 | `review` / `requestExport` / `readDocumentBytes` | 仅 `isSession(current) && current.agentId === agentId` 时用 `current.sessionId` |
