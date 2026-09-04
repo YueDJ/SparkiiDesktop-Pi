@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+  desktopRootFromMeta,
   findPrebuild,
   prebuildTarget,
   resolveBetterSqlite3Root,
@@ -53,12 +54,20 @@ describe('install-native-deps prebuild selection', () => {
     expect(shouldSkipRebuild({ rebuildRequested: false, prebuildPath: null })).toBe(false);
   });
 
+  it('resolves desktop root from a file URL and falls back off cwd', () => {
+    expect(desktopRootFromMeta('file:///workspace/apps/desktop/scripts/install-native-deps.mjs')).toBe(
+      '/workspace/apps/desktop',
+    );
+    expect(desktopRootFromMeta('http://vite/test', '/workspace')).toBe('/workspace/apps/desktop');
+    expect(desktopRootFromMeta('http://vite/test', '/workspace/apps/desktop')).toBe('/workspace/apps/desktop');
+  });
+
   it('resolves the installed package and its win32-x64 prebuild', () => {
-    const pkgRoot = resolveBetterSqlite3Root();
+    const requireFromDesktop = createRequire(join(repoRoot, 'apps/desktop/package.json'));
+    const pkgRoot = resolveBetterSqlite3Root(requireFromDesktop);
     expect(pkgRoot).toBeTruthy();
     expect(findPrebuild(pkgRoot, 'win32-x64')).toMatch(/win32-x64\.node$/);
 
-    const requireFromDesktop = createRequire(join(repoRoot, 'apps/desktop/package.json'));
     const Database = requireFromDesktop('better-sqlite3') as typeof import('better-sqlite3');
     const db = new Database(':memory:');
     expect(db.prepare('select 1 as n').get()).toEqual({ n: 1 });

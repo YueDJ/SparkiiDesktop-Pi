@@ -5,10 +5,15 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const desktopRoot = fileURLToPath(new URL('..', import.meta.url));
+export function desktopRootFromMeta(metaUrl = import.meta.url, cwd = process.cwd()) {
+  if (typeof metaUrl === 'string' && metaUrl.startsWith('file:')) {
+    return resolve(fileURLToPath(new URL('..', metaUrl)));
+  }
+  return cwd.endsWith('desktop') ? cwd : join(cwd, 'apps/desktop');
+}
 
 export function prebuildTarget({
   platform = process.platform,
@@ -29,9 +34,10 @@ export function shouldSkipRebuild({ rebuildRequested = false, prebuildPath = nul
   return !rebuildRequested && Boolean(prebuildPath);
 }
 
-export function resolveBetterSqlite3Root(requireFrom = createRequire(join(desktopRoot, 'package.json'))) {
+export function resolveBetterSqlite3Root(requireFrom) {
+  const req = requireFrom ?? createRequire(join(desktopRootFromMeta(), 'package.json'));
   try {
-    return dirname(requireFrom.resolve('better-sqlite3/package.json'));
+    return dirname(req.resolve('better-sqlite3/package.json'));
   } catch {
     return null;
   }
@@ -45,7 +51,7 @@ function runElectronRebuild() {
   const result = spawnSync(
     process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm',
     ['exec', 'electron-builder', 'install-app-deps'],
-    { cwd: desktopRoot, stdio: 'inherit', shell: process.platform === 'win32' },
+    { cwd: desktopRootFromMeta(), stdio: 'inherit', shell: process.platform === 'win32' },
   );
   return result.status ?? 1;
 }
