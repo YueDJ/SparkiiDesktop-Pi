@@ -27,9 +27,14 @@ const HOME = {
 };
 
 function makeApi() {
+  const listeners: Record<string, Set<(p: any) => void>> = {};
   const channels: Record<string, (p: any) => void> = {};
   const api = {
-    on: vi.fn((channel: string, cb: any) => { channels[channel] = cb; return () => {}; }),
+    on: vi.fn((channel: string, cb: any) => {
+      (listeners[channel] ??= new Set()).add(cb);
+      channels[channel] = (p: any) => (listeners[channel] ?? new Set()).forEach((fn) => fn(p));
+      return () => { listeners[channel]?.delete(cb); };
+    }),
     getLocalSubject: vi.fn().mockResolvedValue({ userId: 'alice', roles: ['admin', 'reviewer'] }),
     getProfile: vi.fn().mockResolvedValue({ pages: { home: HOME } }),
     listPendingApprovals: vi.fn().mockResolvedValue([]),
@@ -45,6 +50,7 @@ function makeApi() {
     chooseDocument: vi.fn().mockResolvedValue({ path: 'C:/tmp/contract.pdf' }),
     readDocumentBytes: vi.fn().mockResolvedValue({ error: 'denied' }),
     runWorkflow: vi.fn().mockResolvedValue({ ok: true, sessionId: 'ws1' }),
+    setChatTitle: vi.fn().mockResolvedValue({ ok: true }),
     openChatSession: vi.fn().mockResolvedValue({ entries: [] }),
     listChatSessions: vi.fn().mockResolvedValue([]),
     exportReport: vi.fn(),
@@ -63,6 +69,22 @@ function makeApi() {
 }
 
 describe('App workflow feedback', () => {
+  it('inserts a workflow session when session_title arrives', async () => {
+    const { api, channels } = makeApi();
+    api.listChatSessions = vi.fn().mockResolvedValue([]);
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+    fireEvent.click(screen.getByTestId('agent-card-contract-review'));
+    await screen.findByTestId('review');
+    fireEvent.click(screen.getByTestId('upload'));
+    await screen.findByText('更换文件');
+    fireEvent.click(screen.getByTestId('review'));
+    await waitFor(() => expect(api.runWorkflow).toHaveBeenCalled());
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    act(() => channels['chat-event']({ type: 'session_title', sessionId: 'ws1', title: '采购合同' }));
+    expect(await screen.findByText('采购合同')).toBeTruthy();
+  });
+
   it('groups workflow sessions under contract-review', async () => {
     const { api } = makeApi();
     api.listChatSessions = vi.fn().mockResolvedValue([{ id: 'pi-workflow-1', title: '采购合同', updatedAt: 1 }]);
@@ -79,7 +101,8 @@ describe('App workflow feedback', () => {
     fireEvent.click(screen.getByTestId('agent-card-contract-review'));
     await screen.findByTestId('review');
     fireEvent.click(screen.getByTestId('upload'));
-    await screen.findByText('更换文件');
+    await screen.findByTestId('remove-document');
+    expect(screen.queryByText('更换文件')).toBeNull();
     fireEvent.click(screen.getByTestId('review'));
     expect(api.runWorkflow).toHaveBeenCalledWith('contract-review', expect.objectContaining({ documents: ['C:/tmp/contract.pdf'] }));
     // 让 runWorkflow 解析出 sessionId，useAgentSession 重新订阅到该会话
@@ -119,7 +142,7 @@ describe('App workflow feedback', () => {
     fireEvent.click(screen.getByTestId('agent-card-contract-review'));
     await screen.findByTestId('review');
     fireEvent.click(screen.getByTestId('upload'));
-    await screen.findByText('更换文件');
+    await screen.findByTestId('remove-document');
     fireEvent.click(screen.getByTestId('review'));
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
     act(() => channels['chat-event']({

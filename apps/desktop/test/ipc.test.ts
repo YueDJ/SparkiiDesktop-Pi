@@ -1420,4 +1420,169 @@ describe('ipc provider handlers', () => {
     expect(preview).toMatchObject({ kind: 'txt', fileName: 'contract.txt' });
     expect(await handlers.get('sparkii:readDocumentBytes')!(null, join(dataDir, 'other.txt'))).toEqual({ error: 'denied' });
   });
+
+  it('setChatTitle notifies the renderer so the sidebar can show the filename', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const windowSent: any[] = [];
+    const send = vi.fn(async (command: any) => {
+      if (command.type === 'set_session_name') return { success: true };
+      return { success: true };
+    });
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send },
+      chatSession: { profileId: 'contract-review', model: null, kind: 'workflow' },
+      getWindow: () => ({
+        on: () => {},
+        isDestroyed: () => false,
+        webContents: { send: (...args: unknown[]) => { windowSent.push(args); } },
+      }) as any,
+    });
+    const handlers = await registeredHandlers();
+    const result = await handlers.get('sparkii:setChatTitle')!(null, 'wf-1', '采购合同.pdf', 'agent');
+    expect(result).toEqual({ ok: true });
+    expect(windowSent.some((c) => c[0] === 'sparkii:event:chat-event' && c[1]?.type === 'session_title' && c[1]?.title === '采购合同.pdf')).toBe(true);
+  });
+
+  it('setChatTitle rejects empty titles and agent writes after a user lock', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const windowSent: any[] = [];
+    const send = vi.fn(async (command: any) => {
+      if (command.type === 'set_session_name') return { success: true };
+      return { success: true };
+    });
+    const chatSession: { profileId: string; model: null; kind: string; titleLockedByUser: boolean; piSessionFile?: string | null } = {
+      profileId: 'contract-review',
+      model: null,
+      kind: 'workflow',
+      titleLockedByUser: false,
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send },
+      chatSession,
+      getWindow: () => ({
+        on: () => {},
+        isDestroyed: () => false,
+        webContents: { send: (...args: unknown[]) => { windowSent.push(args); } },
+      }) as any,
+    });
+    (rt as any).chatSessions.get = () => chatSession;
+    (rt as any).chatSessions.update = (_id: string, patch: { titleLockedByUser?: boolean }) => {
+      if (patch.titleLockedByUser != null) chatSession.titleLockedByUser = patch.titleLockedByUser;
+    };
+    const handlers = await registeredHandlers();
+    const setTitle = handlers.get('sparkii:setChatTitle')!;
+    expect(await setTitle(null, 'wf-1', '   ', 'agent')).toEqual({ ok: false });
+    expect(windowSent.filter((c) => c[1]?.type === 'session_title')).toHaveLength(0);
+
+    expect(await setTitle(null, 'wf-1', '我改的名字', 'user')).toEqual({ ok: true });
+    expect(send).toHaveBeenCalledWith({ type: 'set_session_name', name: '我改的名字' });
+    expect(chatSession.titleLockedByUser).toBe(true);
+
+    send.mockClear();
+    windowSent.length = 0;
+    expect(await setTitle(null, 'wf-1', '采购合同', 'agent')).toEqual({ ok: false, reason: 'locked' });
+    expect(send).not.toHaveBeenCalled();
+    expect(windowSent.some((c) => c[1]?.type === 'session_title')).toBe(false);
+  });
+
+  it('listChatSessions does not put firstMessage into title', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    vi.mocked(listPiSessions).mockReset();
+    vi.mocked(listPiSessions).mockResolvedValue([
+      {
+        id: 's1',
+        name: undefined,
+        firstMessage: 'A'.repeat(80),
+        path: '/tmp/s.jsonl',
+        cwd: '',
+        created: new Date(),
+        modified: new Date(),
+        messageCount: 1,
+      },
+    ] as any);
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      chatSession: { profileId: 'general', model: null },
+    });
+    const handlers = await registeredHandlers();
+    const result = await handlers.get('sparkii:listChatSessions')!(null, 'general') as Array<{ title?: string; firstMessage?: string }>;
+    expect(result[0].title).toBeUndefined();
+    expect(result[0].firstMessage).toBe('A'.repeat(80));
+    vi.mocked(listPiSessions).mockReset();
+    vi.mocked(listPiSessions).mockImplementation(listPiSessions as any);
+  });
+
+  it('completeText forwards text to complete without renaming the session', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({ defaultModel: 'deepseek-v4-flash', activeProviderId: 'deepseek' }), 'utf8');
+    const send = vi.fn(async (command: any) => {
+      if (command.type === 'complete') return { success: true, data: '模型回答' };
+      return { success: true };
+    });
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send },
+      chatSession: { profileId: 'general', model: null },
+    });
+    const handlers = await registeredHandlers();
+    const result = await handlers.get('sparkii:completeText')!(null, 's1', '只是一句普通补全');
+    expect(result).toEqual({ ok: true, text: '模型回答' });
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({ type: 'complete', text: '只是一句普通补全' }));
+    expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'set_session_name' }));
+  });
+
+  it('does not auto-title a chat session on agent_end', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const events: Array<(e: any) => void> = [];
+    const sent: any[] = [];
+    const client = {
+      onEvent: (cb: (event: any) => void) => {
+        events.push(cb);
+        return () => {};
+      },
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'new_session') return { success: true };
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's1', sessionFile: '/tmp/s.jsonl', isStreaming: false } };
+        }
+        return { success: true };
+      },
+    };
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'general', model: null, kind: 'chat' },
+    });
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:promptSession')!(null, null, 'hello', undefined, undefined, { profileId: 'general' });
+    for (const cb of events) cb({ type: 'agent_end' });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(sent.some((c) => c.type === 'complete')).toBe(false);
+    expect(sent.some((c) => c.type === 'set_session_name')).toBe(false);
+  });
 });

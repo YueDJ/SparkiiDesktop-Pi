@@ -60,7 +60,6 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     string,
     { slot: Awaited<ReturnType<typeof rt.pool.acquire>>; profileId: string; offEvents?: () => void }
   >();
-  const titledSessions = new Set<string>();
   const appliedModelBySession = new Map<string, { provider: string; modelId: string }>();
   const idleTimers = new Map<string, ReturnType<typeof setTimeout>>();
   const inFlightWorkflowRuns = new Set<string>();
@@ -122,53 +121,11 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     return { baseUrl: base.baseUrl, api: undefined, apiKey };
   }
 
-const messageText = (m: unknown): string => {
-    const rec = (m ?? {}) as { role?: string; text?: string; content?: unknown };
-    if (typeof rec.content === 'string') return rec.content;
-    if (Array.isArray(rec.content)) return rec.content.map((b) => (b as { text?: string })?.text ?? '').join('');
-    return typeof rec.text === 'string' ? rec.text : '';
-};
-
 const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   'deepseek-v4-pro': ['chat', 'reasoning', 'longContext', 'toolCall', 'thinking'],
   'deepseek-v4-flash': ['chat', 'fast', 'toolCall'],
   'deepseek-vision': ['chat', 'vision'],
 };
-
-  async function maybeGenerateTitle(
-    sessionId: string,
-    profileId: string,
-    slot: Awaited<ReturnType<typeof rt.pool.acquire>>,
-  ): Promise<void> {
-    try {
-      const settings = await loadSettings(rt.dataDir);
-      const target = resolveModelTarget(settings, 'title');
-      if (!target) return;
-      const resp = await slot.client.send({ type: 'get_messages' });
-      const messages = (resp.data ?? []) as unknown[];
-      const firstUser = messages.find((m) => (m as { role?: string })?.role === 'user');
-      const firstAssistant = messages.find((m) => (m as { role?: string })?.role === 'assistant');
-      const userText = messageText(firstUser);
-      const assistantText = messageText(firstAssistant);
-      const prompt = userText
-        ? `请为以下对话生成一个不超过20字的标题。\n用户：${userText}${assistantText ? `\n助手：${assistantText}` : ''}`
-        : '';
-      if (!prompt) return;
-      const titleResp = await slot.client.send({
-        type: 'complete',
-        provider: target.provider,
-        modelId: target.modelId,
-        text: prompt,
-      });
-      if (!titleResp.success) return;
-      const name = String(titleResp.data ?? '').trim().slice(0, 40);
-      if (!name) return;
-      await slot.client.send({ type: 'set_session_name', name });
-      getWindow()?.webContents.send('sparkii:event:chat-event', { type: 'session_title', sessionId, title: name });
-    } catch {
-      // 标题生成失败不影响主流程
-    }
-  }
 
   const chatStateData = (data: unknown): {
     isStreaming?: boolean;
@@ -220,13 +177,8 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     const win = getWindow();
     entry.offEvents = entry.slot.client.onEvent((ev) => {
       win?.webContents.send('sparkii:event:chat-event', { ...ev, sessionId });
-      const rec = rt.chatSessions.get(sessionId);
       if (ev.type === 'agent_settled' && !inFlightWorkflowRuns.has(sessionId)) {
         scheduleIdleRelease(sessionId);
-      }
-      if (ev.type === 'agent_end' && rec?.kind !== 'workflow' && !titledSessions.has(sessionId)) {
-        titledSessions.add(sessionId);
-        void maybeGenerateTitle(sessionId, entry.profileId, entry.slot).catch(() => {});
       }
     });
   }
@@ -402,7 +354,8 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       const rec = rt.chatSessions.get(s.id);
       return {
         id: s.id,
-        title: s.name ?? s.firstMessage,
+        title: s.name,
+        firstMessage: s.firstMessage,
         profileId: rec?.profileId,
         updatedAt: s.modified.getTime(),
         piFile: s.path,
@@ -528,25 +481,47 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     return { ok: true, steering: next.steering, followUp: next.followUp };
   });
 
-  ipcMain.handle('sparkii:setChatTitle', (_e, sessionId: string, title: string) => {
-    // 手动命名后不再自动生成标题，避免覆盖用户重命名
-    titledSessions.add(sessionId);
+  ipcMain.handle('sparkii:setChatTitle', (_e, sessionId: string, title: string, source?: 'user' | 'agent') => {
+    const trimmed = String(title ?? '').trim();
+    if (!trimmed) return { ok: false };
+    const origin = source === 'user' ? 'user' : 'agent';
+    const rec = rt.chatSessions.get(sessionId);
+    if (origin === 'agent' && rec?.titleLockedByUser) return { ok: false, reason: 'locked' };
+    if (origin === 'user' && rec) {
+      rt.chatSessions.update(sessionId, { titleLockedByUser: true });
+    }
+    getWindow()?.webContents.send('sparkii:event:chat-event', { type: 'session_title', sessionId, title: trimmed });
     const open = openSessions.get(sessionId);
     if (!open) {
-      const rec = rt.chatSessions.get(sessionId);
       if (rec) {
         void rt.pool.acquire(sessionId, {
           saddle: buildSaddle(rec.profileId, sessionId),
           resumeSessionFile: rec.piSessionFile ?? undefined,
         }).then((slot) => {
           openSessions.set(sessionId, { slot, profileId: rec.profileId });
-          return slot.client.send({ type: 'set_session_name', name: title });
+          return slot.client.send({ type: 'set_session_name', name: trimmed });
         }).catch(() => {});
         return { ok: true };
       }
     }
-    if (open) void open.slot.client.send({ type: 'set_session_name', name: title }).catch(() => {});
+    if (open) void open.slot.client.send({ type: 'set_session_name', name: trimmed }).catch(() => {});
     return { ok: true };
+  });
+
+  ipcMain.handle('sparkii:completeText', async (_e, sessionId: string, text: string) => {
+    const open = await ensureOpenSession(sessionId);
+    const settings = await loadSettings(rt.dataDir);
+    const target = resolveModelTarget(settings, 'title') ?? resolveModelTarget(settings, 'default');
+    if (!target) return { ok: false };
+    const resp = await open.slot.client.send({
+      type: 'complete',
+      provider: target.provider,
+      modelId: target.modelId,
+      text: String(text ?? ''),
+    });
+    if (!resp.success) return { ok: false };
+    const out = String(resp.data ?? '').trim();
+    return out ? { ok: true, text: out } : { ok: false };
   });
 
   ipcMain.handle('sparkii:setChatModel', async (_e, sessionId: string, model: string | null) => {

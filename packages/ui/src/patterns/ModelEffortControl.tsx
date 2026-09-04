@@ -10,6 +10,8 @@ export interface ModelEffortProps {
   thinkingLevels: string[];
   onModelChange(model: string | null): void;
   onThinkingLevelChange(level: string | null): void;
+  /** Chat composer sits at the bottom, so the default opens upward. Header toolbars should pass `bottom`. */
+  placement?: 'top' | 'bottom';
 }
 
 const LEVEL_LABELS: Record<string, string> = {
@@ -44,7 +46,7 @@ export function ModelEffortControl(props: ModelEffortProps) {
         <ChevronDownIcon className="ui-model-effort-caret" />
       </button>
       {open && (
-        <Menu open onClose={close} containerRef={wrapperRef} placement="top">
+        <Menu open onClose={close} containerRef={wrapperRef} placement={props.placement ?? 'top'}>
           {sub === 'root' ? (
             <>
               <MenuItem label="模型" hint={currentModel} onSelect={() => setSub('model')} />

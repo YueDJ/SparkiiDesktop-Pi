@@ -28,18 +28,19 @@ function renderSurface(workflow: { status: string; step?: string }, state: Recor
 describe('ContractSurface', () => {
   it('shows upload and start controls when idle', () => {
     renderSurface({ status: 'idle' }, { documents: [] });
-    expect(screen.getByTestId('upload')).toBeTruthy();
+    expect(screen.getByTestId('upload').textContent).toBe('选择合同文件');
+    expect(screen.queryByText('更换文件')).toBeNull();
     expect(screen.getByTestId('review')).toBeTruthy();
   });
 
   it('collapses the upload card into a compact file chip after choosing a file', async () => {
     const onAction = vi.fn();
-    const chooseDocument = vi.fn().mockResolvedValue({ path: 'C:/tmp/chosen.pdf' });
+    const chooseDocument = vi.fn().mockResolvedValue({ path: 'C:/tmp/chosen.txt' });
     const readDocumentBytes = vi.fn().mockResolvedValue({
-      kind: 'pdf',
-      fileName: 'chosen.pdf',
-      fileSize: 2048,
-      bytes: new ArrayBuffer(8),
+      kind: 'txt',
+      fileName: 'chosen.txt',
+      fileSize: 12,
+      bytes: new TextEncoder().encode('合同正文').buffer,
     });
     render(
       <ContractAgentSurface
@@ -60,10 +61,12 @@ describe('ContractSurface', () => {
     );
     fireEvent.click(screen.getByTestId('upload'));
     expect(chooseDocument).toHaveBeenCalledWith({ extensions: ['pdf', 'docx', 'txt'] });
-    expect((await screen.findByTestId('upload')).textContent).toBe('更换文件');
-    expect((await screen.findAllByText('chosen.pdf')).length).toBeGreaterThan(0);
+    expect(await screen.findByTestId('remove-document')).toBeTruthy();
+    expect(screen.queryByTestId('upload')).toBeNull();
+    expect(screen.queryByText('更换文件')).toBeNull();
+    expect((await screen.findAllByText('chosen.txt')).length).toBeGreaterThan(0);
     expect(screen.queryByText('尚未选择合同文件')).toBeNull();
-    await waitFor(() => expect(readDocumentBytes).toHaveBeenCalledWith('C:/tmp/chosen.pdf'));
+    await waitFor(() => expect(readDocumentBytes).toHaveBeenCalledWith('C:/tmp/chosen.txt'));
   });
 
   it('renders risk findings with levels and advice from workflow result', () => {
@@ -306,6 +309,141 @@ describe('ContractAgentSurface', () => {
     expect(actions.newSession).toHaveBeenCalled();
   });
 
+  it('clears the previous file when starting a new session even if session props are stale', () => {
+    const actions = makeActions();
+    const stale = {
+      entries: [],
+      streaming: false,
+      status: 'done' as const,
+      meta: { currentStep: 'report' as const, inputs: [{ path: 'C:/tmp/a.pdf', name: 'a.pdf' }] },
+    };
+    const { rerender } = render(
+      <ContractAgentSurface agent={agent} sessionId="s1" mode="history" session={stale} actions={actions} />,
+    );
+    expect(screen.getAllByText('a.pdf').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByTestId('new-review'));
+    expect(actions.newSession).toHaveBeenCalled();
+    rerender(
+      <ContractAgentSurface agent={agent} sessionId={null} mode="live" session={stale} actions={actions} />,
+    );
+    expect(screen.queryByText('a.pdf')).toBeNull();
+    expect(screen.getByText('尚未选择合同文件')).toBeTruthy();
+    expect((screen.getByTestId('review') as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByText('合并到报告') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('names the session after the stripped contract filename', async () => {
+    const setChatTitle = vi.fn().mockResolvedValue({ ok: true });
+    (window as any).sparkii = {
+      getModelOptions: async () => ({ models: [], defaultModel: null, provider: 'deepseek' }),
+      getChatState: async () => ({}),
+      getChatSession: async () => ({}),
+      setChatTitle,
+      on: () => () => {},
+    };
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s-title"
+        mode="live"
+        session={{ entries: [], streaming: false, status: 'running', meta: { currentStep: 'review', inputs: [{ path: 'C:/tmp/采购合同.pdf', name: '采购合同.pdf' }] } }}
+        actions={makeActions()}
+      />,
+    );
+    await waitFor(() => expect(setChatTitle).toHaveBeenCalledWith('s-title', '采购合同', 'agent'));
+    delete (window as any).sparkii;
+  });
+
+  it('does not overwrite an existing session title', async () => {
+    const setChatTitle = vi.fn().mockResolvedValue({ ok: true });
+    (window as any).sparkii = {
+      getModelOptions: async () => ({ models: [], defaultModel: null, provider: 'deepseek' }),
+      getChatState: async () => ({}),
+      getChatSession: async () => ({}),
+      setChatTitle,
+      on: () => () => {},
+    };
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s-title"
+        mode="live"
+        title="用户改的"
+        session={{ entries: [], streaming: false, status: 'running', meta: { currentStep: 'review', inputs: [{ path: 'C:/tmp/采购合同.pdf', name: '采购合同.pdf' }] } }}
+        actions={makeActions()}
+      />,
+    );
+    await new Promise((r) => setTimeout(r, 40));
+    expect(setChatTitle).not.toHaveBeenCalled();
+    delete (window as any).sparkii;
+  });
+
+  it('does not backfill a title when opening history', async () => {
+    const setChatTitle = vi.fn().mockResolvedValue({ ok: true });
+    (window as any).sparkii = {
+      getModelOptions: async () => ({ models: [], defaultModel: null, provider: 'deepseek' }),
+      getChatState: async () => ({}),
+      getChatSession: async () => ({}),
+      setChatTitle,
+      on: () => () => {},
+    };
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s-hist"
+        mode="history"
+        session={{ entries: [], streaming: false, status: 'done', meta: { currentStep: 'report', inputs: [{ path: 'C:/tmp/采购合同.pdf', name: '采购合同.pdf' }] } }}
+        actions={makeActions()}
+      />,
+    );
+    await new Promise((r) => setTimeout(r, 40));
+    expect(setChatTitle).not.toHaveBeenCalled();
+    delete (window as any).sparkii;
+  });
+
+  it('does not publish a title before the session exists', async () => {
+    const setChatTitle = vi.fn().mockResolvedValue({ ok: true });
+    (window as any).sparkii = {
+      getModelOptions: async () => ({ models: [], defaultModel: null, provider: 'deepseek' }),
+      getChatState: async () => ({}),
+      getChatSession: async () => ({}),
+      setChatTitle,
+      on: () => () => {},
+    };
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId={null}
+        mode="live"
+        session={{ entries: [], streaming: false, status: 'idle', meta: { currentStep: null, inputs: [{ path: 'C:/tmp/采购合同.pdf', name: '采购合同.pdf' }] } }}
+        actions={makeActions()}
+      />,
+    );
+    await new Promise((r) => setTimeout(r, 40));
+    expect(setChatTitle).not.toHaveBeenCalled();
+    delete (window as any).sparkii;
+  });
+
+  it('keeps merge enabled in history when a report exists', () => {
+    const actions = makeActions();
+    const entries = normalizeSessionEntries([
+      { type: 'custom', id: 'c2', customType: 'workflow_step_end', data: { stepId: 'report', status: 'completed', output: { title: '合同审核报告', sections: [{ heading: '结论', body: '关注' }] } } },
+    ]);
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s-hist"
+        mode="history"
+        session={{ entries, streaming: false, status: 'done', result: extractWorkflowResult(entries), meta: { currentStep: 'report', inputs: [{ path: 'C:/tmp/a.pdf', name: 'a.pdf' }] } }}
+        actions={actions}
+      />,
+    );
+    const merge = screen.getByText('合并到报告') as HTMLButtonElement;
+    expect(merge.disabled).toBe(false);
+    fireEvent.click(merge);
+    expect(actions.review).toHaveBeenCalledWith('report_merged', { stepId: 'report' });
+  });
+
   it('shows risk cards after a review step_end output without session.result', () => {
     const entries = normalizeSessionEntries([
       { type: 'custom', id: 'c1', customType: 'workflow_step_start', data: { stepId: 'review' } },
@@ -488,7 +626,9 @@ describe('ContractAgentSurface', () => {
       />,
     );
     fireEvent.click(screen.getByTestId('upload'));
-    await screen.findByText('更换文件');
+    await screen.findByTestId('remove-document');
+    expect(screen.queryByText('更换文件')).toBeNull();
+    expect(screen.queryByTestId('upload')).toBeNull();
     fireEvent.click(screen.getByTestId('workspace'));
     await waitFor(() => expect(screen.getByTestId('workspace').textContent).toContain('contract'));
     fireEvent.click(screen.getByTestId('review'));

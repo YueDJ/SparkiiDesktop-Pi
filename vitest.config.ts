@@ -15,6 +15,7 @@ export default defineConfig({
           include: ['apps/**/test/**/*.test.{ts,tsx}'],
           environment: 'jsdom',
           pool: 'forks',
+          setupFiles: ['apps/desktop/test/setup.ts'],
         },
       },
     ],

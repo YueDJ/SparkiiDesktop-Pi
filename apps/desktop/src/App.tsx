@@ -13,7 +13,7 @@ import type { AgentSession, AgentSurfaceActions } from './surface/contract.js';
 
 export function sessionDisplayName(s: { title?: string; firstMessage?: string; updatedAt?: number }): string {
   if (s.title) return s.title;
-  if (s.firstMessage) return String(s.firstMessage).slice(0, 24);
+  if (s.firstMessage) return String(s.firstMessage).slice(0, 20);
   return s.updatedAt
     ? new Date(s.updatedAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
     : '会话';
@@ -162,6 +162,8 @@ function AppShell() {
   const workflowFor = (agentId: string) => workflowByAgent[agentId] ?? { sessionId: null, mode: 'live' as const };
   const workflowByAgentRef = useRef(workflowByAgent);
   useEffect(() => { workflowByAgentRef.current = workflowByAgent; }, [workflowByAgent]);
+  const activeSessionByAgentRef = useRef(activeSessionByAgent);
+  useEffect(() => { activeSessionByAgentRef.current = activeSessionByAgent; }, [activeSessionByAgent]);
 
   useEffect(() => api.on('approval', (p) => {
     setPending((xs) => [...xs, p]);
@@ -178,20 +180,41 @@ function AppShell() {
       if (ov) ov.updatedAt = Date.now();
     }
     if (p?.type === 'session_title' && p?.sessionId) {
-      const ov = sessionOverridesRef.current.get(p.sessionId);
-      if (ov) ov.name = p.title;
+      const title = String(p.title ?? '');
+      const prevOv = sessionOverridesRef.current.get(p.sessionId) ?? {};
+      sessionOverridesRef.current.set(p.sessionId, { ...prevOv, name: title, updatedAt: Date.now() });
       setSessions((prev) => {
         const next = { ...prev };
+        let found = false;
         for (const k of Object.keys(next)) {
-          next[k] = next[k].map((s) => (s.id === p.sessionId ? { ...s, name: p.title } : s));
+          if (next[k].some((s) => s.id === p.sessionId)) {
+            found = true;
+            next[k] = next[k].map((s) => (s.id === p.sessionId ? { ...s, name: title } : s));
+          }
+        }
+        if (!found) {
+          const owner =
+            Object.entries(activeSessionByAgentRef.current).find(([, sid]) => sid === p.sessionId)?.[0]
+            ?? Object.entries(workflowByAgentRef.current).find(([, w]) => w.sessionId === p.sessionId)?.[0];
+          if (owner) {
+            const list = next[owner] ?? [];
+            const pinned = list.filter((s) => s.pinned);
+            const unpinned = list.filter((s) => !s.pinned && !s.archived);
+            const arch = list.filter((s) => s.archived);
+            const sessionItem: ShellSession = { id: p.sessionId, name: title, state: '', active: true, updatedAt: Date.now() };
+            next[owner] = [...pinned, sessionItem, ...unpinned, ...arch];
+          }
         }
         return next;
       });
       for (const [agentId, sid] of Object.entries(activeSessionByAgent)) {
-        if (sid === p.sessionId) setTitleFor(agentId, p.title);
+        if (sid === p.sessionId) setTitleFor(agentId, title);
+      }
+      for (const [agentId, w] of Object.entries(workflowByAgent)) {
+        if (w.sessionId === p.sessionId) setTitleFor(agentId, title);
       }
     }
-  }), [api, activeSessionByAgent]);
+  }), [api, activeSessionByAgent, workflowByAgent]);
   useEffect(() => {
     const off = api.on('runtime-pool', (p: any) => setRuntimePool(mapRuntimePool(p, pending)));
     api.getRuntimePool?.().then((p: any) => setRuntimePool(mapRuntimePool(p, pending))).catch(() => {});
@@ -361,7 +384,7 @@ function AppShell() {
       return { ...prev, [agentId]: list.map((s) => (s.id === sessionId ? { ...s, name: title } : s)) };
     });
     if (sessionId === activeSessionFor(agentId)) setTitleFor(agentId, title);
-    api.setChatTitle?.(sessionId, title)?.then(() => refreshSessions(agentId));
+    api.setChatTitle?.(sessionId, title, 'user')?.then(() => refreshSessions(agentId));
   };
 
   const onDeleteSession = (agentId: string, sessionId: string) => {
@@ -452,21 +475,8 @@ function AppShell() {
     setScreen(s);
   };
 
-  // 一旦首条消息发出，立即把会话插入历史，避免等后端刷新造成延迟。
-  const commitNewSession = (agentId: string, sessionId: string, title?: string) => {
+  const bindChatSession = (agentId: string, sessionId: string) => {
     setActiveSessionFor(agentId, sessionId);
-    sessionOverridesRef.current.set(sessionId, { name: title ? String(title).slice(0, 24) : '新对话', updatedAt: Date.now(), agentId });
-    const name = String(title || '新对话').slice(0, 24);
-    setTitleFor(agentId, name);
-    setSessions((prev) => {
-      const list = prev[agentId] ?? [];
-      if (list.some((s) => s.id === sessionId)) return prev;
-      const pinned = list.filter((s) => s.pinned);
-      const unpinned = list.filter((s) => !s.pinned && !s.archived);
-      const arch = list.filter((s) => s.archived);
-      const sessionItem: ShellSession = { id: sessionId, name, state: '', active: true, updatedAt: Date.now() };
-      return { ...prev, [agentId]: [...pinned, sessionItem, ...unpinned, ...arch] };
-    });
     refreshSessions(agentId, sessionId);
   };
 
@@ -477,7 +487,7 @@ function AppShell() {
     if (isChat) {
       return {
         newSession: () => onNewSession(agentId),
-        openSession: (sessionId, title) => commitNewSession(agentId, sessionId, title),
+        openSession: (sessionId) => bindChatSession(agentId, sessionId),
         startWorkflow: () => {},
         review: () => {},
         requestExport: () => {},
@@ -538,7 +548,11 @@ function AppShell() {
       sessionId={a.surfaceType === 'chat' ? activeSessionFor(a.id) : workflowFor(a.id).sessionId}
       mode={a.surfaceType === 'chat' ? 'live' : workflowFor(a.id).mode}
       buildActions={buildActions}
-      title={a.surfaceType === 'chat' ? (titleFor(a.id) || '新对话') : undefined}
+      title={(() => {
+        const sid = a.surfaceType === 'chat' ? activeSessionFor(a.id) : workflowFor(a.id).sessionId;
+        const listed = (sessions[a.id] ?? []).find((s) => s.id === sid)?.name;
+        return titleFor(a.id) || listed || undefined;
+      })()}
     />
   ));
   const surfaceNode = surfaces[screen] ?? null;
