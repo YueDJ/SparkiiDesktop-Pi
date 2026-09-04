@@ -53,6 +53,12 @@ function makeApi() {
     setChatTitle: vi.fn().mockResolvedValue({ ok: true }),
     openChatSession: vi.fn().mockResolvedValue({ entries: [] }),
     listChatSessions: vi.fn().mockResolvedValue([]),
+    deleteChatSession: vi.fn().mockResolvedValue({ ok: true }),
+    getChatState: vi.fn().mockResolvedValue({ streaming: false, steering: [], followUp: [] }),
+    getChatSession: vi.fn().mockResolvedValue({}),
+    getSettings: vi.fn().mockResolvedValue({ chatDetailLevel: 'standard' }),
+    getModelOptions: vi.fn().mockResolvedValue({ defaultModel: null, models: [] }),
+    promptSession: vi.fn().mockResolvedValue({ ok: true, sessionId: 'g1', behavior: 'prompt' }),
     exportReport: vi.fn(),
     requestExportReport: vi.fn().mockResolvedValue({ ok: true, approved: true }),
     updateWorkflowState: vi.fn().mockResolvedValue({ ok: true }),
@@ -84,6 +90,7 @@ describe('App workflow feedback', () => {
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
     act(() => channels['chat-event']({ type: 'session_title', sessionId: 'ws1', title: '采购合同' }));
     expect(await screen.findByText('采购合同')).toBeTruthy();
+    expect(screen.getByTestId('session-ws1').className).toMatch(/current/);
   });
 
   it('groups workflow sessions under contract-review', async () => {
@@ -193,5 +200,55 @@ describe('App workflow feedback', () => {
       }));
     });
     expect(api.requestExportReport.mock.calls[0][1].html).toBeUndefined();
+  });
+
+  it('highlights only the opened contract history row', async () => {
+    const { api } = makeApi();
+    api.listChatSessions.mockResolvedValue([
+      { id: 'c1', profileId: 'contract-review', title: '合同 A', updatedAt: 2 },
+      { id: 'g1', profileId: 'general', title: '通用旧会话', updatedAt: 1 },
+    ]);
+    api.openChatSession.mockResolvedValue({ entries: [] });
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+    fireEvent.click(await screen.findByText('合同 A'));
+    await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('c1'));
+    expect(screen.getByTestId('session-c1').className).toMatch(/current/);
+    expect(screen.getByTestId('session-g1').className).not.toMatch(/current/);
+  });
+
+  it('clears the only highlight when opening a new general session', async () => {
+    const { api } = makeApi();
+    api.listChatSessions.mockResolvedValue([
+      { id: 'c1', profileId: 'contract-review', title: '合同 A', updatedAt: 2 },
+      { id: 'g1', profileId: 'general', title: '通用旧会话', updatedAt: 1 },
+    ]);
+    api.openChatSession.mockResolvedValue({ entries: [] });
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+    fireEvent.click(await screen.findByText('合同 A'));
+    await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('c1'));
+    expect(screen.getByTestId('session-c1').className).toMatch(/current/);
+    fireEvent.click(screen.getByTestId('agent-nav-general'));
+    await screen.findByTestId('composer-input');
+    expect(screen.getByTestId('session-c1').className).not.toMatch(/current/);
+    expect(screen.getByTestId('session-g1').className).not.toMatch(/current/);
+  });
+
+  it('returns to an empty live workspace after deleting the current contract session', async () => {
+    const { api } = makeApi();
+    let remaining = [{ id: 'c1', profileId: 'contract-review', title: '合同 A', updatedAt: 2 }];
+    api.listChatSessions.mockImplementation(async () => remaining);
+    api.openChatSession.mockResolvedValue({ entries: [] });
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+    fireEvent.click(await screen.findByText('合同 A'));
+    await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('c1'));
+    fireEvent.contextMenu(screen.getByTestId('session-c1'));
+    fireEvent.click(screen.getByRole('menuitem', { name: /删除/ }));
+    remaining = [];
+    await waitFor(() => expect(api.deleteChatSession).toHaveBeenCalledWith('c1'));
+    await screen.findByTestId('review');
+    await waitFor(() => expect(screen.queryByTestId('session-c1')).toBeNull());
   });
 });
