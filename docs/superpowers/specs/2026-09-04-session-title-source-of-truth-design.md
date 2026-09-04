@@ -1,6 +1,6 @@
 # Session Title Source of Truth — Design Spec
 
-**Status:** Draft (pending human review)
+**Status:** Implemented
 **Date:** 2026-09-04
 **Branch:** `cursor/session-title-source-of-truth-3fdc`
 **Supersedes:** `docs/superpowers/specs/2026-08-26-session-storage-and-credentials-design.md` §5.2（平台在 `agent_end` 后自动起名）
@@ -26,8 +26,8 @@
 6. **平台生产代码不按 agent id 分支。** `App.tsx` / `ipc.ts` 不出现「合同用文件名、通用走两步」这类判断。锁名规则对所有 Agent 相同。
 7. **合同审核：** 用户点「开始审核」且已有 `sessionId` 后，公布一次。title = 文件名去掉最后一个扩展名，再 `slice(0, 20)`。未点开始、只有本地选文件时不公布（还没有会话）。Pi 里已有名字则不再公布。
 8. **通用智能体，两步，都在 `agents/general`：**
-   1. 第一条用户消息发出、会话 id 可用：先公布占位名 = 该条可见文本截到 20 字。
-   2. 第一条助手回复出现后：Agent 自己用「用户第一句 + 助手第一句」向模型要一个不超过 20 字的短名，再公布一次。之后不再改。
+   1. 第一条用户消息发出、会话 id 可用且还没有标题：先公布占位名 = 该条可见文本截到 20 字（现算，不另存）。
+   2. 第一条助手回复出现后：仅当当前标题仍等于「用同一规则再算出来的占位」时，才用「用户第一句 + 助手第一句」起不超过 20 字的短名并公布。对不上就不再写。
 9. **截断是 Agent 的事。** 平台写入和显示都不截断。合同、通用占位、通用短名都按 JS 字符串 `slice(0, 20)`（中文一字一长度）。
 10. **侧栏有名就立刻出现。** 公布是插入侧栏的唯一正规入口。`openSession` / `startWorkflow` 只绑定当前会话 id，不再编一个「新对话」当产品标题。
 11. **用户改过名之后，Agent 永远不能再改。** 靠平台持久化的锁保证，不靠组件内存。见下方「用户锁名」。
@@ -193,15 +193,16 @@ stripLastExt("只有名字")         → "只有名字"
 
 何时公布：
 
-- 当前 Pi / 界面还没有名字（新会话刚有 `sessionId`）→ `setChatTitle(id, 算出的名字, "agent")`。
-- 已经有名字（自己写过的文件名、用户改过的、打开历史）→ **不再调用**。这是合同自己的礼貌；打开旧历史不依赖锁也能保住已有标题。
+- 当前是 live、有 `sessionId`、且 Pi / 界面还没有名字 → `setChatTitle(id, 算出的名字, "agent")`。
+- 已经有名字（自己写过的文件名、用户改过的）→ **不再调用**。
+- 打开历史（`mode === "history"`）→ **不再调用**，避免给没有 Pi name 的旧会话回填文件名。
 - 平台锁是第二道：即使用户改名后 Surface 又调用了，也会被拒绝。
 
 公布之后侧栏立刻出现（平台 upsert）。同一 `sessionId` 再次开始审核、或换文件再跑，都不改已经存在的名字。新会话新 `sessionId` 才按新文件再起一次名。
 
 ### 通用智能体（`agents/general`）
 
-今天 `agents/general/surface/index.tsx` 只是 `export default StandardChatSurface`。两步策略加在 **general 包内的包装层**，不要写进 `src/surface/standard-chat.tsx`。
+两步策略在 **general 包内的包装层**，不要写进 `src/surface/standard-chat.tsx`。
 
 包装层仍渲染 `StandardChatSurface`，自己看 props 里的 `sessionId`、`session.entries`、当前 `title`。
 

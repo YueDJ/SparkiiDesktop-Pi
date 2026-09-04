@@ -93,6 +93,22 @@ describe('GeneralAgentSurface titles', () => {
     await waitFor(() => expect(api.setChatTitle).toHaveBeenCalledWith('g1', '违约责任条款修改', 'agent'));
   });
 
+  it('truncates a completed short title to 20 characters', async () => {
+    const long = '这是一个非常非常长的短名应该被截断到二十个字以外';
+    const api = makeApi({
+      completeText: vi.fn().mockResolvedValue({ ok: true, text: long }),
+    });
+    renderGeneral({
+      api,
+      title: '你好',
+      entries: [
+        { kind: 'message', id: 'u1', role: 'user', text: '你好', streaming: false },
+        { kind: 'message', id: 'a1', role: 'assistant', text: '在的', streaming: false },
+      ],
+    });
+    await waitFor(() => expect(api.setChatTitle).toHaveBeenCalledWith('g1', long.slice(0, 20), 'agent'));
+  });
+
   it('does not complete or rename when the user already changed the title', async () => {
     const api = makeApi({
       completeText: vi.fn().mockResolvedValue({ ok: true, text: '不该用' }),

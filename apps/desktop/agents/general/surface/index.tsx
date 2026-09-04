@@ -1,17 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { StandardChatSurface, type StandardChatProps } from '../../../src/surface/standard-chat.js';
+import type { SparkiiApi } from '../../../src/types/sparkii-api.js';
 import { decideTitle, firstAssistantText, firstUserText } from './title.js';
 
 export { applyChatEvent, normalizeMessages, type ChatEntry } from '@sparkii/ui';
 
-function sparkiiApi(): {
-  setChatTitle?(sessionId: string, title: string, source?: 'user' | 'agent'): Promise<{ ok: boolean; reason?: 'locked' }>;
-  completeText?(sessionId: string, text: string): Promise<{ ok: boolean; text?: string }>;
-} {
-  return ((window as unknown as { sparkii?: Record<string, unknown> }).sparkii ?? {}) as {
-    setChatTitle?(sessionId: string, title: string, source?: 'user' | 'agent'): Promise<{ ok: boolean; reason?: 'locked' }>;
-    completeText?(sessionId: string, text: string): Promise<{ ok: boolean; text?: string }>;
-  };
+function sparkiiApi(): Pick<SparkiiApi, 'setChatTitle' | 'completeText'> {
+  return ((window as unknown as { sparkii?: SparkiiApi }).sparkii ?? {}) as SparkiiApi;
 }
 
 export default function GeneralAgentSurface(props: StandardChatProps) {

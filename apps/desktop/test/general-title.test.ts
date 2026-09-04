@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import type { SessionEntry } from '../src/surface/contract.js';
 import {
   decideTitle,
   firstAssistantText,
@@ -8,7 +7,16 @@ import {
   shortTitlePrompt,
 } from '../agents/general/surface/title.js';
 
-const user = (text: string, over: Partial<Extract<SessionEntry, { kind: 'message' }>> = {}): SessionEntry => ({
+type MessageEntry = {
+  kind: 'message';
+  id: string;
+  role: 'user' | 'assistant';
+  text: string;
+  streaming: boolean;
+  thinking?: string;
+};
+
+const user = (text: string, over: Partial<MessageEntry> = {}): MessageEntry => ({
   kind: 'message',
   id: `u-${text}`,
   role: 'user',
@@ -17,7 +25,7 @@ const user = (text: string, over: Partial<Extract<SessionEntry, { kind: 'message
   ...over,
 });
 
-const assistant = (text: string, over: Partial<Extract<SessionEntry, { kind: 'message' }>> = {}): SessionEntry => ({
+const assistant = (text: string, over: Partial<MessageEntry> = {}): MessageEntry => ({
   kind: 'message',
   id: `a-${text}`,
   role: 'assistant',
@@ -40,7 +48,7 @@ describe('placeholderOf', () => {
 
 describe('first message extractors', () => {
   it('uses the first visible user and assistant text and ignores tools and thinking-only replies', () => {
-    const entries: SessionEntry[] = [
+    const entries = [
       { kind: 'tool', id: 't1', toolName: 'bash', input: { command: 'ls' } },
       user('  帮我改违约责任  '),
       user('第二条用户消息'),

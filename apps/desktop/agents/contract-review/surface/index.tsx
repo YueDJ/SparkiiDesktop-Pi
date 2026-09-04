@@ -456,11 +456,12 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
   const selectedName = fileName || localFileName || (documents[0] ? basename(documents[0]) : '');
   useEffect(() => {
     if (!sessionId || !selectedName) return;
+    if (props.mode === 'history') return;
     if (props.title?.trim()) return;
     if (titledSessions.current.has(sessionId)) return;
     titledSessions.current.add(sessionId);
     void sparkiiApi().setChatTitle?.(sessionId, contractSessionTitle(selectedName), 'agent');
-  }, [sessionId, selectedName, props.title]);
+  }, [sessionId, selectedName, props.title, props.mode]);
 
   const resetDraft = () => {
     setDocuments([]);

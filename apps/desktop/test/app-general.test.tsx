@@ -171,6 +171,22 @@ describe('App general agent', () => {
     expect(screen.getAllByText('你好').length).toBeGreaterThan(0);
   });
 
+  it('lets the general agent publish a placeholder title onto the sidebar', async () => {
+    const { api, channels } = makeApi();
+    api.listChatSessions.mockResolvedValue([]);
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+    fireEvent.click(screen.getByTestId('agent-card-general'));
+    const input = await screen.findByTestId('composer-input');
+    fireEvent.change(input, { target: { value: '你好' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
+    act(() => channels['chat-event']({ type: 'message', role: 'user', text: '你好', sessionId: 'g1' }));
+    await waitFor(() => expect(api.setChatTitle).toHaveBeenCalledWith('g1', '你好', 'agent'));
+    expect(await screen.findByTestId('session-g1')).toBeTruthy();
+    expect(screen.getAllByText('你好').length).toBeGreaterThan(0);
+  });
+
   it('does not insert a sidebar row from openSession alone', async () => {
     const { api } = makeApi();
     api.listChatSessions.mockResolvedValue([]);

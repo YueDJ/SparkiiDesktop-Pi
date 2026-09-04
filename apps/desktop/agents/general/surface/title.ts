@@ -1,23 +1,28 @@
-import type { SessionEntry } from '../../../src/surface/contract.js';
+type TitleEntry = {
+  kind: string;
+  role?: string;
+  text?: string;
+  streaming?: boolean;
+};
 
 export function placeholderOf(userText: string): string {
   return userText.trim().slice(0, 20) || '新对话';
 }
 
-function firstMessageText(entries: SessionEntry[], role: 'user' | 'assistant'): string | undefined {
+function firstMessageText(entries: readonly TitleEntry[], role: 'user' | 'assistant'): string | undefined {
   for (const entry of entries) {
     if (entry.kind !== 'message' || entry.role !== role || entry.streaming) continue;
-    const text = entry.text.trim();
+    const text = entry.text?.trim() ?? '';
     if (text) return text;
   }
   return undefined;
 }
 
-export function firstUserText(entries: SessionEntry[]): string | undefined {
+export function firstUserText(entries: readonly TitleEntry[]): string | undefined {
   return firstMessageText(entries, 'user');
 }
 
-export function firstAssistantText(entries: SessionEntry[]): string | undefined {
+export function firstAssistantText(entries: readonly TitleEntry[]): string | undefined {
   return firstMessageText(entries, 'assistant');
 }
 
