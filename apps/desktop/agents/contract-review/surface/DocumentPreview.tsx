@@ -37,9 +37,11 @@ function PdfPreview({ bytes }: { bytes: ArrayBuffer }) {
     void (async () => {
       try {
         const pdfjs = await import('pdfjs-dist');
-        const worker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
-        pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
-        const doc = await pdfjs.getDocument({ data: new Uint8Array(bytes) }).promise;
+        // Import the worker into this thread. Electron's file:// origin is
+        // "null", so a module Worker (or import of a hashed file URL) is
+        // blocked on Windows and can take the window down.
+        await import('pdfjs-dist/build/pdf.worker.min.mjs');
+        const doc = await pdfjs.getDocument({ data: new Uint8Array(bytes.slice(0)) }).promise;
         if (cancelled) return;
         for (let i = 1; i <= doc.numPages; i++) {
           const page = await doc.getPage(i);
