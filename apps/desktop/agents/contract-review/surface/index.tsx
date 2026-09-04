@@ -3,6 +3,7 @@ import { ContextUsageBar, Markdown, ModelEffortControl, RiskBadge, THINKING_LEVE
 import type { AgentSession, AgentSurfaceActions, AgentSurfaceProps, CustomSessionEntry } from '../../../src/surface/contract.js';
 import { deriveWorkflowTimeline, extractWorkflowResult } from '../../../src/surface/normalize.js';
 import { captureReportHtml, formatReport, parseRiskFindings, reportExportPath } from './contract.js';
+import { contractSessionTitle } from './title.js';
 import { bytesToBase64, documentFromHtml } from './report-docx.js';
 import { DocumentPreview, formatFileSize, kindLabel, type PreviewKind } from './DocumentPreview.js';
 import './styles.css';
@@ -42,7 +43,7 @@ interface SparkiiWindowApi {
   listThinkingLevels?(providerId: string, modelId: string): Promise<string[]>;
   chooseWorkspace?(): Promise<{ path?: string }>;
   setChatWorkspace?(sessionId: string, path: string | null): Promise<unknown>;
-  setChatTitle?(sessionId: string, title: string): Promise<{ ok: boolean }>;
+  setChatTitle?(sessionId: string, title: string, source?: 'user' | 'agent'): Promise<{ ok: boolean; reason?: 'locked' }>;
   on?(event: string, cb: (payload: unknown) => void): () => void;
   appendError?(rec: { id: string; message: string; source: string; createdAt: number }): Promise<unknown>;
 }
@@ -455,10 +456,11 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
   const selectedName = fileName || localFileName || (documents[0] ? basename(documents[0]) : '');
   useEffect(() => {
     if (!sessionId || !selectedName) return;
+    if (props.title?.trim()) return;
     if (titledSessions.current.has(sessionId)) return;
     titledSessions.current.add(sessionId);
-    void sparkiiApi().setChatTitle?.(sessionId, selectedName);
-  }, [sessionId, selectedName]);
+    void sparkiiApi().setChatTitle?.(sessionId, contractSessionTitle(selectedName), 'agent');
+  }, [sessionId, selectedName, props.title]);
 
   const resetDraft = () => {
     setDocuments([]);
