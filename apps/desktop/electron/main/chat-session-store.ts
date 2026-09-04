@@ -20,14 +20,18 @@ export interface ChatSessionRecord {
   pinned: boolean;
   archived: boolean;
   sortOrder: number | null;
+  /** User renamed this session; agent title publishes must not overwrite. Not the title string. */
+  titleLockedByUser: boolean;
   createdAt: number;
   updatedAt: number;
 }
 
 type Row = ChatSessionRecord;
 
+const SELECT_COLS = 'id, profile_id AS profileId, kind, current_step AS currentStep, workspace_kind AS workspaceKind, workspace_path AS workspacePath, model, thinking_level AS thinkingLevel, pi_session_file AS piSessionFile, inputs, pinned, archived, sort_order AS sortOrder, title_locked_by_user AS titleLockedByUser, created_at AS createdAt, updated_at AS updatedAt';
+
 function toRecord(row: Row): ChatSessionRecord {
-  return { ...row, pinned: !!row.pinned, archived: !!row.archived };
+  return { ...row, pinned: !!row.pinned, archived: !!row.archived, titleLockedByUser: !!row.titleLockedByUser };
 }
 
 export class ChatSessionStore {
@@ -51,6 +55,7 @@ export class ChatSessionStore {
         pinned INTEGER NOT NULL DEFAULT 0,
         archived INTEGER NOT NULL DEFAULT 0,
         sort_order REAL,
+        title_locked_by_user INTEGER NOT NULL DEFAULT 0,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
       );
@@ -84,9 +89,12 @@ export class ChatSessionStore {
     if (!columns.some((c) => c.name === 'inputs')) {
       this.db.exec('ALTER TABLE chat_sessions ADD COLUMN inputs TEXT');
     }
+    if (!columns.some((c) => c.name === 'title_locked_by_user')) {
+      this.db.exec('ALTER TABLE chat_sessions ADD COLUMN title_locked_by_user INTEGER NOT NULL DEFAULT 0');
+    }
   }
 
-  create(rec: { id: string; profileId: string; kind?: SessionKind; currentStep?: string | null; workspaceKind: WorkspaceKind; workspacePath: string; model?: string | null; thinkingLevel?: string | null; piSessionFile?: string | null; inputs?: string | null; pinned?: boolean; archived?: boolean; sortOrder?: number | null }): ChatSessionRecord {
+  create(rec: { id: string; profileId: string; kind?: SessionKind; currentStep?: string | null; workspaceKind: WorkspaceKind; workspacePath: string; model?: string | null; thinkingLevel?: string | null; piSessionFile?: string | null; inputs?: string | null; pinned?: boolean; archived?: boolean; sortOrder?: number | null; titleLockedByUser?: boolean }): ChatSessionRecord {
     const now = Date.now();
     const row: Row = {
       id: rec.id, profileId: rec.profileId,
@@ -94,17 +102,19 @@ export class ChatSessionStore {
       workspaceKind: rec.workspaceKind, workspacePath: rec.workspacePath,
       model: rec.model ?? null, thinkingLevel: rec.thinkingLevel ?? null, piSessionFile: rec.piSessionFile ?? null,
       inputs: rec.inputs ?? null,
-      pinned: rec.pinned ?? false, archived: rec.archived ?? false, sortOrder: rec.sortOrder ?? null, createdAt: now, updatedAt: now,
+      pinned: rec.pinned ?? false, archived: rec.archived ?? false, sortOrder: rec.sortOrder ?? null,
+      titleLockedByUser: rec.titleLockedByUser ?? false,
+      createdAt: now, updatedAt: now,
     };
     this.db.prepare(
-      `INSERT INTO chat_sessions (id, profile_id, kind, current_step, workspace_kind, workspace_path, model, thinking_level, pi_session_file, inputs, pinned, archived, sort_order, created_at, updated_at)
-       VALUES (@id, @profileId, @kind, @currentStep, @workspaceKind, @workspacePath, @model, @thinkingLevel, @piSessionFile, @inputs, @pinned, @archived, @sortOrder, @createdAt, @updatedAt)`,
-    ).run({ ...row, pinned: row.pinned ? 1 : 0, archived: row.archived ? 1 : 0 });
+      `INSERT INTO chat_sessions (id, profile_id, kind, current_step, workspace_kind, workspace_path, model, thinking_level, pi_session_file, inputs, pinned, archived, sort_order, title_locked_by_user, created_at, updated_at)
+       VALUES (@id, @profileId, @kind, @currentStep, @workspaceKind, @workspacePath, @model, @thinkingLevel, @piSessionFile, @inputs, @pinned, @archived, @sortOrder, @titleLockedByUser, @createdAt, @updatedAt)`,
+    ).run({ ...row, pinned: row.pinned ? 1 : 0, archived: row.archived ? 1 : 0, titleLockedByUser: row.titleLockedByUser ? 1 : 0 });
     return row;
   }
 
   list(profileId?: string): ChatSessionRecord[] {
-    const sql = 'SELECT id, profile_id AS profileId, kind, current_step AS currentStep, workspace_kind AS workspaceKind, workspace_path AS workspacePath, model, thinking_level AS thinkingLevel, pi_session_file AS piSessionFile, inputs, pinned, archived, sort_order AS sortOrder, created_at AS createdAt, updated_at AS updatedAt FROM chat_sessions';
+    const sql = `SELECT ${SELECT_COLS} FROM chat_sessions`;
     if (profileId) {
       return (this.db.prepare(`${sql} WHERE profile_id = ? ORDER BY updated_at DESC`).all(profileId) as unknown as Row[]).map(toRecord);
     }
@@ -113,18 +123,18 @@ export class ChatSessionStore {
 
   get(id: string): ChatSessionRecord | undefined {
     const row = this.db.prepare(
-      'SELECT id, profile_id AS profileId, kind, current_step AS currentStep, workspace_kind AS workspaceKind, workspace_path AS workspacePath, model, thinking_level AS thinkingLevel, pi_session_file AS piSessionFile, inputs, pinned, archived, sort_order AS sortOrder, created_at AS createdAt, updated_at AS updatedAt FROM chat_sessions WHERE id = ?',
+      `SELECT ${SELECT_COLS} FROM chat_sessions WHERE id = ?`,
     ).get(id) as unknown as Row | undefined;
     return row ? toRecord(row) : undefined;
   }
 
-  update(id: string, patch: Partial<Pick<ChatSessionRecord, 'kind' | 'currentStep' | 'model' | 'thinkingLevel' | 'workspaceKind' | 'workspacePath' | 'piSessionFile' | 'inputs' | 'pinned' | 'archived' | 'sortOrder'>>): ChatSessionRecord | undefined {
+  update(id: string, patch: Partial<Pick<ChatSessionRecord, 'kind' | 'currentStep' | 'model' | 'thinkingLevel' | 'workspaceKind' | 'workspacePath' | 'piSessionFile' | 'inputs' | 'pinned' | 'archived' | 'sortOrder' | 'titleLockedByUser'>>): ChatSessionRecord | undefined {
     const cur = this.get(id);
     if (!cur) return undefined;
     const next: Row = { ...cur, ...patch, updatedAt: Date.now() };
     this.db.prepare(
-      `UPDATE chat_sessions SET kind=@kind, current_step=@currentStep, workspace_kind=@workspaceKind, workspace_path=@workspacePath, model=@model, thinking_level=@thinkingLevel, pi_session_file=@piSessionFile, inputs=@inputs, pinned=@pinned, archived=@archived, sort_order=@sortOrder, updated_at=@updatedAt WHERE id=@id`,
-    ).run({ ...next, pinned: next.pinned ? 1 : 0, archived: next.archived ? 1 : 0 });
+      `UPDATE chat_sessions SET kind=@kind, current_step=@currentStep, workspace_kind=@workspaceKind, workspace_path=@workspacePath, model=@model, thinking_level=@thinkingLevel, pi_session_file=@piSessionFile, inputs=@inputs, pinned=@pinned, archived=@archived, sort_order=@sortOrder, title_locked_by_user=@titleLockedByUser, updated_at=@updatedAt WHERE id=@id`,
+    ).run({ ...next, pinned: next.pinned ? 1 : 0, archived: next.archived ? 1 : 0, titleLockedByUser: next.titleLockedByUser ? 1 : 0 });
     return next;
   }
 
