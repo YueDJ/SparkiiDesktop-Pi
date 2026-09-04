@@ -124,6 +124,49 @@ function extractJsonValue(text: string): unknown | undefined {
   return undefined;
 }
 
+export type ContractTimelineEntry = {
+  kind: string;
+  role?: string;
+  text?: string;
+  customType?: string;
+  data?: Record<string, unknown>;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+export function isReviewOutput(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  return Array.isArray(value.riskFindings) || Array.isArray(value.comparisons);
+}
+
+export function isReportOutput(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+  return typeof value.title === 'string' || Array.isArray(value.sections) || value.riskTable != null;
+}
+
+/** History replay often keeps skill JSON only in assistant messages, not in custom step_end rows. */
+export function extractContractOutputsFromEntries(entries: readonly ContractTimelineEntry[]): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const e of entries) {
+    if (e.kind !== 'message' || e.role !== 'assistant' || typeof e.text !== 'string') continue;
+    const parsed = extractJsonValue(e.text);
+    if (isReviewOutput(parsed)) out.review = parsed;
+    if (isReportOutput(parsed)) out.report = parsed;
+  }
+  return out;
+}
+
+export function resolveContractResult(
+  sessionResult: Record<string, unknown> | undefined,
+  stepResult: Record<string, unknown>,
+  entryOutputs: Record<string, unknown>,
+): Record<string, unknown> {
+  const session = sessionResult && Object.keys(sessionResult).length > 0 ? sessionResult : {};
+  return { ...entryOutputs, ...stepResult, ...session };
+}
+
 export function parseRiskFindings(rows: unknown): RiskFinding[] {
   if (!rows) return [];
   if (typeof rows === 'string') {

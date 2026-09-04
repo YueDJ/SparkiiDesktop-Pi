@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ContextUsageBar, Markdown, ModelEffortControl, RiskBadge, THINKING_LEVELS } from '@sparkii/ui';
 import type { AgentSession, AgentSurfaceActions, AgentSurfaceProps, CustomSessionEntry } from '../../../src/surface/contract.js';
 import { deriveWorkflowTimeline, extractWorkflowResult } from '../../../src/surface/normalize.js';
-import { captureReportHtml, formatReport, parseRiskFindings, reportExportPath } from './contract.js';
+import { captureReportHtml, extractContractOutputsFromEntries, formatReport, parseRiskFindings, reportExportPath, resolveContractResult } from './contract.js';
 import { contractSessionTitle } from './title.js';
 import { bytesToBase64, documentFromHtml } from './report-docx.js';
 import { DocumentPreview, formatFileSize, kindLabel, type PreviewKind } from './DocumentPreview.js';
@@ -278,7 +278,11 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
   const timeline = deriveWorkflowTimeline(session.entries);
   const status = session.status && session.status !== 'idle' ? session.status : timeline.status;
   const currentStep = session.meta.currentStep ?? timeline.step ?? null;
-  const result = session.result ?? extractWorkflowResult(session.entries);
+  const result = resolveContractResult(
+    session.result,
+    extractWorkflowResult(session.entries),
+    extractContractOutputsFromEntries(session.entries),
+  );
   const reviewPayload = (result?.['review'] ?? result?.['compare']) as unknown;
   const findings = parseRiskFindings(reviewPayload);
   const report = formatReport(result?.['report']);
@@ -479,7 +483,8 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
     actions.newSession();
   };
 
-  const canMerge = !reportMerged && (findings.length > 0 || Boolean(report));
+  // 历史会话保持可写：打开后仍可继续复核并再次合并。实时会话合并一次后才锁住。
+  const canMerge = (findings.length > 0 || Boolean(report)) && (props.mode === 'history' || !reportMerged);
 
   return (
     <div className="contract-workbench">
