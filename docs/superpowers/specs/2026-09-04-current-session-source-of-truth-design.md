@@ -1,6 +1,6 @@
 # Current Session Source of Truth — Design Spec
 
-**Status:** Draft (pending human review — 审核通过后再改代码)
+**Status:** Implemented
 **Date:** 2026-09-04
 **Branch:** `cursor/current-session-truth-9b43`
 **Depends on:** 会话标题公布（`2026-09-04-session-title-source-of-truth-design.md`）；Agent 薄契约（`2026-09-01`、`2026-09-02`）

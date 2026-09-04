@@ -350,12 +350,11 @@ function AppShell() {
     }).catch(() => {});
   };
 
-  const onNewSession = async (agentId: string) => {
+  const onNewSession = (agentId: string) => {
     commitCurrent(openNew(agentId));
   };
 
   const onOpenSession = (agentId: string, sessionId: string) => {
-    stampSessionOwner(sessionId, agentId);
     commitCurrent(openHistory(agentId, sessionId, surfaceTypeOf(agentId)));
     refreshSessions(agentId);
   };
@@ -476,7 +475,10 @@ function AppShell() {
     }
     return {
       newSession: () => onNewSession(agentId),
-      openSession: (id) => onOpenSession(agentId, id),
+      openSession: (id) => {
+        bindCurrentSession(agentId, id);
+        refreshSessions(agentId);
+      },
       startWorkflow: (payload) => {
         const work = currentRef.current;
         if (isSession(work) && work.agentId === agentId && work.mode !== 'live') {
@@ -484,9 +486,7 @@ function AppShell() {
         }
         api.runWorkflow(agentId, payload).then((res) => {
           if (!res?.sessionId) return;
-          stampSessionOwner(res.sessionId, agentId);
-          const live = currentRef.current;
-          if (isSession(live) && live.agentId === agentId) commitCurrent(bindSession(live, res.sessionId));
+          bindCurrentSession(agentId, res.sessionId);
         }).catch(() => {});
       },
       review: (action, payload) => {

@@ -90,6 +90,7 @@ describe('App workflow feedback', () => {
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
     act(() => channels['chat-event']({ type: 'session_title', sessionId: 'ws1', title: '采购合同' }));
     expect(await screen.findByText('采购合同')).toBeTruthy();
+    expect(screen.getByTestId('session-ws1').className).toMatch(/current/);
   });
 
   it('groups workflow sessions under contract-review', async () => {
