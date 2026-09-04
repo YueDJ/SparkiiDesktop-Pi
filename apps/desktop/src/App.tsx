@@ -485,6 +485,7 @@ function AppShell() {
           return res;
         }).catch((e: any) => {
           reportError(String(e?.message ?? e), { source: agents.find((a) => a.id === agentId)?.name ?? agentId });
+          return {};
         });
       },
       review: (action, payload) => {

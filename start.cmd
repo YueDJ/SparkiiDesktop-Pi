@@ -22,7 +22,7 @@ if errorlevel 1 (
         set "PATH=%SPARKII_NODE_DIR%;%PATH%"
     ) else (
         echo [ERROR] Node.js not found. Install Node.js v22 or newer and add it to PATH.
-        exit /b 1
+        goto :fail
     )
 )
 
@@ -41,7 +41,7 @@ if errorlevel 1 (
     call npm install -g pnpm@9
     if errorlevel 1 (
         echo [ERROR] Failed to install pnpm. Run "npm install -g pnpm@9" or "corepack enable" manually.
-        exit /b 1
+        goto :fail
     )
 )
 
@@ -51,27 +51,27 @@ echo [0/3] Installing workspace dependencies...
 cd /d "%ROOT%"
 if errorlevel 1 (
     echo [ERROR] Cannot change to %ROOT%
-    exit /b 1
+    goto :fail
 )
 call pnpm install
 if errorlevel 1 (
     echo [ERROR] pnpm install failed. From the repo root run: pnpm install
-    exit /b 1
+    goto :fail
 )
 
 cd /d "%APP_DIR%"
 if errorlevel 1 (
     echo [ERROR] Cannot change to %APP_DIR%
-    exit /b 1
+    goto :fail
 )
 
 echo [1/3] Building renderer...
 call pnpm build:renderer
-if errorlevel 1 exit /b 1
+if errorlevel 1 goto :fail
 
 echo [2/3] Building main/preload/pi-runtime...
 call pnpm build:main
-if errorlevel 1 exit /b 1
+if errorlevel 1 goto :fail
 
 goto :start_electron
 
@@ -79,10 +79,25 @@ goto :start_electron
 cd /d "%APP_DIR%"
 if errorlevel 1 (
     echo [ERROR] Cannot change to %APP_DIR%
-    exit /b 1
+    goto :fail
 )
 
 :start_electron
+if not exist "dist-electron\main\index.js" (
+    echo [ERROR] Missing dist-electron\main\index.js. Run start.cmd without --no-build.
+    goto :fail
+)
+if not exist "dist\index.html" (
+    echo [ERROR] Missing dist\index.html. Run start.cmd without --no-build.
+    goto :fail
+)
 echo [3/3] Starting Electron...
 call pnpm exec electron .
-exit /b %ERRORLEVEL%
+if errorlevel 1 goto :fail
+exit /b 0
+
+:fail
+echo.
+echo [ERROR] start.cmd stopped. Scroll up for the first [ERROR] or build output.
+if /I not "%SPARKII_NO_PAUSE%"=="1" pause
+exit /b 1
