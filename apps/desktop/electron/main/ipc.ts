@@ -531,6 +531,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   ipcMain.handle('sparkii:setChatTitle', (_e, sessionId: string, title: string) => {
     // 手动命名后不再自动生成标题，避免覆盖用户重命名
     titledSessions.add(sessionId);
+    getWindow()?.webContents.send('sparkii:event:chat-event', { type: 'session_title', sessionId, title });
     const open = openSessions.get(sessionId);
     if (!open) {
       const rec = rt.chatSessions.get(sessionId);
