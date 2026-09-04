@@ -203,24 +203,36 @@ stripLastExt("只有名字")         → "只有名字"
 
 今天 `agents/general/surface/index.tsx` 只是 `export default StandardChatSurface`。两步策略加在 **general 包内的包装层**，不要写进 `src/surface/standard-chat.tsx`。
 
-包装层仍渲染 `StandardChatSurface`，自己看 props 里的 `sessionId` 与 `session.entries`：
+包装层仍渲染 `StandardChatSurface`，自己看 props 里的 `sessionId`、`session.entries`、当前 `title`。
+
+**占位名怎么来：现算，不另存。**
+
+```text
+placeholderOf(第一条用户可见文本) = trim(文本).slice(0, 20) || 「新对话」
+```
+
+第一条用户可见文本 = 已写入会话的那条用户正文（与 `StandardChatSurface` 发出的 `display` 相同，含附件前缀）。算法是纯函数，时间线上永远还在，所以**不必**再写一份「我当时占位写了啥」到内存或磁盘。第二次写之前，用同一函数再算一遍，和**当前标题**比。
 
 **第一步 — 占位名**
 
-- 条件：`sessionId` 有值，且时间线上已有第一条用户可见文本。可见文本 = 已写入会话的那条用户正文（与 `StandardChatSurface` 发出的 `display` 相同，含附件前缀），不是平台另算的摘要。
-- 名字：`trim` 后 `slice(0, 20)`；若截完为空，用「新对话」。
-- 立刻 `setChatTitle(id, 占位, "agent")`。每会话只做一次。若此时已锁（用户抢先改了名，几乎不会发生），平台拒绝即可。
+- 条件：`sessionId` 有值，已有第一条用户可见文本，且当前还没有标题。
+- 公布 `placeholderOf(...)`，`source: "agent"`。
+- 已有标题（打开历史、已经占位过）→ 不写。
 
 **第二步 — 短名**
 
-- 条件：第一步已做；时间线上已有第一条助手可见正文；本会话还没尝试过短名。助手可见正文 = 第一条带非空 `content` 文本的助手消息；纯思考 / 纯工具块不算。
-- Agent 自己组 prompt（例如：用这两段话起一个不超过 20 字的中文标题，只输出标题）。
-- 经无业务语义的补全拿到字符串，`trim` + `slice(0, 20)`；空则保持占位名，不再写。
-- 若已锁，或当前名已经不是自己写的那个占位名 → 不公布短名。
-- 补全失败、无模型、无 key：静默保持占位名，不影响对话。
-- 只尝试一次，不论成败。短名之后本 Agent 不再调用 `setChatTitle`。
+- 条件：已有第一条助手可见正文（非空 `content`；纯思考 / 纯工具块不算）。
+- `expected = placeholderOf(第一条用户文本)`。
+- **仅当 `当前标题 === expected` 时**才起短名并公布。意思是：现在挂着的还是我按规则算出的那个占位，没有被用户改掉，也还没换成短名。
+- `当前标题 !== expected` → 什么都不做。包括：用户改过、短名已经写过、打开历史。不必记「我已经起过短名」。
+- 已锁 → 即使误调用也会被平台拒绝。
+- 补全失败 / 空串 / 无模型：不公布，保持占位。
+- 同一挂载周期里用本地标记避免对同一次回复打两次补全；这只是防抖，不是判断依据。
 
-包装层可用本组件内的 `Set<sessionId>` 少打重复请求；**不能**把它当成「用户改过名」的保证。保证在平台锁。
+```text
+当前标题 === placeholderOf(首条用户消息)  →  还可以起短名
+当前标题是别的字 / 已经是短名 / 用户改过   →  不再写
+```
 
 `StandardChatSurface` 的 `openSession(res.sessionId)` 继续只用来告诉平台「当前会话是这个 id」。不要把用户原文经 `openSession(id, title)` 传给平台当名字。
 
@@ -284,7 +296,7 @@ completeText(sessionId: string, text: string): Promise<{ ok: boolean; text?: str
 
 之后无论通用短名、合同打开历史、同一会话再次开始审核，Agent 的 `setChatTitle(..., "agent")` 都被拒绝。
 
-通用若发生在占位之后、短名之前：Agent 自己也会跳过；平台锁是底线。
+通用若发生在占位之后、短名之前：当前标题已经不是 `placeholderOf(首条消息)`，Agent 跳过；平台锁是底线。打开已有短名的历史同样对不上占位，不会再起一次名。
 
 ## Error Handling
 
@@ -329,7 +341,9 @@ completeText(sessionId: string, text: string): Promise<{ ok: boolean; text?: str
 - 首条消息后公布 `slice(0, 20)`；侧栏立刻是占位名，且 Pi 收到同名。
 - 助手首条回复后调用补全（prompt 在 Agent 测试里锁定）；再公布短名；侧栏改名不双行。
 - 补全失败：侧栏仍是占位名。
-- 占位与短名之间用户改名：不再公布短名；平台侧亦已上锁。
+- 占位与短名之间用户改名：当前标题 ≠ `placeholderOf(首条)`，不公布短名；平台侧亦已上锁。
+- 打开已有短名的历史：当前标题 ≠ 占位，不再补全、不再写。
+- 不把占位名另存到内存或磁盘；只从第一条用户消息现算。
 - `StandardChatSurface` 不包含起名策略。
 
 回归：`app-general` / `app-workflow` / `contract-surface` / `ipc` 里与标题、列表、新会话相关的用例按新语义改，不放宽。
@@ -359,6 +373,7 @@ completeText(sessionId: string, text: string): Promise<{ ok: boolean; text?: str
 - 无 TBD：公布口、空串、截断归属、合同去扩展名、两步时机、用户锁的存储与 source、打开历史、列表字段、补全边界均已选定。
 - 与已确认原则一致：平台不起名；jsonl 仍是标题字符串唯一落盘；锁是索引元数据，不是第二套标题。
 - 不靠 Agent 组件内存保证「用户改过不再覆盖」；合同打开历史靠「已有名字不公布」+ 平台锁两道。
+- 通用不另存占位名：占位是第一条用户消息的纯函数，第二次写只比较「当前标题 === 再算出来的占位」。
 - 一份 spec 覆盖一条管道 + 两个已有 Agent 的策略，不拆第二份。落地可按上面三段做 plan。
 - 修订了 2026-08-26 的「平台在第一轮结束起名」：触发和 prompt 回到通用 Agent；平台只保留写入、广播、便宜模型路由、用户锁。
 - `completeText` 是通用补全，不是起名服务；合同不调用，避免平台再长出标题业务。
