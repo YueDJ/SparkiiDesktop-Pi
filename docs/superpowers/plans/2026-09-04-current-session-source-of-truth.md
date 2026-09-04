@@ -2,9 +2,9 @@
 
 > **For agentic workers:** 本 plan 在 spec 经人工审核通过前 **不得执行**。审核通过后，用 superpowers:executing-plans 按任务逐步落地。Steps 用 checkbox (`- [ ]`) 跟踪。
 
-**Goal:** 全应用只留一份 `current`；左边目录高亮和右边工作区都从它派生；删掉按 Agent 分叉的三份当前状态。
+**Goal:** 全应用只留一份 `current`（会话或壳页面）；左边高亮和右边显示都从它派生；删掉按 Agent 分叉的三份当前状态和平行的 `screen`。
 
-**Architecture:** `current = { agentId, sessionId, mode }` 是唯一事实源。`sessions` 只做已落盘目录，不存 `active`。渲染前 `active ⇔ screen === current.agentId && row.id === current.sessionId`。点历史、点智能体、绑定 id、公布标题、删除，都只改 `current` 或目录本身。
+**Architecture:** `current` 是可判别联合：`{ type: 'page', page }` 或 `{ type: 'session', agentId, sessionId, mode }`。`sessions` 只做已落盘目录，不存 `active`。渲染前 `active ⇔ current.type === 'session' && current.sessionId === row.id`。点历史、点智能体、打开首页 / 设置、绑定 id、公布标题、删除，都只改 `current` 或目录本身。
 
 **Tech Stack:** React 壳（`App.tsx`）、Vitest。
 
@@ -28,7 +28,7 @@
 
 | 改动 | 为什么是平台 | 不改什么 |
 | --- | --- | --- |
-| 一份 `current` 替换三份 map | 壳才知道「现在右边在看谁」 | Agent 业务 |
+| 一份 `current` 替换三份 map 和平行的 `screen` | 壳才知道右边是会话还是首页 / 设置 | Agent 业务 |
 | 渲染前派生 `active` | 高亮是壳的显示规则 | `SessionList` 仍吃 `s.active` |
 | 打开 / 新建 / 导航 / 删除 / 绑定 id | 用户动作发生在壳 | Surface 内部仍调 `actions.openSession` / `startWorkflow` |
 | `session_title` 插入不再写 `active: true` | 避免第二份高亮 | upsert 归属和插行位置保持标题 spec |
@@ -57,6 +57,7 @@ titleByAgent
 titleFor
 setTitleFor
 bindChatSession
+useState<ScreenId>('home')   // 不再与 current 并行
 ```
 
 以及这些逻辑，不得换种写法留下：
@@ -103,86 +104,80 @@ apps/desktop/electron/**
 
 ```ts
 export type SessionMode = 'live' | 'history';
+export type ShellPage = 'home' | 'settings' | 'approvals' | 'audit';
 
-export type CurrentWork = {
-  agentId: string;
-  sessionId: string | null;
-  mode: SessionMode;
-};
+export type CurrentWork =
+  | { type: 'page'; page: ShellPage }
+  | { type: 'session'; agentId: string; sessionId: string | null; mode: SessionMode };
+
+export function openPage(page: ShellPage): CurrentWork
+// { type: 'page', page }
 
 export function openHistory(agentId: string, sessionId: string, surfaceType?: string): CurrentWork
-// surfaceType === 'workflow' → mode: 'history'；其他 → 'live'
+// { type: 'session', ..., mode: surfaceType === 'workflow' ? 'history' : 'live' }
 
 export function openNew(agentId: string): CurrentWork
-// { agentId, sessionId: null, mode: 'live' }
+// { type: 'session', agentId, sessionId: null, mode: 'live' }
 
 export function bindSession(current: CurrentWork, sessionId: string): CurrentWork
-// 保留 agentId，sessionId 换成新 id，mode: 'live'
+// 仅 type==='session' 时改 sessionId + mode:'live'；page 原样返回
 
 export function clearCurrentSession(current: CurrentWork): CurrentWork
-// sessionId: null, mode: 'live'
+// session → sessionId: null, mode: 'live'；page 原样返回
 
-export function highlightedSessionId(
-  screen: string,
-  current: CurrentWork | null,
-): string | null
-// current?.sessionId 有值且 screen === current.agentId 才返回该 id
+export function highlightedSessionId(current: CurrentWork): string | null
+// 仅 type==='session' 且 sessionId 有值时返回该 id
+
+export function shellActive(current: CurrentWork): string
+// page 或 agentId，给 Shell 的 active
 
 export function rowIsActive(highlightedId: string | null, sessionId: string): boolean
 
-export function navigateToAgent(
-  current: CurrentWork | null,
-  targetAgentId: string,
-): CurrentWork
-// current?.agentId === targetAgentId → 原样返回 current
-// 否则 → openNew(targetAgentId)
+export function isSession(current: CurrentWork): current is Extract<CurrentWork, { type: 'session' }>
 ```
 
 - [ ] **Step 1: Write the failing tests**
 
 ```ts
 import {
-  openHistory, openNew, bindSession, clearCurrentSession,
-  highlightedSessionId, rowIsActive, navigateToAgent,
+  openPage, openHistory, openNew, bindSession, clearCurrentSession,
+  highlightedSessionId, shellActive, rowIsActive,
 } from '../src/platform/current-work.js';
 
 it('opens workflow history as history mode and chat as live', () => {
   expect(openHistory('contract-review', 'c1', 'workflow')).toEqual({
-    agentId: 'contract-review', sessionId: 'c1', mode: 'history',
+    type: 'session', agentId: 'contract-review', sessionId: 'c1', mode: 'history',
   });
   expect(openHistory('general', 'g1', 'chat')).toEqual({
-    agentId: 'general', sessionId: 'g1', mode: 'live',
+    type: 'session', agentId: 'general', sessionId: 'g1', mode: 'live',
   });
 });
 
 it('new work has no session id', () => {
-  expect(openNew('general')).toEqual({ agentId: 'general', sessionId: null, mode: 'live' });
+  expect(openNew('general')).toEqual({
+    type: 'session', agentId: 'general', sessionId: null, mode: 'live',
+  });
 });
 
-it('highlights only when the screen is that agent and id is set', () => {
+it('highlights only a persisted session view, never a shell page', () => {
   const cur = openHistory('contract-review', 'c1', 'workflow');
-  expect(highlightedSessionId('contract-review', cur)).toBe('c1');
-  expect(highlightedSessionId('home', cur)).toBeNull();
-  expect(highlightedSessionId('general', cur)).toBeNull();
-  expect(highlightedSessionId('contract-review', openNew('contract-review'))).toBeNull();
-  expect(highlightedSessionId('general', null)).toBeNull();
+  expect(highlightedSessionId(cur)).toBe('c1');
+  expect(shellActive(cur)).toBe('contract-review');
+  expect(highlightedSessionId(openNew('contract-review'))).toBeNull();
+  expect(highlightedSessionId(openPage('home'))).toBeNull();
+  expect(highlightedSessionId(openPage('settings'))).toBeNull();
+  expect(shellActive(openPage('settings'))).toBe('settings');
   expect(rowIsActive('c1', 'c1')).toBe(true);
   expect(rowIsActive('c1', 'g1')).toBe(false);
   expect(rowIsActive(null, 'c1')).toBe(false);
 });
 
-it('resumes the same agent on home-card navigate and opens new for another', () => {
-  const cur = openHistory('contract-review', 'c1', 'workflow');
-  expect(navigateToAgent(cur, 'contract-review')).toEqual(cur);
-  expect(navigateToAgent(cur, 'general')).toEqual(openNew('general'));
-  expect(navigateToAgent(null, 'general')).toEqual(openNew('general'));
-});
-
 it('bindSession then clearCurrentSession', () => {
   const draft = openNew('general');
   const bound = bindSession(draft, 'g1');
-  expect(bound).toEqual({ agentId: 'general', sessionId: 'g1', mode: 'live' });
+  expect(bound).toEqual({ type: 'session', agentId: 'general', sessionId: 'g1', mode: 'live' });
   expect(clearCurrentSession(bound)).toEqual(openNew('general'));
+  expect(bindSession(openPage('home'), 'g1')).toEqual(openPage('home'));
 });
 ```
 
@@ -219,9 +214,9 @@ git commit -m "feat(desktop): add CurrentWork helpers for a single current sessi
 **Interfaces（AppShell 内）：**
 
 ```ts
-const [current, setCurrent] = useState<CurrentWork | null>(null);
-const currentRef = useRef<CurrentWork | null>(null);
-function commitCurrent(next: CurrentWork | null) {
+const [current, setCurrent] = useState<CurrentWork>(() => openPage('home'));
+const currentRef = useRef<CurrentWork>(current);
+function commitCurrent(next: CurrentWork) {
   currentRef.current = next;
   setCurrent(next);
 }
@@ -231,35 +226,38 @@ function commitCurrent(next: CurrentWork | null) {
 
 | 动作 | 实现 |
 | --- | --- |
-| `onOpenSession(agentId, sessionId)` | `commitCurrent(openHistory(agentId, sessionId, surfaceType))`；`setScreen(agentId)` |
+| `onOpenSession(agentId, sessionId)` | `commitCurrent(openHistory(agentId, sessionId, surfaceType))` |
 | `onNewSession(agentId)` | `commitCurrent(openNew(agentId))`；不要改 `sessions[].active` |
-| `onNavigate(agentId)` | `commitCurrent(navigateToAgent(currentRef.current, agentId))`；`setScreen(agentId)` |
-| `onNavigate(home/settings/…)` | 只 `setScreen` |
-| 聊天 `actions.openSession(id)` | `commitCurrent(bindSession(currentRef.current ?? openNew(agentId), id))` |
+| `onNavigate(agentId)` | `commitCurrent(openNew(agentId))` |
+| `onNavigate(home/settings/approvals/audit)` | `commitCurrent(openPage(page))` |
+| 聊天 `actions.openSession(id)` | `commitCurrent(bindSession(currentRef.current, id))` |
 | `startWorkflow` 回写 `res.sessionId` | 同上 `bindSession` |
-| `review` / `requestExport` / `readDocumentBytes` | 用 `currentRef.current?.sessionId`（且 `current.agentId === agentId`） |
+| `review` / `requestExport` / `readDocumentBytes` | 仅 `isSession(current) && current.agentId === agentId` 时用 `current.sessionId` |
 | 删除 / 释放当前 id | `commitCurrent(clearCurrentSession(current))` |
-| `ApprovalPanel.currentSessionId` | `current?.sessionId ?? ''` |
+| `ApprovalPanel.currentSessionId` | `isSession(current) ? current.sessionId ?? '' : ''` |
+| `Shell active` | `shellActive(current)` |
 
 `AgentFrame`：
 
 ```ts
-const mine = current?.agentId === a.id ? current : null;
+const mine = isSession(current) && current.agentId === a.id ? current : null;
 sessionId={mine?.sessionId ?? null}
 mode={mine?.mode ?? 'live'}
-draft={a.surfaceType === 'chat' && a.id === screen && (mine?.sessionId ?? null) == null}
+draft={a.surfaceType === 'chat' && Boolean(mine) && mine.sessionId == null}
 title={mine?.sessionId ? (sessions[a.id] ?? []).find(s => s.id === mine.sessionId)?.name : undefined}
+active={Boolean(mine)}
 ```
 
-`session_title` upsert 归属：覆盖 / 已有分组 / `list` 的 `profileId`；再否则 `currentRef.current?.sessionId === p.sessionId ? currentRef.current.agentId : undefined`。插入行不要带 `active: true`（可省略或 `false`）。不要 `setTitleFor`。
+`session_title` upsert 归属：覆盖 / 已有分组 / `list` 的 `profileId`；再否则 `isSession(currentRef.current) && currentRef.current.sessionId === p.sessionId ? currentRef.current.agentId : undefined`。插入行不要带 `active: true`。不要 `setTitleFor`。
 
-`refreshSessions`：不要算 `currentActive`，不要写 `item.active`（或一律 `false`，反正渲染前会覆盖）。不要结束时 `setTitleFor`。无 `profileId` 时不要再用 `workflowByAgent` 猜主人；只在 `currentRef.sessionId === s.id` 时用 `current.agentId`。
+`refreshSessions`：不要算 `currentActive`，不要写 `item.active`。不要结束时写标题 state。无 `profileId` 时不要再用 `workflowByAgent` 猜主人；只在 current 是 session 且 id 对得上时用 `current.agentId`。
 
-传给 `Shell` 的 `sessions` 必须经过派生：
+传给 `Shell`：
 
 ```ts
-const highlightedId = highlightedSessionId(screen, current);
-const sessionsView = /* 深拷贝各行，active: rowIsActive(highlightedId, s.id) */;
+const highlightedId = highlightedSessionId(current);
+const sessionsView = /* 各行 active: rowIsActive(highlightedId, s.id) */;
+<Shell active={shellActive(current)} sessions={sessionsView} ...>
 ```
 
 - [ ] **Step 1: Write / update the failing tests first**
@@ -295,7 +293,9 @@ it('clears the only highlight when opening a new general session', async () => {
 - 「打开历史再点 agent-nav-general」：已有「标题回到新对话」；补上 `session-g1` 没有 `current`。
 - 「session_title 插入」：插入后该行有 `current`，且只有这一行。
 - 「仅绑定 id、无 session_title」：没有对应 testid，也就没有高亮。
-- 「点 Sparkii 回首页」：历史行若还在，都没有 `current`。
+- 「点 Sparkii 回首页」：历史行若还在，都没有 `current`；右边是首页问候，不是会话。
+- 再点首页 Agent 卡片：新会话，无高亮（不再恢复刚才那条）。
+- 打开设置：同样无高亮；目录行仍在。
 
 现有用例（发送、删会话、标题 upsert、合同开始审核、合并导出）保持原断言。
 
@@ -309,7 +309,7 @@ Expected: 新高亮用例 FAIL（合同行没有 `current`；点通用后若合�
 按上面的对照表改。不要重排置顶 / 拖拽 / 运行池。改完后：
 
 ```bash
-rg -n "activeSessionByAgent|workflowByAgent|titleByAgent|setActiveSessionFor|workflowFor|bindChatSession|titleFor" apps/desktop/src/App.tsx
+rg -n "activeSessionByAgent|workflowByAgent|titleByAgent|setActiveSessionFor|workflowFor|bindChatSession|titleFor|useState<ScreenId>" apps/desktop/src/App.tsx
 ```
 
 必须无匹配。
@@ -346,10 +346,10 @@ git commit -m "refactor(desktop): drive sidebar highlight and workbench from one
 | 点智能体新会话、无 id、无高亮 | 1, 2 |
 | 绑定 id 不插行 | 2（已有用例 + 无高亮） |
 | `session_title` 后只亮新行 | 2 |
-| 首页灭高亮、点回同一 Agent 恢复 | 1 `highlightedSessionId` + 2 `navigateToAgent` |
+| 壳页面写进 current、灭高亮 | 1 `openPage` + 2 导航 |
 | 删除当前 → 新会话 | 2 |
-| 删掉三份 map 与分叉 | 2, 3 |
+| 删掉三份 map、`screen`、分叉 | 2, 3 |
 | 不按 agent id 分支 | 1, 3 |
 | 不改 SessionList / Agent 起名 / 合同业务 | 全程 |
 
-无 TBD。类型名：`CurrentWork` / `openHistory` / `openNew` / `bindSession` / `highlightedSessionId` / `navigateToAgent` 前后任务一致。
+无 TBD。类型名：`CurrentWork` / `openPage` / `openHistory` / `openNew` / `bindSession` / `highlightedSessionId` / `shellActive` 前后任务一致。
