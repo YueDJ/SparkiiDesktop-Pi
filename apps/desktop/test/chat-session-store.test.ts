@@ -87,6 +87,48 @@ describe('ChatSessionStore', () => {
     const cols = check.pragma('table_info(chat_sessions)') as Array<{ name: string }>;
     expect(cols.some((c) => c.name === 'title')).toBe(false);
     expect(cols.some((c) => c.name === 'thinking_level')).toBe(true);
+    expect(cols.some((c) => c.name === 'title_locked_by_user')).toBe(true);
     check.close();
+  });
+
+  it('persists titleLockedByUser and defaults to false', () => {
+    const s = store();
+    s.create({ id: 'pi-1', profileId: 'general', workspaceKind: 'auto', workspacePath: 'C:/a' });
+    expect(s.get('pi-1')?.titleLockedByUser).toBe(false);
+    s.update('pi-1', { titleLockedByUser: true });
+    expect(s.get('pi-1')?.titleLockedByUser).toBe(true);
+    s.close();
+  });
+
+  it('migrates title_locked_by_user onto an existing db', () => {
+    const dbPath = join(mkdtempSync(join(tmpdir(), 'sessions-lock-')), 'sessions.db');
+    const raw = new Database(dbPath);
+    raw.exec(`
+      CREATE TABLE chat_sessions (
+        id TEXT PRIMARY KEY,
+        profile_id TEXT NOT NULL,
+        kind TEXT NOT NULL DEFAULT 'chat',
+        current_step TEXT,
+        workspace_kind TEXT NOT NULL,
+        workspace_path TEXT NOT NULL,
+        model TEXT,
+        thinking_level TEXT,
+        pi_session_file TEXT,
+        inputs TEXT,
+        pinned INTEGER NOT NULL DEFAULT 0,
+        archived INTEGER NOT NULL DEFAULT 0,
+        sort_order REAL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+    `);
+    raw.prepare(`INSERT INTO chat_sessions (id, profile_id, kind, workspace_kind, workspace_path, pinned, archived, created_at, updated_at)
+      VALUES ('old', 'general', 'chat', 'auto', 'C:/a', 0, 0, 1, 1)`).run();
+    raw.close();
+    const s = new ChatSessionStore(dbPath);
+    expect(s.get('old')?.titleLockedByUser).toBe(false);
+    s.update('old', { titleLockedByUser: true });
+    expect(s.get('old')?.titleLockedByUser).toBe(true);
+    s.close();
   });
 });

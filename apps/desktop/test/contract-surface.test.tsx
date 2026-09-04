@@ -329,7 +329,7 @@ describe('ContractAgentSurface', () => {
     expect((screen.getByText('合并到报告') as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('names the session after the contract filename', async () => {
+  it('names the session after the stripped contract filename', async () => {
     const setChatTitle = vi.fn().mockResolvedValue({ ok: true });
     (window as any).sparkii = {
       getModelOptions: async () => ({ models: [], defaultModel: null, provider: 'deepseek' }),
@@ -347,7 +347,77 @@ describe('ContractAgentSurface', () => {
         actions={makeActions()}
       />,
     );
-    await waitFor(() => expect(setChatTitle).toHaveBeenCalledWith('s-title', '采购合同.pdf'));
+    await waitFor(() => expect(setChatTitle).toHaveBeenCalledWith('s-title', '采购合同', 'agent'));
+    delete (window as any).sparkii;
+  });
+
+  it('does not overwrite an existing session title', async () => {
+    const setChatTitle = vi.fn().mockResolvedValue({ ok: true });
+    (window as any).sparkii = {
+      getModelOptions: async () => ({ models: [], defaultModel: null, provider: 'deepseek' }),
+      getChatState: async () => ({}),
+      getChatSession: async () => ({}),
+      setChatTitle,
+      on: () => () => {},
+    };
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s-title"
+        mode="live"
+        title="用户改的"
+        session={{ entries: [], streaming: false, status: 'running', meta: { currentStep: 'review', inputs: [{ path: 'C:/tmp/采购合同.pdf', name: '采购合同.pdf' }] } }}
+        actions={makeActions()}
+      />,
+    );
+    await new Promise((r) => setTimeout(r, 40));
+    expect(setChatTitle).not.toHaveBeenCalled();
+    delete (window as any).sparkii;
+  });
+
+  it('does not backfill a title when opening history', async () => {
+    const setChatTitle = vi.fn().mockResolvedValue({ ok: true });
+    (window as any).sparkii = {
+      getModelOptions: async () => ({ models: [], defaultModel: null, provider: 'deepseek' }),
+      getChatState: async () => ({}),
+      getChatSession: async () => ({}),
+      setChatTitle,
+      on: () => () => {},
+    };
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s-hist"
+        mode="history"
+        session={{ entries: [], streaming: false, status: 'done', meta: { currentStep: 'report', inputs: [{ path: 'C:/tmp/采购合同.pdf', name: '采购合同.pdf' }] } }}
+        actions={makeActions()}
+      />,
+    );
+    await new Promise((r) => setTimeout(r, 40));
+    expect(setChatTitle).not.toHaveBeenCalled();
+    delete (window as any).sparkii;
+  });
+
+  it('does not publish a title before the session exists', async () => {
+    const setChatTitle = vi.fn().mockResolvedValue({ ok: true });
+    (window as any).sparkii = {
+      getModelOptions: async () => ({ models: [], defaultModel: null, provider: 'deepseek' }),
+      getChatState: async () => ({}),
+      getChatSession: async () => ({}),
+      setChatTitle,
+      on: () => () => {},
+    };
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId={null}
+        mode="live"
+        session={{ entries: [], streaming: false, status: 'idle', meta: { currentStep: null, inputs: [{ path: 'C:/tmp/采购合同.pdf', name: '采购合同.pdf' }] } }}
+        actions={makeActions()}
+      />,
+    );
+    await new Promise((r) => setTimeout(r, 40));
+    expect(setChatTitle).not.toHaveBeenCalled();
     delete (window as any).sparkii;
   });
 
