@@ -5,6 +5,7 @@
 **Branch:** `cursor/current-session-truth-9b43`
 **Depends on:** 会话标题公布（`2026-09-04-session-title-source-of-truth-design.md`）；Agent 薄契约（`2026-09-01`、`2026-09-02`）
 **Supersedes:** `App.tsx` 里「每个 Agent 各记一条 current」的双状态（`activeSessionByAgent` + `workflowByAgent` + `titleByAgent`）
+**Amended by:** `2026-09-04-runtime-viewport-decoupling-design.md`（绑定 id 仅草稿跟随；`current` 不拥有运行时）
 
 ## Goal
 
