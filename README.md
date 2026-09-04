@@ -88,7 +88,7 @@ Monorepo 结构（pnpm workspace）：
 
 ## 快速开始
 
-环境要求：Node.js ≥ 22，pnpm ≥ 9。
+环境要求：Node.js ≥ 22，pnpm ≥ 9。Windows 本地 `pnpm install` / `start.cmd` 使用 better-sqlite3 包内预编译二进制，不需要 Visual Studio；打安装包才需要 C++ 工具链。
 
 ```bash
 pnpm install
