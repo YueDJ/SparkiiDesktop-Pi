@@ -150,9 +150,15 @@ function AppShell() {
   // 新会话、重命名、正在运行的会话在刷新时用这份覆盖值穿透滞后的后端快照，
   // 一旦后端确认(名称与时间一致/会话出现)即清除，避免多个各自为政的缓存。
   const sessionOverridesRef = useRef<Map<string, { name?: string; updatedAt?: number; agentId?: string }>>(new Map());
+  const activeSessionByAgentRef = useRef(activeSessionByAgent);
+  const workflowByAgentRef = useRef(workflowByAgent);
+  useEffect(() => { activeSessionByAgentRef.current = activeSessionByAgent; }, [activeSessionByAgent]);
+  useEffect(() => { workflowByAgentRef.current = workflowByAgent; }, [workflowByAgent]);
 
   const activeSessionFor = (agentId: string) => activeSessionByAgent[agentId] ?? null;
   const setActiveSessionFor = (agentId: string, sessionId: string | null) => {
+    // 同步写入 ref，避免随后的 refreshSessions / 事件回调读到尚未 flush 的旧 activeSession。
+    activeSessionByAgentRef.current = { ...activeSessionByAgentRef.current, [agentId]: sessionId };
     setActiveSessionByAgent((prev) => ({ ...prev, [agentId]: sessionId }));
   };
   const titleFor = (agentId: string) => titleByAgent[agentId] ?? '';
@@ -160,10 +166,6 @@ function AppShell() {
     setTitleByAgent((prev) => ({ ...prev, [agentId]: title }));
   };
   const workflowFor = (agentId: string) => workflowByAgent[agentId] ?? { sessionId: null, mode: 'live' as const };
-  const workflowByAgentRef = useRef(workflowByAgent);
-  useEffect(() => { workflowByAgentRef.current = workflowByAgent; }, [workflowByAgent]);
-  const activeSessionByAgentRef = useRef(activeSessionByAgent);
-  useEffect(() => { activeSessionByAgentRef.current = activeSessionByAgent; }, [activeSessionByAgent]);
 
   useEffect(() => api.on('approval', (p) => {
     setPending((xs) => [...xs, p]);
@@ -207,7 +209,7 @@ function AppShell() {
         }
         return next;
       });
-      for (const [agentId, sid] of Object.entries(activeSessionByAgent)) {
+      for (const [agentId, sid] of Object.entries(activeSessionByAgentRef.current)) {
         if (sid === p.sessionId) setTitleFor(agentId, title);
       }
       for (const [agentId, w] of Object.entries(workflowByAgent)) {
@@ -280,9 +282,11 @@ function AppShell() {
     URL.revokeObjectURL(url);
   };
 
-  const refreshSessions = (agentId: string, activeId = activeSessionFor(agentId)) => {
+  const refreshSessions = (agentId: string) => {
     // 以 sessions 数组为唯一真相源：刷新只做“原地更新元数据 + 补齐新会话 + 移除已删除”，
     // 不重新排序，从而避免后端滞后的时间戳把会话来回挪动。
+    // active / 标题一律读 live ref：侧栏点「新会话」会先清 activeSession 再 navigate→refresh，
+    // 若这里仍用调用时的 React state，异步 listChatSessions 会把旧历史标题写回抬头。
     api.listChatSessions?.()?.then((list: any[]) => {
       const fetchedById: Record<string, ShellSession & { profileId: string }> = {};
       const fetchedByProfile: Record<string, Array<ShellSession & { profileId: string }>> = {};
@@ -297,11 +301,12 @@ function AppShell() {
         const name = override?.name ?? diskName;
         // 后端返回的名称与本地一致，说明已确认，清除覆盖
         if (override && diskName === override.name) sessionOverridesRef.current.delete(s.id);
+        const currentActive = activeSessionByAgentRef.current[profileId] ?? null;
         const item: ShellSession & { profileId: string } = {
           id: s.id,
           name,
           state: '',
-          active: s.id === activeId,
+          active: s.id === currentActive,
           pinned: s.pinned ?? false,
           archived: s.archived ?? false,
           updatedAt: Math.max(Number(s.updatedAt) || 0, override?.updatedAt ?? 0),
@@ -348,8 +353,11 @@ function AppShell() {
         for (const profileId of Object.keys(next)) next[profileId] = stickyOrder(next[profileId]);
         return next;
       });
-      const active = (fetchedByProfile[agentId] ?? []).find((s) => s.id === activeId);
-      if (active) setTitleFor(agentId, active.name);
+      const liveActive = activeSessionByAgentRef.current[agentId] ?? null;
+      if (liveActive) {
+        const active = (fetchedByProfile[agentId] ?? []).find((s) => s.id === liveActive);
+        if (active) setTitleFor(agentId, active.name);
+      }
     }).catch(() => {});
   };
 
@@ -358,6 +366,11 @@ function AppShell() {
     if (isChatAgent) {
       setActiveSessionFor(agentId, null);
       setTitleFor(agentId, '');
+      setSessions((prev) => {
+        const list = prev[agentId];
+        if (!list?.some((s) => s.active)) return prev;
+        return { ...prev, [agentId]: list.map((s) => (s.active ? { ...s, active: false } : s)) };
+      });
       setScreen(agentId);
       return;
     }
@@ -369,7 +382,7 @@ function AppShell() {
     setScreen(agentId);
     if (isChatAgent) {
       setActiveSessionFor(agentId, sessionId);
-      refreshSessions(agentId, sessionId);
+      refreshSessions(agentId);
       return;
     }
     setWorkflowByAgent((prev) => ({ ...prev, [agentId]: { sessionId, mode: 'history' } }));
@@ -477,7 +490,7 @@ function AppShell() {
 
   const bindChatSession = (agentId: string, sessionId: string) => {
     setActiveSessionFor(agentId, sessionId);
-    refreshSessions(agentId, sessionId);
+    refreshSessions(agentId);
   };
 
   // Per-agent actions: chat agents use the platform standard surface; workflow agents expose the

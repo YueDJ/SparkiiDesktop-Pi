@@ -459,7 +459,7 @@ export function StandardChatSurface(props: StandardChatProps) {
   return (
     <div className="chat-surface">
       <header className="chat-surface-head">
-        <b>{title || '新对话'}</b>
+        <b data-testid="chat-title">{title || '新对话'}</b>
       </header>
       <div className="chat-list">
         {visibleEntries.map((e) => (
