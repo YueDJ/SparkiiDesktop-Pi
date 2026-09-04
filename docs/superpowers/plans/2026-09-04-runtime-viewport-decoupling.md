@@ -31,7 +31,7 @@
 | --- | --- | --- |
 | `bindSession` / `bindCurrentSession` 只跟草稿 | 视口跟随是壳的规则 | 不按 agent id 特判 |
 | `startWorkflow` 把 `runWorkflow` Promise 交还 | 和 `promptSession` 一样，命令返回 id | 不起名 |
-| `startWorkflow` 失败 `reportError` | 和聊天同一条错误口 | 不把 busy 当真相 |
+| `startWorkflow` 失败走现有 `useErrors().reportError` | 和聊天同一条错误中心 | 不新开 toast / 不直接 `appendError` |
 | `openChatSession` ENOENT 带 `inputs` | 回来读会话记录是平台 IPC | 不编时间线 |
 | `sessionIdChange` 纯函数 | leave / switch / stay / assign | **不**把裸 `null→id` 叫 bind；workflow 用 `mode` 拆 bind vs open |
 
@@ -43,17 +43,57 @@
 | 「开始审核」`onClick` 里用返回 id 立刻 `setChatTitle` | `agents/contract-review` | 文件名策略在 Agent；必须能在卸挂后仍公布 |
 | `onSessionCreated` 上公布占位名 | `agents/general` | 占位 / 短名字符串规则仍在 general；本轮短名仍只在挂着时升级 |
 
-### 明确不改 / 不恢复
+### 已删代码必须保持为 0（写清楚，不得拣回）
+
+PR #41（current-session-truth）已经从生产代码拿掉的符号，本轮落地后仍必须为 0 引用，不得改名留着、不得换种写法加回来：
 
 ```text
-workflowByAgent / activeSessionByAgent / titleByAgent
+workflowByAgent
+setWorkflowByAgent
+workflowByAgentRef
+workflowFor
+activeSessionByAgent
+setActiveSessionByAgent
+activeSessionByAgentRef
+activeSessionFor
+setActiveSessionFor
+titleByAgent
+titleFor
+setTitleFor
+bindChatSession
+useState<ScreenId>('home')   // 不得再与 current 并行
+```
+
+以及这些逻辑，不得换种写法留下：
+
+- `onNewSession` / `onOpenSession` 的 `isChatAgent` 分叉
+- `refreshSessions` 里按 per-agent current 写 `active`
+- `refreshSessions` 结束时按 liveActive 写标题
+- `session_title` 对两份 map 循环 `setTitleFor`
+- `session_title` 插入 `{ active: true }`
+- `onNewSession` 里 `list.map(s => active: false)`
+- `AgentFrame` 上 `surfaceType === 'chat' ? activeSessionFor : workflowFor`
+- 「每个 Agent 保留自己的 live/history session」这类注释
+
+本轮讨论里写过又撤掉的握手，也不得出现：
+
+```text
 runWorkflow 等 openChatSession / subscribe 再跑 loop
-allocate → bind → subscribe → start 握手
+allocate → bind → subscribe → start
 视口 setBusy 当「在跑」的 SoT
-App.tsx / ipc.ts 里按文件名起名
 runWorkflow 读取 current
+App.tsx / ipc.ts 里按文件名起名
 为合同单开第三条 current / 另一套事件通道
 ```
+
+本轮新删（今日还在、落地后必须去掉）：
+
+```text
+App.startWorkflow 的 .catch(() => {})
+App.startWorkflow 里 if (mode !== 'live') 把历史改成 live
+```
+
+对照：`docs/superpowers/plans/2026-09-04-current-session-source-of-truth.md` 的「明确删除」。本 plan 不重开那次清理，只保证那些符号不再回来。
 
 ---
 
@@ -183,12 +223,29 @@ startWorkflow: (payload) => {
     if (res?.sessionId) bindCurrentSession(agentId, res.sessionId);
     return res;
   }).catch((e) => {
-    reportError(String(e?.message ?? e), { source: agentId });
+    reportError(String(e?.message ?? e), { source: agents.find((a) => a.id === agentId)?.name ?? agentId });
     throw e;
   });
   return p;
 }
 ```
+
+报错必须接**现有**错误中心，不要另开一条：
+
+```text
+AppShell 已有 const { reportError } = useErrors();
+ErrorProvider（App 外层）→ toast（ErrorToaster，右上 5s）+ 报错中心抽屉 + store.append
+store.append = api.appendError → 主进程 errors.db
+```
+
+对照：`docs/superpowers/specs/2026-08-30-error-toast-center-persistence.md`；聊天 `standard-chat.tsx` 的 `promptSession` catch 已经是 `reportError(..., { source: agent.name })`。`review` 已走 `reportError`。
+
+| 做 | 不做 |
+| --- | --- |
+| `useErrors().reportError(message, { source })` | `window.alert` / 新 toast 组件 / 合同页内联「启动失败」当唯一出口 |
+| `source` = 该 Agent 的 `name`（已有 `agents` 列表），和聊天一致 | 写死 `'contract-review'` / `'合同审核'`；按 agent id 分叉 |
+| 让 ErrorProvider 去 `appendError`（测试里会看到 mock 被调） | App 里直接 `api.appendError(...)`（合同导出今天这样写，**跳过 toast**，点火不要学） |
+| 沿用现有 `ErrorProvider` / `errors.db` / IPC | 新开 Provider、新 IPC、改 schema |
 
 `AgentSurfaceActions.startWorkflow` 定为 `void | Promise<{ sessionId?: string }>`。不要 `Promise<unknown>`。聊天那条空实现继续 `() => {}`。
 
@@ -204,7 +261,7 @@ startWorkflow: (payload) => {
 1. **不抢焦点。** 打开合同 → 选文件 → 开始审核 → 在 `runWorkflow` resolve 之前点一条已有合同历史（先 `listChatSessions` 放好一行）→ resolve 之后右边仍是那条历史（`openChatSession` 叫的是历史 id），新 `ws1` 在 `session_title` 后出现在目录但**没有** `current` class。
 2. **卸挂仍公布。** 点开始 → 立刻首页或另一个 Agent（合同 Surface 已卸）→ `setChatTitle` 仍带着新 id 被调用，随后 `session_title` upsert 进合同组且不亮。不要只在仍挂着的 Surface 单测里证明「离开后还能起名」。
 3. **二次开始不覆盖。** 草稿上开始并 bind 之后，再点一次开始（若 UI 还允许）：第二个 id stamp 但不改 `current.sessionId`。
-4. **开始失败可见。** `runWorkflow` reject → `api.appendError`（或错误 UI）被调用。生产代码不得再出现 **`startWorkflow` 的** `.catch(() => {})`（不要误扫 `requestExport`）。
+4. **开始失败进错误中心。** `runWorkflow` reject → 现有 `ErrorProvider` 路径被走通：`api.appendError` 被调用（`makeErrorStore.append`），`source` 是合同 Agent 的 **name**（`合同审核智能体`），`message` 含 reject 文本。不要断言一个新的内联横幅。生产代码不得再出现 **`startWorkflow` 的** `.catch(() => {})`（不要误扫 `requestExport`）。
 5. 现有「开始后 `session_title` 插入且高亮」保持：用户仍停在草稿时，这一行仍是唯一 `current`。
 6. bind 后 JSONL 未到：允许短暂 idle；**不要**为了按钮状态加视口 `setBusy` 当运行真相。运行池用例已有则保持。
 
@@ -429,7 +486,7 @@ Expected: PASS
 - [ ] **Step 2: Grep 废代码没有回来**
 
 ```text
-rg "workflowByAgent|activeSessionByAgent|titleByAgent" apps/desktop/src apps/desktop/electron
+rg "workflowByAgent|setWorkflowByAgent|workflowFor|activeSessionByAgent|setActiveSessionFor|titleByAgent|titleFor|bindChatSession" apps/desktop/src apps/desktop/electron
 rg "catch\\(\\(\\) => \\{\\}\\)" apps/desktop/src/App.tsx   # 只查 startWorkflow，不要误修 requestExport
 rg "setBusy" apps/desktop/src/App.tsx apps/desktop/agents/contract-review
 rg "openChatSession" apps/desktop/electron/main/workflow.ts  # 不得出现：loop 等打开

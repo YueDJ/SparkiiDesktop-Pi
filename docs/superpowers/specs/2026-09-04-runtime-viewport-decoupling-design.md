@@ -68,7 +68,7 @@
    合同 Surface 今天把「`sessionId` 变了」一律当导航：一 bind 就清 `localFileName` / 用当时还是空的 `inputs` 盖掉已选文件。这是视口和草稿耦死的具体位置。
 5. **渲染真相是 JSONL（外加会话记录上的 inputs）。** `useAgentSession` 在有 id 时 `openChatSession`，再订阅 `chat-event` 当尾巴。`sessionId == null` 时不订阅，这是对的。漏掉的事件靠重读文件补，不靠「先 subscribe 再允许 loop 跑」。
 6. **`openChatSession` 在 JSONL 尚未落盘（ENOENT）时仍要带回 `inputs`。** 今日 `ipc.ts` 这条路径返回 `{ messages: [] }`，丢掉会话记录里的 inputs。回来看一条刚启动、文件还没写出来的会话时，Surface 会以为没有文档。
-7. **点火失败必须 `reportError`。** 今日 `startWorkflow` 是 `.catch(() => {})`。通用聊天的 `promptSession` 已经 `reportError`。同一条命令协议，失败要对用户可见。空 catch 不是「保持冷静」，是「点了没反应」。
+7. **点火失败走现有错误中心，不另开通道。** 今日 `startWorkflow` 是 `.catch(() => {})`。通用聊天的 `promptSession` 已经 `useErrors().reportError(message, { source: agent.name })`：右上 toast + 报错中心抽屉 + `errors.db`（`2026-08-30-error-toast-center-persistence`）。workflow 点火失败接同一条口。`source` 用该 Agent 的显示名（列表里的 `name`），不要写死 agent id，也不要在 `App` 里直接 `appendError`（会跳过 toast；合同导出今天有这个旁路，点火不要学）。空 catch 不是「保持冷静」，是「点了没反应」。
 8. **标题公布发生在点火回调闭包里，不发生在「我还挂着且 props 已有 id」的 effect 里。**
 
    去首页或点另一个 Agent 时，该帧 `active === false`，`{active && <Surface>}` **卸掉** Surface（`App.tsx` `AgentFrame`）。只改 `useEffect([sessionId])` 或「不要把 props.sessionId 改成新 id」的单测，测的仍是挂着的组件，卸挂后 `setState` / effect 都不会跑，侧栏洞还在。
@@ -210,7 +210,7 @@ bindCurrentSession(agentId, sessionId)
 
 | 情况 | 行为 |
 | --- | --- |
-| `runWorkflow` / `promptSession` reject | `reportError`，视口停在原处（仍是草稿或用户已走开的地方） |
+| `runWorkflow` / `promptSession` reject | `useErrors().reportError`（toast + 报错中心 + `appendError`），视口停在原处 |
 | 命令成功但用户已离开草稿 | 不 bind；stamp + Agent 公布标题；侧栏出现；不亮 |
 | 命令成功且仍停在草稿 | bind；Surface 保留本地文件；随后 `openChatSession` + 订阅；标题公布后该行亮 |
 | 第一步立刻失败并 release | 运行池空是真的；用户应看到错误，而不是无声的 idle |
