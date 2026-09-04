@@ -77,7 +77,8 @@ describe('App workflow feedback', () => {
     fireEvent.click(screen.getByTestId('agent-card-contract-review'));
     await screen.findByTestId('review');
     fireEvent.click(screen.getByTestId('upload'));
-    await screen.findByText('更换文件');
+    await screen.findByTestId('remove-document');
+    expect(screen.queryByText('更换文件')).toBeNull();
     fireEvent.click(screen.getByTestId('review'));
     await waitFor(() => expect(api.runWorkflow).toHaveBeenCalled());
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
