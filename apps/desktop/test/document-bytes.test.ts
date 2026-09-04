@@ -6,6 +6,7 @@ import {
   documentKindOf,
   grantDocumentPath,
   isDocumentPathAllowed,
+  normalizeDocPath,
   readGrantedDocumentBytes,
   resetGrantedDocumentPaths,
 } from '../electron/main/document-bytes.js';
@@ -85,5 +86,10 @@ describe('readGrantedDocumentBytes', () => {
   it('treats slash-normalized paths as the same grant', () => {
     grantDocumentPath('C:\\tmp\\a.txt');
     expect(isDocumentPathAllowed('C:/tmp/a.txt', {})).toBe(true);
+  });
+
+  it('folds drive and path case on Windows', () => {
+    expect(normalizeDocPath('C:\\Tmp\\A.txt', 'win32')).toBe('c:/tmp/a.txt');
+    expect(normalizeDocPath('C:\\Tmp\\A.txt', 'linux')).toBe('C:/Tmp/A.txt');
   });
 });

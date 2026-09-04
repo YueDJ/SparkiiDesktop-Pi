@@ -10,9 +10,10 @@
   "scripts": {
     "test": "vitest run",
     "gen:surfaces": "node scripts/generate-surface-bindings.mjs",
-    "prebuild:renderer": "npm run gen:surfaces",
+    "prebuild:renderer": "node scripts/generate-surface-bindings.mjs",
     "dev": "vite",
-    "predev": "npm run gen:surfaces",
+    "predev": "node scripts/generate-surface-bindings.mjs",
+    "start": "pnpm build:renderer && pnpm build:main && electron .",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.electron.json",
     "build:renderer": "vite build",
     "build:main:check": "tsc --noEmit -p tsconfig.electron.json",
