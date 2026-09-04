@@ -41,6 +41,7 @@ const baseProps = (sessionId: string | null, over: Record<string, unknown> = {})
     review: vi.fn(),
     requestExport: vi.fn(),
     chooseDocument: vi.fn().mockResolvedValue({}),
+    readDocumentBytes: vi.fn().mockResolvedValue({ error: 'denied' }),
   },
   ...over,
 });

@@ -33,6 +33,14 @@ export interface DraftPromptContext {
   thinkingLevel?: string | null;
 }
 
+export type ChooseDocumentOptions = { extensions?: string[] };
+
+export type DocumentKind = 'pdf' | 'docx' | 'txt';
+
+export type ReadDocumentBytesResult =
+  | { kind: DocumentKind; fileName: string; fileSize: number; bytes: ArrayBuffer }
+  | { error: 'missing' | 'unsupported' | 'too_large' | 'denied' };
+
 export interface ChatAttachment {
   path: string;
   name: string;
@@ -50,7 +58,8 @@ export interface ErrorRecord {
 
 export interface SparkiiApi {
   getLocalSubject(): Promise<{ userId: string; roles: string[] }>;
-  chooseDocument(): Promise<{ path?: string }>;
+  chooseDocument(opts?: ChooseDocumentOptions): Promise<{ path?: string }>;
+  readDocumentBytes(path: string, sessionId?: string | null): Promise<ReadDocumentBytesResult>;
   runWorkflow(id: string, input: Record<string, unknown>): Promise<{ ok: boolean; sessionId?: string }>;
   prompt(text: string): Promise<{ ok: boolean }>;
   openChatSession(sessionId: string): Promise<{ messages: unknown[]; entries?: unknown[] }>;

@@ -35,6 +35,12 @@ describe('ContractSurface', () => {
   it('collapses the upload card into a compact file chip after choosing a file', async () => {
     const onAction = vi.fn();
     const chooseDocument = vi.fn().mockResolvedValue({ path: 'C:/tmp/chosen.pdf' });
+    const readDocumentBytes = vi.fn().mockResolvedValue({
+      kind: 'pdf',
+      fileName: 'chosen.pdf',
+      fileSize: 2048,
+      bytes: new ArrayBuffer(8),
+    });
     render(
       <ContractAgentSurface
         agent={{ id: 'contract-review', name: '合同审核智能体', surfaceType: 'workflow' }}
@@ -48,14 +54,16 @@ describe('ContractSurface', () => {
           review: vi.fn(),
           requestExport: vi.fn(),
           chooseDocument,
+          readDocumentBytes,
         }}
       />,
     );
     fireEvent.click(screen.getByTestId('upload'));
-    expect(chooseDocument).toHaveBeenCalled();
+    expect(chooseDocument).toHaveBeenCalledWith({ extensions: ['pdf', 'docx', 'txt'] });
     expect((await screen.findByTestId('upload')).textContent).toBe('更换文件');
     expect((await screen.findAllByText('chosen.pdf')).length).toBeGreaterThan(0);
     expect(screen.queryByText('尚未选择合同文件')).toBeNull();
+    await waitFor(() => expect(readDocumentBytes).toHaveBeenCalledWith('C:/tmp/chosen.pdf'));
   });
 
   it('renders risk findings with levels and advice from workflow result', () => {
@@ -101,6 +109,7 @@ describe('ContractSurface', () => {
           review: vi.fn(),
           requestExport: onRequestExport,
           chooseDocument: vi.fn().mockResolvedValue({}),
+          readDocumentBytes: vi.fn().mockResolvedValue({ error: 'denied' }),
         }}
       />,
     );
@@ -119,6 +128,7 @@ describe('ContractSurface', () => {
           review: vi.fn(),
           requestExport: onRequestExport,
           chooseDocument: vi.fn().mockResolvedValue({}),
+          readDocumentBytes: vi.fn().mockResolvedValue({ error: 'denied' }),
         }}
       />,
     );
@@ -149,6 +159,7 @@ describe('ContractSurface', () => {
           review: vi.fn(),
           requestExport: onRequestExport,
           chooseDocument: vi.fn().mockResolvedValue({}),
+          readDocumentBytes: vi.fn().mockResolvedValue({ error: 'denied' }),
         }}
       />,
     );
@@ -222,6 +233,7 @@ describe('ContractAgentSurface', () => {
     review: vi.fn(),
     requestExport: vi.fn(),
     chooseDocument: vi.fn().mockResolvedValue({}),
+    readDocumentBytes: vi.fn().mockResolvedValue({ error: 'denied' }),
   });
 
   it('renders the single-page cockpit with review and report panels', () => {
@@ -508,5 +520,58 @@ describe('ContractAgentSurface', () => {
     expect(screen.getByTestId('report-risk-high').textContent).toContain('付款周期过长');
     expect(screen.getByTestId('report-risk-high').textContent).toContain('p12');
     expect(screen.getByTestId('report-risk-mid').textContent).toContain('验收边界不清');
+  });
+
+  it('renders original text after readDocumentBytes returns txt bytes', async () => {
+    const bytes = new TextEncoder().encode('第一条 合同标的').buffer;
+    const readDocumentBytes = vi.fn().mockResolvedValue({
+      kind: 'txt',
+      fileName: 'contract.txt',
+      fileSize: 24,
+      bytes,
+    });
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s1"
+        mode="history"
+        session={{ entries: [], streaming: false, status: 'idle', meta: { currentStep: null, inputs: [{ path: 'C:/tmp/contract.txt', name: 'contract.txt' }] } }}
+        actions={{ ...makeActions(), readDocumentBytes }}
+      />,
+    );
+    expect(await screen.findByTestId('document-preview')).toBeTruthy();
+    expect(screen.getByTestId('document-preview').textContent).toContain('第一条 合同标的');
+    expect(screen.getByText(/TXT · /)).toBeTruthy();
+    expect(screen.queryByText('原文预览将在后续版本提供。')).toBeNull();
+    expect(readDocumentBytes).toHaveBeenCalledWith('C:/tmp/contract.txt');
+  });
+
+  it('does not fetch preview when the original file is missing', async () => {
+    const readDocumentBytes = vi.fn();
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s1"
+        mode="history"
+        session={{ entries: [], streaming: false, status: 'done', meta: { currentStep: 'report', inputs: [{ path: 'C:/gone/contract.pdf', name: 'contract.pdf', missing: true }] } }}
+        actions={{ ...makeActions(), readDocumentBytes }}
+      />,
+    );
+    expect(screen.getByText('无法找到原文件，风险发现与报告仍可从会话历史恢复。')).toBeTruthy();
+    expect(readDocumentBytes).not.toHaveBeenCalled();
+  });
+
+  it('shows an unsupported preview message', async () => {
+    const readDocumentBytes = vi.fn().mockResolvedValue({ error: 'unsupported' });
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s1"
+        mode="history"
+        session={{ entries: [], streaming: false, status: 'idle', meta: { currentStep: null, inputs: [{ path: 'C:/tmp/old.doc', name: 'old.doc' }] } }}
+        actions={{ ...makeActions(), readDocumentBytes }}
+      />,
+    );
+    expect(await screen.findByText('暂不支持预览该文件类型')).toBeTruthy();
   });
 });

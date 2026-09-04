@@ -35,6 +35,8 @@ function makeApi() {
       { id: 'general', name: '通用智能体', surfaceType: 'chat' },
       { id: 'contract-review', name: '合同审核智能体', surfaceType: 'workflow' },
     ]),
+    chooseDocument: vi.fn().mockResolvedValue({}),
+    readDocumentBytes: vi.fn().mockResolvedValue({ error: 'denied' }),
     listChatSessions: vi.fn().mockResolvedValue([{ id: 'g1', profileId: 'general', title: '会话 08-25 17:10', workspaceKind: 'auto', workspacePath: 'C:/ws/SparkiiXyZ9202608251710', model: null, piSessionFile: null, createdAt: 0, updatedAt: 0 }]),
     getChatSession: vi.fn().mockResolvedValue({ workspacePath: 'C:/ws/SparkiiXyZ9202608251710', workspaceKind: 'auto' }),
     openChatSession: vi.fn().mockResolvedValue({ messages: [] }),

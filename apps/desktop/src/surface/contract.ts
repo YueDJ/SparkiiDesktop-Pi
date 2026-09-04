@@ -40,7 +40,12 @@ export interface AgentSurfaceActions {
   review(action: string, payload: Record<string, unknown>): void;
   requestExport(payload?: Record<string, unknown>): void;
   /** 平台文件对话框；返回用户选择的文件路径（取消时无 path）。 */
-  chooseDocument(): Promise<{ path?: string }>;
+  chooseDocument(opts?: { extensions?: string[] }): Promise<{ path?: string }>;
+  /** 读取用户已选/会话输入/工作区内的文档字节，供 Agent 预览。 */
+  readDocumentBytes(path: string): Promise<
+    | { kind: 'pdf' | 'docx' | 'txt'; fileName: string; fileSize: number; bytes: ArrayBuffer }
+    | { error: 'missing' | 'unsupported' | 'too_large' | 'denied' }
+  >;
 }
 
 export interface AgentSurfaceProps {

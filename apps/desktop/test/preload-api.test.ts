@@ -10,7 +10,7 @@ vi.mock('electron', () => ({
 describe('sparkii api shape', () => {
   it('exposes the expected method names', () => {
     const names = [
-      'getLocalSubject', 'chooseDocument', 'runWorkflow', 'prompt', 'listPendingApprovals', 'decideApproval', 'queryAudit', 'getSettings', 'saveSettings', 'getApiKey', 'listModels', 'testConnection', 'listProviders', 'diagnostics', 'on',
+      'getLocalSubject', 'chooseDocument', 'readDocumentBytes', 'runWorkflow', 'prompt', 'listPendingApprovals', 'decideApproval', 'queryAudit', 'getSettings', 'saveSettings', 'getApiKey', 'listModels', 'testConnection', 'listProviders', 'diagnostics', 'on',
       'listErrors', 'appendError', 'clearError', 'clearErrors', 'markAllErrorsRead',
       'openChatSession', 'listChatSessions', 'getChatSession', 'promptSession', 'abortChat', 'getChatState', 'queueMutate', 'setChatTitle', 'setChatModel', 'setChatThinkingLevel', 'setChatWorkspace', 'updateWorkflowState', 'requestExportReport', 'chooseWorkspace', 'getModelOptions', 'listThinkingLevels', 'deleteChatSession', 'setSessionPinned', 'setSessionArchived', 'setSessionOrder', 'listAgents',
       'getRuntimePool', 'cancelQueuedSession', 'releaseSessionSlot',
