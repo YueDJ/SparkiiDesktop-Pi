@@ -104,14 +104,13 @@ apps/desktop/electron/**
 
 ```ts
 export type SessionMode = 'live' | 'history';
-export type ShellPage = 'home' | 'settings' | 'approvals' | 'audit';
 
 export type CurrentWork =
-  | { type: 'page'; page: ShellPage }
+  | { type: 'page'; page: string }
   | { type: 'session'; agentId: string; sessionId: string | null; mode: SessionMode };
 
-export function openPage(page: ShellPage): CurrentWork
-// { type: 'page', page }
+export function openPage(page: string): CurrentWork
+// { type: 'page', page }。page 是开放 id，不枚举今天的四个壳页面。
 
 export function openHistory(agentId: string, sessionId: string, surfaceType?: string): CurrentWork
 // { type: 'session', ..., mode: surfaceType === 'workflow' ? 'history' : 'live' }
@@ -166,7 +165,8 @@ it('highlights only a persisted session view, never a shell page', () => {
   expect(highlightedSessionId(openNew('contract-review'))).toBeNull();
   expect(highlightedSessionId(openPage('home'))).toBeNull();
   expect(highlightedSessionId(openPage('settings'))).toBeNull();
-  expect(shellActive(openPage('settings'))).toBe('settings');
+  expect(highlightedSessionId(openPage('knowledge'))).toBeNull();
+  expect(shellActive(openPage('knowledge'))).toBe('knowledge');
   expect(rowIsActive('c1', 'c1')).toBe(true);
   expect(rowIsActive('c1', 'g1')).toBe(false);
   expect(rowIsActive(null, 'c1')).toBe(false);
@@ -229,7 +229,7 @@ function commitCurrent(next: CurrentWork) {
 | `onOpenSession(agentId, sessionId)` | `commitCurrent(openHistory(agentId, sessionId, surfaceType))` |
 | `onNewSession(agentId)` | `commitCurrent(openNew(agentId))`；不要改 `sessions[].active` |
 | `onNavigate(agentId)` | `commitCurrent(openNew(agentId))` |
-| `onNavigate(home/settings/approvals/audit)` | `commitCurrent(openPage(page))` |
+| `onNavigate(非 Agent 的 pageId)` | `commitCurrent(openPage(pageId))` |
 | 聊天 `actions.openSession(id)` | `commitCurrent(bindSession(currentRef.current, id))` |
 | `startWorkflow` 回写 `res.sessionId` | 同上 `bindSession` |
 | `review` / `requestExport` / `readDocumentBytes` | 仅 `isSession(current) && current.agentId === agentId` 时用 `current.sessionId` |

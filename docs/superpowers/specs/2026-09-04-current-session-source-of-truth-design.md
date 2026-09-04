@@ -20,22 +20,24 @@
 
 1. **唯一事实源是 `current`，不是侧栏行上的 `active`，也不是每个 Agent 各自的 current。**
 2. **`current` 描述右边此刻是什么，会话只是其中一种。** 右边可以是一条会话，也可以是首页、设置、审批、审计。这些都写进同一份 `current`，不再另挂一个和它平行的 `screen` 当第二真相。
-3. **形状是可判别联合，不是「会话 + 旁边再记一页」。**
+3. **形状只区分「会话」和「非会话页」，不把今天的四个壳页面写死进类型。**
 
 ```ts
 type CurrentWork =
-  | { type: 'page'; page: 'home' | 'settings' | 'approvals' | 'audit' }
+  | { type: 'page'; page: string }
   | { type: 'session'; agentId: string; sessionId: string | null; mode: 'live' | 'history' };
 ```
 
-`type: 'session'` 且 `sessionId` 有值 = 正在看目录里的这一条；`sessionId` 为空 = 正在看这个 Agent 的新会话，还没落盘。`type: 'page'` = 右边是壳页面，不是任何会话。
+`page` 是右边这块非会话内容的 id，和现有 `ScreenId` 一样是开放字符串。今天用到的是 `home` / `settings` / `approvals` / `audit`，以后加「知识库」「账单」之类，只是新的 id，**不必改 `CurrentWork`**。谁负责渲染：壳里的 `surfaces[page]` 注册表；没注册就当未知页（不渲染会话、也不高亮）。
+
+`type: 'session'` 且 `sessionId` 有值 = 正在看目录里的这一条；`sessionId` 为空 = 正在看这个 Agent 的新会话，还没落盘。`type: 'page'` = 右边不是任何会话。新 Agent 走 `session`，不要做成新的 page。
 4. **左边是目录，右边只渲染 `current`。** 目录在启动和运行中更新（刷新、改名、删除、`session_title` upsert）。`current.type === 'page'` 时右边是对应壳页面；`type === 'session'` 时右边是该 Agent 的工作区。
-5. **高亮是派生值，不存进目录。** `sessions` 数组不保存 `active`。渲染前算：仅当 `current.type === 'session' && current.sessionId === row.id` 才亮。全列表最多亮一行。新会话（`sessionId` 为空）或任何壳页面（首页 / 设置 / 审批 / 审计）一行都不亮。
+5. **高亮是派生值，不存进目录。** `sessions` 数组不保存 `active`。渲染前算：仅当 `current.type === 'session' && current.sessionId === row.id` 才亮。全列表最多亮一行。新会话（`sessionId` 为空）或任何 `type: 'page'`（不管 page 是今天的四个还是以后的新 id）一行都不亮。
 6. **点左侧某一条历史：** `current = { type: 'session', agentId, sessionId, mode }`。右边打开它，左边只亮它。
 7. **点左上角某个智能体：** 永远开新会话。`current = { type: 'session', agentId, sessionId: null, mode: 'live' }`。右边是空白新工作区；左边不高亮。
 8. **新会话在有名字之前不进目录。** 没有 id、没有标题，左边没有这一行，也就没有高亮。`openSession` / `startWorkflow` / `promptSession` 只绑定 `current.sessionId`，不插侧栏。侧栏出现仍只走已有的 `session_title` upsert。
 9. **发出第一条消息（或合同点开始审核）并且 Agent 公布了标题：** 补上 `sessionId`（若还没有），目录出现这一行，且只亮它。
-10. **去首页 / 设置 / 审批 / 审计：** `current` 直接换成对应的 `{ type: 'page', page }`。右边是该页；左边全部不亮。**不把上一条会话藏在 current 后面。** 要从某条历史回来，再点目录里的那一行。从首页点某个 Agent 卡片：与左上角相同，开该 Agent 的新会话。
+10. **打开非会话页：** `current = { type: 'page', page }`，`page` 是该页的 id。右边交给 `surfaces[page]`；左边全部不亮。**不把上一条会话藏在 current 后面。** 要从某条历史回来，再点目录里的那一行。从首页点某个 Agent 卡片：与左上角相同，开该 Agent 的新会话。以后新增壳页面 = 注册 `surfaces[新id]` + 导航到该 id，高亮规则不用改。
 11. **删的是当前这条：** 仍留在该 Agent，`sessionId = null`，`mode = 'live'`，右边回到未落盘的新会话，左边不再高亮。删的不是当前这条：只从目录拿掉。
 12. **`mode` 不是第二份 current。** 它只属于 `type: 'session'`，告诉工作区怎么读这条会话：从目录打开且该 Agent 的 surface 是 workflow → `'history'`；新会话、聊天、以及 `startWorkflow` / 首条消息绑定 id 之后 → `'live'`。聊天 surface 不区分 history。判断用 `surfaceType`，不用 agent id。
 13. **平台生产代码不按 agent id 分支打开 / 高亮。** `App.tsx` 里不再出现「chat 写 map A、workflow 写 map B」，也不再同时维护 `screen` 和 per-agent current。能力差异只体现在：聊天在 `sessionId == null` 时是 draft composer；workflow 用 `mode` 回放历史。
@@ -101,10 +103,8 @@ type CurrentWork =
 ## Data Model
 
 ```ts
-type ShellPage = 'home' | 'settings' | 'approvals' | 'audit';
-
 type CurrentWork =
-  | { type: 'page'; page: ShellPage }
+  | { type: 'page'; page: string }
   | { type: 'session'; agentId: string; sessionId: string | null; mode: 'live' | 'history' };
 
 // AppShell 里只留这一份（不再另存 screen）
@@ -170,16 +170,17 @@ onNewSession(agentId)
 
 右边是新工作区；聊天 `draft = true`；合同是空的上传页。左边不高亮。
 
-### 首页 / 设置 / 审批 / 审计
+### 打开非会话页（首页 / 设置 / 以后的新页）
 
 这些不是「会话还在、只是先不亮」，而是右边换成另一种内容，所以 `current` 本身要换成 page：
 
 ```text
-onNavigate(home | settings | approvals | audit)
-  current = { type: 'page', page }
+onNavigate(pageId)   // 不是 Agent
+  current = { type: 'page', page: pageId }
+  右边 = surfaces[pageId]   // 未注册则无会话、无高亮
 ```
 
-左边全部不亮。上一条会话不藏在 current 里。要再看它，点目录里的那一行。
+左边全部不亮。上一条会话不藏在 current 里。要再看它，点目录里的那一行。今天的 `home` / `settings` / `approvals` / `audit` 只是四个已注册的 id，不是类型枚举。
 
 ### 首页点 Agent 卡片
 
@@ -237,7 +238,7 @@ onNavigate(agentId)
 Shell.active = shellActive(current)   // page 或 agentId
 
 current.type === 'page'
-  → 渲染对应壳页面（HomeView / Settings / 审批 / 审计）
+  → 渲染 surfaces[current.page]（未注册则不显示会话）
   → 所有 AgentFrame.active = false，sessionId = null
 
 current.type === 'session'
@@ -289,7 +290,7 @@ current.type === 'session'
 1. 目录里 `active === true` 的行数 ≤ 1（派生后保证）。
 2. 若有一行 `active`，则 `current.type === 'session'` 且 `current.sessionId` 就是这一行，右边正在显示它。
 3. 若 `current.type === 'session'` 且 `sessionId == null`，则没有任何一行 `active`。
-4. 若 `current.type === 'page'`（首页 / 设置 / 审批 / 审计），则没有任何一行 `active`，右边也不是任何会话。
+4. 若 `current.type === 'page'`（任意 page id），则没有任何一行 `active`，右边也不是任何会话。
 5. 不存在「通用亮一条、合同再亮一条」。
 6. 生产壳代码不出现 `activeSessionByAgent`、`workflowByAgent`、`titleByAgent`，也不再另存一份 `screen` 与 `current` 并行。
 
@@ -298,6 +299,7 @@ current.type === 'session'
 | 情况 | 行为 |
 | --- | --- |
 | 启动在首页 | `current = { type: 'page', page: 'home' }`，无高亮 |
+| 以后新增壳页面 | `surfaces` 增加一项；`current = { type: 'page', page: 新id }`；高亮公式不用改；`CurrentWork` 不用改 |
 | 新会话尚未公布标题 | 有或没有 id 都不插行、不高亮 |
 | `session_title` 晚于绑定 id | upsert 后派生高亮，只亮这一行 |
 | `session_title` 对已不在 current 的旧 id | 只改名或补行，不抢高亮 |
@@ -348,7 +350,7 @@ current.type === 'session'
 
 ## Self-Review Notes
 
-- 无 TBD：current 含会话和壳页面、高亮公式、点历史 / 点智能体 / 首页卡片 / 去壳页面 / 绑定 id / 出标题 / 删除，都已选定。
+- 无 TBD：current 只分 session / page；`page` 是开放 id；高亮公式、点历史 / 点智能体 / 首页卡片 / 打开任意非会话页 / 绑定 id / 出标题 / 删除，都已选定。以后加壳页面不改 `CurrentWork`。
 - 和已确认原则一致：左边是目录，右边由同一份 current 驱动；没落盘或右边不是会话，就没有高亮。
 - 壳页面写进 `current`，不另留 `screen` 当第二真相，也不把旧会话藏在页面后面。
 - 不把 `mode` 做成第二套 per-agent 状态。
