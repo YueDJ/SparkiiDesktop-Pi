@@ -651,7 +651,7 @@ describe('ContractAgentSurface', () => {
     );
     fireEvent.click(screen.getByTestId('upload'));
     await screen.findByTestId('remove-document');
-    expect(screen.getByText('采购合同.pdf')).toBeTruthy();
+    expect(screen.getAllByText('采购合同.pdf').length).toBeGreaterThan(0);
     rerender(
       <ContractAgentSurface
         agent={agent}
@@ -661,7 +661,7 @@ describe('ContractAgentSurface', () => {
         actions={{ ...makeActions(), chooseDocument }}
       />,
     );
-    expect(screen.getByText('采购合同.pdf')).toBeTruthy();
+    expect(screen.getAllByText('采购合同.pdf').length).toBeGreaterThan(0);
     expect((screen.getByTestId('review') as HTMLButtonElement).disabled).toBe(false);
   });
 

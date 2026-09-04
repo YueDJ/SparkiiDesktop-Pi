@@ -203,6 +203,7 @@ describe('App general agent', () => {
   it('does not insert a sidebar row from openSession alone', async () => {
     const { api } = makeApi();
     api.listChatSessions.mockResolvedValue([]);
+    api.setChatTitle = vi.fn().mockResolvedValue({ ok: true });
     render(<App />);
     await screen.findByText(/工作台 · 上午好/);
     fireEvent.click(screen.getByTestId('agent-card-general'));
@@ -210,6 +211,7 @@ describe('App general agent', () => {
     fireEvent.change(input, { target: { value: '你好' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
+    await waitFor(() => expect(api.setChatTitle).toHaveBeenCalledWith('g1', '你好', 'agent'));
     expect(screen.queryByTestId('session-g1')).toBeNull();
   });
 
