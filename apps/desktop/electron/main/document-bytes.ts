@@ -14,8 +14,9 @@ export const MAX_DOCUMENT_BYTES = 40 * 1024 * 1024;
 
 const granted = new Set<string>();
 
-export function normalizeDocPath(path: string): string {
-  return path.replace(/\\/g, '/').replace(/\/+$/, '');
+export function normalizeDocPath(path: string, platform = process.platform): string {
+  const normalized = path.replace(/\\/g, '/').replace(/\/+$/, '');
+  return platform === 'win32' ? normalized.toLowerCase() : normalized;
 }
 
 export function grantDocumentPath(path: string): void {
