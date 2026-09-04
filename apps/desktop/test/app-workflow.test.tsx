@@ -79,7 +79,8 @@ describe('App workflow feedback', () => {
     fireEvent.click(screen.getByTestId('agent-card-contract-review'));
     await screen.findByTestId('review');
     fireEvent.click(screen.getByTestId('upload'));
-    await screen.findByText('更换文件');
+    await screen.findByTestId('remove-document');
+    expect(screen.queryByText('更换文件')).toBeNull();
     fireEvent.click(screen.getByTestId('review'));
     expect(api.runWorkflow).toHaveBeenCalledWith('contract-review', expect.objectContaining({ documents: ['C:/tmp/contract.pdf'] }));
     // 让 runWorkflow 解析出 sessionId，useAgentSession 重新订阅到该会话
@@ -119,7 +120,7 @@ describe('App workflow feedback', () => {
     fireEvent.click(screen.getByTestId('agent-card-contract-review'));
     await screen.findByTestId('review');
     fireEvent.click(screen.getByTestId('upload'));
-    await screen.findByText('更换文件');
+    await screen.findByTestId('remove-document');
     fireEvent.click(screen.getByTestId('review'));
     await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
     act(() => channels['chat-event']({

@@ -28,18 +28,19 @@ function renderSurface(workflow: { status: string; step?: string }, state: Recor
 describe('ContractSurface', () => {
   it('shows upload and start controls when idle', () => {
     renderSurface({ status: 'idle' }, { documents: [] });
-    expect(screen.getByTestId('upload')).toBeTruthy();
+    expect(screen.getByTestId('upload').textContent).toBe('选择合同文件');
+    expect(screen.queryByText('更换文件')).toBeNull();
     expect(screen.getByTestId('review')).toBeTruthy();
   });
 
   it('collapses the upload card into a compact file chip after choosing a file', async () => {
     const onAction = vi.fn();
-    const chooseDocument = vi.fn().mockResolvedValue({ path: 'C:/tmp/chosen.pdf' });
+    const chooseDocument = vi.fn().mockResolvedValue({ path: 'C:/tmp/chosen.txt' });
     const readDocumentBytes = vi.fn().mockResolvedValue({
-      kind: 'pdf',
-      fileName: 'chosen.pdf',
-      fileSize: 2048,
-      bytes: new ArrayBuffer(8),
+      kind: 'txt',
+      fileName: 'chosen.txt',
+      fileSize: 12,
+      bytes: new TextEncoder().encode('合同正文').buffer,
     });
     render(
       <ContractAgentSurface
@@ -60,10 +61,12 @@ describe('ContractSurface', () => {
     );
     fireEvent.click(screen.getByTestId('upload'));
     expect(chooseDocument).toHaveBeenCalledWith({ extensions: ['pdf', 'docx', 'txt'] });
-    expect((await screen.findByTestId('upload')).textContent).toBe('更换文件');
-    expect((await screen.findAllByText('chosen.pdf')).length).toBeGreaterThan(0);
+    expect(await screen.findByTestId('remove-document')).toBeTruthy();
+    expect(screen.queryByTestId('upload')).toBeNull();
+    expect(screen.queryByText('更换文件')).toBeNull();
+    expect((await screen.findAllByText('chosen.txt')).length).toBeGreaterThan(0);
     expect(screen.queryByText('尚未选择合同文件')).toBeNull();
-    await waitFor(() => expect(readDocumentBytes).toHaveBeenCalledWith('C:/tmp/chosen.pdf'));
+    await waitFor(() => expect(readDocumentBytes).toHaveBeenCalledWith('C:/tmp/chosen.txt'));
   });
 
   it('renders risk findings with levels and advice from workflow result', () => {
@@ -488,7 +491,9 @@ describe('ContractAgentSurface', () => {
       />,
     );
     fireEvent.click(screen.getByTestId('upload'));
-    await screen.findByText('更换文件');
+    await screen.findByTestId('remove-document');
+    expect(screen.queryByText('更换文件')).toBeNull();
+    expect(screen.queryByTestId('upload')).toBeNull();
     fireEvent.click(screen.getByTestId('workspace'));
     await waitFor(() => expect(screen.getByTestId('workspace').textContent).toContain('contract'));
     fireEvent.click(screen.getByTestId('review'));

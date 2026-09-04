@@ -391,9 +391,10 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
   };
 
   const chooseDocument = async () => {
+    if (documents[0] || localFileName) return;
     const res = await actions.chooseDocument({ extensions: PREVIEW_EXTENSIONS });
     if (res?.path) {
-      setDocuments((prev) => Array.from(new Set([...prev, res.path!])));
+      setDocuments([res.path]);
       setLocalFileName(basename(res.path));
     }
   };
@@ -443,9 +444,11 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
           <ModelEffortBar agentId={props.agent.id} sessionId={sessionId} session={session} onPrefs={setRunPrefs} />
           {status === 'idle' && (
             <>
-              <button type="button" className="ui-btn ui-btn--ghost" data-testid="upload" onClick={chooseDocument}>
-                {selectedName ? '更换文件' : '选择合同文件'}
-              </button>
+              {!selectedName && (
+                <button type="button" className="ui-btn ui-btn--ghost" data-testid="upload" onClick={chooseDocument}>
+                  选择合同文件
+                </button>
+              )}
               {selectedName && (
                 <button type="button" className="ui-btn ui-btn--ghost" data-testid="remove-document" onClick={removeLocalDocument}>
                   移除
