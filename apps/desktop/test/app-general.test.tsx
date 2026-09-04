@@ -203,6 +203,7 @@ describe('App general agent', () => {
   it('does not insert a sidebar row from openSession alone', async () => {
     const { api } = makeApi();
     api.listChatSessions.mockResolvedValue([]);
+    api.setChatTitle = vi.fn().mockResolvedValue({ ok: true });
     render(<App />);
     await screen.findByText(/工作台 · 上午好/);
     fireEvent.click(screen.getByTestId('agent-card-general'));
@@ -210,6 +211,7 @@ describe('App general agent', () => {
     fireEvent.change(input, { target: { value: '你好' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
+    await waitFor(() => expect(api.setChatTitle).toHaveBeenCalledWith('g1', '你好', 'agent'));
     expect(screen.queryByTestId('session-g1')).toBeNull();
   });
 
@@ -243,6 +245,29 @@ describe('App general agent', () => {
     act(() => channels['chat-event']({ type: 'session_title', sessionId: 'g1', title: '占位名' }));
     expect(await screen.findByTestId('session-g1')).toBeTruthy();
     expect(screen.getByTestId('session-g1').className).not.toMatch(/current/);
+  });
+
+  it('publishes a placeholder after leaving before promptSession returns', async () => {
+    const { api } = makeApi();
+    api.listChatSessions.mockResolvedValue([
+      { id: 'old', profileId: 'general', title: '旧会话', workspaceKind: 'auto', workspacePath: 'C:/ws/x', model: null, piSessionFile: null, createdAt: 0, updatedAt: 1 },
+    ]);
+    let finish!: (value: { ok: boolean; sessionId: string }) => void;
+    api.promptSession.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+    fireEvent.click(screen.getByTestId('agent-card-general'));
+    const input = await screen.findByTestId('composer-input');
+    fireEvent.change(input, { target: { value: '新开的一句' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() => expect(api.promptSession).toHaveBeenCalled());
+    fireEvent.click(await screen.findByText('旧会话'));
+    await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('old'));
+    await act(async () => { finish({ ok: true, sessionId: 'g-new' }); });
+    await waitFor(() => expect(api.setChatTitle).toHaveBeenCalledWith('g-new', '新开的一句', 'agent'));
+    expect(await screen.findByTestId('session-g-new')).toBeTruthy();
+    expect(screen.getByTestId('session-g-new').className).not.toMatch(/current/);
+    expect(screen.getByTestId('session-old').className).toMatch(/current/);
   });
 
   it('renames a session and updates the history list immediately', async () => {

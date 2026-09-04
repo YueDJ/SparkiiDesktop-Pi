@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ContextUsageBar, Markdown, ModelEffortControl, RiskBadge, THINKING_LEVELS } from '@sparkii/ui';
 import type { AgentSession, AgentSurfaceActions, AgentSurfaceProps, CustomSessionEntry } from '../../../src/surface/contract.js';
 import { deriveWorkflowTimeline, extractWorkflowResult } from '../../../src/surface/normalize.js';
+import { isWorkflowDraftBind, sessionIdChange } from '../../../src/surface/session-id.js';
 import { captureReportHtml, extractContractOutputsFromEntries, formatReport, parseRiskFindings, reportExportPath, resolveContractResult } from './contract.js';
 import { contractSessionTitle } from './title.js';
 import { bytesToBase64, documentFromHtml } from './report-docx.js';
@@ -353,22 +354,24 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
     return () => { cancelled = true; };
   }, [previewPath, sessionId]);
   useEffect(() => {
-    const leftSession = Boolean(prevSessionId.current) && !sessionId;
+    const change = sessionIdChange(prevSessionId.current, sessionId);
     prevSessionId.current = sessionId;
-    if (sessionId) setDiscardSession(false);
-    else if (leftSession) setDiscardSession(true);
+    if (isWorkflowDraftBind(change, props.mode)) return;
+    if (change === 'stay') return;
     setFilter('all');
     setSelected(new Set());
     setNoteDraft({});
     setLocalFileName('');
-    if (leftSession || (!sessionId && discardSession)) {
+    if (change === 'leave') {
+      setDiscardSession(true);
       setDocuments([]);
       lastInputsKey.current = '';
       return;
     }
+    setDiscardSession(false);
     setDocuments(inputs.map((i) => i.path));
     lastInputsKey.current = inputsKey;
-  }, [sessionId]);
+  }, [sessionId, props.mode]);
 
   const processedCount = Object.values(reviewed).filter((v) => v !== 'none').length;
   const unprocessed = findings.filter((f) => !reviewed[f.id] || reviewed[f.id] === 'none');
@@ -515,12 +518,21 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
                 className="ui-btn ui-btn--primary"
                 data-testid="review"
                 disabled={!documents.length}
-                onClick={() => actions.startWorkflow({
-                  documents,
-                  workspacePath: runPrefs.workspacePath,
-                  model: runPrefs.model,
-                  thinkingLevel: runPrefs.thinkingLevel,
-                })}
+                onClick={() => {
+                  const name = selectedName;
+                  void Promise.resolve(actions.startWorkflow({
+                    documents,
+                    workspacePath: runPrefs.workspacePath,
+                    model: runPrefs.model,
+                    thinkingLevel: runPrefs.thinkingLevel,
+                  })).then((res) => {
+                    const id = res?.sessionId;
+                    if (!id || !name) return;
+                    if (titledSessions.current.has(id)) return;
+                    titledSessions.current.add(id);
+                    void sparkiiApi().setChatTitle?.(id, contractSessionTitle(name), 'agent');
+                  });
+                }}
               >
                 开始审核
               </button>

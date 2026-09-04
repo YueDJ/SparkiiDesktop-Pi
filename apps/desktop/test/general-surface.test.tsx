@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, waitFor, cleanup, act } from '@testing-library/react';
+import { render, waitFor, cleanup, act, screen, fireEvent } from '@testing-library/react';
 import GeneralAgentSurface from '../agents/general/surface/index.js';
 import { placeholderOf, shortTitlePrompt } from '../agents/general/surface/title.js';
 import type { AgentSession } from '../src/surface/contract.js';
@@ -65,6 +65,29 @@ function renderGeneral(opts: {
 }
 
 describe('GeneralAgentSurface titles', () => {
+  it('publishes a placeholder from promptSession when the viewport never receives the id', async () => {
+    const api = makeApi({
+      promptSession: vi.fn().mockResolvedValue({ ok: true, sessionId: 'g-left' }),
+    });
+    render(
+      <GeneralAgentSurface
+        agent={{ id: 'general', name: '通用智能体', surfaceType: 'chat' }}
+        sessionId={null}
+        mode="live"
+        draft
+        session={{ entries: [], streaming: false, meta: {} }}
+        actions={actions}
+        api={api as any}
+      />,
+    );
+    const input = await screen.findByTestId('composer-input');
+    fireEvent.change(input, { target: { value: '你好世界' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() => expect(api.promptSession).toHaveBeenCalled());
+    await waitFor(() => expect(api.setChatTitle).toHaveBeenCalledWith('g-left', '你好世界', 'agent'));
+    expect(actions.openSession).toHaveBeenCalledWith('g-left');
+  });
+
   it('publishes a placeholder title from the first user message', async () => {
     const api = makeApi();
     renderGeneral({

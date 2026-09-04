@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { StandardChatSurface, type StandardChatProps } from '../../../src/surface/standard-chat.js';
 import type { SparkiiApi } from '../../../src/types/sparkii-api.js';
-import { decideTitle, firstAssistantText, firstUserText } from './title.js';
+import { decideTitle, firstAssistantText, firstUserText, placeholderOf } from './title.js';
 
 export { applyChatEvent, normalizeMessages, type ChatEntry } from '@sparkii/ui';
 
@@ -41,5 +41,10 @@ export default function GeneralAgentSurface(props: StandardChatProps) {
     })();
   }, [sessionId, session.entries, title, apiOverride]);
 
-  return <StandardChatSurface {...props} />;
+  const onSessionCreated = (id: string, userText: string) => {
+    const api = apiOverride ?? sparkiiApi();
+    void api.setChatTitle?.(id, placeholderOf(userText), 'agent');
+  };
+
+  return <StandardChatSurface {...props} onSessionCreated={onSessionCreated} />;
 }

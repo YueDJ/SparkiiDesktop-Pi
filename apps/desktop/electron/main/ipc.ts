@@ -343,7 +343,13 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       };
     } catch (e) {
       // 空会话或尚未落盘的会话（首条 assistant 才写 jsonl）没有文件，返回空消息。
-      if ((e as NodeJS.ErrnoException).code === 'ENOENT') return { messages: [] };
+      if ((e as NodeJS.ErrnoException).code === 'ENOENT') {
+        return {
+          messages: [],
+          entries: [],
+          inputs: parseSessionInputs((rec as { inputs?: string }).inputs),
+        };
+      }
       throw e;
     }
   });

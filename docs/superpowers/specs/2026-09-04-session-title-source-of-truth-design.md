@@ -5,6 +5,7 @@
 **Branch:** `cursor/session-title-source-of-truth-3fdc`
 **Supersedes:** `docs/superpowers/specs/2026-08-26-session-storage-and-credentials-design.md` §5.2（平台在 `agent_end` 后自动起名）
 **Depends on:** 薄契约 / Agent 与平台分责（`2026-09-01`、`2026-09-02`、`2026-09-03`）
+**Amended by:** `2026-09-04-runtime-viewport-decoupling-design.md`（合同在点火回调里公布；通用占位跟 `promptSession` 返回的 id；都不要求 Surface 仍挂着。短名仍只在挂着时升级）
 
 ## Goal
 

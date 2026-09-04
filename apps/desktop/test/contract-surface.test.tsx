@@ -638,6 +638,87 @@ describe('ContractAgentSurface', () => {
     expect((screen.getByTestId('review') as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it('keeps the local draft file when a live session id is bound', async () => {
+    const chooseDocument = vi.fn().mockResolvedValue({ path: 'C:/tmp/采购合同.pdf' });
+    const { rerender } = render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId={null}
+        mode="live"
+        session={{ entries: [], streaming: false, status: 'idle', meta: { currentStep: null } }}
+        actions={{ ...makeActions(), chooseDocument }}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('upload'));
+    await screen.findByTestId('remove-document');
+    expect(screen.getAllByText('采购合同.pdf').length).toBeGreaterThan(0);
+    rerender(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s-new"
+        mode="live"
+        session={{ entries: [], streaming: false, status: 'idle', meta: { currentStep: null, inputs: [] } }}
+        actions={{ ...makeActions(), chooseDocument }}
+      />,
+    );
+    expect(screen.getAllByText('采购合同.pdf').length).toBeGreaterThan(0);
+    expect((screen.getByTestId('review') as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('resets a local draft when opening history from a new session', async () => {
+    const chooseDocument = vi.fn().mockResolvedValue({ path: 'C:/tmp/采购合同.pdf' });
+    const { rerender } = render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId={null}
+        mode="live"
+        session={{ entries: [], streaming: false, status: 'idle', meta: { currentStep: null } }}
+        actions={{ ...makeActions(), chooseDocument }}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('upload'));
+    await screen.findByTestId('remove-document');
+    rerender(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s-hist"
+        mode="history"
+        session={{ entries: [], streaming: false, status: 'done', meta: { currentStep: 'report', inputs: [{ path: 'C:/tmp/b.pdf', name: 'b.pdf' }] } }}
+        actions={{ ...makeActions(), chooseDocument }}
+      />,
+    );
+    expect(screen.queryByText('采购合同.pdf')).toBeNull();
+    expect(screen.getAllByText('b.pdf').length).toBeGreaterThan(0);
+  });
+
+  it('publishes a title from the startWorkflow result without a viewport session id', async () => {
+    const setChatTitle = vi.fn().mockResolvedValue({ ok: true });
+    (window as any).sparkii = {
+      getModelOptions: async () => ({ models: [], defaultModel: null, provider: 'deepseek' }),
+      getChatState: async () => ({}),
+      getChatSession: async () => ({}),
+      setChatTitle,
+      on: () => () => {},
+    };
+    const startWorkflow = vi.fn().mockResolvedValue({ sessionId: 'ws-left' });
+    const chooseDocument = vi.fn().mockResolvedValue({ path: 'C:/tmp/采购合同.pdf' });
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId={null}
+        mode="live"
+        session={{ entries: [], streaming: false, status: 'idle', meta: { currentStep: null } }}
+        actions={{ ...makeActions(), startWorkflow, chooseDocument }}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('upload'));
+    await screen.findByTestId('remove-document');
+    fireEvent.click(screen.getByTestId('review'));
+    await waitFor(() => expect(startWorkflow).toHaveBeenCalled());
+    await waitFor(() => expect(setChatTitle).toHaveBeenCalledWith('ws-left', '采购合同', 'agent'));
+    delete (window as any).sparkii;
+  });
+
   it('loads context usage after a session id appears', async () => {
     const getChatState = vi.fn().mockResolvedValue({
       contextUsage: { tokens: 12800, contextWindow: 200000, percent: 6 },

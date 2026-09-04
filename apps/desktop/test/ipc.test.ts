@@ -1421,6 +1421,34 @@ describe('ipc provider handlers', () => {
     expect(await handlers.get('sparkii:readDocumentBytes')!(null, join(dataDir, 'other.txt'))).toEqual({ error: 'denied' });
   });
 
+  it('openChatSession ENOENT still returns session inputs', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const missingFile = join(dataDir, 'not-written-yet.jsonl');
+    const chatSession = {
+      profileId: 'contract-review',
+      model: null,
+      kind: 'workflow',
+      piSessionFile: missingFile,
+      inputs: JSON.stringify([{ path: 'C:/tmp/a.pdf', name: 'a.pdf' }]),
+    };
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      chatSession,
+    });
+    const handlers = await registeredHandlers();
+    const opened = await handlers.get('sparkii:openChatSession')!(null, 'wf-missing');
+    expect(opened).toMatchObject({
+      messages: [],
+      entries: [],
+      inputs: [expect.objectContaining({ path: 'C:/tmp/a.pdf', name: 'a.pdf' })],
+    });
+  });
+
   it('setChatTitle notifies the renderer so the sidebar can show the filename', async () => {
     const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
     dirs.push(dataDir);
