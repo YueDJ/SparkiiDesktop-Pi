@@ -444,6 +444,75 @@ describe('ContractAgentSurface', () => {
     expect(actions.review).toHaveBeenCalledWith('report_merged', { stepId: 'report' });
   });
 
+  it('keeps merge enabled in history after the session was already merged', () => {
+    const actions = makeActions();
+    const entries = normalizeSessionEntries([
+      { type: 'custom', id: 'c1', customType: 'workflow_step_end', data: { stepId: 'review', status: 'completed', output: { riskFindings: [{ id: 'r1', title: '付款周期过长', level: 'high' }] } } },
+      { type: 'custom', id: 'c2', customType: 'workflow_step_end', data: { stepId: 'report', status: 'completed', output: { title: '合同审核报告', sections: [{ heading: '结论', body: '关注' }] } } },
+      { type: 'custom', id: 'c3', customType: 'workflow_state', data: { stepId: 'report', action: 'report_merged' } },
+    ]);
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s-hist-merged"
+        mode="history"
+        session={{ entries, streaming: false, status: 'done', result: extractWorkflowResult(entries), meta: { currentStep: 'report' } }}
+        actions={actions}
+      />,
+    );
+    const merge = screen.getByText('合并到报告') as HTMLButtonElement;
+    expect(merge.disabled).toBe(false);
+    fireEvent.click(merge);
+    expect(actions.review).toHaveBeenCalledWith('report_merged', { stepId: 'report' });
+  });
+
+  it('recovers findings from history assistant messages when step output is missing', () => {
+    const actions = makeActions();
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s-hist-msg"
+        mode="history"
+        session={{
+          entries: [{
+            kind: 'message',
+            id: 'm1',
+            role: 'assistant',
+            text: '{"riskFindings":[{"id":"r1","title":"付款周期过长","level":"high"}],"title":"合同审核报告","sections":[{"heading":"结论","body":"关注"}]}',
+            streaming: false,
+          }],
+          streaming: false,
+          status: 'done',
+          result: {},
+          meta: { currentStep: 'report' },
+        }}
+        actions={actions}
+      />,
+    );
+    expect(screen.getAllByText('付款周期过长').length).toBeGreaterThan(0);
+    const merge = screen.getByText('合并到报告') as HTMLButtonElement;
+    expect(merge.disabled).toBe(false);
+    fireEvent.click(merge);
+    expect(actions.review).toHaveBeenCalledWith('report_merged', { stepId: 'report' });
+  });
+
+  it('still locks merge after a live merge', () => {
+    const entries = normalizeSessionEntries([
+      { type: 'custom', id: 'c1', customType: 'workflow_step_end', data: { stepId: 'review', status: 'completed', output: { riskFindings: [{ id: 'r1', title: '付款周期过长', level: 'high' }] } } },
+      { type: 'custom', id: 'c2', customType: 'workflow_state', data: { stepId: 'report', action: 'report_merged' } },
+    ]);
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s-live"
+        mode="live"
+        session={{ entries, streaming: false, status: 'done', result: extractWorkflowResult(entries), meta: { currentStep: 'review' } }}
+        actions={makeActions()}
+      />,
+    );
+    expect((screen.getByText('合并到报告') as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it('shows risk cards after a review step_end output without session.result', () => {
     const entries = normalizeSessionEntries([
       { type: 'custom', id: 'c1', customType: 'workflow_step_start', data: { stepId: 'review' } },

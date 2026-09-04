@@ -1,6 +1,6 @@
 import { inflateRawSync } from 'node:zlib';
 import { describe, it, expect } from 'vitest';
-import { parseRiskFindings, formatReport, stepStatus, parseClauseGroups, buildExportDocument, captureReportHtml, reportExportPath } from '../agents/contract-review/surface/contract.js';
+import { parseRiskFindings, formatReport, stepStatus, parseClauseGroups, buildExportDocument, captureReportHtml, reportExportPath, extractContractOutputsFromEntries, resolveContractResult } from '../agents/contract-review/surface/contract.js';
 import { documentFromHtml, bytesToBase64 } from '../agents/contract-review/surface/report-docx.js';
 import { deriveSteps } from '../agents/contract-review/surface/manifest-steps.js';
 
@@ -63,6 +63,34 @@ describe('parseRiskFindings', () => {
       ],
     });
     expect(out).toEqual([{ id: 'r1', title: '付款周期过长', level: 'high', advice: '约定逾期违约金' }]);
+  });
+});
+
+describe('extractContractOutputsFromEntries', () => {
+  it('recovers review and report JSON from assistant messages', () => {
+    const out = extractContractOutputsFromEntries([
+      { kind: 'message', role: 'assistant', text: '{"riskFindings":[{"id":"r1","title":"付款周期过长","level":"high"}]}' },
+      { kind: 'message', role: 'assistant', text: '{"title":"合同审核报告","sections":[{"heading":"结论","body":"关注"}]}' },
+    ]);
+    expect(out.review).toMatchObject({ riskFindings: [{ id: 'r1', title: '付款周期过长' }] });
+    expect(out.report).toMatchObject({ title: '合同审核报告' });
+  });
+
+  it('keeps the last matching assistant payload when the model retries', () => {
+    const out = extractContractOutputsFromEntries([
+      { kind: 'message', role: 'assistant', text: '{"riskFindings":[{"id":"old","title":"旧","level":"low"}]}' },
+      { kind: 'message', role: 'assistant', text: 'thinking\n{"riskFindings":[{"id":"r2","title":"新","level":"high"}]}' },
+    ]);
+    expect(out.review).toMatchObject({ riskFindings: [{ id: 'r2', title: '新' }] });
+  });
+});
+
+describe('resolveContractResult', () => {
+  it('does not let an empty session.result hide step or message outputs', () => {
+    expect(resolveContractResult({}, { review: { riskFindings: [] } }, { report: { title: '报告' } })).toEqual({
+      review: { riskFindings: [] },
+      report: { title: '报告' },
+    });
   });
 });
 
