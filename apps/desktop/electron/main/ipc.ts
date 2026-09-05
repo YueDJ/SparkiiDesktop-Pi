@@ -392,9 +392,6 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   ipcMain.handle('sparkii:openChatSession', async (_e, sessionId: string) => {
     const open = openSessions.get(sessionId);
     if (open) {
-      // 视口拿到 sessionId 后接上这根进程的 PIPE。runWorkflow onReady / promptSession
-      // 通常已经订过；WeakMap 去重。切历史再回来也走这里，避免 live 口没接上。
-      ensureProcessPipe(open.slot);
       // 进程还活着：起步 = getBranch() + streamingMessage。不读磁盘（首条 assistant 落盘前
       // 文件可能是空的，树上已有步骤行），也不用 get_messages 当时间线。
       const [entriesResp, stateResp] = await Promise.all([

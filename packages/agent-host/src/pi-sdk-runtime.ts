@@ -120,44 +120,6 @@ export function appendCustomEntryAndEmit(
   if (entry) session._emit?.({ type: "entry_appended", entry });
 }
 
-/**
- * Pi `newSession` / `switchSession` 会换掉 `runtime.session`。订在旧对象上的 subscribe
- * 会被 dispose 清掉。把 listener 放在稳定扇出上，每次换会话再接到新 session —— 这就是
- * sessionId 出生之后把 PIPE 接到当前 AgentSession。
- */
-export interface SessionEventTarget {
-  subscribe(callback: (event: unknown) => void): () => void;
-  bindExtensions?(bindings: Record<string, never>): Promise<void>;
-}
-
-export interface SessionRuntimePipeHost {
-  session: SessionEventTarget;
-  setRebindSession?(rebind?: (session: SessionEventTarget) => Promise<void>): void;
-}
-
-export function bindRuntimeEventPipe(
-  runtime: SessionRuntimePipeHost,
-  listeners: Set<(event: unknown) => void>,
-): () => void {
-  let off = () => {};
-  const attach = (session: SessionEventTarget) => {
-    off();
-    off = session.subscribe((event) => {
-      for (const listener of listeners) listener(event);
-    });
-  };
-  const rebind = async (session: SessionEventTarget) => {
-    attach(session);
-    await session.bindExtensions?.({});
-  };
-  runtime.setRebindSession?.(rebind);
-  attach(runtime.session);
-  return () => {
-    off();
-    runtime.setRebindSession?.(undefined);
-  };
-}
-
 function systemPromptExtensionFactory(getSystemPrompt: () => string | undefined) {
   return (pi: ExtensionAPI) => {
     pi.on("before_agent_start", () => {
@@ -246,12 +208,9 @@ export async function createPiSdkSessionHost(
     sessionManager: SessionManager.create(fallbackCwd, sessionDir),
   });
 
-  const eventListeners = new Set<(event: unknown) => void>();
-  const runtimeErrorListeners = new Set<(error: { message: string; command?: string; stack?: string }) => void>();
-  bindRuntimeEventPipe(runtime as SessionRuntimePipeHost, eventListeners);
-
   function adaptSession(): PiRuntimeSession {
     const session: any = runtime.session;
+    const runtimeErrorListeners = new Set<(error: { message: string; command?: string; stack?: string }) => void>();
     const sessionCwd = pendingSaddle?.cwd ?? fallbackCwd;
     const workspaceRoot = pendingSaddle?.workspaceRoot ?? fallbackWorkspaceRoot;
     const saddleTools: ToolDefinition[] = pendingSaddle
@@ -356,10 +315,7 @@ export async function createPiSdkSessionHost(
             oauthAuth: Boolean(provider.auth?.oauth),
           };
         }),
-      subscribe: (callback) => {
-        eventListeners.add(callback);
-        return () => { eventListeners.delete(callback); };
-      },
+      subscribe: (callback) => session.subscribe(callback),
       onRuntimeError: (callback) => {
         runtimeErrorListeners.add(callback);
         return () => runtimeErrorListeners.delete(callback);
