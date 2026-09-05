@@ -357,7 +357,12 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
   useEffect(() => {
     const change = sessionIdChange(prevSessionId.current, sessionId);
     prevSessionId.current = sessionId;
-    if (isWorkflowDraftBind(change, props.mode)) return;
+    if (isWorkflowDraftBind(change, props.mode)) {
+      // 草稿点「开始审核」后 bind 到的就是这条新会话：丢弃上一会话的闸门必须放开，
+      // 否则 live 事件全被 EMPTY_SESSION 挡住，要切到历史再回来才看得见状态。
+      setDiscardSession(false);
+      return;
+    }
     if (change === 'stay') return;
     setFilter('all');
     setSelected(new Set());

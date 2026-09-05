@@ -332,6 +332,55 @@ describe('ContractAgentSurface', () => {
     expect((screen.getByText('合并到报告') as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it('shows live status for the session started from the draft after a new-session discard', () => {
+    const actions = makeActions();
+    const done = {
+      entries: [],
+      streaming: false,
+      status: 'done' as const,
+      meta: { currentStep: 'report' as const, inputs: [{ path: 'C:/tmp/a.pdf', name: 'a.pdf' }] },
+    };
+    const empty = { entries: [], streaming: false, status: 'idle' as const, meta: { currentStep: null } };
+    const { rerender } = render(
+      <ContractAgentSurface agent={agent} sessionId="s1" mode="history" session={done} actions={actions} />,
+    );
+    fireEvent.click(screen.getByTestId('new-review'));
+    rerender(<ContractAgentSurface agent={agent} sessionId={null} mode="live" session={empty} actions={actions} />);
+    expect(screen.getByTestId('review')).toBeTruthy();
+
+    // 草稿点「开始审核」后 bind 到新会话，第一批 live 步骤行到达。
+    const running = normalizeSessionEntries([
+      { type: 'custom', id: 'c1', customType: 'workflow_step_start', data: { stepId: 'load' } },
+    ]);
+    rerender(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s2"
+        mode="live"
+        session={{ entries: running, streaming: true, status: 'running', meta: { currentStep: 'load' } }}
+        actions={actions}
+      />,
+    );
+    expect(screen.getByTestId('workflow-status').textContent).toBe('审核中：load');
+    expect(screen.queryByTestId('review')).toBeNull();
+    expect(screen.getByTestId('new-review')).toBeTruthy();
+
+    const finished = normalizeSessionEntries([
+      { type: 'custom', id: 'c1', customType: 'workflow_step_start', data: { stepId: 'load' } },
+      { type: 'custom', id: 'c2', customType: 'workflow_step_end', data: { stepId: 'load', status: 'completed' } },
+    ]);
+    rerender(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s2"
+        mode="live"
+        session={{ entries: finished, streaming: false, status: 'done', meta: { currentStep: 'load' } }}
+        actions={actions}
+      />,
+    );
+    expect(screen.getByTestId('workflow-status').textContent).toBe('审核完成');
+  });
+
   it('names the session after the stripped contract filename', async () => {
     const setChatTitle = vi.fn().mockResolvedValue({ ok: true });
     (window as any).sparkii = {
