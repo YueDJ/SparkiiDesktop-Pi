@@ -1,6 +1,6 @@
 # Live Session Pipeline（起步 + 透传 + 与历史同源）— Design Spec
 
-**Status:** Draft（第 1–5 条已和产品讨论锁定；第 6–7 条待逐条讨论）
+**Status:** Draft（第 1–6 条已和产品讨论锁定；第 7 条待讨论）
 **Date:** 2026-09-05
 **Depends on:** 薄契约 / live-history 同源（`2026-09-02-agent-surface-template-and-contract-review-design.md`）；合同 JSONL 显示（`2026-09-03-contract-review-jsonl-display-design.md`）；Runtime ⊥ Viewport（`2026-09-04-runtime-viewport-decoupling-design.md`）
 **Amends:** runtime-viewport spec 第 4、5 条里「回来只重读 JSONL、事件只是尾巴」——进程仍活着时，起步改为 `getBranch()` + `streamingMessage`，不是读磁盘。
@@ -100,7 +100,7 @@ get_messages 不参与时间线
 
 已提交部分走同一套归一化。允许 live 多出来的只有流式槽里那句。不允许 live 一套扁事件、历史一套树节点。
 
-`buildContextEntries()` **不**用于第 1 条起步。那是 compaction 后的工作上下文切片；压缩前的 `custom` 步骤行可能被切掉，live 会和 JSONL 历史分叉。是否两边一起切，留给第 6 条。
+`buildContextEntries()` **不**用于第 1 条起步。那是 compaction 后的工作上下文切片；压缩前的 `custom` 步骤行可能被切掉，live 会和 JSONL 历史分叉。第 6 条：平台时间线始终用 `getBranch()`；压缩后一次整表换树，custom 行仍留着。
 
 ---
 
@@ -234,6 +234,21 @@ output 不准静默截断（截断会造成 live/历史缺 findings）
 
 ---
 
+## 第 6 条（已锁定）：Compaction 重建树；崩溃 / 退出只认 JSONL
+
+平时不轮询树。`buildContextEntries()` 不当平台时间线（会切掉压缩前的步骤行）。
+
+**Compaction（进程还活着、仍是这条会话）**  
+收到成功的 `compaction_end`：做一次和第 1、3 条相同的快照（`getBranch()` + `streamingMessage`）。这是允许的第二次整表换树。聊天若嫌压缩前太长，渲染时可以藏 message，custom 行仍留在时间线上。
+
+**Pi 崩溃 / 子进程没了**  
+当进程已死：管子不再盖章；未入树的那句放弃。窗口 live 停；再打开或对齐文件只读 JSONL。`logger.error`。主进程不把 `streamingMessage` 代写进文件。
+
+**应用退出**  
+同上，只认已落盘文件。不在退出时抢写 in-flight。
+
+---
+
 ## 明确不做（全篇）
 
 - 为没在看的 session 重放 token
@@ -249,17 +264,18 @@ output 不准静默截断（截断会造成 live/历史缺 findings）
 - 步骤行 append 失败用空 catch 吞掉，或静默截断 `output`
 - 因视口还开着就把 slot 钉死不复用；或靠主进程事件队列防串话
 - 第二套 `pipeId` / 窗口维护进程↔会话表 / 选定 API
+- 用 `buildContextEntries()` 当平台时间线；崩溃或退出时抢救未落盘 assistant
 
 ---
 
-## 待讨论（第 6–7 条）
+## 待讨论（第 7 条）
 
-1. ~~Catch-up：磁盘 vs `getBranch` vs `get_messages`~~ **已锁定（第 1 条）**
+1. ~~Catch-up~~ **已锁定（第 1 条）**
 2. ~~线上帧形状~~ **已锁定（第 2 条）**
 3. ~~Listen-then-snapshot~~ **已锁定（第 3 条）**
 4. ~~步骤行投递失败~~ **已锁定（第 4 条）**
 5. ~~Pipe 身份~~ **已锁定（第 5 条）**
-6. **Compaction / Pi 崩溃 / 退出：** 何时 `buildContextEntries` 重建；崩溃后只认文件
+6. ~~Compaction / 崩溃 / 退出~~ **已锁定（第 6 条）**
 7. **消费契约：** 合同必须投影哪些 `customType`；忽略 vs 空白
 
-第 6 条起继续逐条讨论，通过后再补进本文 Confirmed 段。
+第 7 条通过后再补进本文 Confirmed 段。
