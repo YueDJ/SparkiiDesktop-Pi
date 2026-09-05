@@ -1,6 +1,6 @@
 # Live Session Pipeline（起步 + 透传 + 与历史同源）— Design Spec
 
-**Status:** Draft（第 1–6 条已和产品讨论锁定；第 7 条待讨论）
+**Status:** Draft（第 1–7 条已和产品讨论锁定；尚未实现）
 **Date:** 2026-09-05
 **Depends on:** 薄契约 / live-history 同源（`2026-09-02-agent-surface-template-and-contract-review-design.md`）；合同 JSONL 显示（`2026-09-03-contract-review-jsonl-display-design.md`）；Runtime ⊥ Viewport（`2026-09-04-runtime-viewport-decoupling-design.md`）
 **Amends:** runtime-viewport spec 第 4、5 条里「回来只重读 JSONL、事件只是尾巴」——进程仍活着时，起步改为 `getBranch()` + `streamingMessage`，不是读磁盘。
@@ -118,7 +118,7 @@ get_messages 不参与时间线
 - 改写成另一套形状（`message_update` → 只剩 `delta`；`tool_execution_*` → `tool_call` / `tool_result`；user 的 `entry_appended` → `{ role:'user', text }`）
 - 按智能体裁事件。通用、合同、以后新 Agent 同一管道
 
-窗口按 TUI `handleEvent` 投影。TUI 能画的，我们都要能画。渲染可以对齐分批做，但事件不得在管道里先砍掉。
+管道整包送达。各 Surface **画什么**不在本规格规定：通用智能体应对齐 TUI 把能画的都画出来，那是通用智能体自己的工作；合同页认哪些 `customType` 仍以 JSONL-display spec 为准。渲染可以对齐分批做，但事件不得在管道里先砍掉。
 
 ### 必须原样透传
 
@@ -136,7 +136,9 @@ Pi 以后新加、TUI 会处理的类型：默认同样整包转发，不要再�
 
 `normalizeEvent` 不再当裁剪层；最多加 `sessionId`。
 
-### 投影（与 TUI 对齐）
+### 折进条目列表（与 TUI 对齐）
+
+下面是管道侧如何把事件叠进会话条目（live 与历史同一套），**不是**规定某个 Surface 必须画出哪些控件。
 
 起步之后：
 
@@ -249,6 +251,26 @@ output 不准静默截断（截断会造成 live/历史缺 findings）
 
 ---
 
+## 第 7 条（已锁定）：管道原样送达全部行；各 Surface 画什么不在本规格
+
+本条只锁管道，不规定消费侧怎么画。
+
+**管道必须做的**
+
+- 所有事件 `type` 原样送达（含未知、含 Pi 以后新加的）。
+- 所有 `entry_appended` 原样送达，含全部 `custom` 行（不按 `customType`、不按 Agent 白名单过滤）。
+- 字段不抽子集。`normalizeEvent` 最多加 `sessionId`。
+- 起步快照同样带上树上已有的全部节点（含 custom），不是只送聊天消息。
+
+**本规格不决定的**
+
+- 通用智能体要把所有 type 画出来：方向对，但是通用智能体的工作，下次再定，不在本篇实现范围。
+- 合同页投影哪些 `customType`、未知行忽略还是空白：仍以 `2026-09-03-contract-review-jsonl-display-design.md` 为准，本篇不改、不重开。
+
+管道送达 ≠ 每个 Surface 现在就必须画完。行到了窗口，Surface 可以只用自己认的那些；没画到的行仍在列表里，换 Surface 或以后补渲染时还在。
+
+---
+
 ## 明确不做（全篇）
 
 - 为没在看的 session 重放 token
@@ -265,10 +287,12 @@ output 不准静默截断（截断会造成 live/历史缺 findings）
 - 因视口还开着就把 slot 钉死不复用；或靠主进程事件队列防串话
 - 第二套 `pipeId` / 窗口维护进程↔会话表 / 选定 API
 - 用 `buildContextEntries()` 当平台时间线；崩溃或退出时抢救未落盘 assistant
+- 管道按 `customType` 或 Agent 白名单丢行
+- 在本规格里规定各 Surface 必须画哪些 type / 未知行忽略还是空白（通用智能体全量绘制、合同投影仍归各自规格）
 
 ---
 
-## 待讨论（第 7 条）
+## 已锁定（第 1–7 条）
 
 1. ~~Catch-up~~ **已锁定（第 1 条）**
 2. ~~线上帧形状~~ **已锁定（第 2 条）**
@@ -276,6 +300,4 @@ output 不准静默截断（截断会造成 live/历史缺 findings）
 4. ~~步骤行投递失败~~ **已锁定（第 4 条）**
 5. ~~Pipe 身份~~ **已锁定（第 5 条）**
 6. ~~Compaction / 崩溃 / 退出~~ **已锁定（第 6 条）**
-7. **消费契约：** 合同必须投影哪些 `customType`；忽略 vs 空白
-
-第 7 条通过后再补进本文 Confirmed 段。
+7. ~~管道原样送达；消费侧怎么画不在本规格~~ **已锁定（第 7 条）**
