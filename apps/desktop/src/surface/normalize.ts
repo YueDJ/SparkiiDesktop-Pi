@@ -66,18 +66,8 @@ export function applySurfaceEvent(entries: SessionEntry[], ev: unknown): Session
     if (c.id && entries.some((e) => e.id === c.id)) return entries;
     return [...entries, c];
   }
-  const rec = asRecord(ev);
-  // Keep user messages in the live timeline so it mirrors the authoritative JSONL the same way
-  // the history replay does (live and history share one normalized entry shape).
-  if (String(rec.type) === 'message' && String(rec.role) === 'user') {
-    const text = typeof rec.text === 'string' ? rec.text : typeof rec.delta === 'string' ? rec.delta : '';
-    if (!text) return entries;
-    const last = entries[entries.length - 1];
-    // Guard against a replay that already carried the same user message and is followed by its
-    // live echo (same text, consecutive) being appended twice.
-    if (last && last.kind === 'message' && last.role === 'user' && last.text === text) return entries;
-    return [...entries, { kind: 'message', id: `u-${Date.now()}-${Math.random()}`, role: 'user', text, streaming: false }];
-  }
+  // Everything else (messages, tool executions, lifecycle) shares the chat projection, so a live
+  // session and a history replay produce the same normalized entry shape.
   return uiApplyChatEvent(entries as ChatEntry[], ev);
 }
 

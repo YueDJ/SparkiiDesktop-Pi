@@ -183,7 +183,8 @@ function ModelEffortBar({
     refresh();
     const off = api.on?.('chat-event', (p: any) => {
       if (p?.sessionId !== sessionId) return;
-      if (p?.type === 'agent_end' || p?.type === 'agent_settled' || p?.type === 'compaction_end' || p?.type === 'message') refresh();
+      // `message_end` only: `message_update` fires every tick and would hammer the two RPCs.
+      if (p?.type === 'agent_end' || p?.type === 'agent_settled' || p?.type === 'compaction_end' || p?.type === 'message_end') refresh();
     });
     const timer = setInterval(refresh, 3000);
     return () => {

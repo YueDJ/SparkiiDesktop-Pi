@@ -1,4 +1,4 @@
-import type { ChatEntry, TimelineEventType } from './pi-timeline.js';
+import type { ChatEntry } from './pi-timeline.js';
 
 export type ChatDetailLevel = 'minimal' | 'standard' | 'debug';
 
@@ -26,7 +26,8 @@ const LEVEL_RANK: Record<ChatDetailLevel, number> = {
   debug: 2,
 };
 
-const EVENT_MIN_LEVEL: Partial<Record<TimelineEventType, ChatDetailLevel>> = {
+/** 只列已知事件；查不到的（Pi 新加的、我们还没认的）落到 `?? 'debug'`，留在列表但不刷标准视图。 */
+const EVENT_MIN_LEVEL: Record<string, ChatDetailLevel | undefined> = {
   runtime_error: 'minimal',
   compaction_start: 'standard',
   compaction_end: 'standard',
@@ -65,7 +66,7 @@ export function shouldShowEntry(entry: ChatEntry, level: ChatDetailLevel): boole
 
   if (entry.kind === 'tool') {
     if (level === 'minimal') {
-      return Boolean(entry.awaitingApproval) || toolResultIsImportant(entry.result);
+      return Boolean(entry.awaitingApproval) || entry.isError === true || toolResultIsImportant(entry.result);
     }
     return true;
   }

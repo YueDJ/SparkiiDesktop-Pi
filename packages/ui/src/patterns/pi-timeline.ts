@@ -1,4 +1,9 @@
+/**
+ * Pi 的事件与条目类型是开放集合：管道整包透传，未知 `type` 也要留在列表里（详情级默认 debug）。
+ * 已知值列出来只是为了让标签/状态映射有补全，不是允许名单。
+ */
 export type TimelineEventType =
+  | (string & {})
   | 'agent_start'
   | 'agent_end'
   | 'agent_settled'
@@ -37,7 +42,10 @@ export type ChatEntry =
       id: string;
       toolName: string;
       input: unknown;
+      /** `tool_execution_update` 的中途结果；`result` 到达前才有值。 */
+      partialResult?: unknown;
       result?: unknown;
+      isError?: boolean;
       awaitingApproval?: boolean;
       toolCallId?: string;
     }
@@ -112,6 +120,7 @@ function eventLabel(type: TimelineEventType, _raw: Record<string, unknown>): str
     case 'summarization_retry_attempt_start': return '摘要重试开始';
     case 'summarization_retry_finished': return '摘要重试完成';
     case 'runtime_error': return '运行时错误';
+    default: return type;
   }
 }
 
@@ -339,52 +348,135 @@ export function normalizeMessages(messages: unknown[]): ChatEntry[] {
   return out;
 }
 
-export function applyChatEvent(entries: ChatEntry[], ev: unknown): ChatEntry[] {
-  const raw = ev as Record<string, unknown>;
-  const type = String(raw.type ?? '');
-  if (type === 'message') {
-    if (raw.role === 'user') return entries;
-    const last = entries[entries.length - 1];
-    const isActive = last?.kind === 'message' && last.role === 'assistant' && last.streaming;
-    const base = isActive
-      ? (last as Extract<ChatEntry, { kind: 'message' }>)
-      : { kind: 'message' as const, id: id('m'), role: 'assistant' as const, text: '', streaming: true };
+type MessageEntry = Extract<ChatEntry, { kind: 'message' }>;
+type ToolEntry = Extract<ChatEntry, { kind: 'tool' }>;
 
-    if (typeof raw.thinkingDelta === 'string') {
-      const next = { ...base, thinking: (base.thinking ?? '') + raw.thinkingDelta };
-      return isActive ? [...entries.slice(0, -1), next] : [...entries, next];
+/** 流式槽是「`streaming === true` 的那条 assistant」，不是 `entries.at(-1)`：中间可能插了工具块或步骤行。 */
+function streamingSlotIndex(entries: ChatEntry[]): number {
+  for (let i = entries.length - 1; i >= 0; i--) {
+    const entry = entries[i];
+    if (entry.kind === 'message' && entry.role === 'assistant' && entry.streaming) return i;
+  }
+  return -1;
+}
+
+function messageText(message: Record<string, unknown>): { text: string; thinking?: string } {
+  return {
+    text: typeof message.text === 'string' ? message.text : contentText(message.content),
+    thinking: typeof message.thinking === 'string' ? message.thinking : contentThinking(message.content),
+  };
+}
+
+/** 末条已是相同文本的同角色气泡则跳过，其余追加（`appendMessage` 不发 `entry_appended`，两条路都要能画）。 */
+function appendUniqueMessage(entries: ChatEntry[], role: 'user' | 'assistant', text: string, thinking?: string): ChatEntry[] {
+  if (!text && !thinking) return entries;
+  const last = entries[entries.length - 1];
+  if (last?.kind === 'message' && last.role === role && last.text === text) return entries;
+  return [...entries, { kind: 'message', id: id('m'), role, text, thinking, streaming: false }];
+}
+
+function replaceStreamingSlot(entries: ChatEntry[], message: Record<string, unknown>, streaming: boolean): ChatEntry[] {
+  const { text, thinking } = messageText(message);
+  const idx = streamingSlotIndex(entries);
+  if (idx < 0) {
+    if (!streaming && !text && !thinking) return entries;
+    return [...entries, { kind: 'message', id: id('m'), role: 'assistant', text, thinking, streaming }];
+  }
+  const next = [...entries];
+  const slot = next[idx] as MessageEntry;
+  next[idx] = { ...slot, text, thinking, streaming };
+  return next;
+}
+
+function findToolByCallId(entries: ChatEntry[], toolCallId: string | undefined, toolName: string): number {
+  if (toolCallId) {
+    for (let i = entries.length - 1; i >= 0; i--) {
+      const entry = entries[i];
+      if (entry.kind === 'tool' && entry.toolCallId === toolCallId) return i;
     }
+    return -1;
+  }
+  return findLastUnresolvedTool(entries, toolName);
+}
 
-    const finalThinking = typeof raw.thinking === 'string' ? raw.thinking : undefined;
-    const finalText = typeof raw.text === 'string' ? raw.text : undefined;
-    const delta = typeof raw.delta === 'string' ? raw.delta : undefined;
-    if (finalThinking === undefined && finalText === undefined && delta === undefined) return entries;
+export function applyChatEvent(entries: ChatEntry[], ev: unknown): ChatEntry[] {
+  const raw = asRecord(ev);
+  const type = String(raw.type ?? '');
 
-    const next = {
-      ...base,
-      thinking: finalThinking !== undefined ? finalThinking : base.thinking,
-      text: finalText !== undefined ? finalText : delta !== undefined ? base.text + delta : base.text,
-      streaming: delta !== undefined,
-    };
-    return isActive ? [...entries.slice(0, -1), next] : [...entries, next];
+  if (type === 'message_start' || type === 'message_update' || type === 'message_end') {
+    const message = asRecord(raw.message);
+    const role = String(message.role ?? 'assistant');
+    if (role === 'user') {
+      const { text } = messageText(message);
+      return appendUniqueMessage(entries, 'user', text);
+    }
+    if (role !== 'assistant') return entries;
+    // 全文换槽。`delta` 是 Pi 内部「这一 tick 新字」，不当合成规则用。
+    if (type === 'message_start' && streamingSlotIndex(entries) < 0) {
+      const { text, thinking } = messageText(message);
+      return [...entries, { kind: 'message', id: id('m'), role: 'assistant', text, thinking, streaming: true }];
+    }
+    return replaceStreamingSlot(entries, message, type !== 'message_end');
   }
 
-  if (type === 'tool_call') {
+  if (type === 'entry_appended') {
+    const entry = asRecord(raw.entry);
+    if (String(entry.type) === 'message') {
+      const message = asRecord(entry.message);
+      const role = String(message.role ?? '');
+      if (role !== 'user' && role !== 'assistant') {
+        const out: ChatEntry[] = [];
+        normalizeSessionEntry(entry, out);
+        return out.length ? [...entries, ...out] : entries;
+      }
+      const { text, thinking } = messageText(message);
+      return appendUniqueMessage(entries, role, text, thinking);
+    }
+    const out: ChatEntry[] = [];
+    normalizeSessionEntry(entry, out);
+    return out.length ? [...entries, ...out] : entries;
+  }
+
+  if (type === 'tool_execution_start') {
     return [...entries, {
       kind: 'tool',
       id: id('t'),
       toolName: String(raw.toolName ?? ''),
-      input: raw.input,
+      input: raw.args ?? raw.params ?? raw.input ?? {},
       toolCallId: typeof raw.toolCallId === 'string' ? raw.toolCallId : undefined,
     }];
   }
-  if (type === 'tool_result') {
+
+  if (type === 'tool_execution_update') {
     const toolCallId = typeof raw.toolCallId === 'string' ? raw.toolCallId : undefined;
-    const idx = findLastUnresolvedTool(entries, String(raw.toolName ?? ''), toolCallId);
+    const idx = findToolByCallId(entries, toolCallId, String(raw.toolName ?? ''));
     if (idx < 0) return entries;
     const next = [...entries];
-    const target = next[idx] as Extract<ChatEntry, { kind: 'tool' }>;
-    next[idx] = { ...target, result: raw.result, awaitingApproval: false };
+    const target = next[idx] as ToolEntry;
+    next[idx] = { ...target, partialResult: raw.partialResult };
+    return next;
+  }
+
+  if (type === 'tool_execution_end') {
+    const toolCallId = typeof raw.toolCallId === 'string' ? raw.toolCallId : undefined;
+    const toolName = String(raw.toolName ?? '');
+    const idx = findToolByCallId(entries, toolCallId, toolName);
+    const isError = raw.isError === true ? true : undefined;
+    if (idx < 0) {
+      return [...entries, {
+        kind: 'tool',
+        id: id('t'),
+        toolName,
+        input: raw.args ?? raw.params ?? {},
+        result: raw.result,
+        isError,
+        toolCallId,
+      }];
+    }
+    const next = [...entries];
+    const target = next[idx] as ToolEntry;
+    const { partialResult: _dropped, ...rest } = target;
+    next[idx] = { ...rest, result: raw.result, isError, awaitingApproval: false };
     return next;
   }
 
@@ -400,27 +492,11 @@ export function applyChatEvent(entries: ChatEntry[], ev: unknown): ChatEntry[] {
   if (type === 'thinking_level_changed') {
     return [...entries, timelineEntry('thinking_level_change', raw)];
   }
-
-  switch (type) {
-    case 'agent_start':
-    case 'agent_settled':
-    case 'turn_start':
-    case 'turn_end':
-    case 'compaction_start':
-    case 'compaction_end':
-    case 'model_change':
-    case 'thinking_level_change':
-    case 'session_info':
-    case 'custom_message':
-    case 'branch_summary':
-    case 'auto_retry_start':
-    case 'auto_retry_end':
-    case 'summarization_retry_scheduled':
-    case 'summarization_retry_attempt_start':
-    case 'summarization_retry_finished':
-    case 'runtime_error':
-      return [...entries, timelineEntry(type as TimelineEventType, raw)];
-    default:
-      return entries;
+  if (type === 'session_info_changed') {
+    return [...entries, timelineEntry('session_info', raw)];
   }
+
+  if (!type) return entries;
+  // 未知 `type` 留在列表里（`kind:'event'`、label 就是原 type）。详情级默认 debug，聊天不会被生命周期卡刷屏。
+  return [...entries, timelineEntry(type, raw)];
 }

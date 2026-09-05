@@ -71,7 +71,8 @@ describe('App general agent', () => {
     fireEvent.keyDown(input, { key: 'Enter' });
     await waitFor(() => expect(api.promptSession).toHaveBeenCalledWith(null, '你好', undefined, undefined, expect.any(Object)));
     await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
-    act(() => channels['chat-event']({ sessionId: 'g1', type: 'message', role: 'assistant', delta: '在的' }));
+    act(() => channels['chat-event']({ sessionId: 'g1', type: 'message_start', message: { role: 'assistant', content: [] } }));
+    act(() => channels['chat-event']({ sessionId: 'g1', type: 'message_update', message: { role: 'assistant', content: [{ type: 'text', text: '在的' }] } }));
     expect(screen.getByText(/在的/)).toBeTruthy();
   });
 
@@ -108,7 +109,7 @@ describe('App general agent', () => {
     fireEvent.keyDown(input, { key: 'Enter' });
     await waitFor(() => expect(api.promptSession).toHaveBeenCalled());
     await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
-    act(() => channels['chat-event']({ type: 'message', role: 'user', text: '你好', sessionId: 'g1' }));
+    act(() => channels['chat-event']({ sessionId: 'g1', type: 'message_start', message: { role: 'user', content: [{ type: 'text', text: '你好' }] } }));
     await waitFor(() => expect(screen.getByTestId('session-g1')).toBeTruthy());
     fireEvent.contextMenu(await screen.findByTestId('session-g1'));
     fireEvent.click(screen.getByRole('menuitem', { name: /删除/ }));
@@ -155,7 +156,8 @@ describe('App general agent', () => {
     fireEvent.keyDown(input, { key: 'Enter' });
     await waitFor(() => expect(api.promptSession).toHaveBeenCalledWith(null, '你好', undefined, undefined, expect.any(Object)));
     await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
-    act(() => channels['chat-event']({ sessionId: 'g1', type: 'message', role: 'assistant', delta: '在的' }));
+    act(() => channels['chat-event']({ sessionId: 'g1', type: 'message_start', message: { role: 'assistant', content: [] } }));
+    act(() => channels['chat-event']({ sessionId: 'g1', type: 'message_update', message: { role: 'assistant', content: [{ type: 'text', text: '在的' }] } }));
     expect(screen.getByText(/在的/)).toBeTruthy();
 
     fireEvent.click(screen.getByText('Sparkii'));
@@ -194,7 +196,7 @@ describe('App general agent', () => {
     fireEvent.change(input, { target: { value: '你好' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
-    act(() => channels['chat-event']({ type: 'message', role: 'user', text: '你好', sessionId: 'g1' }));
+    act(() => channels['chat-event']({ sessionId: 'g1', type: 'message_start', message: { role: 'user', content: [{ type: 'text', text: '你好' }] } }));
     await waitFor(() => expect(api.setChatTitle).toHaveBeenCalledWith('g1', '你好', 'agent'));
     expect(await screen.findByTestId('session-g1')).toBeTruthy();
     expect(screen.getAllByText('你好').length).toBeGreaterThan(0);

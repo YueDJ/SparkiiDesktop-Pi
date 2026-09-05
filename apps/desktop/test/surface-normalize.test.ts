@@ -16,35 +16,76 @@ describe('surface normalize', () => {
 
   it('applies a live message event onto entries', () => {
     const base = normalizeSessionEntries([]);
-    const next = applySurfaceEvent(base, { type: 'message', role: 'assistant', delta: '你好' });
-    expect(next.at(-1)?.kind).toBe('message');
+    const next = applySurfaceEvent(base, {
+      type: 'message_update',
+      message: { role: 'assistant', content: [{ type: 'text', text: '你好' }] },
+    });
+    expect(next.at(-1)).toMatchObject({ kind: 'message', role: 'assistant', text: '你好', streaming: true });
   });
 
   it('keeps a user message in the live timeline (mirrors the JSONL)', () => {
     const base = normalizeSessionEntries([{ type: 'message', message: { role: 'user', content: [{ type: 'text', text: '先' }] } }]);
-    const next = applySurfaceEvent(base, { type: 'message', role: 'user', text: '先检查一下结果' });
+    const next = applySurfaceEvent(base, {
+      type: 'message_start',
+      message: { role: 'user', content: [{ type: 'text', text: '先检查一下结果' }] },
+    });
     expect(next.at(-1)).toMatchObject({ kind: 'message', role: 'user', text: '先检查一下结果' });
   });
 
-  it('does not double-echo the same consecutive user message', () => {
-    const base = normalizeSessionEntries([]);
-    const once = applySurfaceEvent(base, { type: 'message', role: 'user', text: '你好' });
-    const twice = applySurfaceEvent(once, { type: 'message', role: 'user', text: '你好' });
-    expect(twice).toHaveLength(1);
+  it('ignores a user entry_appended that repeats the last user bubble', () => {
+    let entries = applySurfaceEvent([], {
+      type: 'message_start',
+      message: { role: 'user', content: [{ type: 'text', text: '请审核' }] },
+    });
+    entries = applySurfaceEvent(entries, {
+      type: 'entry_appended',
+      entry: { type: 'message', id: 'm1', message: { role: 'user', content: [{ type: 'text', text: '请审核' }] } },
+    });
+    expect(entries.filter((e) => e.kind === 'message' && e.role === 'user')).toHaveLength(1);
   });
 
-  it('applies an assistant thinking delta onto entries', () => {
-    const next = applySurfaceEvent([], { type: 'message', role: 'assistant', thinkingDelta: '让我想想' });
+  it('appends a user bubble from entry_appended when there was no message_start', () => {
+    const entries = applySurfaceEvent([], {
+      type: 'entry_appended',
+      entry: { type: 'message', id: 'm1', message: { role: 'user', content: [{ type: 'text', text: '请审核' }] } },
+    });
+    expect(entries.filter((e) => e.kind === 'message' && e.role === 'user')).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ kind: 'message', role: 'user', text: '请审核', streaming: false });
+  });
+
+  it('applies an assistant thinking block onto entries', () => {
+    const next = applySurfaceEvent([], {
+      type: 'message_update',
+      message: { role: 'assistant', content: [{ type: 'thinking', thinking: '让我想想' }] },
+    });
     expect(next.at(-1)).toMatchObject({ kind: 'message', role: 'assistant', thinking: '让我想想', streaming: true });
   });
 
-  it('pairs tool_call with tool_result in the live stream', () => {
-    let entries = applySurfaceEvent([], { type: 'tool_call', toolName: 'bash', toolCallId: 'c1', input: { command: 'ls' } });
+  it('pairs the tool execution triple in the live stream', () => {
+    let entries = applySurfaceEvent([], { type: 'tool_execution_start', toolName: 'bash', toolCallId: 'c1', args: { command: 'ls' } });
     expect(entries).toHaveLength(1);
-    expect(entries[0]).toMatchObject({ kind: 'tool', toolName: 'bash', toolCallId: 'c1' });
-    entries = applySurfaceEvent(entries, { type: 'tool_result', toolName: 'bash', toolCallId: 'c1', result: { exitCode: 0 } });
+    expect(entries[0]).toMatchObject({ kind: 'tool', toolName: 'bash', toolCallId: 'c1', input: { command: 'ls' } });
+    entries = applySurfaceEvent(entries, { type: 'tool_execution_end', toolName: 'bash', toolCallId: 'c1', result: { exitCode: 0 } });
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({ kind: 'tool', result: { exitCode: 0 } });
+  });
+
+  it('keeps a workflow step row ahead of the streaming assistant slot', () => {
+    let entries = applySurfaceEvent([], {
+      type: 'message_start',
+      message: { role: 'assistant', content: [{ type: 'text', text: '第3条' }] },
+    });
+    entries = applySurfaceEvent(entries, {
+      type: 'entry_appended',
+      entry: { type: 'custom', id: 'c4', customType: 'workflow_step_end', data: { stepId: 'review', output: { riskFindings: [] } } },
+    });
+    entries = applySurfaceEvent(entries, {
+      type: 'message_update',
+      message: { role: 'assistant', content: [{ type: 'text', text: '第3条存在期限不对齐' }] },
+    });
+    expect(entries.map((e) => e.kind)).toEqual(['message', 'custom']);
+    expect(entries[0]).toMatchObject({ kind: 'message', text: '第3条存在期限不对齐', streaming: true });
+    expect(extractWorkflowResult(entries)).toEqual({ review: { riskFindings: [] } });
   });
 
   it('maps a compaction event from history into a typed lifecycle entry', () => {

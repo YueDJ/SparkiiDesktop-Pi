@@ -59,7 +59,7 @@ describe('useAgentSession', () => {
     expect(result.current.meta.inputs).toEqual([{ path: 'C:/gone/contract.pdf', name: 'contract.pdf', missing: true }]);
   });
 
-  it('pairs a live tool_call with its tool_result in session.entries', async () => {
+  it('pairs a live tool execution start with its end in session.entries', async () => {
     const on = vi.fn().mockReturnValue(() => {});
     (globalThis as any).window = {
       sparkii: {
@@ -73,10 +73,10 @@ describe('useAgentSession', () => {
     });
     const chatCb = on.mock.calls.find((c: any[]) => c[0] === 'chat-event')?.[1];
     await act(async () => {
-      chatCb({ sessionId: 's1', type: 'tool_call', toolName: 'bash', toolCallId: 'c1', input: { command: 'ls' } });
+      chatCb({ sessionId: 's1', type: 'tool_execution_start', toolName: 'bash', toolCallId: 'c1', args: { command: 'ls' } });
     });
     await act(async () => {
-      chatCb({ sessionId: 's1', type: 'tool_result', toolName: 'bash', toolCallId: 'c1', result: { exitCode: 0 } });
+      chatCb({ sessionId: 's1', type: 'tool_execution_end', toolName: 'bash', toolCallId: 'c1', result: { exitCode: 0 } });
     });
     expect(result.current.entries).toHaveLength(1);
     expect(result.current.entries[0]).toMatchObject({ kind: 'tool', toolName: 'bash', result: { exitCode: 0 } });
@@ -96,7 +96,7 @@ describe('useAgentSession', () => {
     });
     const chatCb = on.mock.calls.find((c: any[]) => c[0] === 'chat-event')?.[1];
     await act(async () => {
-      chatCb({ sessionId: 's1', type: 'message', role: 'user', text: '检查一下结果' });
+      chatCb({ sessionId: 's1', type: 'message_start', message: { role: 'user', content: [{ type: 'text', text: '检查一下结果' }] } });
     });
     expect(result.current.entries).toHaveLength(1);
     expect(result.current.entries[0]).toMatchObject({ kind: 'message', role: 'user', text: '检查一下结果' });
