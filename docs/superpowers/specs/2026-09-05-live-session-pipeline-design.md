@@ -1,6 +1,6 @@
 # Live Session Pipeline（起步 + 透传 + 与历史同源）— Design Spec
 
-**Status:** Draft（第 1–7 条已和产品讨论锁定；尚未实现）
+**Status:** Approved（架构师 Approve with nits；可以改产品代码）
 **Date:** 2026-09-05
 **Depends on:** 薄契约 / live-history 同源（`2026-09-02-agent-surface-template-and-contract-review-design.md`）；合同 JSONL 显示（`2026-09-03-contract-review-jsonl-display-design.md`）；Runtime ⊥ Viewport（`2026-09-04-runtime-viewport-decoupling-design.md`）
 **Amends:** runtime-viewport spec 第 4、5 条里「回来只重读 JSONL、事件只是尾巴」——进程仍活着时，起步改为 `getBranch()` + `streamingMessage`，不是读磁盘。
@@ -201,7 +201,7 @@ assistant 不在 `message_end` 后再等一条带 id 的树节点才显示（TUI
 append_workflow_entry 必须等到 success
 失败 → 这一步没记下，不能跑下一步
      → logger.error（sessionId、stepId、customType、错误、output 字节数；不写整份 output）
-     → 现有错误中心**恰好一句**（主进程写入 `errors.db`，同一 `id` 经现有 `chat-event` `runtime_error` 通知窗口；禁止双行）
+     → 现有错误中心**恰好一句**（主进程写入 `errors.db`，同一 `id` 与 `source` 经现有 `chat-event` `runtime_error` 通知窗口；禁止双行）
      → 能写则补一条很小的 step_end failed（不要再带那份巨大 output）；连这个也写不上就停循环
 release 前，这一轮最后一次 append 必须结束（成功或已按上面报失败）
 output 不准静默截断（截断会造成 live/历史缺 findings）

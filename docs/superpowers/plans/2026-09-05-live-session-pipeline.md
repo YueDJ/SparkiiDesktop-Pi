@@ -23,17 +23,11 @@
 7. 错误中心恰好一行：main 写入 + 同一 `errorId`；App 听 `runtime_error` 做 toast。
 8. user 行按「末条相同文本」去重，不依赖一定先有 `message_start`。
 
-
-**Goal:** 通用聊天与合同审核共用同一条实时管道。进程活着时起步用 `getBranch()` + `streamingMessage`；线上帧 TUI 原样透传；打开先听再快照；步骤行失败必须暴露；盖章用池子当前 `slot.sessionId`；compaction 整表换树；崩溃 / 退出只认 JSONL。
-
-**Architecture:** Production（Pi 子进程）→ Pipeline（Electron main，每进程一根，出门盖活 `sessionId`）→ Consumption（renderer 把帧折进 `session.entries`）。JSONL 仍是已提交落盘真相。各 Surface 画什么不在本轮：合同投影仍以 JSONL-display spec 为准；通用智能体全量绘制下次再做。本轮必须把行折进列表，否则合同 live 卡片和聊天气泡仍会丢。
-
-**Tech Stack:** Electron main + `@sparkii/agent-host` Pi 子进程、`sparkii:event:chat-event`、Vitest、现有 `Logger` / 错误中心。
-
-**Spec:** `docs/superpowers/specs/2026-09-05-live-session-pipeline-design.md`
+**Architect verdict:** Approve with nits（已吸收；IMPLEMENTATION MAY START）。
 
 ## Global Constraints
 
+- spec / plan 已经架构师 Approve with nits，可以改产品代码。
 - 不新开 IPC 通道，不发明 `preview` / `committed` 两种新 `type`。仍走 `sparkii:event:chat-event`。
 - 不按 agent id 分叉管道。平台生产代码不写 `'general'` / `'contract-review'`。
 - `apps/desktop/src/surface/**` 不 import `agents/**`。
@@ -109,7 +103,9 @@ apps/desktop/electron/main/workflow.ts              # sendPrompt 全文替换；
 apps/desktop/electron/main/logger.ts               # 已有，直接用
 apps/desktop/electron/main/error-store.ts          # append INSERT OR IGNORE
 apps/desktop/electron/preload/api-types.ts          # openChatSession 增加 streamingMessage / streaming
-apps/desktop/src/App.tsx                           # 听 runtime_error（带 errorId）进错误中心
+apps/desktop/src/App.tsx                           # 仅当 runtime_error 带 errorId 时进错误中心
+apps/desktop/src/surface/standard-chat.tsx         # 无 errorId 的 Pi runtime_error 才 reportError
+packages/ui/src/patterns/ErrorCenter.tsx            # reportError 可带 id
 apps/desktop/src/workbench/ChatWorkbench.tsx        # 认 Pi message_*（Task 5）
 apps/desktop/agents/contract-review/surface/index.tsx  # 刷新触发改 message_end（不改投影规则）
 
@@ -220,13 +216,13 @@ Expected: FAIL（仍压成 `message` / `tool_call` / `unknown`）
 ```ts
 off = client.onEvent((e) => {
   if ((e.type === 'message_update' || e.type === 'message_end') && e.message) {
-    acc = contentText(e.message); // 全文替换，禁止 acc += delta
+    acc = assistantTextFromMessage(e.message); // 全文替换，禁止 acc += delta
   }
   if (e.type === 'agent_end') finish();
 });
 ```
 
-`contentText` 与 timeline 相同：`content` 字符串或 text block 拼接。不要再认 `{ type:'message', delta }`。
+`acc = assistantTextFromMessage(e.message)`：在 `workflow.ts` **本地**写一个小函数（`content` 字符串或 text block 拼接）。不要从 `@sparkii/ui` 进口 `contentText`（它未导出）。
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -458,11 +454,14 @@ async function appendStep(slot, sessionId, customType, data): Promise<boolean> {
 // 2. 主进程是唯一写入者：
 //    id = randomUUID()
 //    rt.errors.append({ id, message, source, createdAt })
-//    send chat-event { type:'runtime_error', sessionId, message, errorId: id }
+//    send chat-event { type:'runtime_error', sessionId, message, errorId: id, source }
 //    source = profile displayName，不要写死合同
-// 3. App reportError(message, { source, id: errorId })；ErrorStore INSERT OR IGNORE
-//    standard-chat 看到 errorId 则不再 reportError（避免双 toast）
-//    合同页不听 runtime_error，靠 App 全局听
+// 3. 恰好一个写入者：
+//    有 errorId → 只有 App reportError(message, { source: event.source, id: errorId })
+//    无 errorId（Pi 自己的 runtime_error）→ 只有 Surface（standard-chat）reportError
+//    二者互斥，禁止双 toast / 双行
+//    ErrorStore INSERT OR IGNORE
+//    合同页不听 runtime_error，靠 App 收带 errorId 的那条
 // 4. 若失败的是带巨大 output 的 step_end：再试一条很小的 step_end failed（无 output）
 // 5. 连这个也失败 → 停循环，不要跑下一步
 // 6. finally：等到这一轮最后一次 append 结束再 release
@@ -497,7 +496,7 @@ Expected: FAIL（空 catch 仍吞掉）。
 
 - [ ] **Step 3: Minimal implementation**
 
-抽 `appendStep`。三处空 catch 删掉。失败走 Logger + 单行错误中心 + 可选极小 failed end + 停循环。`ErrorStore.append` 用 `INSERT OR IGNORE`。`reportError` 接受可选 `id`。App 听 `runtime_error`。`finally` 保持 `beforeRelease` + `pool.release`。成功 `debug`。
+抽 `appendStep`。三处空 catch 删掉。失败走 Logger + 单行错误中心 + 可选极小 failed end + 停循环。`ErrorStore.append` 用 `INSERT OR IGNORE`。`reportError` 接受可选 `id`。App **只**处理带 `errorId` 的 `runtime_error`（并透传 `source`）；standard-chat **只**处理不带 `errorId` 的。`finally` 保持 `beforeRelease` + `pool.release`。成功 `debug`。
 
 - [ ] **Step 4: Run tests**
 
@@ -709,7 +708,8 @@ listen then snapshot when opening a session
 **行为：**
 
 ```text
-ipc 在 ensureProcessPipe / ensureOpenSession 时订阅 supervisor.onExit。
+ipc **只**在 `ensureProcessPipe` 里按 `client` 订一次 `supervisor.onExit`（与管子同一套 WeakMap 去重）。不要在 `ensureOpenSession` 再订，否则崩溃会打 N 次 log、卸 N 次。
+
 不要把崩溃生命周期扩进 PiRuntimePool（池子仍无 onExit 接线，本轮不扩）。
 
 子进程退出：
