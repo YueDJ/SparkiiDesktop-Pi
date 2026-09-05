@@ -28,6 +28,65 @@ describe('useAgentSession', () => {
     expect(result.current.entries).toEqual([]);
   });
 
+  it('listens on a draft frame so bind can replay steps that arrived before the session id', async () => {
+    let resolveOpen: (v: unknown) => void = () => {};
+    const on = vi.fn().mockReturnValue(() => {});
+    (globalThis as any).window = {
+      sparkii: {
+        openChatSession: vi.fn(() => new Promise((resolve) => { resolveOpen = resolve; })),
+        on,
+      },
+    };
+    const { result, rerender } = renderHook(
+      ({ sid }: { sid: string | null }) => useAgentSession('contract-review', sid, 'live'),
+      { initialProps: { sid: null as string | null } },
+    );
+    expect(on).toHaveBeenCalledWith('chat-event', expect.any(Function));
+    const chatCb = on.mock.calls.find((c: any[]) => c[0] === 'chat-event')?.[1];
+    await act(async () => {
+      chatCb({
+        sessionId: 'ws1',
+        type: 'entry_appended',
+        entry: { type: 'custom', id: 'c1', customType: 'workflow_step_start', data: { stepId: 'review' } },
+      });
+    });
+    expect(result.current.entries).toEqual([]);
+    expect((globalThis as any).window.sparkii.openChatSession).not.toHaveBeenCalled();
+
+    rerender({ sid: 'ws1' });
+    expect((globalThis as any).window.sparkii.openChatSession).toHaveBeenCalledWith('ws1');
+    expect(result.current.entries).toEqual([]);
+
+    await act(async () => {
+      resolveOpen({ entries: [], streamingMessage: null, streaming: true });
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(result.current.status).toBe('running');
+    expect(result.current.meta.currentStep).toBe('review');
+    expect(result.current.entries).toHaveLength(1);
+  });
+
+  it('does not resubscribe when a draft is bound, so live ticks after bind still arrive', async () => {
+    let resolveOpen: (v: unknown) => void = () => {};
+    const on = vi.fn().mockReturnValue(() => {});
+    (globalThis as any).window = {
+      sparkii: {
+        openChatSession: vi.fn(() => new Promise((resolve) => { resolveOpen = resolve; })),
+        on,
+      },
+    };
+    const { rerender } = renderHook(
+      ({ sid }: { sid: string | null }) => useAgentSession('contract-review', sid, 'live'),
+      { initialProps: { sid: null as string | null } },
+    );
+    rerender({ sid: 'ws1' });
+    await act(async () => {
+      resolveOpen({ entries: [], streamingMessage: null, streaming: true });
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(on.mock.calls.filter((c: any[]) => c[0] === 'chat-event')).toHaveLength(1);
+  });
+
   it('populates meta.inputs from the loaded session', async () => {
     (globalThis as any).window = {
       sparkii: {
