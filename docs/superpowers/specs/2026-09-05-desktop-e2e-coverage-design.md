@@ -1,10 +1,10 @@
 # Desktop E2E Coverage — Design Spec
 
-**Status:** Approved（架构师 Approve with nits；must-fix 已吸收；可以写 E2E 代码）
+**Status:** 待产品评估（架构师 Approve with nits；must-fix 已吸收）。**未获产品点头前不得写 Playwright / harness / testid。**
 **Date:** 2026-09-05
 **Depends on:** Live session pipeline（`2026-09-05-live-session-pipeline-design.md`）；Runtime ⊥ Viewport（`2026-09-04-runtime-viewport-decoupling-design.md`）；合同 JSONL 显示（`2026-09-03-contract-review-jsonl-display-design.md`）；通用智能体（`2026-08-25-general-agent-design.md` §12）；合同 pilot 验收（`docs/2026-08-22-design.md` §11）
 **Does not replace:** 上述规格的产品行为。本文件只规定 **Playwright + 真 Electron 窗口** 要守住哪些用户可见不变量，以及哪些继续只靠 Vitest。
-**Does not implement in this docs PR:** 落地按 plan 另开执行；本文件与 plan 审过即可写测试代码。
+**Does not implement:** 只落文档。执行计划里的 Task 1–6 要等产品评估通过。
 
 ## Goal
 
