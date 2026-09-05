@@ -186,4 +186,18 @@ describe('applyChatEvent', () => {
     expect(entries[0]).toMatchObject({ kind: 'message', streaming: false, text: '半句' });
     expect(entries[1]).toMatchObject({ kind: 'event', event: 'agent_end' });
   });
+
+  it('does not grow the list for each bash_execution_update chunk', () => {
+    let entries = applyChatEvent([], {
+      type: 'tool_execution_start',
+      toolCallId: 'bash_1',
+      toolName: 'bash',
+      args: { command: 'ls' },
+    });
+    for (let i = 0; i < 20; i++) {
+      entries = applyChatEvent(entries, { type: 'bash_execution_update', id: 'bash_1', delta: 'x' });
+    }
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ kind: 'tool', toolCallId: 'bash_1', partialResult: 'x'.repeat(20) });
+  });
 });

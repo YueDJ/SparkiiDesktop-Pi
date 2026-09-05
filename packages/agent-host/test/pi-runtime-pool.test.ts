@@ -6,6 +6,7 @@ import { readyEnvelope, responseEnvelope, type PiRuntimeHostHandle, type PiRunti
 class FakeHandle implements PiRuntimeHostHandle {
   sent: PiRuntimeEnvelope[] = [];
   private messageCb?: (env: PiRuntimeEnvelope) => void;
+  private exitCb?: (code: number | null) => void;
   postMessage(e: PiRuntimeEnvelope) {
     this.sent.push(e);
     if ("command" in e) {
@@ -13,8 +14,9 @@ class FakeHandle implements PiRuntimeHostHandle {
     }
   }
   onMessage(cb: (env: PiRuntimeEnvelope) => void) { this.messageCb = cb; return () => { this.messageCb = undefined; }; }
-  onExit() { return () => {}; }
+  onExit(cb: (code: number | null) => void) { this.exitCb = cb; return () => { this.exitCb = undefined; }; }
   emit(env: PiRuntimeEnvelope) { this.messageCb?.(env); }
+  crash(code: number | null = 1) { this.exitCb?.(code); }
   kill() {}
   ready() { this.emit(readyEnvelope()); }
 }
@@ -210,5 +212,29 @@ describe("PiRuntimePool", () => {
     await probe;
     expect(pool.activeCount()).toBe(1);
     expect(pool.snapshot()).toMatchObject({ active: 0, queued: 0, slots: [] });
+  });
+
+  it("drops a crashed slot instead of handing it to the next acquire", async () => {
+    const handles: FakeHandle[] = [];
+    const pool = new PiRuntimePool({
+      maxAgents: 1,
+      makeSupervisor: () => {
+        const h = new FakeHandle();
+        handles.push(h);
+        return h;
+      },
+    });
+    const first = await pool.acquire("a");
+    handles[0].ready();
+    handles[0].crash(1);
+    await pool.release("a");
+
+    const second = pool.acquire("b");
+    await new Promise((r) => setTimeout(r, 0));
+    expect(handles).toHaveLength(2);
+    handles[1].ready();
+    const slot = await second;
+    expect(slot.client).not.toBe(first.client);
+    expect(slot.getSessionId()).toBe("b");
   });
 });

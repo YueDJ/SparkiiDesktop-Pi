@@ -480,6 +480,19 @@ export function applyChatEvent(entries: ChatEntry[], ev: unknown): ChatEntry[] {
     return next;
   }
 
+  if (type === 'bash_execution_update') {
+    // Pi 每个输出块一条；折进已有 bash 工具块，不要每块都新开 kind:event。
+    const bashId = typeof raw.id === 'string' ? raw.id : undefined;
+    const idx = findToolByCallId(entries, bashId, 'bash');
+    if (idx < 0) return entries;
+    const delta = typeof raw.delta === 'string' ? raw.delta : '';
+    const next = [...entries];
+    const target = next[idx] as ToolEntry;
+    const prev = typeof target.partialResult === 'string' ? target.partialResult : '';
+    next[idx] = { ...target, partialResult: prev + delta };
+    return next;
+  }
+
   if (type === 'agent_end') {
     const finalized = entries.map((entry) =>
       entry.kind === 'message' && entry.role === 'assistant' && entry.streaming

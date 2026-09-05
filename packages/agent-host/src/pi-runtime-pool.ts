@@ -186,7 +186,22 @@ export class PiRuntimePool {
     this.bySession.delete(sessionId);
     // 先卸牌子：new_session 期间到达的事件不能再盖上这条会话的 id。
     slot.sessionId = null;
-    try { await slot.client.send({ type: "new_session" }); } catch { /* 子进程已退出则忽略 */ }
+    let dead = false;
+    try {
+      await slot.client.send({ type: "new_session" });
+    } catch {
+      // 子进程已退出：不能把死槽放回空闲列表，否则下次 acquire 会一直绑到它上面失败。
+      dead = true;
+    }
+    if (dead) {
+      this.slots = this.slots.filter((s) => s !== slot);
+      slot.offEvent?.();
+      void slot.supervisor.stop();
+      const next = this.pending.shift();
+      if (next) void this.acquire(next.sessionId, next.options).then(next.resolve, next.reject);
+      this.emitSnapshot();
+      return;
+    }
     slot.meta = undefined;
     slot.status = "occupied-idle";
     slot.startedAt = 0;
