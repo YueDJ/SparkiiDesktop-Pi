@@ -1,6 +1,28 @@
 # Live Session Pipeline Implementation Plan
 
-> **For agentic workers:** 本 plan 在 spec 经架构师审核通过前 **不得执行**。审核通过后，用 superpowers:subagent-driven-development（推荐）或 executing-plans 按任务逐步落地。Steps 用 checkbox (`- [ ]`) 跟踪。
+> **For agentic workers:** 本 plan 已经架构师审过并吸收 must-fix。审核记录见下文「Architect corrections」。按任务逐步落地。Steps 用 checkbox (`- [ ]`) 跟踪。
+
+**Goal:** 通用聊天与合同审核共用同一条实时管道。进程活着时起步用 `getBranch()` + `streamingMessage`；线上帧 TUI 原样透传；打开先听再快照；步骤行失败必须暴露；盖章用池子当前 `slot.sessionId`；compaction 整表换树；崩溃 / 退出只认 JSONL。
+
+**Architecture:** Production（Pi 子进程）→ Pipeline（Electron main，每进程一根，出门盖活 `sessionId`）→ Consumption（renderer 把帧折进 `session.entries`）。JSONL 仍是已提交落盘真相。各 Surface 画什么不在本轮：合同投影仍以 JSONL-display spec 为准；通用智能体全量绘制下次再做。本轮必须把行折进列表，否则合同 live 卡片和聊天气泡仍会丢。
+
+**Tech Stack:** Electron main + `@sparkii/agent-host` Pi 子进程、`sparkii:event:chat-event`、Vitest、现有 `Logger` / 错误中心。
+
+**Spec:** `docs/superpowers/specs/2026-09-05-live-session-pipeline-design.md`
+
+## Architect corrections
+
+已吸收（无需产品再拍板）：
+
+1. `sendPrompt` 必须在 Task 1 改成全文替换，否则合同每步 `output` 变空。
+2. `ChatWorkbench` 是生产消费者（虽未挂进 App），放进 Task 5，不要藏在夹具任务。
+3. 删掉 `openSessions.offEvents` 三处拆管；卸下只靠 `slot.sessionId = null`。
+4. `session_unbound` 由 ipc 在 `pool.release` 之前发，池子不碰窗口。
+5. 快照带 `streaming`；微缝只在 `isStreaming && !streamingMessage`。
+6. 未知 type 折进列表但 `shouldShowEntry` 默认 `debug`，不要在 standard 详情级刷卡片。
+7. 错误中心恰好一行：main 写入 + 同一 `errorId`；App 听 `runtime_error` 做 toast。
+8. user 行按「末条相同文本」去重，不依赖一定先有 `message_start`。
+
 
 **Goal:** 通用聊天与合同审核共用同一条实时管道。进程活着时起步用 `getBranch()` + `streamingMessage`；线上帧 TUI 原样透传；打开先听再快照；步骤行失败必须暴露；盖章用池子当前 `slot.sessionId`；compaction 整表换树；崩溃 / 退出只认 JSONL。
 
@@ -57,11 +79,13 @@ sparkii:event:workflow（已停）不要救回来
 | 现在还在 | 为什么废 | 怎么清 |
 | --- | --- | --- |
 | `normalizeEvent` 把 `message_update` 压成 `{ type:'message', delta }` | spec 第 2 条禁止 | 改成原样返回；不要留一条「兼容扁事件」分支 |
+| `sendPrompt` 用 `e.type==='message'` 且 `+= e.delta` | 透传后合同每步 output 变空 | 改成 `message_update`/`message_end` 全文替换 `acc` |
 | 把 `tool_execution_*` 改写成 `tool_call` / `tool_result` | 同上 | 删映射 |
 | 把 user `entry_appended` 压成 `{ type:'message', role:'user' }` | 同上 | 原样送达；折叠发生在 `applySurfaceEvent` |
 | `openChatSession` 活着时并行 `get_messages` 当时间线 | spec 第 1 条 | 主路径改 `get_session_entries` + `streamingMessage` |
 | `useAgentSession` 用 `messages` 填时间线 | 同上 | 只在主进程微缝补；hook 不再 `rawMessages` 当 entries |
 | `pipeSessionEvents` 闭包冻住 `sessionId` | spec 第 5 条 | 出门读活牌子 |
+| `openSessions.offEvents?.()` 在 release/delete/workflow beforeRelease | 会拆掉**进程**管子，下一会话无 live | 三处删除；卸下只靠 `sessionId=null` |
 | `workflow.ts` 的 `.catch(() => {})`（start/end/failed） | spec 第 4 条 | 整段空 catch 删掉 |
 | `release` 里先 `new_session` 再 `sessionId=null` | 解绑窗口期仍盖旧 id | 对调顺序 |
 
@@ -81,9 +105,13 @@ packages/agent-host/test/pi-runtime-command-data.test.ts
 packages/agent-host/test/pi-runtime-pool.test.ts
 
 apps/desktop/electron/main/ipc.ts                  # 盖章；openChatSession；crash；session_unbound
-apps/desktop/electron/main/workflow.ts              # 步骤行失败暴露
+apps/desktop/electron/main/workflow.ts              # sendPrompt 全文替换；步骤行失败暴露
 apps/desktop/electron/main/logger.ts               # 已有，直接用
-apps/desktop/electron/preload/api-types.ts          # openChatSession 增加 streamingMessage
+apps/desktop/electron/main/error-store.ts          # append INSERT OR IGNORE
+apps/desktop/electron/preload/api-types.ts          # openChatSession 增加 streamingMessage / streaming
+apps/desktop/src/App.tsx                           # 听 runtime_error（带 errorId）进错误中心
+apps/desktop/src/workbench/ChatWorkbench.tsx        # 认 Pi message_*（Task 5）
+apps/desktop/agents/contract-review/surface/index.tsx  # 刷新触发改 message_end（不改投影规则）
 
 apps/desktop/src/surface/open-session.ts            # 纯函数：缓冲叠快照、generation
 apps/desktop/src/surface/use-agent-session.ts        # 先听后快照；compaction 重建
@@ -100,13 +128,13 @@ apps/desktop/test/standard-chat.test.tsx
 apps/desktop/test/chat-workbench.test.tsx
 ```
 
-不改（除非测试夹具形状）：
+不改（投影规则 / 控件清单）：
 
 ```text
-apps/desktop/agents/contract-review/surface/**     # 投影规则不动
-apps/desktop/agents/general/surface/**             # 不补全量绘制
-packages/ui/src/patterns/RuntimeCenter.tsx
-packages/ui/src/patterns/SessionList.tsx
+合同认哪些 customType / 忽略 vs 空白（刷新触发从 type==='message' 改成 message_end 除外）
+通用智能体把所有 type 画成 TUI 控件
+运行池 UI、审批、起名、标题 upsert
+sparkii:event:workflow（已停）不要救回来
 ```
 
 ---
@@ -116,7 +144,9 @@ packages/ui/src/patterns/SessionList.tsx
 **Files:**
 - Modify: `packages/agent-host/src/rpc-client.ts`
 - Modify: `packages/agent-host/src/types.ts`
+- Modify: `apps/desktop/electron/main/workflow.ts`（`sendPrompt`）
 - Test: `packages/agent-host/test/rpc-client.test.ts`
+- Test: `apps/desktop/test/workflow-broker.test.ts`（步骤 output 来自 Pi 全文事件）
 
 **Interfaces:**
 
@@ -172,6 +202,8 @@ it('passes custom entry_appended through unchanged', () => {
 
 生命周期（`compaction_*` / `auto_retry_*` / `thinking_level_changed`）改为 `toEqual(raw)`，不要再断言抽过的子集。
 
+`workflow-broker.test.ts` 增加：给一步 `llm`/`skill` 喂 `message_start` → `message_update`（全文 `"第3条存在期限不对齐"`）→ `message_end` → `agent_end`，断言该步 `workflow_step_end.data.output` 含这句全文，而不是 `''`。
+
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @sparkii/agent-host test test/rpc-client.test.ts`  
@@ -183,14 +215,27 @@ Expected: FAIL（仍压成 `message` / `tool_call` / `unknown`）
 
 `types.ts` 的 `NormalizedEvent` 改成开放对象。下游用 `ev.type` 收窄。
 
+`sendPrompt`（`workflow.ts`）：
+
+```ts
+off = client.onEvent((e) => {
+  if ((e.type === 'message_update' || e.type === 'message_end') && e.message) {
+    acc = contentText(e.message); // 全文替换，禁止 acc += delta
+  }
+  if (e.type === 'agent_end') finish();
+});
+```
+
+`contentText` 与 timeline 相同：`content` 字符串或 text block 拼接。不要再认 `{ type:'message', delta }`。
+
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: 同上。Expected: PASS。再跑 `pnpm --filter @sparkii/agent-host test`，把仍依赖扁形状的测试改到 Task 8，本任务只保证 `rpc-client` 绿。若全量红是预期的，不要在本任务里改 desktop。
+Run: `pnpm --filter @sparkii/agent-host test`（必须绿）以及 desktop `workflow-broker` 里「步骤吃到全文」那条。Task 1 保持 agent-host 绿，并更新它打破的主进程消费者（`sendPrompt`）。renderer 夹具留给 Task 5/8。
 
 - [ ] **Step 5: Commit**
 
 ```text
-passthrough Pi events in normalizeEvent
+passthrough Pi events; take full text in sendPrompt
 ```
 
 ---
@@ -210,26 +255,31 @@ passthrough Pi events in normalizeEvent
 ```ts
 // getState() 增加（可空）
 streamingMessage: session.agent?.state?.streamingMessage ?? null
+isStreaming / streaming: session.isStreaming   // 已有则保留
 
 // openChatSession 活着：
 {
   entries: get_session_entries 的 data,          // getBranch()
   streamingMessage: get_state.streamingMessage ?? null,
+  streaming: Boolean(get_state.isStreaming ?? get_state.streaming),
   inputs,
-  messages?: 仍可返回，但 renderer 时间线不用
 }
 
 // 死了：
 {
   entries: readPiSessionEntries(file),       // 去掉 header
   streamingMessage: null,
+  streaming: false,
   inputs,
 }
+// 死了路径不要再返回 messages 当时间线。ipc.test.ts 里
+// expect(opened).toMatchObject({ messages: [] }) 改成 entries + streamingMessage: null。
 
-// 微缝（只在 main 做一次，hook 不二次投票）：
-// streamingMessage == null 且 get_messages 最后一条 assistant
-// 在 entries 里找不到等价内容 → 把这条 assistant 放进 streamingMessage
-// （当已定稿、尚未入树的那句；renderer 按 message_end 规则折进去，streaming:false）
+// 微缝（只在 main，且必须同时满足）：
+// get_state.isStreaming === true && streamingMessage == null
+// 才 get_messages；最后一条 assistant 与 branch 最后一条 assistant 文本不全等
+// → 放入 streamingMessage。气泡是否转圈看返回的 `streaming` 字段，不看该对象在不在。
+// 其他打开路径 expect(sent.filter(c => c.type === 'get_messages')).toHaveLength(0)
 ```
 
 不要读磁盘当活着起步。不要用 `buildContextEntries()`。
@@ -249,6 +299,7 @@ it('opens a live session from getBranch + streamingMessage, not get_messages', a
   const res = await openChatSession('s1');
   expect(res.entries).toEqual(branch);
   expect(res.streamingMessage).toEqual(theStream);
+  expect(res.streaming).toBe(true);
   expect(sent.filter(c => c.type === 'get_messages').length).toBe(0); // 主路径不拉；微缝测试另开
 });
 
@@ -259,7 +310,7 @@ it('dead session reads JSONL entries only (no preview)', async () => {
 });
 ```
 
-微缝另开一条：`streamingMessage` 空、`get_messages` 末条 assistant 不在 branch → `res.streamingMessage` 等于那条 assistant（或等价字段）。主路径测试不得误伤这条。
+微缝另开一条：仅当 `isStreaming===true` 且 `streamingMessage` 空、`get_messages` 末条 assistant 与 branch 末条文本不等 → `res.streamingMessage` 等于那条 assistant。主路径（idle 或已有 stream）`get_messages` 次数为 0。
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -267,7 +318,7 @@ Run: vitest `pi-runtime-command-data` 与 desktop `ipc.test.ts` 里 open 相关�
 
 - [ ] **Step 3: Minimal implementation**
 
-`getState` 增加 `streamingMessage`。`openChatSession`：有 open slot → `get_session_entries` + `get_state`；仅微缝才 `get_messages`。死了走现有 JSONL，显式 `streamingMessage: null`。ENOENT 仍带 `inputs`（runtime-viewport spec 已定）。
+`getState` 增加 `streamingMessage`。`openChatSession`：有 open slot → `get_session_entries` + `get_state`（带 `streaming`）；仅微缝才 `get_messages`。死了走现有 JSONL，显式 `streamingMessage: null`、`streaming: false`。ENOENT 仍带 `inputs`。
 
 - [ ] **Step 4: Run tests**
 
@@ -295,36 +346,43 @@ open live sessions from getBranch and streamingMessage
 export interface PiRuntimeSlot {
   client: PiRuntimeClient
   supervisor: PiRuntimeSupervisor
-  getSessionId(): string | null   // 活读内部 Slot.sessionId
+  getSessionId(): string | null   // bind 里闭包：() => slot.sessionId，不要拷贝当时的字符串
 }
 
-// ipc：WeakMap<client, unsub>，每个 client 只订一次
+// ipc：WeakMap<client, unsub> 键是 client（进程稳），不是每次 acquire 的新包装对象
 function ensureProcessPipe(slot: PiRuntimeSlot): void {
-  slot.client.onEvent((ev) => {
+  if (pipes.has(slot.client)) return;
+  const off = slot.client.onEvent((ev) => {
     const id = slot.getSessionId();
-    if (!id) return;                          // 卸下期间不送
+    if (!id) return;
+    const win = getWindow(); // 回调内取，不要订管时冻住 BrowserWindow
     win?.webContents.send('sparkii:event:chat-event', { ...ev, sessionId: id });
+    // sessionId 盖写事件自带的同名字段
     if (ev.type === 'agent_settled' && !inFlightWorkflowRuns.has(id)) {
       scheduleIdleRelease(id);
     }
   });
+  pipes.set(slot.client, off);
 }
 
-// 解绑（可选，现有通道）：
-// 把 sessionId 置 null 之前，若旧 id 非空，送一条 { type:'session_unbound', sessionId: 旧id }
-// renderer 只用来停转圈。不新开 IPC。
+// session_unbound：ipc 在调用 pool.release 之前发送（池子没有 BrowserWindow）
+function unbindAndRelease(sessionId: string) {
+  win?.webContents.send('sparkii:event:chat-event', { type: 'session_unbound', sessionId });
+  await rt.pool.release(sessionId);
+}
 ```
 
-`release` 顺序：
+`pool.release` **只**做：
 
 ```text
-1. 若旧 sessionId 非空 → 发 session_unbound（仍盖旧 id）
-2. slot.sessionId = null        // 之后事件不送窗口
-3. new_session
-4. bind 下一个（slot.sessionId = 下一个）
+1. slot.sessionId = null        // 之后事件不送窗口
+2. new_session
+3. bind 下一个（slot.sessionId = 下一个）
 ```
 
-`pipeSessionEvents(sessionId, entry)` 改为 `ensureProcessPipe(entry.slot)`，不要把 `sessionId` 冻进闭包。`openSessions` 仍可当「这条会话占用哪个 slot」的簿记，**不是**窗口侧进程表，renderer 不准镜像一份。
+不要给池子窗口句柄。池子里的 `Slot.offEvent`（status 用）与 ipc 的旧 `offEvents` 不是一回事；ipc 的 `openSessions.offEvents` **三处都删掉**（`releaseSessionSlotInternal`、`deleteChatSession`、`runWorkflow` 的 `beforeRelease`）。卸下只靠牌子变 null。现有 ipc 测试 `stops forwarding client events after the workflow slot is released` 改为：mock `getSessionId()===null` 时不再 send，而不是靠 unsubscribe。
+
+`pipeSessionEvents(sessionId, entry)` 改为 `ensureProcessPipe(entry.slot)`。`openSessions` 仍可当「这条会话占用哪个 slot」的簿记，**不是**窗口侧进程表。
 
 窗口过滤保持：`p.sessionId === current.sessionId`。
 
@@ -358,9 +416,7 @@ Expected: FAIL（闭包仍是 A；`new_session` 时牌子还在）。
 
 - [ ] **Step 3: Minimal implementation**
 
-`PiRuntimeSlot.getSessionId`。`release` 对调顺序（先发 `session_unbound` 再卸牌子再 `new_session`）。ipc 用活牌子盖章；`offEvents` 按 client 去重，不要每个 session 加一根。进程退出时 listener 随 client 消失即可。
-
-idle-release 仍用**当时**的 session id（settled 时读到的 id），不要用闭包里的旧 A 去 release B。
+`bind` 返回 `{ client, supervisor, getSessionId: () => slot.sessionId }`。`release`：先 `sessionId=null` 再 `new_session`。ipc：`ensureProcessPipe`；删三处 `offEvents`；`session_unbound` 在 `pool.release` 之前发。idle-release 用 settled **当时**读到的 id。
 
 - [ ] **Step 4: Run tests**
 
@@ -378,7 +434,12 @@ stamp chat-events with live slot.sessionId
 
 **Files:**
 - Modify: `apps/desktop/electron/main/workflow.ts`
+- Modify: `apps/desktop/electron/main/error-store.ts`
+- Modify: `packages/ui/src/patterns/ErrorCenter.tsx`（`reportError` 可带 `id`）
+- Modify: `apps/desktop/src/App.tsx`（全局听 `runtime_error`）
+- Modify: `apps/desktop/src/surface/standard-chat.tsx`（有 `errorId` 时不要再 `reportError`）
 - Test: `apps/desktop/test/workflow-broker.test.ts`
+- Test: `apps/desktop/test/error-store.test.ts`
 
 **Interfaces:**
 
@@ -394,16 +455,20 @@ async function appendStep(slot, sessionId, customType, data): Promise<boolean> {
 
 // 失败：
 // 1. logger.error({ sessionId, stepId, customType, error, outputBytes })  // 禁止整份 output
-// 2. 错误中心一句人话：rt.errors.append + 现有 chat-event runtime_error
-//    （source 用该 profile 的 displayName，不要写死合同）
-// 3. 若失败的是带巨大 output 的 step_end：再试一条很小的 step_end failed（无 output）
-// 4. 连这个也失败 → 停循环（break / return），不要跑下一步
-// 5. finally：等到这一轮最后一次 append 结束（成功或已按上面报失败）再 release
+// 2. 主进程是唯一写入者：
+//    id = randomUUID()
+//    rt.errors.append({ id, message, source, createdAt })
+//    send chat-event { type:'runtime_error', sessionId, message, errorId: id }
+//    source = profile displayName，不要写死合同
+// 3. App reportError(message, { source, id: errorId })；ErrorStore INSERT OR IGNORE
+//    standard-chat 看到 errorId 则不再 reportError（避免双 toast）
+//    合同页不听 runtime_error，靠 App 全局听
+// 4. 若失败的是带巨大 output 的 step_end：再试一条很小的 step_end failed（无 output）
+// 5. 连这个也失败 → 停循环，不要跑下一步
+// 6. finally：等到这一轮最后一次 append 结束再 release
 ```
 
-`updateWorkflowState` 的 throw 路径不改。不准静默截断 `output`。
-
-错误中心：不要新 IPC。`rt.errors.append({ id, message, source, createdAt })`，并 `webContents.send('sparkii:event:chat-event', { type: 'runtime_error', sessionId, message })`。App / standard-chat 已有 `runtime_error` → `reportError`。为避免聊天双 toast，本轮约定：**主进程已 append 的**，renderer 的 `runtime_error` 只负责 toast（若会双写 errors.db，standard-chat 对「workflow 步骤行」这条保持现状即可；测试断言至少一次人话进错误中心，不要强制恰好一次）。
+`updateWorkflowState` 的 throw 路径不改。不准静默截断 `output`。测试断言错误中心 **恰好一行**（同一 id）。
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -416,8 +481,9 @@ it('stops the workflow and reports when step_end append fails', async () => {
     ctx: expect.objectContaining({ sessionId, stepId, customType: 'workflow_step_end' }),
   }))
   expect(ctx 有 outputBytes 且没有整份 output)
-  expect(errors.append 或 chat-event runtime_error)
-  expect(release).toHaveBeenCalled() // finally 仍释放，且在最后一次 append 之后
+  expect(errors.append).toHaveBeenCalledTimes(1)
+  expect(chat-event runtime_error.errorId).toBe(那次 append 的 id)
+  expect(release).toHaveBeenCalled()
 });
 
 it('does not swallow start/end append failures with empty catch', () => {
@@ -431,7 +497,7 @@ Expected: FAIL（空 catch 仍吞掉）。
 
 - [ ] **Step 3: Minimal implementation**
 
-抽 `appendStep`。三处空 catch 删掉。失败走 Logger + 错误中心 + 可选极小 failed end + 停循环。`finally` 保持 `beforeRelease` + `pool.release`。成功 `debug`。
+抽 `appendStep`。三处空 catch 删掉。失败走 Logger + 单行错误中心 + 可选极小 failed end + 停循环。`ErrorStore.append` 用 `INSERT OR IGNORE`。`reportError` 接受可选 `id`。App 听 `runtime_error`。`finally` 保持 `beforeRelease` + `pool.release`。成功 `debug`。
 
 - [ ] **Step 4: Run tests**
 
@@ -448,29 +514,34 @@ surface workflow step-row append failures
 ### Task 5: 把 Pi 帧折进 `session.entries`（不是画控件）
 
 **Files:**
-- Modify: `packages/ui/src/patterns/pi-timeline.ts`（`applyChatEvent`）
+- Modify: `packages/ui/src/patterns/pi-timeline.ts`（`applyChatEvent`、`eventLabel` default）
+- Modify: `packages/ui/src/patterns/chat-detail-level.ts`（未知 event 保持 `?? 'debug'`）
 - Modify: `apps/desktop/src/surface/normalize.ts`
+- Modify: `apps/desktop/src/workbench/ChatWorkbench.tsx`
+- Modify: `apps/desktop/agents/contract-review/surface/index.tsx`（刷新触发 `message` → `message_end`；不改 customType 投影）
 - Test: `apps/desktop/test/pi-timeline.test.ts`
 - Test: `apps/desktop/test/surface-normalize.test.ts`
+- Test: `apps/desktop/test/chat-workbench.test.tsx`
 
 **行为（spec 第 2 条表）：**
 
 | 事件 | 列表 |
 | --- | --- |
 | `message_start` assistant | 新开流式槽，`text/thinking` 来自 `message` 全文 |
-| `message_update` | 同一槽 **整句换成** `message`（禁止 `+= delta`） |
+| `message_update` | 找到 **`streaming===true` 的那条**（不要假定是 `entries.at(-1)`，中间可能插了工具块），整句换成 `message` |
 | `message_end` | 再刷全文，`streaming:false`，**不等树 id** |
-| `message_start` user | 追加 user；随后 `entry_appended` 且 `entry.type==='message'` + user → 跳过 |
+| `message_start` user | 追加 user |
+| `entry_appended` 且 message+user | 末条已是相同文本的 user 则跳过，否则追加（单独一条、没有 `message_start` 也要能画出） |
 | `entry_appended` custom | 已有 `entry.id` 则跳过，否则追加 |
 | `tool_execution_start` | 按 `toolCallId` 开工具块（`args`/`params` → input） |
 | `tool_execution_update` | 同一块刷 `partialResult` |
 | `tool_execution_end` | 最终 `result` / `isError`，结束该块 |
-| 未知 `type` | **不要丢**：追加 `kind:'event'`，`event`/`payload` 保留原 type 与整包。聊天 UI 可以不画新控件 |
-| 旧测试里的扁 `{ type:'message', delta }` | **不必兼容**。夹具改成 Pi 形状 |
+| 未知 `type` | 追加 `kind:'event'`，`event` 为原 type，`payload` 整包。`TimelineEventType` 放宽；`eventLabel`/`eventDetail`/`eventStatus` 加 `default`（label=原 type）。`shouldShowEntry` 继续 `EVENT_MIN_LEVEL[event] ?? 'debug'`，**不要**把未知降到 standard，否则聊天会刷生命周期卡 |
+| 旧扁 `{ type:'message', delta }` | **不必兼容** |
 
-从 `message.content` 抽 text / thinking：现有 `contentText` / `contentThinking`。
+`ChatWorkbench`：同样按 `message_start`/`update`/`end` 全文换槽，禁止 `+= delta`。它没挂进 App，但仍是生产文件，不要只改测试。
 
-`compaction_end` 成功 **不要**在本函数里静默当一条普通 event 就完了——hook 会整表换树（Task 6）。本函数遇到成功 `compaction_end` 可以仍追加一条 lifecycle event，随后被整表换掉；或直接原样返回等 hook 处理。推荐：`applyChatEvent` 追加 lifecycle；**换树发生在 hook**，避免纯函数去 IPC。
+`compaction_end` 成功：`applyChatEvent` 可追加 lifecycle；**换树发生在 hook**。
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -498,6 +569,22 @@ it('ignores user entry_appended after message_start user', () => {
   expect(e.filter(x => x.kind === 'message' && x.role === 'user')).toHaveLength(1);
 });
 
+it('appends a user bubble from entry_appended when there was no message_start', () => {
+  const e = applySurfaceEvent([], {
+    type: 'entry_appended',
+    entry: { type: 'message', id: 'm1', message: { role: 'user', content: [{ type: 'text', text: '请审核' }] } },
+  });
+  expect(e.filter(x => x.kind === 'message' && x.role === 'user')).toHaveLength(1);
+});
+
+it('updates the streaming slot even if a tool block is last', () => {
+  let e = applyChatEvent([], { type: 'message_start', message: { role: 'assistant', content: [{ type: 'text', text: 'a' }] } });
+  e = applyChatEvent(e, { type: 'tool_execution_start', toolCallId: 't1', toolName: 'read' });
+  e = applyChatEvent(e, { type: 'message_update', message: { role: 'assistant', content: [{ type: 'text', text: 'ab' }] } });
+  const msg = e.find(x => x.kind === 'message' && x.role === 'assistant');
+  expect(msg).toMatchObject({ text: 'ab', streaming: true });
+});
+
 it('keeps unknown event types in the list', () => {
   const e = applyChatEvent([], { type: 'future_thing', x: 1 });
   expect(e.at(-1)).toMatchObject({ kind: 'event', payload: expect.objectContaining({ type: 'future_thing' }) });
@@ -512,7 +599,7 @@ Expected: FAIL（仍 `+= delta` / 不认 `message_start`）。
 
 - [ ] **Step 3: Minimal implementation**
 
-重写 `applyChatEvent` 的 message / tool 分支。`applySurfaceEvent`：custom 仍按 id；user 改走 `message_start` / 去重；其余交 `applyChatEvent`。删掉「扁 `type:'message' role:user`」专支。
+重写 `applyChatEvent` 的 message / tool 分支：换槽对准 `streaming===true`。`applySurfaceEvent`：custom 按 id；user 按末条相同文本去重。`eventLabel` 加 default。ChatWorkbench 改 Pi 形状。合同刷新触发改 `message_end`。
 
 - [ ] **Step 4: Run tests**
 
@@ -538,7 +625,7 @@ fold TUI events into session entries by replacement
 
 ```ts
 export function applySnapshotThenBuffer(
-  snapshot: { entries: unknown[]; streamingMessage?: unknown | null },
+  snapshot: { entries: unknown[]; streamingMessage?: unknown | null; streaming?: boolean },
   buffer: unknown[],
   apply: typeof applySurfaceEvent,
 ): SessionEntry[]
@@ -554,17 +641,18 @@ Hook 顺序（generation 整数）：
 2. openChatSession(sessionId)
 3. 若 gen 已变 / unmount → 丢快照、丢缓冲
 4. entries = normalizeSessionEntries(snapshot.entries)
-   若 snapshot.streamingMessage → 折成流式槽（与 message_start 相同）
+   若 snapshot.streamingMessage → 折进列表
+   槽的 streaming 标志 = snapshot.streaming（不要用「有没有 streamingMessage」当转圈）
 5. 按顺序 apply buffer（custom 按 id 去重）
 6. setState 一次铺底
 7. 之后事件直接 apply，不再用这次快照
 ```
 
-`compaction_end` 成功：再走 1–6（新 gen）。这是允许的第二次整表换树。不要用 `buildContextEntries()`。
+`compaction_end` 成功：再走 1–6（新 gen）。不要用 `buildContextEntries()`。
 
-从历史打开再续问：`sessionId` 不变则 effect 不重跑；已画留下，只追加新事件。不要在 prompt 成功后再 `openChatSession` 清屏。`mode` 仍只是依赖项，不切断数据面。
+从历史打开再续问：`sessionId` 不变则 effect **不重跑**，即使后来进程活了、`openChatSession` 若被别人调用返回更短列表，hook 也不要用新快照覆盖已画内容。不要在 prompt 成功后再 `openChatSession` 清屏。`mode` 不切断数据面。
 
-`session_unbound` 且 `payload.sessionId === sessionId`：`streaming=false`，不清 entries。
+`session_unbound` 且 `sessionId` 匹配：`streaming=false`，不清 entries。
 
 禁止：先把事件画上再让晚到快照整表覆盖。禁止晚到快照按 id 并集补洞。
 
@@ -615,18 +703,20 @@ listen then snapshot when opening a session
 ### Task 7: 崩溃只认 JSONL；Logger.error
 
 **Files:**
-- Modify: `apps/desktop/electron/main/ipc.ts`（或 pool/supervisor 的 exit 钩子接到 ipc）
-- Test: `apps/desktop/test/ipc.test.ts`（或 host `pi-runtime-supervisor` + ipc 集成夹具）
+- Modify: `apps/desktop/electron/main/ipc.ts`（`open.slot.supervisor.onExit`）
+- Test: `apps/desktop/test/ipc.test.ts`
 
 **行为：**
 
 ```text
-子进程 onExit / 非 0：
-  logger.error({ msg: 'pi runtime exited', ctx: { sessionId: 当时牌子, code } })
+ipc 在 ensureProcessPipe / ensureOpenSession 时订阅 supervisor.onExit。
+不要把崩溃生命周期扩进 PiRuntimePool（池子仍无 onExit 接线，本轮不扩）。
+
+子进程退出：
+  logger.error({ msg: 'pi runtime exited', ctx: { sessionId: getSessionId(), code } })
   不要把 streamingMessage 写进 jsonl
-  slot 按 release 路径卸牌子（先 null）→ 不再盖章
-  若窗口还在看这条：可发 session_unbound 停转圈
-再打开：走死了路径（JSONL），没有 preview
+  走与手动释放相同的 ipc 卸下：session_unbound → pool.release（内部先 null）
+再打开：死了路径（JSONL），没有 preview
 ```
 
 应用退出：现有关进程即可，不抢写 in-flight。
@@ -641,7 +731,7 @@ it('logs and stops stamping when the pi child exits', async () => {
 });
 ```
 
-- [ ] **Step 2–4:** FAIL → 接 `supervisor.onExit` → PASS。不要新通道。
+- [ ] **Step 2–4:** FAIL → ipc 订 `supervisor.onExit` 并走现有 unbind → PASS。不要新通道，不要改池子生命周期。
 
 - [ ] **Step 5: Commit**
 
@@ -654,7 +744,8 @@ stop live pipe and log when pi process exits
 ### Task 8: 夹具与回归改成 Pi 原形状
 
 **Files:**
-- Modify tests: `app-general.test.tsx`、`standard-chat.test.tsx`、`chat-workbench.test.tsx`、`use-agent-session.test.ts`、`ipc.test.ts`、以及任何仍发 `{ type:'message', delta }` / `tool_call` 的 live 夹具
+- Modify tests: `app-general.test.tsx`、`standard-chat.test.tsx`、`use-agent-session.test.ts`、`ipc.test.ts`、以及任何仍发 `{ type:'message', delta }` / `tool_call` 的 live 夹具
+- ChatWorkbench 夹具在 Task 5 已改，这里只扫漏
 - 不改合同投影断言（risk 卡片仍来自 `workflow_step_end.output`）
 
 **规则：** live 夹具一律用 `message_start` / `message_update`（带 `message`）/ `message_end` / `entry_appended` / `tool_execution_*`。历史夹具仍用 JSONL `{ type:'message', message }` / `{ type:'custom', ... }`。
@@ -685,11 +776,13 @@ pnpm --filter @sparkii/ui exec tsc --noEmit
 
 ```text
 rg "catch\\(\\(\\) => \\{\\}\\)" apps/desktop/electron/main/workflow.ts
+rg "acc \\+= e.delta" apps/desktop/electron/main/workflow.ts
 rg "type: 'message', role: 'assistant', delta" apps/desktop/src packages
+rg "open\\.offEvents" apps/desktop/electron/main/ipc.ts
 rg "buildContextEntries" apps/desktop/src apps/desktop/electron packages/agent-host/src
 ```
 
-workflow 空 catch 必须为 0。生产路径不得 `+= delta`。不得用 `buildContextEntries` 当起步。
+workflow 空 catch 必须为 0。`sendPrompt` 不得 `+= delta`。ipc 不得再 `offEvents?.()`。不得用 `buildContextEntries` 当起步。
 
 - [ ] **Step 4: Commit**
 
@@ -714,8 +807,10 @@ update live-event fixtures to Pi TUI shapes
 
 ## Self-Review Notes
 
-- 第 7 条把「画」和「送达 / 折进列表」切开：本 plan 改 pipe + `apply*` + hook，不改 Agent 控件清单。
+- 第 7 条把「画」和「送达 / 折进列表」切开：本 plan 改 pipe + `apply*` + hook，不改 Agent 控件清单。未知 type 留在列表但详情级默认 debug，禁止为此把 `?? 'debug'` 改成 standard。
 - `NormalizedEvent` 必须开放，否则 Task 1 会在类型层重新做允许名单。
 - 盖章读活牌子，idle-release / settled 也要用当时的 id，否则会 release 错会话。
-- 微缝只在 main 做一次，避免 renderer 三路投票。
+- `getSessionId` 必须闭包内部 Slot；WeakMap 键是 `client`。
+- 微缝只在 `isStreaming && !streamingMessage` 时打 `get_messages`，避免 renderer 三路投票。
 - 测试先于实现。旧「扁 delta」测试是要改的规格，不是要迁就的兼容层。
+- `sendPrompt` 与 `normalizeEvent` 必须同一任务改，否则合同步骤 output 变空。

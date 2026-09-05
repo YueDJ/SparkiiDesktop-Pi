@@ -76,7 +76,9 @@ get_messages 不参与时间线
 
 不在每个事件上再调 `getBranch()`。`getBranch()` 只用于起步，以及第 6 条里的整树重建（compaction / 换 session / 投影对不上）。
 
-**微缝：** `streamingMessage` 先清空，然后才 `appendMessage`。夹在中间读会两边都没有这句（此时 `get_messages` 里已经有）。主路径仍是树 + `streamingMessage`；这条缝若碰到，用 `get_messages` 最后一条 assistant 补一次即可，不是合成主源。
+**微缝：** `streamingMessage` 先清空，然后才 `appendMessage`。夹在中间读会两边都没有这句（此时 `get_messages` 里已经有）。只在 `isStreaming === true` 且 `streamingMessage` 为空时，用 `get_messages` 最后一条 assistant 按全文补一次（对照 branch 最后一条 assistant 的文本；不等则跳过）。这不是合成主源，也不是每次打开都拉 `get_messages`。
+
+起步快照另带 `streaming`（来自 `get_state.isStreaming`）。有无 `streamingMessage` 不单独决定气泡是否转圈。
 
 ### 进程已死（slot 已释放）
 
@@ -147,7 +149,8 @@ Pi 以后新加、TUI 会处理的类型：默认同样整包转发，不要再�
 | `message_start` assistant | 新建流式槽，内容 = `message` |
 | `message_update` | 槽里整句换成 `message` |
 | `message_end` | 再用全文刷一次，标完成，清槽指针；气泡留在列表。**不等树 id** |
-| `message_start` user | 追加 user；随后同一次 `entry_appended`（`type:message` + user）丢掉 |
+| `message_start` user | 追加 user |
+| `entry_appended` 且 `entry.type === 'message'` + user | 若列表末条已是相同文本的 user，跳过；否则追加（不依赖一定先有 `message_start`；`appendMessage` 本身不发 `entry_appended`） |
 | `entry_appended` 且 `entry.type === 'custom'` | 已有 `entry.id` 则跳过，否则追加 |
 | `tool_execution_start` | 按 `toolCallId` 开工具块 |
 | `tool_execution_update` | 同一块上刷 `partialResult` |
@@ -198,7 +201,7 @@ assistant 不在 `message_end` 后再等一条带 id 的树节点才显示（TUI
 append_workflow_entry 必须等到 success
 失败 → 这一步没记下，不能跑下一步
      → logger.error（sessionId、stepId、customType、错误、output 字节数；不写整份 output）
-     → 现有错误中心一句人话
+     → 现有错误中心**恰好一句**（主进程写入 `errors.db`，同一 `id` 经现有 `chat-event` `runtime_error` 通知窗口；禁止双行）
      → 能写则补一条很小的 step_end failed（不要再带那份巨大 output）；连这个也写不上就停循环
 release 前，这一轮最后一次 append 必须结束（成功或已按上面报失败）
 output 不准静默截断（截断会造成 live/历史缺 findings）
@@ -232,7 +235,7 @@ output 不准静默截断（截断会造成 live/历史缺 findings）
 
 打开某条会话且进程还活着：第 1、3 条（先听、一次快照 = `getBranch()` + `streamingMessage`、缓冲叠上）。in-flight 是快照里的那一格，不是时间线画完再另接。进程已死：只读 JSONL，管子不会再给这条盖章。
 
-解绑时若页面还在转圈，可发一条带该 `sessionId` 的「已卸下」把转圈停掉。不新开通道。
+解绑时若页面还在转圈，ipc 在调用 `pool.release` **之前**可发一条带该 `sessionId` 的 `session_unbound`（仍走 `sparkii:event:chat-event`）把转圈停掉。池子本身不碰窗口。不新开通道。
 
 ---
 
@@ -279,8 +282,8 @@ output 不准静默截断（截断会造成 live/历史缺 findings）
 - 保证进程死后仍能看到未落盘的那句
 - 主进程把 preview 代写进 JSONL
 - 三路按 id 投票（JSONL / `getBranch` / `get_messages`）
-- 用 `get_messages` 当 UI 时间线主源
-- 用 `delta` 表示「从上次落盘到现在」
+- 用 `get_messages` 当 UI 时间线主源；或在非微缝窗口每次打开都拉 `get_messages` 做并集
+- 用 `delta` 表示「从上次落盘到现在」；或在 `sendPrompt` / 任何消费侧 `+= delta`
 - 起步用 `buildContextEntries()` 而历史读全文 JSONL（会分叉）
 - 一次打开对晚到快照做补洞并集（过期快照整份丢弃即可）
 - 步骤行 append 失败用空 catch 吞掉，或静默截断 `output`
