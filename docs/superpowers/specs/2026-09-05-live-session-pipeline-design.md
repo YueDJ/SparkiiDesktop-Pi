@@ -1,6 +1,6 @@
 # Live Session Pipeline（起步 + 透传 + 与历史同源）— Design Spec
 
-**Status:** Draft（第 1–3 条已和产品讨论锁定；第 4–7 条待逐条讨论）
+**Status:** Draft（第 1–4 条已和产品讨论锁定；第 5–7 条待逐条讨论）
 **Date:** 2026-09-05
 **Depends on:** 薄契约 / live-history 同源（`2026-09-02-agent-surface-template-and-contract-review-design.md`）；合同 JSONL 显示（`2026-09-03-contract-review-jsonl-display-design.md`）；Runtime ⊥ Viewport（`2026-09-04-runtime-viewport-decoupling-design.md`）
 **Amends:** runtime-viewport spec 第 4、5 条里「回来只重读 JSONL、事件只是尾巴」——进程仍活着时，起步改为 `getBranch()` + `streamingMessage`，不是读磁盘。
@@ -188,6 +188,24 @@ assistant 不在 `message_end` 后再等一条带 id 的树节点才显示（TUI
 
 ---
 
+## 第 4 条（已锁定）：步骤行投递失败必须暴露
+
+步骤行 = workflow 引擎写入的 `workflow_step_start` / `workflow_step_end`（`stepId`、状态、`output` / `error`）。合同卡片的进度和结果从这些行投影。Agent 复核用的 `workflow_state` 走同一 `append_workflow_entry`，那条 IPC 失败已经 throw；本条要改的是循环里对 start/end 的空 `catch`。
+
+```text
+append_workflow_entry 必须等到 success
+失败 → 这一步没记下，不能跑下一步
+     → logger.error（sessionId、stepId、customType、错误、output 字节数；不写整份 output）
+     → 现有错误中心一句人话
+     → 能写则补一条很小的 step_end failed（不要再带那份巨大 output）；连这个也写不上就停循环
+release 前，这一轮最后一次 append 必须结束（成功或已按上面报失败）
+output 不准静默截断（截断会造成 live/历史缺 findings）
+```
+
+日志走现成 `Logger`（`sparkii.log.jsonl`）。成功用 `debug`；失败用 `error`。写盘失败不阻断主流程。不新开文件、不把 `output` 拆到侧车。
+
+---
+
 ## 明确不做（全篇）
 
 - 为没在看的 session 重放 token
@@ -200,17 +218,18 @@ assistant 不在 `message_end` 后再等一条带 id 的树节点才显示（TUI
 - 用 `delta` 表示「从上次落盘到现在」
 - 起步用 `buildContextEntries()` 而历史读全文 JSONL（会分叉）
 - 一次打开对晚到快照做补洞并集（过期快照整份丢弃即可）
+- 步骤行 append 失败用空 catch 吞掉，或静默截断 `output`
 
 ---
 
-## 待讨论（第 4–7 条）
+## 待讨论（第 5–7 条）
 
 1. ~~Catch-up：磁盘 vs `getBranch` vs `get_messages`~~ **已锁定（第 1 条）**
 2. ~~线上帧形状~~ **已锁定（第 2 条）**
 3. ~~Listen-then-snapshot~~ **已锁定（第 3 条）**
-4. **步骤行投递失败：** RPC 失败 / `catch` 吞掉 / 巨大 `output`
+4. ~~步骤行投递失败~~ **已锁定（第 4 条）**
 5. **Slot 被另一条 session 复用：** 停止给旧 `sessionId` 打标，禁止串话
 6. **Compaction / Pi 崩溃 / 退出：** 何时 `buildContextEntries` 重建；崩溃后只认文件
 7. **消费契约：** 合同必须投影哪些 `customType`；忽略 vs 空白
 
-第 4 条起继续逐条讨论，通过后再补进本文 Confirmed 段。
+第 5 条起继续逐条讨论，通过后再补进本文 Confirmed 段。
