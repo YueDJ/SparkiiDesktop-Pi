@@ -50,6 +50,39 @@ export function readQueueSnapshot(session: {
   };
 }
 
+/**
+ * Snapshot of one Pi session for `get_state`. `streamingMessage` is the not-yet-committed
+ * assistant message (`agent.state.streamingMessage`); openers need it to paint the in-flight
+ * bubble without reading the session tree or the jsonl file.
+ */
+export function sessionStateSnapshot(session: {
+  isStreaming?: boolean;
+  isCompacting?: boolean;
+  sessionId?: string;
+  sessionFile?: string;
+  steeringMode?: string;
+  followUpMode?: string;
+  pendingMessageCount?: number;
+  agent?: { state?: { streamingMessage?: unknown } };
+  getContextUsage?: () => unknown;
+  getSteeringMessages?: () => readonly string[];
+  getFollowUpMessages?: () => readonly string[];
+}): Record<string, unknown> {
+  return {
+    streaming: session.isStreaming,
+    isStreaming: session.isStreaming,
+    isCompacting: session.isCompacting,
+    contextUsage: session.getContextUsage?.(),
+    sessionId: session.sessionId,
+    sessionFile: session.sessionFile,
+    steeringMode: session.steeringMode,
+    followUpMode: session.followUpMode,
+    pendingMessageCount: session.pendingMessageCount,
+    streamingMessage: session.agent?.state?.streamingMessage ?? null,
+    ...readQueueSnapshot(session),
+  };
+}
+
 export function clearSessionQueue(session: {
   clearQueue?: () => { steering: readonly string[]; followUp: readonly string[] };
 }): { steering: string[]; followUp: string[] } {
@@ -289,18 +322,7 @@ export async function createPiSdkSessionHost(
       },
       getMessages: () => session.messages,
       getSessionEntries: () => session.sessionManager.getBranch(),
-      getState: () => ({
-        streaming: session.isStreaming,
-        isStreaming: session.isStreaming,
-        isCompacting: session.isCompacting,
-        contextUsage: session.getContextUsage?.(),
-        sessionId: session.sessionId,
-        sessionFile: session.sessionFile,
-        steeringMode: session.steeringMode,
-        followUpMode: session.followUpMode,
-        pendingMessageCount: session.pendingMessageCount,
-        ...readQueueSnapshot(session),
-      }),
+      getState: () => sessionStateSnapshot(session),
       dispose: () => session.dispose(),
     };
   }

@@ -649,7 +649,7 @@ describe('ipc provider handlers', () => {
 
     const opened = await handlers.get('sparkii:openChatSession')!(null, 'wf-done');
     expect(sent.some((c) => c.type === 'get_session_entries')).toBe(false);
-    expect(opened).toMatchObject({ messages: [] });
+    expect(opened).toMatchObject({ entries: [], streamingMessage: null, streaming: false });
   });
 
   it('idle-releases a post-run workflow slot so a later runWorkflow is not blocked', async () => {
@@ -1443,10 +1443,234 @@ describe('ipc provider handlers', () => {
     const handlers = await registeredHandlers();
     const opened = await handlers.get('sparkii:openChatSession')!(null, 'wf-missing');
     expect(opened).toMatchObject({
-      messages: [],
       entries: [],
+      streamingMessage: null,
+      streaming: false,
       inputs: [expect.objectContaining({ path: 'C:/tmp/a.pdf', name: 'a.pdf' })],
     });
+  });
+
+  it('opens a live session from getBranch + streamingMessage, not get_messages', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    const branch = [
+      { type: 'custom', id: 'c1', customType: 'workflow_step_start', data: { stepId: 'review' } },
+      { type: 'message', id: 'm1', message: { role: 'user', content: [{ type: 'text', text: '请审核合同' }] } },
+    ];
+    const streamingMessage = { role: 'assistant', content: [{ type: 'text', text: '第3条' }] };
+    const sent: any[] = [];
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') {
+          return {
+            success: true,
+            data: { sessionId: 's1', sessionFile: '/tmp/s.jsonl', isStreaming: true, streamingMessage },
+          };
+        }
+        if (command.type === 'get_session_entries') return { success: true, data: branch };
+        if (command.type === 'get_messages') {
+          return { success: true, data: [{ role: 'assistant', content: [{ type: 'text', text: '更短的一句' }] }] };
+        }
+        return { success: true };
+      },
+    };
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'contract-review', model: null, piSessionFile: '/tmp/s.jsonl' },
+    });
+
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:updateWorkflowState')!(null, 's1', { action: 'risk_confirmed' });
+    sent.length = 0;
+
+    const opened = await handlers.get('sparkii:openChatSession')!(null, 's1') as {
+      entries: unknown[];
+      streamingMessage: unknown;
+      streaming: boolean;
+    };
+    expect(opened.entries).toEqual(branch);
+    expect(opened.streamingMessage).toEqual(streamingMessage);
+    expect(opened.streaming).toBe(true);
+    expect(sent.filter((c) => c.type === 'get_messages')).toHaveLength(0);
+  });
+
+  it('recovers the micro-gap assistant from get_messages only while streaming without a slot message', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    const branch = [
+      { type: 'message', id: 'm1', message: { role: 'user', content: [{ type: 'text', text: '请审核合同' }] } },
+      { type: 'message', id: 'm2', message: { role: 'assistant', content: [{ type: 'text', text: '早先那句' }] } },
+    ];
+    const inFlight = { role: 'assistant', content: [{ type: 'text', text: '第3条存在期限不对齐' }] };
+    const sent: any[] = [];
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') {
+          return {
+            success: true,
+            data: { sessionId: 's1', sessionFile: '/tmp/s.jsonl', isStreaming: true, streamingMessage: null },
+          };
+        }
+        if (command.type === 'get_session_entries') return { success: true, data: branch };
+        if (command.type === 'get_messages') {
+          return {
+            success: true,
+            data: [{ role: 'user', content: '请审核合同' }, { role: 'assistant', content: [{ type: 'text', text: '早先那句' }] }, inFlight],
+          };
+        }
+        return { success: true };
+      },
+    };
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'contract-review', model: null, piSessionFile: '/tmp/s.jsonl' },
+    });
+
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:updateWorkflowState')!(null, 's1', { action: 'risk_confirmed' });
+    sent.length = 0;
+
+    const opened = await handlers.get('sparkii:openChatSession')!(null, 's1') as {
+      entries: unknown[];
+      streamingMessage: unknown;
+      streaming: boolean;
+    };
+    expect(opened.streamingMessage).toEqual(inFlight);
+    expect(opened.streaming).toBe(true);
+    expect(sent.filter((c) => c.type === 'get_messages')).toHaveLength(1);
+  });
+
+  it('skips the micro-gap when the last assistant is already on the branch', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    const branch = [
+      { type: 'message', id: 'm2', message: { role: 'assistant', content: [{ type: 'text', text: '已经入树的那句' }] } },
+    ];
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        if (command.type === 'get_state') {
+          return {
+            success: true,
+            data: { sessionId: 's1', sessionFile: '/tmp/s.jsonl', isStreaming: true, streamingMessage: null },
+          };
+        }
+        if (command.type === 'get_session_entries') return { success: true, data: branch };
+        if (command.type === 'get_messages') {
+          return { success: true, data: [{ role: 'assistant', content: [{ type: 'text', text: '已经入树的那句' }] }] };
+        }
+        return { success: true };
+      },
+    };
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'contract-review', model: null, piSessionFile: '/tmp/s.jsonl' },
+    });
+
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:updateWorkflowState')!(null, 's1', { action: 'risk_confirmed' });
+    const opened = await handlers.get('sparkii:openChatSession')!(null, 's1') as { streamingMessage: unknown };
+    expect(opened.streamingMessage).toBeNull();
+  });
+
+  it('does not read get_messages when the live session is idle', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    const sent: any[] = [];
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's1', sessionFile: '/tmp/s.jsonl', isStreaming: false } };
+        }
+        if (command.type === 'get_session_entries') return { success: true, data: [] };
+        return { success: true };
+      },
+    };
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'contract-review', model: null, piSessionFile: '/tmp/s.jsonl' },
+    });
+
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:updateWorkflowState')!(null, 's1', { action: 'risk_confirmed' });
+    sent.length = 0;
+    const opened = await handlers.get('sparkii:openChatSession')!(null, 's1') as {
+      streamingMessage: unknown;
+      streaming: boolean;
+    };
+    expect(opened.streamingMessage).toBeNull();
+    expect(opened.streaming).toBe(false);
+    expect(sent.filter((c) => c.type === 'get_messages')).toHaveLength(0);
+  });
+
+  it('dead session reads JSONL entries only (no preview)', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const file = join(dataDir, 'dead.jsonl');
+    const body = [
+      { type: 'message', id: 'm1', parentId: null, timestamp: '2026-09-05T00:00:01.000Z', message: { role: 'user', content: '请审核合同' } },
+      { type: 'custom', id: 'c1', parentId: 'm1', timestamp: '2026-09-05T00:00:02.000Z', customType: 'workflow_step_end', data: { stepId: 'review' } },
+    ];
+    await writeFile(
+      file,
+      [
+        JSON.stringify({ type: 'session', version: 3, id: 'dead', timestamp: '2026-09-05T00:00:00.000Z', cwd: dataDir }),
+        ...body.map((entry) => JSON.stringify(entry)),
+      ].join('\n'),
+      'utf8',
+    );
+
+    const sent: any[] = [];
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: {
+        send: async (command: any) => {
+          sent.push(command);
+          return { success: true };
+        },
+      },
+      chatSession: { profileId: 'contract-review', model: null, piSessionFile: file },
+    });
+
+    const handlers = await registeredHandlers();
+    const opened = await handlers.get('sparkii:openChatSession')!(null, 'dead') as {
+      entries: unknown[];
+      streamingMessage: unknown;
+      streaming: boolean;
+    };
+    expect(opened.entries).toEqual(body);
+    expect(opened.streamingMessage).toBeNull();
+    expect(opened.streaming).toBe(false);
+    expect(sent).toEqual([]);
   });
 
   it('setChatTitle notifies the renderer so the sidebar can show the filename', async () => {
