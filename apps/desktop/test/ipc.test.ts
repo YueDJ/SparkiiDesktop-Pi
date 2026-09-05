@@ -149,7 +149,7 @@ async function makeRuntime(opts: {
     keyFor: async () => null,
     setKey: opts.setKey ?? (async () => {}),
   } as unknown as Runtime;
-  registerIpc(rt, (opts.getWindow ?? (() => null)) as any, { export: async () => '' } as any);
+  registerIpc(rt, (opts.getWindow ?? (() => null)) as any, { export: async () => '', log: vi.fn(async () => {}) } as any);
   return rt;
 }
 

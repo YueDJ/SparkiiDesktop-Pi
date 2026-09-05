@@ -33,6 +33,17 @@ describe('ErrorStore', () => {
     s.close();
   });
 
+  it('ignores a second append with the same id so one failure is one row', () => {
+    const s = store();
+    const now = Date.now();
+    const rec = { id: 'e1', message: '步骤记录写入失败', source: '合同审核', createdAt: now };
+    s.append(rec);
+    s.append({ ...rec, message: '来自窗口的同一条' });
+    expect(s.list()).toHaveLength(1);
+    expect(s.list()[0]).toMatchObject({ id: 'e1', message: '步骤记录写入失败' });
+    s.close();
+  });
+
   it('prunes records older than 30 days on append and list', () => {
     const now = 1_000_000;
     const s = store(() => now);

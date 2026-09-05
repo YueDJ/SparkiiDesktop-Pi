@@ -192,6 +192,13 @@ function AppShell() {
       const ov = sessionOverridesRef.current.get(p.sessionId);
       if (ov) ov.updatedAt = Date.now();
     }
+    // 主进程已经把这条写进 errors.db 并给了 id；用同一个 id 上报，错误中心只会有一行。
+    if (p?.type === 'runtime_error' && typeof p?.errorId === 'string') {
+      reportError(typeof p?.message === 'string' ? p.message : '运行时错误', {
+        source: typeof p?.source === 'string' ? p.source : undefined,
+        id: p.errorId,
+      });
+    }
     if (p?.type === 'session_title' && p?.sessionId) {
       const title = String(p.title ?? '');
       const prevOv = sessionOverridesRef.current.get(p.sessionId) ?? {};
@@ -222,7 +229,7 @@ function AppShell() {
         return next;
       });
     }
-  }), [api]);
+  }), [api, reportError]);
   useEffect(() => {
     const off = api.on('runtime-pool', (p: any) => setRuntimePool(mapRuntimePool(p, pending)));
     api.getRuntimePool?.().then((p: any) => setRuntimePool(mapRuntimePool(p, pending))).catch(() => {});

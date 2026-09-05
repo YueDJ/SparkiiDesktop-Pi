@@ -314,6 +314,8 @@ export function StandardChatSurface(props: StandardChatProps) {
         return;
       }
       if (p?.type === 'runtime_error') {
+        // 带 errorId 的是主进程已经写入错误中心的那一行，由 App 统一上报；这里只管 Pi 自己的报错。
+        if (typeof p?.errorId === 'string') return;
         reportError(typeof p?.message === 'string' ? p.message : 'Pi 运行时错误', { source: agent.name });
         return;
       }

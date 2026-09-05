@@ -300,6 +300,19 @@ describe('StandardChatSurface behaviors', () => {
     expect(screen.getByRole('alert').textContent).toContain('api rate limit');
   });
 
+  it('leaves a runtime_error that already has an errorId to the app-level error center', async () => {
+    const { api, channels } = makeApi();
+    render(<ErrorProvider store={createMemoryErrorStore()}><StandardChatSurface {...baseProps('s1', { api })} /></ErrorProvider>);
+    act(() => channels['chat-event']({
+      sessionId: 's1',
+      type: 'runtime_error',
+      message: '步骤记录写入失败（review）：disk full',
+      errorId: 'err-1',
+      source: '合同审核智能体',
+    }));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('hides model changes in standard detail level', async () => {
     const { api } = makeApi();
     const session = { entries: [{ kind: 'event', id: 'ev1', event: 'model_change', label: '模型切换', status: 'info' }], streaming: false, meta: {} };

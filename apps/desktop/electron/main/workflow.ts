@@ -8,6 +8,7 @@ import { documentConnector, knowledgeConnector, reportConnector, type ToolDef } 
 import type { ProposalRequest } from '@sparkii/approval';
 import type { ModelTask } from '@sparkii/model-router';
 import type { Runtime } from './runtime.js';
+import type { Logger } from './logger.js';
 import { buildAgentSaddle } from './saddle.js';
 import { isReadOnlyBashCommand, riskOfCommand } from './general-executor.js';
 import { loadSettings, type AppSettings } from './settings.js';
@@ -254,16 +255,19 @@ export function resolveWorkflowTemplates(def: WorkflowDef): WorkflowDef {
   };
 }
 
+export interface WorkflowRunHooks {
+  onReady?: (sessionId: string, slot: Awaited<ReturnType<Runtime['pool']['acquire']>>) => void;
+  beforeRelease?: (sessionId: string) => void | Promise<void>;
+  logger?: Pick<Logger, 'log'>;
+}
+
 export async function runWorkflow(
   rt: Runtime,
   getWindow: () => BrowserWindow | null,
   input: Record<string, unknown>,
   broker: ReturnType<typeof createBroker>,
   profileId: string,
-  opts?: {
-    onReady?: (sessionId: string, slot: Awaited<ReturnType<Runtime['pool']['acquire']>>) => void;
-    beforeRelease?: (sessionId: string) => void | Promise<void>;
-  },
+  opts?: WorkflowRunHooks,
 ): Promise<string> {
   const pr = rt.profileOf(profileId);
   const agent = rt.agentOf(profileId);
@@ -324,20 +328,124 @@ export async function runWorkflow(
   }
 
   const readySessionId = sessionId;
-  void runWorkflowLoop(rt, slot, broker, pr, readySessionId, profileId, input, opts?.beforeRelease).catch(() => {});
+  void runWorkflowLoop(rt, getWindow, slot, broker, pr, readySessionId, profileId, input, opts).catch((error) => {
+    void opts?.logger?.log({
+      level: 'error',
+      msg: 'workflow loop crashed',
+      ctx: { sessionId: readySessionId, error: error instanceof Error ? error.message : String(error) },
+    });
+  });
   return readySessionId;
+}
+
+function profileDisplayName(pr: ReturnType<Runtime['profileOf']>): string {
+  const manifest = pr.profile.manifest as { displayName?: string; name?: string };
+  return manifest.displayName ?? manifest.name ?? '';
+}
+
+function outputByteLength(output: unknown): number {
+  if (output === undefined) return 0;
+  try {
+    return Buffer.byteLength(typeof output === 'string' ? output : JSON.stringify(output) ?? '', 'utf8');
+  } catch {
+    return -1;
+  }
+}
+
+/**
+ * 步骤行写入器。成功记 debug；失败必须暴露：
+ * Logger.error（只记 output 字节数，不写整份 output）+ 错误中心恰好一行（主进程唯一写入者，
+ * 同一 `errorId` 经现有 chat-event 通知窗口）+ 尽量补一条很小的 failed end，然后停循环。
+ */
+function createStepJournal(
+  rt: Runtime,
+  getWindow: () => BrowserWindow | null,
+  slot: Awaited<ReturnType<Runtime['pool']['acquire']>>,
+  pr: ReturnType<Runtime['profileOf']>,
+  sessionId: string,
+  logger?: Pick<Logger, 'log'>,
+) {
+  const append = async (customType: string, data: Record<string, unknown>): Promise<void> => {
+    const resp = await slot.client?.send?.({ type: 'append_workflow_entry', customType, data });
+    if (!resp?.success) throw new Error(resp?.error ?? 'append_workflow_entry failed');
+    void logger?.log({
+      level: 'debug',
+      msg: 'workflow entry appended',
+      ctx: { sessionId, stepId: String(data.stepId ?? ''), customType },
+    });
+  };
+
+  const report = (customType: string, data: Record<string, unknown>, error: unknown): void => {
+    const message = error instanceof Error ? error.message : String(error);
+    void logger?.log({
+      level: 'error',
+      msg: 'workflow entry append failed',
+      ctx: {
+        sessionId,
+        stepId: String(data.stepId ?? ''),
+        customType,
+        error: message,
+        outputBytes: outputByteLength(data.output),
+      },
+    });
+    const errorId = randomUUID();
+    const source = profileDisplayName(pr);
+    const text = `步骤记录写入失败（${String(data.stepId ?? '')}）：${message}`;
+    rt.errors?.append?.({ id: errorId, message: text, source, createdAt: Date.now() });
+    getWindow()?.webContents.send('sparkii:event:chat-event', {
+      type: 'runtime_error',
+      sessionId,
+      message: text,
+      errorId,
+      source,
+    });
+  };
+
+  return {
+    /** 返回 false = 这一步没记下，调用方必须停循环。 */
+    async record(customType: string, data: Record<string, unknown>): Promise<boolean> {
+      try {
+        await append(customType, data);
+        return true;
+      } catch (error) {
+        report(customType, data, error);
+        if (customType === 'workflow_step_end') {
+          try {
+            await append('workflow_step_end', {
+              stepId: data.stepId,
+              status: 'failed',
+              error: {
+                code: 'WORKFLOW_ENTRY_APPEND_FAILED',
+                message: error instanceof Error ? error.message : String(error),
+              },
+              finishedAt: new Date().toISOString(),
+            });
+          } catch {
+            void logger?.log({
+              level: 'error',
+              msg: 'workflow failed-end append also failed',
+              ctx: { sessionId, stepId: String(data.stepId ?? '') },
+            });
+          }
+        }
+        return false;
+      }
+    },
+  };
 }
 
 async function runWorkflowLoop(
   rt: Runtime,
+  getWindow: () => BrowserWindow | null,
   slot: Awaited<ReturnType<Runtime['pool']['acquire']>>,
   broker: ReturnType<typeof createBroker>,
   pr: ReturnType<Runtime['profileOf']>,
   sessionId: string,
   profileId: string,
   input: Record<string, unknown>,
-  beforeRelease?: (sessionId: string) => void | Promise<void>,
+  hooks?: WorkflowRunHooks,
 ): Promise<void> {
+  const journal = createStepJournal(rt, getWindow, slot, pr, sessionId, hooks?.logger);
   try {
     const rawDef = pr.profile.agent.workflow as unknown as WorkflowDef;
     const def = resolveWorkflowTemplates(rawDef);
@@ -353,29 +461,33 @@ async function runWorkflowLoop(
     for await (const e of new LinearRunner().run(def, ctx)) {
       if (e.type === 'step_started') {
         rt.chatSessions?.update?.(sessionId, { currentStep: e.stepId });
-        await slot.client?.send?.({
-          type: 'append_workflow_entry',
-          customType: 'workflow_step_start',
-          data: { stepId: e.stepId, startedAt: new Date().toISOString() },
-        }).catch(() => {});
+        const recorded = await journal.record('workflow_step_start', {
+          stepId: e.stepId,
+          startedAt: new Date().toISOString(),
+        });
+        if (!recorded) break;
       }
       if (e.type === 'step_completed') {
-        await slot.client?.send?.({
-          type: 'append_workflow_entry',
-          customType: 'workflow_step_end',
-          data: { stepId: e.stepId, status: 'completed', finishedAt: new Date().toISOString(), output: e.output },
-        }).catch(() => {});
+        const recorded = await journal.record('workflow_step_end', {
+          stepId: e.stepId,
+          status: 'completed',
+          finishedAt: new Date().toISOString(),
+          output: e.output,
+        });
+        if (!recorded) break;
       }
       if (e.type === 'workflow_failed') {
-        await slot.client?.send?.({
-          type: 'append_workflow_entry',
-          customType: 'workflow_step_end',
-          data: { stepId: e.stepId, status: 'failed', error: e.error, finishedAt: new Date().toISOString() },
-        }).catch(() => {});
+        const recorded = await journal.record('workflow_step_end', {
+          stepId: e.stepId,
+          status: 'failed',
+          error: e.error,
+          finishedAt: new Date().toISOString(),
+        });
+        if (!recorded) break;
       }
     }
   } finally {
-    await beforeRelease?.(sessionId);
+    await hooks?.beforeRelease?.(sessionId);
     await rt.pool.release(sessionId);
   }
 }

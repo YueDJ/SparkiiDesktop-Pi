@@ -360,6 +360,42 @@ describe('App general agent', () => {
     expect(screen.getByTestId('chat-title').textContent).toBe('新对话');
     expect(screen.getByTestId('session-g1').className).not.toMatch(/current/);
   });
+
+  it('reports a main-process runtime_error once, reusing its errorId', async () => {
+    const { api, channels } = makeApi();
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+    act(() => channels['chat-event']({
+      type: 'runtime_error',
+      sessionId: 'wf-1',
+      message: '步骤记录写入失败（review）：disk full',
+      errorId: 'err-1',
+      source: '合同审核智能体',
+    }));
+    expect((await screen.findByRole('alert')).textContent).toContain('步骤记录写入失败');
+    await waitFor(() => expect(api.appendError).toHaveBeenCalledTimes(1));
+    expect(api.appendError).toHaveBeenCalledWith(expect.objectContaining({ id: 'err-1', source: '合同审核智能体' }));
+
+    // 同一条重放不再多出一行
+    act(() => channels['chat-event']({
+      type: 'runtime_error',
+      sessionId: 'wf-1',
+      message: '步骤记录写入失败（review）：disk full',
+      errorId: 'err-1',
+      source: '合同审核智能体',
+    }));
+    fireEvent.click(screen.getByLabelText(/报错中心/));
+    expect(screen.getAllByText('步骤记录写入失败（review）：disk full')).toHaveLength(1);
+  });
+
+  it('ignores a Pi runtime_error without errorId at the App level', async () => {
+    const { api, channels } = makeApi();
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+    act(() => channels['chat-event']({ type: 'runtime_error', sessionId: 'g1', message: 'api rate limit' }));
+    await act(async () => { await Promise.resolve(); });
+    expect(api.appendError).not.toHaveBeenCalled();
+  });
 });
 
 describe('orderSessions', () => {

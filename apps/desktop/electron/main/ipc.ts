@@ -996,6 +996,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         openSessions.set(id, entry);
         ensureProcessPipe(slot);
       },
+      logger,
       async beforeRelease(id) {
         // workflow 跑完由 workflow.ts 调 pool.release；这里先让窗口停转圈，管子留给下一条会话。
         inFlightWorkflowRuns.delete(id);
