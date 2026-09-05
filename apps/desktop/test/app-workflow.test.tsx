@@ -129,36 +129,6 @@ describe('App workflow feedback', () => {
     expect(screen.getByText('审核完成')).toBeTruthy();
   });
 
-  it('shows workflow status from events that arrived before the new session id was bound', async () => {
-    const { api, channels } = makeApi();
-    let finishOpen!: (value: { entries: unknown[]; streaming?: boolean }) => void;
-    api.openChatSession.mockImplementation(() => new Promise((resolve) => { finishOpen = resolve; }));
-    render(<App />);
-    await screen.findByText(/工作台 · 上午好/);
-    fireEvent.click(screen.getByTestId('agent-card-contract-review'));
-    await screen.findByTestId('review');
-    fireEvent.click(screen.getByTestId('upload'));
-    await screen.findByTestId('remove-document');
-    fireEvent.click(screen.getByTestId('review'));
-    await waitFor(() => expect(api.runWorkflow).toHaveBeenCalled());
-    act(() => channels['chat-event']({
-      sessionId: 'ws1',
-      type: 'entry_appended',
-      entry: { type: 'custom', id: 'c1', customType: 'workflow_step_start', data: { stepId: 'review' } },
-    }));
-    expect(screen.queryByText('审核中：review')).toBeNull();
-    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
-    await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('ws1'));
-    await act(async () => { finishOpen({ entries: [], streaming: true }); });
-    expect(await screen.findByText('审核中：review')).toBeTruthy();
-    act(() => channels['chat-event']({
-      sessionId: 'ws1',
-      type: 'entry_appended',
-      entry: { type: 'custom', id: 'c2', customType: 'workflow_step_end', data: { stepId: 'review', status: 'completed' } },
-    }));
-    expect(screen.getByText('审核完成')).toBeTruthy();
-  });
-
   it('derives agent status from the runtime pool snapshot', async () => {
     const { channels } = makeApi();
     render(<App />);

@@ -1,5 +1,6 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import {
+  bindRuntimeEventPipe,
   buildSkillLoaderOptions,
   createPiSdkSessionHost,
   resolveAgentDir,
@@ -37,5 +38,46 @@ describe("pi-sdk-runtime agentDir resolution", () => {
   it("falls back to the SDK agent dir when neither is set", () => {
     delete process.env.PI_CODING_AGENT_DIR;
     expect(resolveAgentDir()).toBeTypeOf("string");
+  });
+});
+
+describe("bindRuntimeEventPipe", () => {
+  function fakeSession() {
+    const listeners = new Set<(event: unknown) => void>();
+    return {
+      listeners,
+      bindExtensions: vi.fn(async () => {}),
+      subscribe: (cb: (event: unknown) => void) => {
+        listeners.add(cb);
+        return () => { listeners.delete(cb); };
+      },
+      emit: (event: unknown) => { for (const listener of listeners) listener(event); },
+    };
+  }
+
+  it("reattaches subscribe after the runtime replaces the session", async () => {
+    const first = fakeSession();
+    const second = fakeSession();
+    let current = first;
+    let rebind: ((session: typeof first) => Promise<void>) | undefined;
+    const runtime = {
+      get session() { return current; },
+      setRebindSession(fn?: (session: typeof first) => Promise<void>) { rebind = fn; },
+    };
+    const received: unknown[] = [];
+    const listeners = new Set<(event: unknown) => void>([(event) => received.push(event)]);
+    bindRuntimeEventPipe(runtime, listeners);
+
+    first.emit({ type: "agent_start" });
+    expect(received).toEqual([{ type: "agent_start" }]);
+
+    current = second;
+    await rebind?.(second);
+    expect(second.bindExtensions).toHaveBeenCalledWith({});
+    expect(first.listeners.size).toBe(0);
+
+    first.emit({ type: "stale" });
+    second.emit({ type: "entry_appended" });
+    expect(received).toEqual([{ type: "agent_start" }, { type: "entry_appended" }]);
   });
 });

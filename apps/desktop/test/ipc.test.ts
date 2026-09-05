@@ -1788,6 +1788,56 @@ describe('ipc provider handlers', () => {
     expect(sent.filter((c) => c.type === 'get_messages')).toHaveLength(0);
   });
 
+  it('attaches the process pipe when a live session is opened', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    const listeners = new Set<(event: any) => void>();
+    const windowSent: any[] = [];
+    const client = {
+      onEvent: vi.fn((cb: (event: any) => void) => {
+        listeners.add(cb);
+        return () => { listeners.delete(cb); };
+      }),
+      send: async (command: any) => {
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's1', sessionFile: '/tmp/s.jsonl', isStreaming: true, streamingMessage: null } };
+        }
+        if (command.type === 'get_session_entries') return { success: true, data: [] };
+        if (command.type === 'set_session_name') return { success: true };
+        if (command.type === 'configure_session') return { success: true };
+        if (command.type === 'switch_session') return { success: true };
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'general', model: null, piSessionFile: '/tmp/s.jsonl' },
+      getWindow: () => ({
+        on: () => {},
+        isDestroyed: () => false,
+        webContents: { send: (...args: unknown[]) => { windowSent.push(args); } },
+      }) as any,
+    });
+
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:setChatTitle')!(null, 's1', '标题');
+    await waitUntil(() => (rt.pool.acquire as any).mock.calls.length > 0);
+    await Promise.resolve();
+    expect(client.onEvent).not.toHaveBeenCalled();
+
+    await handlers.get('sparkii:openChatSession')!(null, 's1');
+    expect(client.onEvent).toHaveBeenCalledTimes(1);
+
+    windowSent.length = 0;
+    for (const cb of listeners) cb({ type: 'entry_appended', entry: { type: 'custom', customType: 'workflow_step_start' } });
+    expect(windowSent.at(-1)?.[1]).toMatchObject({ type: 'entry_appended', sessionId: 's1' });
+  });
+
   it('recovers the micro-gap assistant from get_messages only while streaming without a slot message', async () => {
     const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
     dirs.push(dataDir);
