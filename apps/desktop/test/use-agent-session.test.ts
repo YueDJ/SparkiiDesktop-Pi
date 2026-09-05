@@ -357,6 +357,45 @@ describe('useAgentSession', () => {
     expect(result.current.entries).toHaveLength(1);
   });
 
+  it('reaches the contract cards from a step row buffered before the snapshot', async () => {
+    let resolveOpen: (v: unknown) => void = () => {};
+    const on = vi.fn().mockReturnValue(() => {});
+    (globalThis as any).window = {
+      sparkii: {
+        openChatSession: vi.fn(() => new Promise((resolve) => { resolveOpen = resolve; })),
+        on,
+      },
+    };
+    const { result } = renderHook(() => useAgentSession('contract-review', 's1', 'live'));
+    const chatCb = on.mock.calls.find((c: any[]) => c[0] === 'chat-event')?.[1];
+    await act(async () => {
+      chatCb({
+        sessionId: 's1',
+        type: 'entry_appended',
+        entry: { type: 'custom', id: 'c3', customType: 'workflow_step_start', data: { stepId: 'review' } },
+      });
+      chatCb({
+        sessionId: 's1',
+        type: 'entry_appended',
+        entry: {
+          type: 'custom',
+          id: 'c4',
+          customType: 'workflow_step_end',
+          data: { stepId: 'review', status: 'completed', output: { riskFindings: [{ id: 'r1', level: 'high' }] } },
+        },
+      });
+    });
+    expect(result.current.result).toBeUndefined();
+
+    await act(async () => {
+      resolveOpen({ entries: [], streamingMessage: null, streaming: true });
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(result.current.result).toEqual({ review: { riskFindings: [{ id: 'r1', level: 'high' }] } });
+    expect(result.current.status).toBe('done');
+    expect(result.current.meta.currentStep).toBe('review');
+  });
+
   it('leaves an empty session when the snapshot read fails', async () => {
     const on = vi.fn().mockReturnValue(() => {});
     (globalThis as any).window = {
