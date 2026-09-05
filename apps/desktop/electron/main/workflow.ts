@@ -157,6 +157,21 @@ export async function selectModel(
   return { provider, modelId };
 }
 
+function assistantTextFromMessage(message: unknown): string {
+  const rec = message && typeof message === 'object' ? message as Record<string, unknown> : {};
+  const content = rec.content;
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((block) => {
+        const b = block && typeof block === 'object' ? block as Record<string, unknown> : {};
+        return b.type === 'text' ? String(b.text ?? '') : '';
+      })
+      .join('');
+  }
+  return typeof rec.text === 'string' ? rec.text : '';
+}
+
 async function sendPrompt(rt: Runtime, text: string, task: ModelTask, sessionId: string): Promise<string> {
   const client = rt.pool.get(sessionId);
   if (!client) throw new Error(`unknown session ${sessionId}`);
@@ -184,9 +199,8 @@ async function sendPrompt(rt: Runtime, text: string, task: ModelTask, sessionId:
     timer = setTimeout(() => finish(new Error('prompt timeout')), 300_000);
   });
   off = client.onEvent((e) => {
-    if (e.type === 'message' && e.role === 'assistant') {
-      if (typeof e.delta === 'string') acc += e.delta;
-      else if (typeof e.text === 'string') acc = e.text;
+    if ((e.type === 'message_update' || e.type === 'message_end') && e.message) {
+      acc = assistantTextFromMessage(e.message);
     }
     if (e.type === 'agent_end') finish();
   });

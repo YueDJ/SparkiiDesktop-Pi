@@ -437,4 +437,51 @@ describe('runWorkflow session id and JSONL', () => {
     expect(typeof end?.data.finishedAt).toBe('string');
     expect(release).toHaveBeenCalled();
   });
+
+  it('stores full assistant text from message_update/message_end in step output', async () => {
+    const listeners = new Set<(e: unknown) => void>();
+    const { rt, getWindow, appends, sessionId } = makeHarness({
+      steps: [{ id: 'review', type: 'llm', template: '请审核' }],
+    });
+    const client = {
+      send: async (cmd: any) => {
+        if (cmd.type === 'new_session') return { success: true };
+        if (cmd.type === 'get_state') {
+          return { success: true, data: { sessionId, sessionFile: 'C:/wf/session.jsonl' } };
+        }
+        if (cmd.type === 'prompt') {
+          queueMicrotask(() => {
+            const message = { role: 'assistant', content: [{ type: 'text', text: '第3条存在期限不对齐' }] };
+            for (const cb of listeners) cb({ type: 'message_start', message: { role: 'assistant', content: [] } });
+            for (const cb of listeners) cb({ type: 'message_update', message });
+            for (const cb of listeners) cb({ type: 'message_end', message });
+            for (const cb of listeners) cb({ type: 'agent_end' });
+          });
+          return { success: true };
+        }
+        if (cmd.type === 'append_workflow_entry') {
+          appends.push({ customType: cmd.customType, data: cmd.data });
+        }
+        return { success: true };
+      },
+      onEvent: (cb: (e: unknown) => void) => {
+        listeners.add(cb);
+        return () => listeners.delete(cb);
+      },
+    };
+    rt.pool.get = () => client;
+    rt.pool.acquire = async () => ({ client, supervisor: { onProposal: () => {} } });
+    rt.keyFor = async () => null;
+    const broker = createBroker(rt, getWindow);
+    const running = runWorkflow(rt, getWindow, { documents: [] }, broker, 'contract-review');
+    await waitUntil(() => appends.some((a) => a.customType === 'workflow_step_end' && a.data.stepId === 'review'));
+    await running;
+    const end = appends.find((a) => a.customType === 'workflow_step_end' && a.data.stepId === 'review');
+    expect(end?.data).toMatchObject({
+      stepId: 'review',
+      status: 'completed',
+      output: '第3条存在期限不对齐',
+    });
+    expect(sessionId).toBeTruthy();
+  });
 });
