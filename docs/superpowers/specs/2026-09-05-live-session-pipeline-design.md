@@ -1,6 +1,6 @@
 # Live Session Pipeline（起步 + 透传 + 与历史同源）— Design Spec
 
-**Status:** Draft（第 1、2 条已和产品讨论锁定；第 3–7 条待逐条讨论）
+**Status:** Draft（第 1–3 条已和产品讨论锁定；第 4–7 条待逐条讨论）
 **Date:** 2026-09-05
 **Depends on:** 薄契约 / live-history 同源（`2026-09-02-agent-surface-template-and-contract-review-design.md`）；合同 JSONL 显示（`2026-09-03-contract-review-jsonl-display-design.md`）；Runtime ⊥ Viewport（`2026-09-04-runtime-viewport-decoupling-design.md`）
 **Amends:** runtime-viewport spec 第 4、5 条里「回来只重读 JSONL、事件只是尾巴」——进程仍活着时，起步改为 `getBranch()` + `streamingMessage`，不是读磁盘。
@@ -169,6 +169,25 @@ assistant 不在 `message_end` 后再等一条带 id 的树节点才显示（TUI
 
 ---
 
+## 第 3 条（已锁定）：一次打开 = 先订、缓冲、一次快照
+
+跨进程后，`invoke` 返回值和 `chat-event` 没有顺序保证。TUI 同进程同步绘制，不需要缓冲；我们需要，但这是下限，不是第二套合并代数。
+
+```text
+1. 开始听 chat-event，先放进缓冲，不画
+2. 等这一次起步 RPC（getBranch + streamingMessage；进程已死则 JSONL）
+3. 若这次打开已取消 / 换了 session → 快照丢掉，缓冲丢掉
+4. 快照铺底
+5. 缓冲按第 2 条叠上去（custom 按 id 去重）
+6. 之后只走事件，不再用这次打开的快照
+```
+
+一次打开只应用 **一次** 快照。过期用 generation / 取消标志整份丢弃，不做「晚到快照按 id 并集、槽已有则保留」的补洞合并。第二次整表换树（compaction / 换 session）是第 6 条。
+
+流式槽：每个 `sessionId` 最多一格，无树 id。快照里的 `streamingMessage` 和缓冲里的 `message_*` 是同一格。禁止先画事件再让快照整表覆盖。
+
+---
+
 ## 明确不做（全篇）
 
 - 为没在看的 session 重放 token
@@ -180,17 +199,18 @@ assistant 不在 `message_end` 后再等一条带 id 的树节点才显示（TUI
 - 用 `get_messages` 当 UI 时间线主源
 - 用 `delta` 表示「从上次落盘到现在」
 - 起步用 `buildContextEntries()` 而历史读全文 JSONL（会分叉）
+- 一次打开对晚到快照做补洞并集（过期快照整份丢弃即可）
 
 ---
 
-## 待讨论（第 3–7 条）
+## 待讨论（第 4–7 条）
 
 1. ~~Catch-up：磁盘 vs `getBranch` vs `get_messages`~~ **已锁定（第 1 条）**
 2. ~~线上帧形状~~ **已锁定（第 2 条）**
-3. **Listen-then-snapshot：** 先订再快照的时序；晚到快照不得打回流式槽；未入树槽的身份
+3. ~~Listen-then-snapshot~~ **已锁定（第 3 条）**
 4. **步骤行投递失败：** RPC 失败 / `catch` 吞掉 / 巨大 `output`
 5. **Slot 被另一条 session 复用：** 停止给旧 `sessionId` 打标，禁止串话
 6. **Compaction / Pi 崩溃 / 退出：** 何时 `buildContextEntries` 重建；崩溃后只认文件
 7. **消费契约：** 合同必须投影哪些 `customType`；忽略 vs 空白
 
-第 3 条起继续逐条讨论，通过后再补进本文 Confirmed 段。
+第 4 条起继续逐条讨论，通过后再补进本文 Confirmed 段。
