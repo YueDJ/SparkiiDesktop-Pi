@@ -223,7 +223,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   }
 
   /**
-   * 每个子进程只订一次事件。出门时当场读池子里的活 `slot.sessionId` 盖章：牌子为空就不送窗口，
+   * 每个子进程只订一次事件与退出。出门时当场读池子里的活 `slot.sessionId` 盖章：牌子为空就不送窗口，
    * 进程借给下一条会话时同一根管子自动改盖新 id。
    */
   function ensureProcessPipe(slot: Awaited<ReturnType<typeof rt.pool.acquire>>): void {
@@ -236,7 +236,18 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         scheduleIdleRelease(sessionId);
       }
     });
-    processPipes.set(slot.client, off);
+    // 退出跟管子同一套去重：订多次会让一次崩溃打 N 行日志、卸 N 次。
+    const offExit = slot.supervisor.onExit((code) => {
+      const sessionId = slot.getSessionId();
+      void logger.log({ level: 'error', msg: 'pi runtime exited', ctx: { sessionId, code } });
+      if (!sessionId) return;
+      // 子进程没了就问不到 sessionFile，也不去抢救 streamingMessage：JSONL 是唯一的账。
+      cancelIdleRelease(sessionId);
+      openSessions.delete(sessionId);
+      appliedModelBySession.delete(sessionId);
+      void unbindAndRelease(sessionId).catch(() => {});
+    });
+    processPipes.set(slot.client, () => { off(); offExit(); });
   }
 
   /** 解绑：先让窗口停转圈，再卸牌子（池子内部先 `sessionId = null` 才 `new_session`）。 */

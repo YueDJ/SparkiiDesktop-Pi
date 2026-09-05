@@ -79,12 +79,24 @@ async function makeRuntime(opts: {
   profile?: unknown;
   agentOf?: (id: string) => unknown;
   getWindow?: () => { webContents: { send: (...args: unknown[]) => void } } | null;
+  /** 测试用：收集 ipc 订上的 `supervisor.onExit` 回调，用来模拟子进程退出。 */
+  exitCbs?: Array<(code: number | null) => void>;
+  logger?: { export: () => Promise<string>; log: (entry: unknown) => Promise<void> };
 }): Promise<Runtime> {
   // 一根进程一根管子：牌子（活 sessionId）由池子持有，acquire/release/rename 改它。
   let boundSessionId: string | null = null;
   const slot = {
     client: opts.client,
-    supervisor: { onProposal: () => {}, onExit: () => () => {} },
+    supervisor: {
+      onProposal: () => {},
+      onExit: (cb: (code: number | null) => void) => {
+        opts.exitCbs?.push(cb);
+        return () => {
+          const index = opts.exitCbs?.indexOf(cb) ?? -1;
+          if (index >= 0) opts.exitCbs?.splice(index, 1);
+        };
+      },
+    },
     getSessionId: () => boundSessionId,
   };
   const rt = {
@@ -149,7 +161,11 @@ async function makeRuntime(opts: {
     keyFor: async () => null,
     setKey: opts.setKey ?? (async () => {}),
   } as unknown as Runtime;
-  registerIpc(rt, (opts.getWindow ?? (() => null)) as any, { export: async () => '', log: vi.fn(async () => {}) } as any);
+  registerIpc(
+    rt,
+    (opts.getWindow ?? (() => null)) as any,
+    (opts.logger ?? { export: async () => '', log: vi.fn(async () => {}) }) as any,
+  );
   return rt;
 }
 
@@ -767,6 +783,79 @@ describe('ipc provider handlers', () => {
     await handlers.get('sparkii:releaseSessionSlot')!(null, 'A');
 
     expect(order).toEqual(['unbound:A', 'release']);
+  });
+
+  it('logs and stops stamping when the pi child exits', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    const listeners = new Set<(event: any) => void>();
+    const windowSent: any[] = [];
+    const client = {
+      onEvent: (cb: (event: any) => void) => {
+        listeners.add(cb);
+        return () => { listeners.delete(cb); };
+      },
+      send: async (command: any) => {
+        if (command.type === 'get_state') {
+          return {
+            success: true,
+            data: {
+              sessionId: 'A',
+              sessionFile: null,
+              isStreaming: true,
+              streamingMessage: { role: 'assistant', content: [{ type: 'text', text: '半句' }] },
+            },
+          };
+        }
+        return { success: true };
+      },
+    };
+    const exitCbs: Array<(code: number | null) => void> = [];
+    const logger = { export: async () => '', log: vi.fn(async () => {}) };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'general', model: null },
+      exitCbs,
+      logger,
+      getWindow: () => ({
+        on: () => {},
+        isDestroyed: () => false,
+        webContents: { send: (...args: unknown[]) => { windowSent.push(args); } },
+      }) as any,
+    });
+
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:updateWorkflowState')!(null, 'A', { action: 'risk_confirmed' });
+    await handlers.get('sparkii:getChatState')!(null, 'A');
+    // 与管子同一套去重：一根进程只订一次退出。
+    expect(exitCbs).toHaveLength(1);
+    expect(listeners.size).toBe(1);
+
+    windowSent.length = 0;
+    exitCbs[0](2);
+    await waitUntil(() => windowSent.some((c) => c[1]?.type === 'session_unbound'));
+
+    expect(logger.log).toHaveBeenCalledWith(expect.objectContaining({
+      level: 'error',
+      msg: 'pi runtime exited',
+      ctx: expect.objectContaining({ sessionId: 'A', code: 2 }),
+    }));
+    expect(windowSent.filter((c) => c[1]?.type === 'session_unbound')).toHaveLength(1);
+    expect(rt.pool.release).toHaveBeenCalledWith('A');
+
+    // 牌子卸了，管子还在，但不再往窗口盖章。
+    windowSent.length = 0;
+    for (const cb of listeners) cb({ type: 'agent_end' });
+    expect(windowSent).toEqual([]);
+
+    // 再打开走死了路径：JSONL 正文，没有 preview。
+    const reopened = await handlers.get('sparkii:openChatSession')!(null, 'A') as any;
+    expect(reopened).toMatchObject({ entries: [], streamingMessage: null, streaming: false });
   });
 
   it('stops forwarding client events after the workflow slot is released', async () => {
