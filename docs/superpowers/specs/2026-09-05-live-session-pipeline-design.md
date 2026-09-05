@@ -1,6 +1,6 @@
 # Live Session Pipeline（起步 + 透传 + 与历史同源）— Design Spec
 
-**Status:** Draft（第 1–4 条已和产品讨论锁定；第 5–7 条待逐条讨论）
+**Status:** Draft（第 1–5 条已和产品讨论锁定；第 6–7 条待逐条讨论）
 **Date:** 2026-09-05
 **Depends on:** 薄契约 / live-history 同源（`2026-09-02-agent-surface-template-and-contract-review-design.md`）；合同 JSONL 显示（`2026-09-03-contract-review-jsonl-display-design.md`）；Runtime ⊥ Viewport（`2026-09-04-runtime-viewport-decoupling-design.md`）
 **Amends:** runtime-viewport spec 第 4、5 条里「回来只重读 JSONL、事件只是尾巴」——进程仍活着时，起步改为 `getBranch()` + `streamingMessage`，不是读磁盘。
@@ -206,60 +206,31 @@ output 不准静默截断（截断会造成 live/历史缺 findings）
 
 ---
 
-## 第 5 条（待确认）：Slot 复用不得串话
+## 第 5 条（已锁定）：每进程一根 Pipe，盖章用当前绑定
 
-运行池会把 **同一个 Pi 子进程** 从 session A 释放，再 bind 给 session B（`release` → `new_session` → `bind`）。管道今天把 `sessionId` 关在 `client.onEvent` 的闭包里：监听若没卸掉，B 的事件仍会打成 A。
-
-窗口 `useAgentSession` 只要还挂着某条 session，就会听 `chat-event` 并按 `sessionId` 过滤。进程已释放、人还停在 A 的画面上，这是允许的（视口 ⊥ 运行时）。因此 **错打的 id 会直接画进正在看的那条**。
-
-### 要解决的场景
-
-**场景 1：聊完 A，人还停在 A，slot 去跑 B**
-
-A `agent_settled` → idle release → 进程给新对话 / 另一条历史续问 B。  
-用户没离开 A（卡片或聊天还开着，仍在听 `sessionId=A`）。  
-若旧监听还在：B 的 `message_update`、工具、步骤行全部带 `sessionId: A` → A 的时间线上冒出 B 的字。
-
-**场景 2：合同审核跑完，同一进程接下通用聊天（或反过来）**
-
-合同 `finally` 里 `pool.release`。用户还在看审核结果。  
-串话后：报告页出现聊天 token，或聊天里出现 `workflow_step_*`。这是跨 Agent 污染，不是「同一对话多了一句」。
-
-**场景 3：从目录打开已结束的 A，B 正在复用该进程**
-
-打开 A 走 JSONL 起步（第 1 条「进程已死」），但 `useAgentSession` **照样订阅** `chat-event`（历史可写、事件不切断）。  
-B 若仍打成 A：历史画面会被 live 事件改写，刷新再打开又变回 JSONL → live 和历史自己打自己。
-
-**场景 4：旧监听没卸、B 又 `pipe` 了一次**
-
-同一 `client` 上两个回调：一个闭包还是 A，一个是 B。  
-每条 Pi 事件发两次：看 A 的吃到 B 的内容，看 B 的正常。像「A 在同步 B」。
-
-**场景 5：卸监听和 `new_session` 顺序反了**
-
-先 `new_session` / bind B，后 `offEvents`。空窗里子进程已经在为 B 发事件，仍走 A 的闭包。  
-哪怕「最终会卸掉」，中间几帧已经进了 A 的窗口，流式槽会留下脏预览。
-
-**场景 6：释放时 `openSessions` 里没有 A，但监听还在**
-
-例如只 `pool.release(A)`、没走到 `open.offEvents`。池子把 slot 给 B，窗口侧旧订阅仍活着。  
-和场景 1 相同，只是清理路径漏了。
-
-以上都不要求「看着 A 就不释放进程」。要禁止的是：**进程已经属于 B 时，还往窗口送 `sessionId: A`。**
-
-### 怎么解决
+身份只有一个：**这个进程此刻属于哪条会话**（池子里的 `slot.sessionId`）。不要冻在接上时的闭包里，不要第二套 `pipeId`。窗口不要维护「进程 ↔ 会话」表。
 
 ```text
-1. 先 offEvents     —— A 这条管道对窗口沉默
-2. 再 new_session    —— 子进程换成空会话
-3. 再 bind B，重新 pipe（新闭包、新 id）
+一根进程一根 Pipe
+事件出门时当场读 slot.sessionId
+  null → 不送窗口
+  是 X → 盖上 X 再送
+窗口只画 sessionId === current.sessionId 的事件
 ```
 
-发送时以 **当前 slot 绑定的 sessionId** 为准：已经是 `null` 或已经是别人，禁止 `webContents.send`。不要用闭包里冻住的 A。
+释放 / 借给别人：
 
-窗口继续只收自己的 `sessionId`（第二道闸，防漏网）。若检测到「要发出的 id 和当前绑定不一致」，`logger.warn`，不新开通道。
+```text
+1. slot.sessionId = null   再来的事件都不送
+2. new_session
+3. slot.sessionId = 下一个
+```
 
-不因此把进程钉在视口上，也不在主进程给每个 session 另存事件队列。
+窗口仍只用已有的 `current.sessionId`。进程从 A 借给 B，看 A 的人收不到新事件（live 停，留下已保存记录）。A 再次占用进程，牌子又是 A，还在看 A 就继续画，不必再选定。
+
+打开某条会话且进程还活着：第 1、3 条（先听、一次快照 = `getBranch()` + `streamingMessage`、缓冲叠上）。in-flight 是快照里的那一格，不是时间线画完再另接。进程已死：只读 JSONL，管子不会再给这条盖章。
+
+解绑时若页面还在转圈，可发一条带该 `sessionId` 的「已卸下」把转圈停掉。不新开通道。
 
 ---
 
@@ -277,17 +248,18 @@ B 若仍打成 A：历史画面会被 live 事件改写，刷新再打开又变�
 - 一次打开对晚到快照做补洞并集（过期快照整份丢弃即可）
 - 步骤行 append 失败用空 catch 吞掉，或静默截断 `output`
 - 因视口还开着就把 slot 钉死不复用；或靠主进程事件队列防串话
+- 第二套 `pipeId` / 窗口维护进程↔会话表 / 选定 API
 
 ---
 
-## 待讨论（第 5–7 条）
+## 待讨论（第 6–7 条）
 
 1. ~~Catch-up：磁盘 vs `getBranch` vs `get_messages`~~ **已锁定（第 1 条）**
 2. ~~线上帧形状~~ **已锁定（第 2 条）**
 3. ~~Listen-then-snapshot~~ **已锁定（第 3 条）**
 4. ~~步骤行投递失败~~ **已锁定（第 4 条）**
-5. **Slot 被另一条 session 复用：** 见上文「第 5 条（待确认）」——场景与解法已列出，待产品点头后改为已锁定
+5. ~~Pipe 身份~~ **已锁定（第 5 条）**
 6. **Compaction / Pi 崩溃 / 退出：** 何时 `buildContextEntries` 重建；崩溃后只认文件
 7. **消费契约：** 合同必须投影哪些 `customType`；忽略 vs 空白
 
-第 5 条起继续逐条讨论，通过后再补进本文 Confirmed 段。
+第 6 条起继续逐条讨论，通过后再补进本文 Confirmed 段。
