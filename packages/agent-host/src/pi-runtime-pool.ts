@@ -11,6 +11,8 @@ import type {
 export interface PiRuntimeSlot {
   client: PiRuntimeClient;
   supervisor: PiRuntimeSupervisor;
+  /** 这个进程此刻属于哪条会话；未绑定时为 null。读的是活牌子，不是 acquire 当时的拷贝。 */
+  getSessionId(): string | null;
 }
 
 interface Slot {
@@ -149,7 +151,7 @@ export class PiRuntimePool {
     }
     slot.status = "occupied-idle";
     this.emitSnapshot();
-    return { client: slot.client, supervisor: slot.supervisor };
+    return { client: slot.client, supervisor: slot.supervisor, getSessionId: () => slot.sessionId };
   }
 
   private applyEvent(slot: Slot, event: { type: string }): void {
@@ -182,8 +184,9 @@ export class PiRuntimePool {
     const slot = this.slots.find((s) => s.sessionId === sessionId);
     if (!slot) return;
     this.bySession.delete(sessionId);
-    try { await slot.client.send({ type: "new_session" }); } catch { /* 子进程已退出则忽略 */ }
+    // 先卸牌子：new_session 期间到达的事件不能再盖上这条会话的 id。
     slot.sessionId = null;
+    try { await slot.client.send({ type: "new_session" }); } catch { /* 子进程已退出则忽略 */ }
     slot.meta = undefined;
     slot.status = "occupied-idle";
     slot.startedAt = 0;

@@ -60,6 +60,49 @@ describe("PiRuntimePool", () => {
     expect(sent).toBeTruthy();
   });
 
+  it("reports the live session id through getSessionId", async () => {
+    const handle = new FakeHandle();
+    const pool = new PiRuntimePool({ maxAgents: 1, makeSupervisor: () => handle });
+    const slot = await pool.acquire("a");
+    handle.ready();
+
+    expect(slot.getSessionId()).toBe("a");
+    pool.renameSession("a", "b");
+    expect(slot.getSessionId()).toBe("b");
+    await pool.release("b");
+    expect(slot.getSessionId()).toBeNull();
+  });
+
+  it("clears sessionId before sending new_session on release", async () => {
+    const handle = new FakeHandle();
+    const pool = new PiRuntimePool({ maxAgents: 1, makeSupervisor: () => handle });
+    const slot = await pool.acquire("a");
+    handle.ready();
+
+    const idsWhenUnbinding: Array<string | null> = [];
+    const post = handle.postMessage.bind(handle);
+    handle.postMessage = (e: PiRuntimeEnvelope) => {
+      if ("command" in e && (e as any).command?.type === "new_session") idsWhenUnbinding.push(slot.getSessionId());
+      post(e);
+    };
+
+    await pool.release("a");
+    expect(idsWhenUnbinding).toEqual([null]);
+  });
+
+  it("stamps the next session on the same slot after release", async () => {
+    const handle = new FakeHandle();
+    const pool = new PiRuntimePool({ maxAgents: 1, makeSupervisor: () => handle });
+    const first = await pool.acquire("a");
+    handle.ready();
+    await pool.release("a");
+    const second = await pool.acquire("b");
+
+    expect(second.client).toBe(first.client);
+    expect(first.getSessionId()).toBe("b");
+    expect(second.getSessionId()).toBe("b");
+  });
+
   it("renames a session id while keeping the same client", async () => {
     const handle = new FakeHandle();
     const pool = new PiRuntimePool({ maxAgents: 1, makeSupervisor: () => handle });

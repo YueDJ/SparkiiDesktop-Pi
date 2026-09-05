@@ -80,15 +80,30 @@ async function makeRuntime(opts: {
   agentOf?: (id: string) => unknown;
   getWindow?: () => { webContents: { send: (...args: unknown[]) => void } } | null;
 }): Promise<Runtime> {
+  // 一根进程一根管子：牌子（活 sessionId）由池子持有，acquire/release/rename 改它。
+  let boundSessionId: string | null = null;
+  const slot = {
+    client: opts.client,
+    supervisor: { onProposal: () => {}, onExit: () => () => {} },
+    getSessionId: () => boundSessionId,
+  };
   const rt = {
     profiles: new Map(),
     gate: {},
     executor: {},
     audit: {},
     pool: {
-      acquire: vi.fn(async () => ({ client: opts.client, supervisor: { onProposal: () => {} } })),
-      release: vi.fn(async () => {}),
-      renameSession: vi.fn(),
+      acquire: vi.fn(async (sessionId: string, acquireOpts?: { meta?: { internal?: boolean } }) => {
+        // 内部探测在真实池子里占的是另一个槽位，不动这条会话的牌子。
+        if (!acquireOpts?.meta?.internal) boundSessionId = sessionId;
+        return slot;
+      }),
+      release: vi.fn(async (sessionId: string) => {
+        if (boundSessionId === sessionId) boundSessionId = null;
+      }),
+      renameSession: vi.fn((from: string, to: string) => {
+        if (boundSessionId === from) boundSessionId = to;
+      }),
       activeCount: vi.fn(() => 0),
       get: () => opts.client,
       broadcast: vi.fn(async () => {}),
@@ -585,6 +600,175 @@ describe('ipc provider handlers', () => {
     vi.useRealTimers();
   });
 
+  it('stamps chat-events with the live slot sessionId, not the subscribe-time id', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    const listeners = new Set<(event: any) => void>();
+    const windowSent: any[] = [];
+    const client = {
+      onEvent: (cb: (event: any) => void) => {
+        listeners.add(cb);
+        return () => { listeners.delete(cb); };
+      },
+      send: async (command: any) => {
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 'A', sessionFile: null, isStreaming: false } };
+        }
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'general', model: null },
+      getWindow: () => ({
+        on: () => {},
+        isDestroyed: () => false,
+        webContents: { send: (...args: unknown[]) => { windowSent.push(args); } },
+      }) as any,
+    });
+
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:updateWorkflowState')!(null, 'A', { action: 'risk_confirmed' });
+    expect(listeners.size).toBe(1);
+
+    windowSent.length = 0;
+    for (const cb of listeners) cb({ type: 'message_start', message: { role: 'assistant', content: [] } });
+    expect(windowSent.at(-1)?.[1]).toMatchObject({ type: 'message_start', sessionId: 'A' });
+
+    // 同一个进程借给 B：不新增监听，出门读到的是新牌子。
+    rt.pool.renameSession('A', 'B');
+    windowSent.length = 0;
+    for (const cb of listeners) cb({ type: 'message_update', message: { role: 'assistant', content: [] } });
+    expect(listeners.size).toBe(1);
+    expect(windowSent.at(-1)?.[1]).toMatchObject({ type: 'message_update', sessionId: 'B' });
+  });
+
+  it('stamps over an inner sessionId carried by the event', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    const listeners = new Set<(event: any) => void>();
+    const windowSent: any[] = [];
+    const client = {
+      onEvent: (cb: (event: any) => void) => {
+        listeners.add(cb);
+        return () => { listeners.delete(cb); };
+      },
+      send: async () => ({ success: true }),
+    };
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'general', model: null },
+      getWindow: () => ({
+        on: () => {},
+        isDestroyed: () => false,
+        webContents: { send: (...args: unknown[]) => { windowSent.push(args); } },
+      }) as any,
+    });
+
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:updateWorkflowState')!(null, 'A', { action: 'risk_confirmed' });
+    windowSent.length = 0;
+    for (const cb of listeners) cb({ type: 'session_info_changed', sessionId: 'stale-inner' });
+    expect(windowSent.at(-1)?.[1]).toMatchObject({ type: 'session_info_changed', sessionId: 'A' });
+  });
+
+  it('drops events while the slot has no session bound', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    const listeners = new Set<(event: any) => void>();
+    const windowSent: any[] = [];
+    const client = {
+      onEvent: (cb: (event: any) => void) => {
+        listeners.add(cb);
+        return () => { listeners.delete(cb); };
+      },
+      send: async (command: any) => {
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 'A', sessionFile: null, isStreaming: false } };
+        }
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'general', model: null },
+      getWindow: () => ({
+        on: () => {},
+        isDestroyed: () => false,
+        webContents: { send: (...args: unknown[]) => { windowSent.push(args); } },
+      }) as any,
+    });
+
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:updateWorkflowState')!(null, 'A', { action: 'risk_confirmed' });
+    await handlers.get('sparkii:releaseSessionSlot')!(null, 'A');
+    expect(rt.pool.release).toHaveBeenCalledWith('A');
+
+    windowSent.length = 0;
+    for (const cb of listeners) cb({ type: 'agent_settled' });
+    expect(windowSent).toEqual([]);
+    // 管子还在（进程稳定），只是牌子空了。
+    expect(listeners.size).toBe(1);
+  });
+
+  it('sends session_unbound before releasing the slot so the spinner stops', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    const order: string[] = [];
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 'A', sessionFile: '/tmp/a.jsonl', isStreaming: false } };
+        }
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'general', model: null },
+      getWindow: () => ({
+        on: () => {},
+        isDestroyed: () => false,
+        webContents: {
+          send: (channel: string, payload: any) => {
+            if (channel === 'sparkii:event:chat-event' && payload?.type === 'session_unbound') {
+              order.push(`unbound:${payload.sessionId}`);
+            }
+          },
+        },
+      }) as any,
+    });
+    (rt.pool as any).release = vi.fn(async () => { order.push('release'); });
+
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:updateWorkflowState')!(null, 'A', { action: 'risk_confirmed' });
+    order.length = 0;
+    await handlers.get('sparkii:releaseSessionSlot')!(null, 'A');
+
+    expect(order).toEqual(['unbound:A', 'release']);
+  });
+
   it('stops forwarding client events after the workflow slot is released', async () => {
     const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
     dirs.push(dataDir);
@@ -645,7 +829,9 @@ describe('ipc provider handlers', () => {
 
     windowSent.length = 0;
     for (const cb of listeners) cb({ type: 'agent_settled' });
+    // 牌子被卸掉就不再盖章；管子本身留着给下一条会话用。
     expect(windowSent.some((c) => c[0] === 'sparkii:event:chat-event' && c[1]?.sessionId === 'wf-done')).toBe(false);
+    expect(listeners.size).toBe(1);
 
     const opened = await handlers.get('sparkii:openChatSession')!(null, 'wf-done');
     expect(sent.some((c) => c.type === 'get_session_entries')).toBe(false);
@@ -714,16 +900,23 @@ describe('ipc provider handlers', () => {
 
     const occupied = new Set<string>();
     const waiters: Array<() => void> = [];
-    const slot = { client, supervisor: { onProposal: () => {} } };
+    let bound: string | null = null;
+    const slot = {
+      client,
+      supervisor: { onProposal: () => {}, onExit: () => () => {} },
+      getSessionId: () => bound,
+    };
     (rt as any).pool.acquire = vi.fn(async (key: string) => {
       while (occupied.size >= 1 && !occupied.has(key)) {
         await new Promise<void>((resolve) => waiters.push(resolve));
       }
       occupied.add(key);
+      bound = key;
       return slot;
     });
     (rt as any).pool.release = vi.fn(async (key: string) => {
       occupied.delete(key);
+      if (bound === key) bound = null;
       const queued = waiters.splice(0);
       for (const wake of queued) wake();
     });
@@ -733,6 +926,7 @@ describe('ipc provider handlers', () => {
         occupied.delete(from);
         occupied.add(to);
       }
+      if (bound === from) bound = to;
     });
 
     const handlers = await registeredHandlers();
@@ -1298,7 +1492,11 @@ describe('ipc provider handlers', () => {
       },
     };
     const rt = await makeRuntime({ dataDir, piAgentDir, client });
-    (rt as any).pool.acquire = vi.fn(async () => ({ client, supervisor: { onProposal } }));
+    (rt as any).pool.acquire = vi.fn(async (sessionId: string) => ({
+      client,
+      supervisor: { onProposal, onExit: () => () => {} },
+      getSessionId: () => sessionId,
+    }));
     (rt as any).chatSessions.create = vi.fn();
 
     const handlers = await registeredHandlers();
