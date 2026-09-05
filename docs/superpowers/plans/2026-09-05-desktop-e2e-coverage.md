@@ -1,6 +1,6 @@
 # Desktop E2E Coverage Implementation Plan
 
-> **For agentic workers:** 本 plan 已经架构师审过并吸收 must-fix。审核记录见「Architect corrections」。按任务逐步落地。Steps 用 checkbox (`- [ ]`) 跟踪。
+> **For agentic workers:** 本 plan 已经架构师审过并吸收 must-fix。**产品尚未评估：不得执行 Task 1–6，不得改 `apps/desktop/e2e` / Playwright / 生产 testid。** 评估通过后再按任务逐步落地。Steps 用 checkbox (`- [ ]`) 跟踪。
 
 **Goal:** 给真 Electron 窗口补上能抓住「live 管道没画」的回归，并补上合同拒绝写；通用智能体 §12 作为 P1 写清但不堵 P0。不把管道内部 Vitest 再做成 Playwright。
 
@@ -25,7 +25,7 @@ Nits 已吸收：合同 `SPARKII_PROFILE_DIR` 固定为该 profile 目录；P1-k
 
 **Product forks:** none。G1 沿用通用智能体规格 §12 已锁规则，不在本 E2E 规格里削弱。
 
-**Architect verdict:** Approve with nits（must-fix 已吸收；IMPLEMENTATION MAY START）。
+**Architect verdict:** Approve with nits（must-fix 已吸收）。**产品评估通过前 IMPLEMENTATION MUST NOT START。**
 
 ## Global Constraints
 

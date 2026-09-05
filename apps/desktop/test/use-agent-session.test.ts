@@ -26,6 +26,28 @@ describe('useAgentSession', () => {
   it('starts empty when no session', () => {
     const { result } = renderHook(() => useAgentSession('general', null, 'live'));
     expect(result.current.entries).toEqual([]);
+    expect((globalThis as any).window.sparkii.on).not.toHaveBeenCalled();
+    expect((globalThis as any).window.sparkii.openChatSession).not.toHaveBeenCalled();
+  });
+
+  it('connects the live pipe only after a sessionId is bound', async () => {
+    const on = vi.fn().mockReturnValue(() => {});
+    (globalThis as any).window = {
+      sparkii: {
+        openChatSession: vi.fn().mockResolvedValue({ entries: [], streaming: true }),
+        on,
+      },
+    };
+    const { rerender } = renderHook(
+      ({ sid }: { sid: string | null }) => useAgentSession('contract-review', sid, 'live'),
+      { initialProps: { sid: null as string | null } },
+    );
+    expect(on).not.toHaveBeenCalled();
+
+    rerender({ sid: 'ws1' });
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+    expect(on).toHaveBeenCalledWith('chat-event', expect.any(Function));
+    expect((globalThis as any).window.sparkii.openChatSession).toHaveBeenCalledWith('ws1');
   });
 
   it('populates meta.inputs from the loaded session', async () => {
