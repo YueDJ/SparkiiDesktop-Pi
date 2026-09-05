@@ -24,6 +24,7 @@ class PiRuntimeClientImpl implements PiRuntimeClient {
   private readyPromise: Promise<void>;
   private resolveReady!: () => void;
   private rejectReady!: (e: Error) => void;
+  private closed: Error | null = null;
 
   constructor(
     private handle: PiRuntimeHostHandle,
@@ -42,12 +43,18 @@ class PiRuntimeClientImpl implements PiRuntimeClient {
   }
 
   async send(command: RpcCommand): Promise<RpcResponse> {
+    if (this.closed) throw this.closed;
     await Promise.race([
       this.readyPromise,
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`runtime not ready after ${this.readinessTimeoutMs}ms`)), this.readinessTimeoutMs)),
     ]);
+    if (this.closed) throw this.closed;
     const id = randomUUID();
     return new Promise<RpcResponse>((resolve, reject) => {
+      if (this.closed) {
+        reject(this.closed);
+        return;
+      }
       const timer = setTimeout(() => {
         this.pending.delete(id);
         reject(new Error(`command ${command.type} timed out after ${this.sendTimeoutMs}ms`));
@@ -68,6 +75,7 @@ class PiRuntimeClientImpl implements PiRuntimeClient {
   }
 
   failPending(error: Error): void {
+    this.closed = error;
     for (const entry of this.pending.values()) { clearTimeout(entry.timer); entry.reject(error); }
     this.pending.clear();
     this.rejectReady(error);

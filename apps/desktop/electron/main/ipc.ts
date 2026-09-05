@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { listPiSessions, readPiSessionEntries, readPiSessionMessages, type PiProviderInfo, type SessionSaddle } from '@sparkii/agent-host';
+import { listPiSessions, readPiSessionEntries, type PiProviderInfo, type SessionSaddle } from '@sparkii/agent-host';
 import { applyThinkingLevel, createBroker, modelTargetKey, resolveModelTarget, resolveSessionModel, resolveThinkingLevel, runWorkflow, selectModel } from './workflow.js';
 import { findCompatibleModels, type ModelCapability } from '@sparkii/model-router';
 import { sortAgents } from './agent-catalog.js';
@@ -42,6 +42,56 @@ function parseSessionInputs(raw: string | null | undefined): { path: string; nam
   }
 }
 
+function assistantText(message: unknown): string {
+  const rec = (message ?? {}) as Record<string, unknown>;
+  const content = rec.content;
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((block) => {
+        const b = (block ?? {}) as Record<string, unknown>;
+        return b.type === 'text' ? String(b.text ?? '') : '';
+      })
+      .join('');
+  }
+  return typeof rec.text === 'string' ? rec.text : '';
+}
+
+function lastAssistantOfBranch(entries: unknown[]): unknown | null {
+  for (let i = entries.length - 1; i >= 0; i--) {
+    const entry = (entries[i] ?? {}) as Record<string, unknown>;
+    if (String(entry.type) !== 'message') continue;
+    const message = (entry.message ?? {}) as Record<string, unknown>;
+    if (message.role === 'assistant') return message;
+  }
+  return null;
+}
+
+function lastAssistantOfMessages(messages: unknown[]): unknown | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = (messages[i] ?? {}) as Record<string, unknown>;
+    if (message.role === 'assistant') return message;
+  }
+  return null;
+}
+
+/**
+ * `message_end` 先清空 `streamingMessage`，之后才 `appendMessage`。夹在中间打开会两边都没有
+ * 这一句，此时它只在 `get_messages` 里。仅在这条微缝上补一次，不把 `get_messages` 当时间线。
+ */
+async function recoverInFlightAssistant(
+  client: { send: (command: { type: 'get_messages' }) => Promise<{ success: boolean; data?: unknown }> },
+  branch: unknown[],
+): Promise<unknown | null> {
+  const resp = await client.send({ type: 'get_messages' });
+  if (!resp.success) return null;
+  const candidate = lastAssistantOfMessages(Array.isArray(resp.data) ? resp.data : []);
+  if (!candidate) return null;
+  const committed = lastAssistantOfBranch(branch);
+  if (committed && assistantText(committed) === assistantText(candidate)) return null;
+  return candidate;
+}
+
 export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, logger: Logger) {
   const broker = createBroker(rt, getWindow);
   const win = getWindow();
@@ -58,8 +108,10 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   });
   const openSessions = new Map<
     string,
-    { slot: Awaited<ReturnType<typeof rt.pool.acquire>>; profileId: string; offEvents?: () => void }
+    { slot: Awaited<ReturnType<typeof rt.pool.acquire>>; profileId: string }
   >();
+  /** 一根进程一根管子；键是 client（进程稳），不是每次 acquire 的新包装对象。 */
+  const processPipes = new WeakMap<object, () => void>();
   const appliedModelBySession = new Map<string, { provider: string; modelId: string }>();
   const idleTimers = new Map<string, ReturnType<typeof setTimeout>>();
   const inFlightWorkflowRuns = new Set<string>();
@@ -135,6 +187,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     sessionFile?: string;
     steering?: string[];
     followUp?: string[];
+    streamingMessage?: unknown;
   } => (data ?? {}) as {
     isStreaming?: boolean;
     streaming?: boolean;
@@ -143,12 +196,12 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     sessionFile?: string;
     steering?: string[];
     followUp?: string[];
+    streamingMessage?: unknown;
   };
 
   async function ensureOpenSession(sessionId: string): Promise<{
     slot: Awaited<ReturnType<typeof rt.pool.acquire>>;
     profileId: string;
-    offEvents?: () => void;
   }> {
     let open = openSessions.get(sessionId);
     if (open) return open;
@@ -169,18 +222,38 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     return open;
   }
 
-  function pipeSessionEvents(
-    sessionId: string,
-    entry: { slot: Awaited<ReturnType<typeof rt.pool.acquire>>; profileId: string; offEvents?: () => void },
-  ): void {
-    if (entry.offEvents) return;
-    const win = getWindow();
-    entry.offEvents = entry.slot.client.onEvent((ev) => {
-      win?.webContents.send('sparkii:event:chat-event', { ...ev, sessionId });
+  /**
+   * 每个子进程只订一次事件与退出。出门时当场读池子里的活 `slot.sessionId` 盖章：牌子为空就不送窗口，
+   * 进程借给下一条会话时同一根管子自动改盖新 id。
+   */
+  function ensureProcessPipe(slot: Awaited<ReturnType<typeof rt.pool.acquire>>): void {
+    if (processPipes.has(slot.client)) return;
+    const off = slot.client.onEvent((ev) => {
+      const sessionId = slot.getSessionId();
+      if (!sessionId) return;
+      getWindow()?.webContents.send('sparkii:event:chat-event', { ...ev, sessionId });
       if (ev.type === 'agent_settled' && !inFlightWorkflowRuns.has(sessionId)) {
         scheduleIdleRelease(sessionId);
       }
     });
+    // 退出跟管子同一套去重：订多次会让一次崩溃打 N 行日志、卸 N 次。
+    const offExit = slot.supervisor.onExit((code) => {
+      const sessionId = slot.getSessionId();
+      void logger.log({ level: 'error', msg: 'pi runtime exited', ctx: { sessionId, code } });
+      if (!sessionId) return;
+      // 子进程没了就问不到 sessionFile，也不去抢救 streamingMessage：JSONL 是唯一的账。
+      cancelIdleRelease(sessionId);
+      openSessions.delete(sessionId);
+      appliedModelBySession.delete(sessionId);
+      void unbindAndRelease(sessionId).catch(() => {});
+    });
+    processPipes.set(slot.client, () => { off(); offExit(); });
+  }
+
+  /** 解绑：先让窗口停转圈，再卸牌子（池子内部先 `sessionId = null` 才 `new_session`）。 */
+  async function unbindAndRelease(sessionId: string): Promise<void> {
+    getWindow()?.webContents.send('sparkii:event:chat-event', { type: 'session_unbound', sessionId });
+    await rt.pool.release(sessionId);
   }
 
   async function readQueues(entry: { slot: Awaited<ReturnType<typeof rt.pool.acquire>> }): Promise<QueueSnapshot> {
@@ -228,7 +301,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     if (sessionId) {
       cancelIdleRelease(sessionId);
       const open = await ensureOpenSession(sessionId);
-      pipeSessionEvents(sessionId, open);
+      ensureProcessPipe(open.slot);
       open.slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId: open.profileId }));
       const rec = rt.chatSessions.get(sessionId);
       const target = rec?.model
@@ -284,7 +357,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       rt.pool.renameSession(tempKey, createdSessionId);
       const entry = { slot, profileId };
       openSessions.set(createdSessionId, entry);
-      pipeSessionEvents(createdSessionId, entry);
+      ensureProcessPipe(slot);
       slot.supervisor.onProposal((req) => broker.route(req, { sessionId: createdSessionId!, profileId }));
       await mkdir(anchorDir(createdSessionId), { recursive: true });
       rt.chatSessions.create({
@@ -317,39 +390,43 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   }
 
   ipcMain.handle('sparkii:openChatSession', async (_e, sessionId: string) => {
-  const open = openSessions.get(sessionId);
-  if (open) {
-    const [messagesResp, entriesResp] = await Promise.all([
-      open.slot.client.send({ type: 'get_messages' }),
-      open.slot.client.send({ type: 'get_session_entries' }),
-    ]);
-    const rec = rt.chatSessions.get(sessionId);
-    return {
-      messages: (messagesResp.data ?? []) as unknown[],
-      entries: (entriesResp.data ?? []) as unknown[],
-      inputs: parseSessionInputs(rec?.inputs),
-    };
-  }
-  const rec = rt.chatSessions.get(sessionId) ?? (await listPiSessions(join(rt.piAgentDir, 'sessions'))).find((s) => s.id === sessionId);
-  if (!rec) throw new Error('session not found');
+    const open = openSessions.get(sessionId);
+    if (open) {
+      // 进程还活着：起步 = getBranch() + streamingMessage。不读磁盘（首条 assistant 落盘前
+      // 文件可能是空的，树上已有步骤行），也不用 get_messages 当时间线。
+      const [entriesResp, stateResp] = await Promise.all([
+        open.slot.client.send({ type: 'get_session_entries' }),
+        open.slot.client.send({ type: 'get_state' }),
+      ]);
+      const rec = rt.chatSessions.get(sessionId);
+      const entries = (entriesResp.data ?? []) as unknown[];
+      const state = chatStateData(stateResp.data);
+      const streaming = Boolean(state.isStreaming ?? state.streaming ?? false);
+      const streamingMessage = state.streamingMessage
+        ?? (streaming ? await recoverInFlightAssistant(open.slot.client, entries) : null);
+      return {
+        entries,
+        streamingMessage: streamingMessage ?? null,
+        streaming,
+        inputs: parseSessionInputs(rec?.inputs),
+      };
+    }
+    const rec = rt.chatSessions.get(sessionId) ?? (await listPiSessions(join(rt.piAgentDir, 'sessions'))).find((s) => s.id === sessionId);
+    if (!rec) throw new Error('session not found');
     const file = (rec as { piSessionFile?: string | null }).piSessionFile
       ?? (rec as { path?: string }).path;
-    if (!file) return { messages: [], inputs: parseSessionInputs((rec as { inputs?: string }).inputs) };
+    const dead = (entries: unknown[]) => ({
+      entries,
+      streamingMessage: null,
+      streaming: false,
+      inputs: parseSessionInputs((rec as { inputs?: string }).inputs),
+    });
+    if (!file) return dead([]);
     try {
-      return {
-        messages: readPiSessionMessages(file),
-        entries: readPiSessionEntries(file),
-        inputs: parseSessionInputs((rec as { inputs?: string }).inputs),
-      };
+      return dead(readPiSessionEntries(file));
     } catch (e) {
-      // 空会话或尚未落盘的会话（首条 assistant 才写 jsonl）没有文件，返回空消息。
-      if ((e as NodeJS.ErrnoException).code === 'ENOENT') {
-        return {
-          messages: [],
-          entries: [],
-          inputs: parseSessionInputs((rec as { inputs?: string }).inputs),
-        };
-      }
+      // 空会话或尚未落盘的会话（首条 assistant 才写 jsonl）没有文件，返回空时间线。
+      if ((e as NodeJS.ErrnoException).code === 'ENOENT') return dead([]);
       throw e;
     }
   });
@@ -440,7 +517,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
 
   ipcMain.handle('sparkii:abortChat', async (_e, sessionId: string) => {
     const open = await ensureOpenSession(sessionId);
-    pipeSessionEvents(sessionId, open);
+    ensureProcessPipe(open.slot);
     const cleared = await readQueues(open);
 
     const clearResp = await open.slot.client.send({ type: 'clear_queue' });
@@ -462,7 +539,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         contextUsage: null,
       };
     }
-    pipeSessionEvents(sessionId, open);
+    ensureProcessPipe(open.slot);
     const resp = await open.slot.client.send({ type: 'get_state' });
     if (!resp.success) throw new Error(resp.error ?? 'get_state failed');
     const data = chatStateData(resp.data);
@@ -477,7 +554,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
 
   ipcMain.handle('sparkii:queueMutate', async (_e, sessionId: string, mutation: QueueMutation) => {
     const open = await ensureOpenSession(sessionId);
-    pipeSessionEvents(sessionId, open);
+    ensureProcessPipe(open.slot);
     const snapshot = await readQueues(open);
     const next = mutateQueues(snapshot, mutation);
 
@@ -535,7 +612,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     const settings = await loadSettings(rt.dataDir);
     const target = resolveSessionModel(settings, { model });
     if (open) {
-      pipeSessionEvents(sessionId, open);
+      ensureProcessPipe(open.slot);
       if (target) {
         const applied = appliedModelBySession.get(sessionId);
         const changed = !applied || applied.provider !== target.provider || applied.modelId !== target.modelId;
@@ -561,7 +638,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     rt.chatSessions.update(sessionId, { thinkingLevel: level });
     const open = openSessions.get(sessionId);
     if (open && level) {
-      pipeSessionEvents(sessionId, open);
+      ensureProcessPipe(open.slot);
       const resp = await open.slot.client.send({ type: 'set_thinking_level', level });
       if (!resp.success) throw new Error(resp.error ?? 'set_thinking_level failed');
     }
@@ -606,7 +683,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
 
   ipcMain.handle('sparkii:updateWorkflowState', async (_e, sessionId: string, entry: Record<string, unknown>) => {
     const open = await ensureOpenSession(sessionId);
-    pipeSessionEvents(sessionId, open);
+    ensureProcessPipe(open.slot);
     const resp = await open.slot.client.send({
       type: 'append_workflow_entry',
       customType: 'workflow_state',
@@ -619,7 +696,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
 
   ipcMain.handle('sparkii:requestExportReport', async (_e, sessionId: string, summary: Record<string, unknown>) => {
     const open = await ensureOpenSession(sessionId);
-    pipeSessionEvents(sessionId, open);
+    ensureProcessPipe(open.slot);
     const d = await broker.route({
       requestId: randomUUID(),
       toolName: 'report.export',
@@ -689,8 +766,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       if ((state.data as { sessionFile?: string } | undefined)?.sessionFile) {
         rt.chatSessions.update(sessionId, { piSessionFile: (state.data as { sessionFile: string }).sessionFile });
       }
-      open.offEvents?.();
-      await rt.pool.release(sessionId);
+      await unbindAndRelease(sessionId);
       openSessions.delete(sessionId);
       appliedModelBySession.delete(sessionId);
     }
@@ -748,12 +824,11 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
           piSessionFile: (state.data as { sessionFile: string }).sessionFile,
         });
       }
-      open.offEvents?.();
-      await rt.pool.release(sessionId);
+      await unbindAndRelease(sessionId);
       openSessions.delete(sessionId);
       appliedModelBySession.delete(sessionId);
     } else {
-      await rt.pool.release(sessionId);
+      await unbindAndRelease(sessionId);
     }
   }
 
@@ -930,13 +1005,14 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         inFlightWorkflowRuns.add(id);
         const entry = { slot, profileId };
         openSessions.set(id, entry);
-        pipeSessionEvents(id, entry);
+        ensureProcessPipe(slot);
       },
+      logger,
       async beforeRelease(id) {
+        // workflow 跑完由 workflow.ts 调 pool.release；这里先让窗口停转圈，管子留给下一条会话。
         inFlightWorkflowRuns.delete(id);
-        const open = openSessions.get(id);
-        if (!open) return;
-        open.offEvents?.();
+        if (!openSessions.has(id)) return;
+        getWindow()?.webContents.send('sparkii:event:chat-event', { type: 'session_unbound', sessionId: id });
         openSessions.delete(id);
       },
     });

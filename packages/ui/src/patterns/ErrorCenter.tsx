@@ -44,7 +44,8 @@ interface ErrorsValue {
   records: ErrorRecord[];
   unreadCount: number;
   toast: ErrorRecord | null;
-  reportError(message: string, opts?: { source?: string }): void;
+  /** `id` 由主进程给出时复用它：错误中心同一次故障只留一行。 */
+  reportError(message: string, opts?: { source?: string; id?: string }): void;
   dismissToast(id: string): void;
   clearOne(id: string): void;
   clearAll(): void;
@@ -97,15 +98,15 @@ export function ErrorProvider({ store, children }: { store: ErrorStoreAdapter; c
     return () => { cancelled = true; };
   }, [store]);
 
-  const reportError = useCallback((message: string, opts?: { source?: string }) => {
+  const reportError = useCallback((message: string, opts?: { source?: string; id?: string }) => {
     const rec: ErrorRecord = {
-      id: makeId(),
+      id: opts?.id ?? makeId(),
       message,
       source: opts?.source ?? '通用智能体',
       createdAt: Date.now(),
       read: false,
     };
-    setRecords((prev) => [rec, ...prev]);
+    setRecords((prev) => (prev.some((r) => r.id === rec.id) ? prev : [rec, ...prev]));
     setToast(rec);
     store.append(rec).catch(() => {});
   }, [store]);

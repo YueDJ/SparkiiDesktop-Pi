@@ -56,13 +56,23 @@ export interface ErrorRecord {
   read: boolean;
 }
 
+export interface OpenChatSessionResult {
+  /** 已提交条目：进程活着时是 `getBranch()`，已释放时是 JSONL 正文（不含 header）。 */
+  entries?: unknown[];
+  /** 未入树的那句 assistant 全文；进程已释放时恒为 null。 */
+  streamingMessage?: unknown | null;
+  /** 来自 `get_state.isStreaming`；气泡是否转圈只看这个字段。 */
+  streaming?: boolean;
+  inputs?: Array<{ path: string; name?: string; missing?: boolean }>;
+}
+
 export interface SparkiiApi {
   getLocalSubject(): Promise<{ userId: string; roles: string[] }>;
   chooseDocument(opts?: ChooseDocumentOptions): Promise<{ path?: string }>;
   readDocumentBytes(path: string, sessionId?: string | null): Promise<ReadDocumentBytesResult>;
   runWorkflow(id: string, input: Record<string, unknown>): Promise<{ ok: boolean; sessionId?: string }>;
   prompt(text: string): Promise<{ ok: boolean }>;
-  openChatSession(sessionId: string): Promise<{ messages: unknown[]; entries?: unknown[] }>;
+  openChatSession(sessionId: string): Promise<OpenChatSessionResult>;
   listChatSessions(profileId?: string): Promise<unknown[]>;
   getChatSession(sessionId: string): Promise<unknown>;
   promptSession(sessionId: string | null, text: string, options?: { behavior?: 'steer' | 'followUp' }, attachments?: ChatAttachment[], context?: DraftPromptContext): Promise<{ ok: boolean; sessionId?: string; behavior?: 'prompt' | 'steer' | 'followUp' }>;

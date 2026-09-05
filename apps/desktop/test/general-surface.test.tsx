@@ -12,7 +12,7 @@ afterEach(() => {
 function makeApi(over: Record<string, unknown> = {}) {
   return {
     on: vi.fn(() => () => {}),
-    openChatSession: vi.fn().mockResolvedValue({ messages: [] }),
+    openChatSession: vi.fn().mockResolvedValue({ entries: [], streamingMessage: null, streaming: false }),
     getChatSession: vi.fn().mockResolvedValue({}),
     getChatState: vi.fn().mockResolvedValue({ streaming: false, steering: [], followUp: [] }),
     promptSession: vi.fn().mockResolvedValue({ ok: true }),

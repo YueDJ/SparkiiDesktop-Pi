@@ -4,6 +4,7 @@
 **Date:** 2026-09-03
 **Branch:** current working branch
 **Depends on:** `docs/superpowers/specs/2026-09-02-agent-surface-template-and-contract-review-design.md`（薄契约 / live-history 同源）
+**Amended by:** `2026-09-05-live-session-pipeline-design.md`（JSONL 仍是已提交落盘真相；live 起步在进程活着时用会话树 + in-flight，事件按 TUI 全量透传）
 
 ## Goal
 

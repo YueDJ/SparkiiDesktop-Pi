@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mkdtempSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createBroker, resolveWorkflowTemplates, runWorkflow, workflowRuntimeTools } from '../electron/main/workflow.js';
@@ -29,7 +30,7 @@ function makeHarness(opts: {
     profileOf: () => ({
       dir: join(rt.dataDir, 'profiles', profileId),
       profile: {
-        manifest: { name: profileId },
+        manifest: { name: profileId, displayName: profileId === 'contract-review' ? '合同审核' : profileId },
         security: { approval: { timeoutMs: opts.timeoutMs ?? 50 } },
         agent: {
           tools: ['read'],
@@ -65,12 +66,14 @@ function makeHarness(opts: {
           },
         },
         supervisor: { onProposal: () => {} },
+        getSessionId: () => sessionId,
       }),
       renameSession: vi.fn(),
       get: () => undefined,
       release,
     },
     chatSessions: { create: vi.fn(), update: vi.fn() },
+    errors: { append: vi.fn((rec: unknown) => rec) },
   } as any;
   return { rt, getWindow, send, appends, release, sessionId, profileId };
 }
@@ -436,5 +439,163 @@ describe('runWorkflow session id and JSONL', () => {
     });
     expect(typeof end?.data.finishedAt).toBe('string');
     expect(release).toHaveBeenCalled();
+  });
+
+  it('stops the workflow and reports when a step_end append fails', async () => {
+    const { rt, getWindow, send, appends, release, sessionId } = makeHarness({
+      steps: [
+        { id: 'review', type: 'human', inputs: { from: 'x' } },
+        { id: 'report', type: 'human', inputs: { from: 'review' } },
+      ],
+    });
+    const logs: Array<{ level: string; msg: string; ctx?: Record<string, unknown> }> = [];
+    const logger = { log: vi.fn(async (entry: any) => { logs.push(entry); }) };
+    const errorRows: Array<{ id: string; message: string; source: string; createdAt: number }> = [];
+    rt.errors = { append: vi.fn((rec: any) => { errorRows.push(rec); return rec; }) };
+    const client = {
+      send: async (cmd: any) => {
+        if (cmd.type === 'new_session') return { success: true };
+        if (cmd.type === 'get_state') {
+          return { success: true, data: { sessionId, sessionFile: 'C:/wf/session.jsonl' } };
+        }
+        if (cmd.type === 'append_workflow_entry') {
+          appends.push({ customType: cmd.customType, data: cmd.data });
+          if (cmd.customType === 'workflow_step_end' && cmd.data?.status === 'completed') {
+            return { success: false, error: 'disk full' };
+          }
+        }
+        return { success: true };
+      },
+    };
+    rt.pool.acquire = async () => ({
+      client,
+      supervisor: { onProposal: () => {} },
+      getSessionId: () => sessionId,
+    });
+
+    const broker = createBroker(rt, getWindow);
+    await runWorkflow(rt, getWindow, { documents: [] }, broker, 'contract-review', { logger });
+    await waitUntil(() => send.mock.calls.some((c) => c[0] === 'sparkii:event:approval'));
+    broker.decide('p1', { approved: true, status: 'approved', result: { findings: ['第3条存在期限不对齐'] } });
+    await waitUntil(() => release.mock.calls.length > 0);
+
+    // 这一步没记下，就不能跑下一步
+    expect(appends.filter((a) => a.customType === 'workflow_step_start').map((a) => a.data.stepId)).toEqual(['review']);
+
+    const errLog = logs.find((l) => l.level === 'error');
+    expect(errLog?.ctx).toMatchObject({ sessionId, stepId: 'review', customType: 'workflow_step_end' });
+    expect(typeof errLog?.ctx?.outputBytes).toBe('number');
+    expect(errLog?.ctx).not.toHaveProperty('output');
+    expect(JSON.stringify(errLog)).not.toContain('期限不对齐');
+
+    // 错误中心恰好一行，窗口那条带同一个 errorId
+    expect(rt.errors.append).toHaveBeenCalledTimes(1);
+    expect(errorRows[0].source).toBe('合同审核');
+    const runtimeError = send.mock.calls.find(
+      (c) => c[0] === 'sparkii:event:chat-event' && (c[1] as { type?: string })?.type === 'runtime_error',
+    );
+    expect(runtimeError?.[1]).toMatchObject({
+      type: 'runtime_error',
+      sessionId,
+      errorId: errorRows[0].id,
+      source: '合同审核',
+    });
+
+    // 补一条很小的 failed end：不带那份巨大 output
+    const failedEnds = appends.filter((a) => a.customType === 'workflow_step_end' && a.data.status === 'failed');
+    expect(failedEnds).toHaveLength(1);
+    expect(failedEnds[0].data).not.toHaveProperty('output');
+    expect(release).toHaveBeenCalled();
+  });
+
+  it('stops the workflow when even the small failed end cannot be appended', async () => {
+    const { rt, getWindow, send, appends, release, sessionId } = makeHarness({
+      steps: [
+        { id: 'review', type: 'human', inputs: { from: 'x' } },
+        { id: 'report', type: 'human', inputs: { from: 'review' } },
+      ],
+    });
+    const errorRows: unknown[] = [];
+    rt.errors = { append: vi.fn((rec: any) => { errorRows.push(rec); return rec; }) };
+    const client = {
+      send: async (cmd: any) => {
+        if (cmd.type === 'new_session') return { success: true };
+        if (cmd.type === 'get_state') {
+          return { success: true, data: { sessionId, sessionFile: 'C:/wf/session.jsonl' } };
+        }
+        if (cmd.type === 'append_workflow_entry') {
+          appends.push({ customType: cmd.customType, data: cmd.data });
+          if (cmd.customType === 'workflow_step_end') return { success: false, error: 'disk full' };
+        }
+        return { success: true };
+      },
+    };
+    rt.pool.acquire = async () => ({
+      client,
+      supervisor: { onProposal: () => {} },
+      getSessionId: () => sessionId,
+    });
+
+    const broker = createBroker(rt, getWindow);
+    await runWorkflow(rt, getWindow, { documents: [] }, broker, 'contract-review');
+    await waitUntil(() => send.mock.calls.some((c) => c[0] === 'sparkii:event:approval'));
+    broker.decide('p1', { approved: true, status: 'approved', result: undefined });
+    await waitUntil(() => release.mock.calls.length > 0);
+
+    expect(appends.filter((a) => a.customType === 'workflow_step_start').map((a) => a.data.stepId)).toEqual(['review']);
+    expect(errorRows).toHaveLength(1);
+  });
+
+  it('does not swallow start/end append failures with empty catch', async () => {
+    const src = await readFile(join(__dirname, '../electron/main/workflow.ts'), 'utf8');
+    expect(src).not.toMatch(/catch\(\(\) => \{\}\)/);
+    expect(src).not.toMatch(/acc \+=/);
+  });
+
+  it('stores full assistant text from message_update/message_end in step output', async () => {
+    const listeners = new Set<(e: unknown) => void>();
+    const { rt, getWindow, appends, sessionId } = makeHarness({
+      steps: [{ id: 'review', type: 'llm', template: '请审核' }],
+    });
+    const client = {
+      send: async (cmd: any) => {
+        if (cmd.type === 'new_session') return { success: true };
+        if (cmd.type === 'get_state') {
+          return { success: true, data: { sessionId, sessionFile: 'C:/wf/session.jsonl' } };
+        }
+        if (cmd.type === 'prompt') {
+          queueMicrotask(() => {
+            const message = { role: 'assistant', content: [{ type: 'text', text: '第3条存在期限不对齐' }] };
+            for (const cb of listeners) cb({ type: 'message_start', message: { role: 'assistant', content: [] } });
+            for (const cb of listeners) cb({ type: 'message_update', message });
+            for (const cb of listeners) cb({ type: 'message_end', message });
+            for (const cb of listeners) cb({ type: 'agent_end' });
+          });
+          return { success: true };
+        }
+        if (cmd.type === 'append_workflow_entry') {
+          appends.push({ customType: cmd.customType, data: cmd.data });
+        }
+        return { success: true };
+      },
+      onEvent: (cb: (e: unknown) => void) => {
+        listeners.add(cb);
+        return () => listeners.delete(cb);
+      },
+    };
+    rt.pool.get = () => client;
+    rt.pool.acquire = async () => ({ client, supervisor: { onProposal: () => {} } });
+    rt.keyFor = async () => null;
+    const broker = createBroker(rt, getWindow);
+    const running = runWorkflow(rt, getWindow, { documents: [] }, broker, 'contract-review');
+    await waitUntil(() => appends.some((a) => a.customType === 'workflow_step_end' && a.data.stepId === 'review'));
+    await running;
+    const end = appends.find((a) => a.customType === 'workflow_step_end' && a.data.stepId === 'review');
+    expect(end?.data).toMatchObject({
+      stepId: 'review',
+      status: 'completed',
+      output: '第3条存在期限不对齐',
+    });
+    expect(sessionId).toBeTruthy();
   });
 });

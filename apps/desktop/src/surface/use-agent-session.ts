@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { AgentSession, SessionEntry } from './contract.js';
-import { applySurfaceEvent, deriveWorkflowTimeline, extractWorkflowResult, normalizeSessionEntries } from './normalize.js';
-import { normalizeMessages as uiNormalizeMessages } from '@sparkii/ui';
+import { applySurfaceEvent, deriveWorkflowTimeline, extractWorkflowResult } from './normalize.js';
+import { applySnapshotThenBuffer, shouldRebuildOnCompaction, type SessionSnapshot } from './open-session.js';
 
 const EMPTY: AgentSession = { entries: [], streaming: false, status: 'idle', meta: { currentStep: null } };
 
@@ -25,48 +25,81 @@ function withWorkflowFromEntries(
   };
 }
 
-export function useAgentSession(agentId: string, sessionId: string | null, mode: 'live' | 'history'): AgentSession {
+function normalizeInputs(res: any): Array<{ path: string; name?: string; missing?: boolean }> | undefined {
+  if (Array.isArray(res?.inputs)) {
+    return res.inputs.map((i: any) => typeof i === 'string'
+      ? { path: i }
+      : {
+          path: String(i?.path ?? ''),
+          name: typeof i?.name === 'string' ? i.name : undefined,
+          ...(i?.missing ? { missing: true } : {}),
+        });
+  }
+  if (Array.isArray(res?.documents)) {
+    return res.documents.map((i: any) => (typeof i === 'string' ? { path: i } : { path: String(i?.path ?? '') }));
+  }
+  return undefined;
+}
+
+/**
+ * 一条会话只有一条数据面：先订阅、把事件缓冲住，再取一次快照，铺底那一下把快照和缓冲一起画上。
+ *
+ * `mode` 不在依赖里：从历史打开再续问不重开会话，否则新快照会把已画内容整表覆盖。
+ */
+export function useAgentSession(agentId: string, sessionId: string | null, _mode: 'live' | 'history'): AgentSession {
   const [session, setSession] = useState<AgentSession>(EMPTY);
+  const generationRef = useRef(0);
 
   useEffect(() => {
     setSession(EMPTY);
     if (!sessionId) return;
 
-    let open = true;
-    (window as any).sparkii?.openChatSession?.(sessionId)
-      .then((res: any) => {
-        if (!open) return;
-        const rawEntries = Array.isArray(res?.entries) ? res.entries : undefined;
-        const rawMessages = Array.isArray(res?.messages) ? res.messages : undefined;
-        const entries = rawEntries?.length
-          ? normalizeSessionEntries(rawEntries)
-          : rawMessages?.length
-            ? uiNormalizeMessages(rawMessages)
-            : [];
-        const inputs = Array.isArray(res?.inputs)
-          ? res.inputs.map((i: any) => typeof i === 'string'
-            ? { path: i }
-            : {
-                path: String(i?.path ?? ''),
-                name: typeof i?.name === 'string' ? i.name : undefined,
-                ...(i?.missing ? { missing: true } : {}),
-              })
-          : Array.isArray(res?.documents)
-            ? res.documents.map((i: any) => typeof i === 'string'
-              ? { path: i }
-              : { path: String(i?.path ?? '') })
-            : undefined;
+    const api = (window as any).sparkii;
+    let disposed = false;
+    // 非 null 表示还在等快照：这段时间事件只进缓冲，不画时间线。
+    let buffer: unknown[] | null = [];
+
+    const open = () => {
+      const generation = ++generationRef.current;
+      buffer = [];
+      const snapshot = api?.openChatSession?.(sessionId);
+      if (!snapshot?.then) {
+        buffer = null;
+        return;
+      }
+      snapshot.then((res: SessionSnapshot & Record<string, unknown>) => {
+        if (disposed || generation !== generationRef.current) return; // 快照和它的缓冲一起丢
+        const pending = buffer ?? [];
+        buffer = null;
+        const entries = applySnapshotThenBuffer(res ?? {}, pending);
+        const inputs = normalizeInputs(res);
         setSession((s) => withWorkflowFromEntries(s, entries, {
           streaming: Boolean(res?.streaming),
-          meta: { ...s.meta, currentStep: res?.currentStep ?? null, inputs: inputs ?? s.meta.inputs },
+          meta: { ...s.meta, currentStep: (res as any)?.currentStep ?? null, inputs: inputs ?? s.meta.inputs },
         }));
-      })
-      .catch(() => {
-        // 读取失败保持空会话，不打断 UI
+      }).catch(() => {
+        // 读取失败就是空会话，不打断 UI；放开闸门让后续事件照常画。
+        if (disposed || generation !== generationRef.current) return;
+        buffer = null;
       });
+    };
 
-    const offChat = (window as any).sparkii?.on?.('chat-event', (p: any) => {
+    // 先听后取：订阅必须早于 openChatSession，否则起步那几拍会掉。
+    const offChat = api?.on?.('chat-event', (p: any) => {
       if (p?.sessionId !== sessionId) return;
+      if (p?.type === 'session_unbound') {
+        // 进程卸下了，转圈停掉，但已画的时间线留着。
+        setSession((s) => (s.streaming ? { ...s, streaming: false } : s));
+        return;
+      }
+      if (shouldRebuildOnCompaction(p)) {
+        open();
+        return;
+      }
+      if (buffer) {
+        buffer.push(p);
+        return;
+      }
       setSession((s) => {
         const entries = applySurfaceEvent(s.entries, p);
         let streaming = s.streaming;
@@ -75,11 +108,15 @@ export function useAgentSession(agentId: string, sessionId: string | null, mode:
         return withWorkflowFromEntries(s, entries, { streaming });
       });
     });
+
+    open();
+
     return () => {
-      open = false;
+      disposed = true;
+      generationRef.current += 1;
       offChat?.();
     };
-  }, [agentId, sessionId, mode]);
+  }, [agentId, sessionId]);
 
   return session;
 }

@@ -10,7 +10,11 @@ function makeApi() {
   const channels: Record<string, (p: any) => void> = {};
   const api = {
     on: vi.fn((channel: string, cb: any) => { channels[channel] = cb; return () => {}; }),
-    openChatSession: vi.fn().mockResolvedValue({ messages: [{ role: 'user', text: 'hi' }] }),
+    openChatSession: vi.fn().mockResolvedValue({
+      entries: [{ type: 'message', id: 'm1', message: { role: 'user', content: [{ type: 'text', text: 'hi' }] } }],
+      streamingMessage: null,
+      streaming: false,
+    }),
     getChatSession: vi.fn().mockResolvedValue({ workspacePath: 'C:/ws/SparkiiXyZ9202608251710' }),
     getChatMessages: vi.fn().mockResolvedValue([]),
     getChatState: vi.fn().mockResolvedValue({ streaming: false, steering: [], followUp: [] }),
@@ -78,31 +82,36 @@ describe('StandardChatSurface (contract)', () => {
 });
 
 describe('applyChatEvent (pi-timeline)', () => {
-  it('appends streaming deltas and finalizes text', () => {
+  it('replaces the streaming slot on each tick and finalizes text', () => {
     let entries: ChatEntry[] = [];
-    entries = applyChatEvent(entries, { type: 'message', role: 'assistant', delta: 'Hel' });
-    entries = applyChatEvent(entries, { type: 'message', role: 'assistant', delta: 'lo' });
-    entries = applyChatEvent(entries, { type: 'message', role: 'assistant', text: 'Hello' });
+    entries = applyChatEvent(entries, { type: 'message_start', message: { role: 'assistant', content: [] } });
+    entries = applyChatEvent(entries, { type: 'message_update', message: { role: 'assistant', content: [{ type: 'text', text: 'Hel' }] } });
+    entries = applyChatEvent(entries, { type: 'message_update', message: { role: 'assistant', content: [{ type: 'text', text: 'Hello' }] } });
+    entries = applyChatEvent(entries, { type: 'message_end', message: { role: 'assistant', content: [{ type: 'text', text: 'Hello' }] } });
     expect(entries).toHaveLength(1);
     expect((entries[0] as any).text).toBe('Hello');
     expect((entries[0] as any).streaming).toBe(false);
   });
 
-  it('pairs tool_call with tool_result and ignores user echo', () => {
+  it('pairs the tool execution triple and keeps the user bubble', () => {
     let entries: ChatEntry[] = [];
-    entries = applyChatEvent(entries, { type: 'message', role: 'user', text: 'x' });
-    entries = applyChatEvent(entries, { type: 'tool_call', toolName: 'bash', input: { command: 'ls' } });
-    entries = applyChatEvent(entries, { type: 'tool_result', toolName: 'bash', result: { exitCode: 0 } });
-    expect(entries).toHaveLength(1);
-    expect(entries[0].kind).toBe('tool');
-    expect((entries[0] as any).result).toMatchObject({ exitCode: 0 });
+    entries = applyChatEvent(entries, { type: 'message_start', message: { role: 'user', content: [{ type: 'text', text: 'x' }] } });
+    entries = applyChatEvent(entries, { type: 'tool_execution_start', toolName: 'bash', toolCallId: 'c1', args: { command: 'ls' } });
+    entries = applyChatEvent(entries, { type: 'tool_execution_end', toolName: 'bash', toolCallId: 'c1', result: { exitCode: 0 } });
+    expect(entries).toHaveLength(2);
+    expect(entries[0]).toMatchObject({ kind: 'message', role: 'user', text: 'x' });
+    expect(entries[1].kind).toBe('tool');
+    expect((entries[1] as any).result).toMatchObject({ exitCode: 0 });
   });
 
-  it('streams thinking deltas then finalizes thinking and text', () => {
+  it('carries thinking and text from the full message on every tick', () => {
     let entries: ChatEntry[] = [];
-    entries = applyChatEvent(entries, { type: 'message', role: 'assistant', thinkingDelta: '想' });
-    entries = applyChatEvent(entries, { type: 'message', role: 'assistant', thinkingDelta: '考' });
-    entries = applyChatEvent(entries, { type: 'message', role: 'assistant', text: '答案', thinking: '思考' });
+    entries = applyChatEvent(entries, { type: 'message_start', message: { role: 'assistant', content: [{ type: 'thinking', thinking: '想' }] } });
+    entries = applyChatEvent(entries, { type: 'message_update', message: { role: 'assistant', content: [{ type: 'thinking', thinking: '思考' }] } });
+    entries = applyChatEvent(entries, {
+      type: 'message_end',
+      message: { role: 'assistant', content: [{ type: 'thinking', thinking: '思考' }, { type: 'text', text: '答案' }] },
+    });
     expect(entries).toEqual([{ kind: 'message', id: entries[0].id, role: 'assistant', text: '答案', thinking: '思考', streaming: false }]);
   });
 });
@@ -298,6 +307,19 @@ describe('StandardChatSurface behaviors', () => {
     render(<ErrorProvider store={createMemoryErrorStore()}><StandardChatSurface {...baseProps('s1', { api })} /></ErrorProvider>);
     act(() => channels['chat-event']({ sessionId: 's1', type: 'runtime_error', message: 'api rate limit', command: 'prompt' }));
     expect(screen.getByRole('alert').textContent).toContain('api rate limit');
+  });
+
+  it('leaves a runtime_error that already has an errorId to the app-level error center', async () => {
+    const { api, channels } = makeApi();
+    render(<ErrorProvider store={createMemoryErrorStore()}><StandardChatSurface {...baseProps('s1', { api })} /></ErrorProvider>);
+    act(() => channels['chat-event']({
+      sessionId: 's1',
+      type: 'runtime_error',
+      message: '步骤记录写入失败（review）：disk full',
+      errorId: 'err-1',
+      source: '合同审核智能体',
+    }));
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('hides model changes in standard detail level', async () => {

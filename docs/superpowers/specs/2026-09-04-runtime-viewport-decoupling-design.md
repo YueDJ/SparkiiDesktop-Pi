@@ -5,6 +5,7 @@
 **Depends on:** 当前会话真相（`2026-09-04-current-session-source-of-truth-design.md`）；会话标题公布（`2026-09-04-session-title-source-of-truth-design.md`）；运行池 / 薄契约
 **Amends:** current-session spec 的「绑定 id」规则（今天写的是「current 仍是该 Agent 的会话就回写」）；title spec 的「有 sessionId 后公布」时机（今天写的是 viewport 上已有 id）
 **Does not replace:** 那两份 spec 的主体（一份 `current`、高亮派生、Pi 标题、Agent 起名、`session_title` upsert）。本文件只补它们没切开的那条缝：运行时和视口被绑在一起。
+**Amended by:** `2026-09-05-live-session-pipeline-design.md`（进程仍活着时，回来起步用 `getBranch()` + `streamingMessage`，不是只重读 JSONL；事件是 TUI 全量透传，不是「只是尾巴」）
 
 ## Goal
 

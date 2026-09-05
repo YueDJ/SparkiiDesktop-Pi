@@ -40,7 +40,7 @@ function makeApi() {
     readDocumentBytes: vi.fn().mockResolvedValue({ error: 'denied' }),
     listChatSessions: vi.fn().mockResolvedValue([{ id: 'g1', profileId: 'general', title: '会话 08-25 17:10', workspaceKind: 'auto', workspacePath: 'C:/ws/SparkiiXyZ9202608251710', model: null, piSessionFile: null, createdAt: 0, updatedAt: 0 }]),
     getChatSession: vi.fn().mockResolvedValue({ workspacePath: 'C:/ws/SparkiiXyZ9202608251710', workspaceKind: 'auto' }),
-    openChatSession: vi.fn().mockResolvedValue({ messages: [] }),
+    openChatSession: vi.fn().mockResolvedValue({ entries: [], streamingMessage: null, streaming: false }),
     getChatState: vi.fn().mockResolvedValue({ streaming: false, steering: [], followUp: [] }),
     getSettings: vi.fn().mockResolvedValue({ chatDetailLevel: 'standard' }),
     getModelOptions: vi.fn().mockResolvedValue({ defaultModel: null, models: [] }),
@@ -71,7 +71,8 @@ describe('App general agent', () => {
     fireEvent.keyDown(input, { key: 'Enter' });
     await waitFor(() => expect(api.promptSession).toHaveBeenCalledWith(null, '你好', undefined, undefined, expect.any(Object)));
     await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
-    act(() => channels['chat-event']({ sessionId: 'g1', type: 'message', role: 'assistant', delta: '在的' }));
+    act(() => channels['chat-event']({ sessionId: 'g1', type: 'message_start', message: { role: 'assistant', content: [] } }));
+    act(() => channels['chat-event']({ sessionId: 'g1', type: 'message_update', message: { role: 'assistant', content: [{ type: 'text', text: '在的' }] } }));
     expect(screen.getByText(/在的/)).toBeTruthy();
   });
 
@@ -108,7 +109,7 @@ describe('App general agent', () => {
     fireEvent.keyDown(input, { key: 'Enter' });
     await waitFor(() => expect(api.promptSession).toHaveBeenCalled());
     await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
-    act(() => channels['chat-event']({ type: 'message', role: 'user', text: '你好', sessionId: 'g1' }));
+    act(() => channels['chat-event']({ sessionId: 'g1', type: 'message_start', message: { role: 'user', content: [{ type: 'text', text: '你好' }] } }));
     await waitFor(() => expect(screen.getByTestId('session-g1')).toBeTruthy());
     fireEvent.contextMenu(await screen.findByTestId('session-g1'));
     fireEvent.click(screen.getByRole('menuitem', { name: /删除/ }));
@@ -123,7 +124,11 @@ describe('App general agent', () => {
       { id: 'g2', profileId: 'general', title: '另一个会话', workspaceKind: 'auto', workspacePath: 'C:/ws/new', model: null, piSessionFile: null, createdAt: 0, updatedAt: 2 },
     ]);
     api.openChatSession.mockImplementation(async (sessionId: string) => ({
-      messages: sessionId === 'g1' ? [{ role: 'user', text: '历史消息' }] : [],
+      entries: sessionId === 'g1'
+        ? [{ type: 'message', id: 'm1', message: { role: 'user', content: [{ type: 'text', text: '历史消息' }] } }]
+        : [],
+      streamingMessage: null,
+      streaming: false,
     }));
 
     render(<App />);
@@ -144,8 +149,12 @@ describe('App general agent', () => {
     api.openChatSession.mockImplementation(async () => {
       opened += 1;
       return opened === 1
-        ? { messages: [] }
-        : { messages: [{ role: 'assistant', text: '在的' }] };
+        ? { entries: [], streamingMessage: null, streaming: false }
+        : {
+            entries: [{ type: 'message', id: 'm1', message: { role: 'assistant', content: [{ type: 'text', text: '在的' }] } }],
+            streamingMessage: null,
+            streaming: false,
+          };
     });
     render(<App />);
     await screen.findByText(/工作台 · 上午好/);
@@ -155,7 +164,8 @@ describe('App general agent', () => {
     fireEvent.keyDown(input, { key: 'Enter' });
     await waitFor(() => expect(api.promptSession).toHaveBeenCalledWith(null, '你好', undefined, undefined, expect.any(Object)));
     await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
-    act(() => channels['chat-event']({ sessionId: 'g1', type: 'message', role: 'assistant', delta: '在的' }));
+    act(() => channels['chat-event']({ sessionId: 'g1', type: 'message_start', message: { role: 'assistant', content: [] } }));
+    act(() => channels['chat-event']({ sessionId: 'g1', type: 'message_update', message: { role: 'assistant', content: [{ type: 'text', text: '在的' }] } }));
     expect(screen.getByText(/在的/)).toBeTruthy();
 
     fireEvent.click(screen.getByText('Sparkii'));
@@ -194,7 +204,7 @@ describe('App general agent', () => {
     fireEvent.change(input, { target: { value: '你好' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     await waitFor(() => expect(api.openChatSession).toHaveBeenCalledWith('g1'));
-    act(() => channels['chat-event']({ type: 'message', role: 'user', text: '你好', sessionId: 'g1' }));
+    act(() => channels['chat-event']({ sessionId: 'g1', type: 'message_start', message: { role: 'user', content: [{ type: 'text', text: '你好' }] } }));
     await waitFor(() => expect(api.setChatTitle).toHaveBeenCalledWith('g1', '你好', 'agent'));
     expect(await screen.findByTestId('session-g1')).toBeTruthy();
     expect(screen.getAllByText('你好').length).toBeGreaterThan(0);
@@ -320,7 +330,11 @@ describe('App general agent', () => {
       { id: 'g1', profileId: 'general', title: '历史绘画标题', workspaceKind: 'auto', workspacePath: 'C:/ws/old', model: null, piSessionFile: null, createdAt: 0, updatedAt: 1 },
     ];
     api.listChatSessions.mockResolvedValue(history);
-    api.openChatSession.mockResolvedValue({ messages: [{ role: 'user', text: '历史消息' }] });
+    api.openChatSession.mockResolvedValue({
+      entries: [{ type: 'message', id: 'm1', message: { role: 'user', content: [{ type: 'text', text: '历史消息' }] } }],
+      streamingMessage: null,
+      streaming: false,
+    });
 
     render(<App />);
     await screen.findByText(/工作台 · 上午好/);
@@ -344,7 +358,11 @@ describe('App general agent', () => {
     api.listChatSessions.mockResolvedValue([
       { id: 'g1', profileId: 'general', title: '旧会话', workspaceKind: 'auto', workspacePath: 'C:/ws/old', model: null, piSessionFile: null, createdAt: 0, updatedAt: 1 },
     ]);
-    api.openChatSession.mockResolvedValue({ messages: [{ role: 'user', text: '历史消息' }] });
+    api.openChatSession.mockResolvedValue({
+      entries: [{ type: 'message', id: 'm1', message: { role: 'user', content: [{ type: 'text', text: '历史消息' }] } }],
+      streamingMessage: null,
+      streaming: false,
+    });
     render(<App />);
     await screen.findByText(/工作台 · 上午好/);
     fireEvent.click(await screen.findByText('旧会话'));
@@ -359,6 +377,42 @@ describe('App general agent', () => {
     await screen.findByTestId('composer-input');
     expect(screen.getByTestId('chat-title').textContent).toBe('新对话');
     expect(screen.getByTestId('session-g1').className).not.toMatch(/current/);
+  });
+
+  it('reports a main-process runtime_error once, reusing its errorId', async () => {
+    const { api, channels } = makeApi();
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+    act(() => channels['chat-event']({
+      type: 'runtime_error',
+      sessionId: 'wf-1',
+      message: '步骤记录写入失败（review）：disk full',
+      errorId: 'err-1',
+      source: '合同审核智能体',
+    }));
+    expect((await screen.findByRole('alert')).textContent).toContain('步骤记录写入失败');
+    await waitFor(() => expect(api.appendError).toHaveBeenCalledTimes(1));
+    expect(api.appendError).toHaveBeenCalledWith(expect.objectContaining({ id: 'err-1', source: '合同审核智能体' }));
+
+    // 同一条重放不再多出一行
+    act(() => channels['chat-event']({
+      type: 'runtime_error',
+      sessionId: 'wf-1',
+      message: '步骤记录写入失败（review）：disk full',
+      errorId: 'err-1',
+      source: '合同审核智能体',
+    }));
+    fireEvent.click(screen.getByLabelText(/报错中心/));
+    expect(screen.getAllByText('步骤记录写入失败（review）：disk full')).toHaveLength(1);
+  });
+
+  it('ignores a Pi runtime_error without errorId at the App level', async () => {
+    const { api, channels } = makeApi();
+    render(<App />);
+    await screen.findByText(/工作台 · 上午好/);
+    act(() => channels['chat-event']({ type: 'runtime_error', sessionId: 'g1', message: 'api rate limit' }));
+    await act(async () => { await Promise.resolve(); });
+    expect(api.appendError).not.toHaveBeenCalled();
   });
 });
 

@@ -61,6 +61,15 @@ describe("PiRuntimeSupervisor", () => {
     await expect(p).rejects.toThrow(/exited/);
   });
 
+  it("rejects later sends immediately after the child has exited", async () => {
+    const handle = new FakeHandle();
+    const sup = new PiRuntimeSupervisor(() => handle, { readinessTimeoutMs: 1000, sendTimeoutMs: 5000 });
+    const client = await sup.start();
+    handle.emit(readyEnvelope());
+    handle.kill();
+    await expect(client.send({ type: "new_session" })).rejects.toThrow(/exited/);
+  });
+
   it("streams events and routes proposals", async () => {
     const handle = new FakeHandle();
     const sup = new PiRuntimeSupervisor(() => handle);

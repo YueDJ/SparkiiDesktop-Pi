@@ -43,10 +43,11 @@ export class ErrorStore {
     this.db.prepare('DELETE FROM error_events WHERE created_at < ?').run(this.now() - RETENTION_MS);
   }
 
+  /** 同一 id 只留一行：主进程与窗口报同一次故障时不能出现双行。 */
   append(rec: { id: string; message: string; source: string; createdAt: number }): ErrorEvent {
     this.prune();
     this.db.prepare(
-      'INSERT INTO error_events (id, message, source, created_at, read) VALUES (@id, @message, @source, @createdAt, 0)',
+      'INSERT OR IGNORE INTO error_events (id, message, source, created_at, read) VALUES (@id, @message, @source, @createdAt, 0)',
     ).run(rec);
     return { ...rec, read: false };
   }
