@@ -10,7 +10,11 @@ function makeApi() {
   const channels: Record<string, (p: any) => void> = {};
   const api = {
     on: vi.fn((channel: string, cb: any) => { channels[channel] = cb; return () => {}; }),
-    openChatSession: vi.fn().mockResolvedValue({ messages: [{ role: 'user', text: 'hi' }] }),
+    openChatSession: vi.fn().mockResolvedValue({
+      entries: [{ type: 'message', id: 'm1', message: { role: 'user', content: [{ type: 'text', text: 'hi' }] } }],
+      streamingMessage: null,
+      streaming: false,
+    }),
     getChatSession: vi.fn().mockResolvedValue({ workspacePath: 'C:/ws/SparkiiXyZ9202608251710' }),
     getChatMessages: vi.fn().mockResolvedValue([]),
     getChatState: vi.fn().mockResolvedValue({ streaming: false, steering: [], followUp: [] }),

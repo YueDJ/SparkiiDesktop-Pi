@@ -40,7 +40,7 @@ function makeApi() {
     readDocumentBytes: vi.fn().mockResolvedValue({ error: 'denied' }),
     listChatSessions: vi.fn().mockResolvedValue([{ id: 'g1', profileId: 'general', title: '会话 08-25 17:10', workspaceKind: 'auto', workspacePath: 'C:/ws/SparkiiXyZ9202608251710', model: null, piSessionFile: null, createdAt: 0, updatedAt: 0 }]),
     getChatSession: vi.fn().mockResolvedValue({ workspacePath: 'C:/ws/SparkiiXyZ9202608251710', workspaceKind: 'auto' }),
-    openChatSession: vi.fn().mockResolvedValue({ messages: [] }),
+    openChatSession: vi.fn().mockResolvedValue({ entries: [], streamingMessage: null, streaming: false }),
     getChatState: vi.fn().mockResolvedValue({ streaming: false, steering: [], followUp: [] }),
     getSettings: vi.fn().mockResolvedValue({ chatDetailLevel: 'standard' }),
     getModelOptions: vi.fn().mockResolvedValue({ defaultModel: null, models: [] }),
@@ -124,7 +124,11 @@ describe('App general agent', () => {
       { id: 'g2', profileId: 'general', title: '另一个会话', workspaceKind: 'auto', workspacePath: 'C:/ws/new', model: null, piSessionFile: null, createdAt: 0, updatedAt: 2 },
     ]);
     api.openChatSession.mockImplementation(async (sessionId: string) => ({
-      messages: sessionId === 'g1' ? [{ role: 'user', text: '历史消息' }] : [],
+      entries: sessionId === 'g1'
+        ? [{ type: 'message', id: 'm1', message: { role: 'user', content: [{ type: 'text', text: '历史消息' }] } }]
+        : [],
+      streamingMessage: null,
+      streaming: false,
     }));
 
     render(<App />);
@@ -145,8 +149,12 @@ describe('App general agent', () => {
     api.openChatSession.mockImplementation(async () => {
       opened += 1;
       return opened === 1
-        ? { messages: [] }
-        : { messages: [{ role: 'assistant', text: '在的' }] };
+        ? { entries: [], streamingMessage: null, streaming: false }
+        : {
+            entries: [{ type: 'message', id: 'm1', message: { role: 'assistant', content: [{ type: 'text', text: '在的' }] } }],
+            streamingMessage: null,
+            streaming: false,
+          };
     });
     render(<App />);
     await screen.findByText(/工作台 · 上午好/);
@@ -322,7 +330,11 @@ describe('App general agent', () => {
       { id: 'g1', profileId: 'general', title: '历史绘画标题', workspaceKind: 'auto', workspacePath: 'C:/ws/old', model: null, piSessionFile: null, createdAt: 0, updatedAt: 1 },
     ];
     api.listChatSessions.mockResolvedValue(history);
-    api.openChatSession.mockResolvedValue({ messages: [{ role: 'user', text: '历史消息' }] });
+    api.openChatSession.mockResolvedValue({
+      entries: [{ type: 'message', id: 'm1', message: { role: 'user', content: [{ type: 'text', text: '历史消息' }] } }],
+      streamingMessage: null,
+      streaming: false,
+    });
 
     render(<App />);
     await screen.findByText(/工作台 · 上午好/);
@@ -346,7 +358,11 @@ describe('App general agent', () => {
     api.listChatSessions.mockResolvedValue([
       { id: 'g1', profileId: 'general', title: '旧会话', workspaceKind: 'auto', workspacePath: 'C:/ws/old', model: null, piSessionFile: null, createdAt: 0, updatedAt: 1 },
     ]);
-    api.openChatSession.mockResolvedValue({ messages: [{ role: 'user', text: '历史消息' }] });
+    api.openChatSession.mockResolvedValue({
+      entries: [{ type: 'message', id: 'm1', message: { role: 'user', content: [{ type: 'text', text: '历史消息' }] } }],
+      streamingMessage: null,
+      streaming: false,
+    });
     render(<App />);
     await screen.findByText(/工作台 · 上午好/);
     fireEvent.click(await screen.findByText('旧会话'));
