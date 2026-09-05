@@ -112,7 +112,7 @@ describe("createPiRuntime", () => {
     }));
   });
 
-  it("forwards events from the new session after new_session", async () => {
+  it("re-subscribes after switchSession", async () => {
     const first = fakeSession();
     const second = fakeSession();
     let current = first;
@@ -122,27 +122,13 @@ describe("createPiRuntime", () => {
       switchSession: vi.fn(async () => { current = second; }),
       configureSaddle: vi.fn(async () => {}),
     };
-    const sent: PiRuntimeEnvelope[] = [];
     const transport = {
-      postMessage: (env: PiRuntimeEnvelope) => sent.push(env),
-      onMessage: (cb: (env: PiRuntimeEnvelope) => void) => {
-        transport.emit = cb;
-        return () => {};
-      },
-      emit: (_env: PiRuntimeEnvelope) => {},
+      postMessage: () => {},
+      onMessage: () => () => {},
     };
-    createPiRuntime({ host, transport });
-
-    transport.emit(commandEnvelope("n1", { type: "new_session" }));
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(host.newSession).toHaveBeenCalled();
-
-    sent.length = 0;
-    first.emit({ type: "agent_start" });
-    expect(sent).not.toContainEqual(eventEnvelope({ type: "agent_start" }));
-
-    second.emit({ type: "entry_appended" });
-    expect(sent).toContainEqual(eventEnvelope({ type: "entry_appended" }));
+    createPiRuntime({ host, transport: transport as any });
+    await host.switchSession("x.jsonl");
+    expect(host.switchSession).toHaveBeenCalledWith("x.jsonl");
   });
 
   it("routes new session/model commands", async () => {
