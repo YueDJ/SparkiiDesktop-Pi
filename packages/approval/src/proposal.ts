@@ -2,14 +2,26 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { SideEffect } from '@sparkii/connectors';
 
 export type ProposalStatus = 'pending' | 'approved' | 'denied' | 'expired' | 'executed' | 'failed';
-export interface ProposalRequest { toolName: string; targetSystem: string; summary: string; payload: unknown; risk: SideEffect; }
+export type ApprovalPreviewKind = 'diff' | 'text';
+export interface ApprovalPreview { kind: ApprovalPreviewKind; lines: string[]; }
+export interface ProposalRequest {
+  toolName: string; targetSystem: string; summary: string;
+  preview?: ApprovalPreview; payload: unknown; risk: SideEffect;
+}
 export interface Proposal {
   id: string; profileId: string; sessionId: string;
   toolName: string; targetSystem: string; summary: string;
+  preview?: ApprovalPreview;
   payloadHash: string; payload: unknown; risk: SideEffect;
   status: ProposalStatus; createdAt: number;
   decidedAt?: number; decisionBy?: string; decisionNote?: string;
   execution?: { ok: boolean; result?: unknown; error?: string };
+}
+
+export function toPreviewLines(text: string): string[] {
+  const lines = text.split('\n');
+  if (lines.length && lines[lines.length - 1] === '') lines.pop();
+  return lines;
 }
 
 export function canonicalJson(value: unknown): string {
@@ -33,6 +45,7 @@ export function createProposal(req: ProposalRequest, meta: { profileId: string; 
     id: randomUUID(), ...meta, toolName: req.toolName, targetSystem: req.targetSystem,
     summary: req.summary, payloadHash: hashPayload(req.payload), payload: req.payload,
     risk: req.risk, status: 'pending', createdAt: Date.now(),
+    ...(req.preview !== undefined ? { preview: req.preview } : {}),
   };
 }
 
