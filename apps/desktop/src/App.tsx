@@ -148,7 +148,6 @@ function AppShell() {
   const [agents, setAgents] = useState<ShellAgent[]>([]);
   const [sessions, setSessions] = useState<Record<string, ShellSession[]>>({});
   const [approvalOpen, setApprovalOpen] = useState(false);
-  const [approvalFocusId, setApprovalFocusId] = useState<string | null>(null);
   const [runtimePool, setRuntimePool] = useState<RuntimePoolSummary>({
     active: 0,
     queued: 0,
@@ -184,7 +183,6 @@ function AppShell() {
 
   useEffect(() => api.on('approval', (p) => {
     setPending((xs) => [...xs, p]);
-    setApprovalFocusId((p as { id: string }).id);
     if (present(p).chrome.mode === 'panel') setApprovalOpen(true);
   }), [api]);
   useEffect(() => {
@@ -523,7 +521,6 @@ function AppShell() {
         <ApprovalCenter
           proposals={pending}
           onOpenDetail={(p) => {
-            setApprovalFocusId(p.id);
             if (present(p).chrome.mode === 'panel') setApprovalOpen(true);
           }}
         />
@@ -590,7 +587,6 @@ function AppShell() {
         <ApprovalPanel
           proposals={routine}
           currentSessionId={isSession(current) ? current.sessionId ?? '' : ''}
-          focusId={approvalFocusId}
           onDecide={decide}
           onClose={() => setApprovalOpen(false)}
         />

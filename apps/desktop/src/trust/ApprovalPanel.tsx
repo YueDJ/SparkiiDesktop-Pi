@@ -8,7 +8,6 @@ export interface ApprovalPanelProps {
   proposals: ApprovalProposalLike[];
   currentSessionId?: string | null;
   timeoutMs?: number;
-  focusId?: string | null;
   onDecide(id: string, approved: boolean, note?: string): void;
   onClose(): void;
 }

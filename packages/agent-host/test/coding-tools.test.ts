@@ -52,6 +52,24 @@ describe("createCodingToolDefinitions", () => {
     expect(denied.proposes.mock.calls[0][0].preview).toBeUndefined();
   });
 
+  it("edit proposes a workspace-relative summary without preview", async () => {
+    const { writeFile } = await import("node:fs/promises");
+    const c = ctx();
+    await writeFile(join(c.workspaceRoot, "a.txt"), "old");
+    const defs = createCodingToolDefinitions(c);
+    const edit = defs.find((d) => d.name === "edit")!;
+    await (edit as any).execute("t1", {
+      path: join(c.workspaceRoot, "a.txt"),
+      edits: [{ oldText: "old", newText: "new" }],
+    }, undefined, undefined, toolCtx);
+    expect(c.proposes).toHaveBeenCalledWith(expect.objectContaining({
+      toolName: "edit",
+      summary: "修改 a.txt",
+      payload: expect.objectContaining({ path: expect.stringContaining("a.txt") }),
+    }));
+    expect(c.proposes.mock.calls[0][0].preview).toBeUndefined();
+  });
+
   it("blocks writes outside workspace before proposing", async () => {
     const c = ctx();
     const defs = createCodingToolDefinitions(c);
