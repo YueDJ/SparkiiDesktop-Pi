@@ -1,5 +1,7 @@
-import { ApprovalItem, Countdown } from '@sparkii/ui';
+import type { ReactNode } from 'react';
+import { ApprovalItem, Countdown, RiskBadge } from '@sparkii/ui';
 import type { ApprovalProposalLike } from './types.js';
+import { present } from './present.js';
 
 export interface ApprovalCenterProps {
   proposals: ApprovalProposalLike[];
@@ -12,19 +14,24 @@ export function ApprovalCenter(props: ApprovalCenterProps) {
   return (
     <div className="ui-approval-list">
       {proposals.length === 0 ? (
-        <div className="ui-muted ui-approval-empty">没有待处理的审批事项</div>
+        <div className="ui-muted ui-approval-empty">没有待确认的事项</div>
       ) : (
-        proposals.map((p) => (
-          <ApprovalItem
-            key={p.id}
-            summary={p.summary}
-            risk={p.risk}
-            toolName={p.toolName}
-            sessionId={p.sessionId}
-            countdownText={<Countdown until={p.createdAt + timeoutMs} className="ui-countdown" />}
-            onOpenDetail={() => onOpenDetail(p)}
-          />
-        ))
+        proposals.map((p) => {
+          const vm = present(p);
+          const badge: ReactNode = vm.chrome.showRisk ? <RiskBadge risk={p.risk} /> : undefined;
+          const countdown: ReactNode = vm.chrome.showCountdown
+            ? <Countdown until={p.createdAt + timeoutMs} className="ui-countdown" />
+            : undefined;
+          return (
+            <ApprovalItem
+              key={p.id}
+              title={vm.title}
+              badge={badge}
+              countdown={countdown}
+              onOpenDetail={() => onOpenDetail(p)}
+            />
+          );
+        })
       )}
     </div>
   );

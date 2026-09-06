@@ -14,12 +14,13 @@ describe('HomeView', () => {
     expect(screen.getByText(/工作台 · 上午好,admin/)).toBeTruthy();
     expect(screen.getByText('合同审核')).toBeTruthy();
     expect(screen.getByText('导出审核报告')).toBeTruthy();
+    expect(screen.queryByText('中风险')).toBeNull();
     expect(screen.queryByText('●')).toBeNull();
   });
 
   it('shows empty states when there is nothing pending or no sessions', () => {
     render(<HomeView userName="admin" agents={AGENTS} pendingApprovals={[]} onNavigate={vi.fn()} />);
-    expect(screen.getByText('没有待审批事项')).toBeTruthy();
+    expect(screen.getByText('没有待确认的事项')).toBeTruthy();
     expect(screen.getByText(/会话历史/)).toBeTruthy();
   });
 
