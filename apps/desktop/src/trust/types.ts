@@ -25,6 +25,7 @@ export interface ApprovalProposalLike {
   createdAt: number;
   toolName?: string;
   targetSystem?: string;
+  preview?: { kind: 'diff' | 'text'; lines: string[] };
   payload?: unknown;
   payloadHash?: string;
   sessionId?: string;

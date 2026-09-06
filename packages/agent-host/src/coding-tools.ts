@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { access, readFile } from "node:fs/promises";
+import { relative } from "node:path";
 import {
   createBashToolDefinition,
   createEditToolDefinition,
@@ -7,6 +8,7 @@ import {
   type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
 import type { ProposalRequest } from "@sparkii/approval";
+import { toPreviewLines } from "@sparkii/approval";
 import type { ProposalDecision } from "./pi-runtime-transport.js";
 import { isPathInside } from "./workspace-guard.js";
 
@@ -14,6 +16,17 @@ export interface CodingToolsContext {
   cwd: string;
   workspaceRoot: string;
   propose(request: ProposalRequest & { requestId: string }): Promise<ProposalDecision>;
+}
+
+function workspaceRelative(workspaceRoot: string, absolutePath: string): string {
+  const rel = relative(workspaceRoot, absolutePath);
+  if (!rel || rel.startsWith("..")) return absolutePath;
+  return rel;
+}
+
+function bashSummary(command: string): string {
+  const firstLine = command.split("\n")[0] ?? "";
+  return firstLine.slice(0, 120);
 }
 
 function guardPath(ctx: CodingToolsContext, absolutePath: string): void {
@@ -28,7 +41,8 @@ function shellExec(ctx: CodingToolsContext) {
       requestId: randomUUID(),
       toolName: "bash",
       targetSystem: "general",
-      summary: command.slice(0, 512),
+      summary: bashSummary(command),
+      preview: { kind: "text", lines: toPreviewLines(command) },
       payload: { command, cwd, workspaceRoot: ctx.workspaceRoot },
       risk: "write",
     });
@@ -69,7 +83,7 @@ export function createCodingToolDefinitions(ctx: CodingToolsContext): Array<Tool
           requestId: randomUUID(),
           toolName: "edit",
           targetSystem: "general",
-          summary: `edit ${absolutePath}`,
+          summary: `修改 ${workspaceRelative(ctx.workspaceRoot, absolutePath)}`,
           payload: { path: absolutePath, content },
           risk: "write",
         });
@@ -89,7 +103,7 @@ export function createCodingToolDefinitions(ctx: CodingToolsContext): Array<Tool
           requestId: randomUUID(),
           toolName: "write",
           targetSystem: "general",
-          summary: `write ${absolutePath}`,
+          summary: `写入 ${workspaceRelative(ctx.workspaceRoot, absolutePath)}`,
           payload: { path: absolutePath, content },
           risk: "write",
         });

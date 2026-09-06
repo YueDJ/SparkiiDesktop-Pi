@@ -5,6 +5,8 @@ import type { SparkiiApi } from './types/sparkii-api.js';
 import { SettingsView } from './shell/SettingsView.js';
 import { ApprovalCenter } from './trust/ApprovalCenter.js';
 import { ApprovalPanel } from './trust/ApprovalPanel.js';
+import { ApprovalModal } from './trust/ApprovalModal.js';
+import { partitionApprovals, present } from './trust/present.js';
 import { AuditView } from './audit/AuditView.js';
 import { HomeView } from './platform/HomeView.js';
 import { useAgentSurface } from './platform/surface-registry.js';
@@ -146,7 +148,6 @@ function AppShell() {
   const [agents, setAgents] = useState<ShellAgent[]>([]);
   const [sessions, setSessions] = useState<Record<string, ShellSession[]>>({});
   const [approvalOpen, setApprovalOpen] = useState(false);
-  const [approvalFocusId, setApprovalFocusId] = useState<string | null>(null);
   const [runtimePool, setRuntimePool] = useState<RuntimePoolSummary>({
     active: 0,
     queued: 0,
@@ -178,15 +179,15 @@ function AppShell() {
   };
   const surfaceTypeOf = (agentId: string) => agents.find((agent) => agent.id === agentId)?.surfaceType;
 
+  const { routine, highRisk } = useMemo(() => partitionApprovals(pending), [pending]);
+
   useEffect(() => api.on('approval', (p) => {
     setPending((xs) => [...xs, p]);
-    // 审批是需要人工接管的时刻:新提案到达时自动弹出右侧审批抽屉,并聚焦该提案
-    setApprovalFocusId((p as { id: string }).id);
-    setApprovalOpen(true);
+    if (present(p).chrome.mode === 'panel') setApprovalOpen(true);
   }), [api]);
   useEffect(() => {
-    if (pending.length === 0 && approvalOpen) setApprovalOpen(false);
-  }, [pending.length, approvalOpen]);
+    if (routine.length === 0 && approvalOpen) setApprovalOpen(false);
+  }, [routine.length, approvalOpen]);
   useEffect(() => api.on('chat-event', (p: any) => {
     if (p?.sessionId) {
       const ov = sessionOverridesRef.current.get(p.sessionId);
@@ -517,7 +518,12 @@ function AppShell() {
     approvals: (
       <div>
         <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>审批中心</h3>
-        <ApprovalCenter proposals={pending} onOpenDetail={(p) => { setApprovalFocusId(p.id); setApprovalOpen(true); }} />
+        <ApprovalCenter
+          proposals={pending}
+          onOpenDetail={(p) => {
+            if (present(p).chrome.mode === 'panel') setApprovalOpen(true);
+          }}
+        />
       </div>
     ),
     audit: (
@@ -577,13 +583,19 @@ function AppShell() {
         {surfaceNode}
         {agentFrames}
       </Shell>
-      {approvalOpen && (
+      {approvalOpen && routine.length > 0 && (
         <ApprovalPanel
-          proposals={pending}
+          proposals={routine}
           currentSessionId={isSession(current) ? current.sessionId ?? '' : ''}
-          focusId={approvalFocusId}
           onDecide={decide}
           onClose={() => setApprovalOpen(false)}
+        />
+      )}
+      {highRisk[0] && (
+        <ApprovalModal
+          proposal={highRisk[0]}
+          onDecide={decide}
+          onClose={() => {}}
         />
       )}
     </>

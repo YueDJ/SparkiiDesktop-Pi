@@ -26,7 +26,27 @@ describe("buildPiRuntimeTools", () => {
     expect(tools[0].name).toBe("report_export");
     const result = await tools[0].execute("id2", { path: "a.docx" });
     expect(write.handler).not.toHaveBeenCalled();
-    expect(propose).toHaveBeenCalledWith(expect.objectContaining({ toolName: "report.export", risk: "write" }));
     expect(result.content[0].text).toContain("denied");
+    expect(propose).toHaveBeenCalledWith(expect.objectContaining({
+      toolName: "report.export",
+      risk: "write",
+      summary: "导出报告",
+    }));
+    expect(String(propose.mock.calls[0][0].summary)).not.toContain("{");
+  });
+
+  it("uses 导出《title》 when report.export has a title", async () => {
+    const write = {
+      name: "report.export", description: "export", sideEffect: "write" as const,
+      params: { type: "object", properties: {} },
+      handler: vi.fn(),
+    };
+    const propose = vi.fn(async () => ({ approved: true, proposalId: "p1", status: "approved" }));
+    const tools = buildPiRuntimeTools({ tools: [write], propose });
+    await tools[0].execute("id3", { title: "采购合同", sections: [{ heading: "摘要" }] });
+    expect(propose).toHaveBeenCalledWith(expect.objectContaining({
+      summary: "导出《采购合同》",
+      preview: { kind: "text", lines: ["摘要"] },
+    }));
   });
 });

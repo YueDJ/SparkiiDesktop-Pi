@@ -15,12 +15,30 @@ describe('ui business patterns', () => {
     expect(screen.getByText('高风险').className).toContain('ui-risk-badge--high');
   });
 
-  it('approval item has no leading status dot', () => {
+  it('approval item is a dumb row of title plus optional slots', () => {
     const onOpen = vi.fn();
-    render(<ApprovalItem summary="导出报告" risk="write" toolName="export" sessionId="s1" countdownText="120s" onOpenDetail={onOpen} />);
+    render(<ApprovalItem title="导出报告" onOpenDetail={onOpen} />);
+    expect(screen.getByText('导出报告')).toBeTruthy();
+    expect(screen.queryByText('export')).toBeNull();
+    expect(screen.queryByText(/会话/)).toBeNull();
+    expect(screen.queryByText('120s')).toBeNull();
+    expect(screen.queryByText('中风险')).toBeNull();
     expect(screen.queryByText('●')).toBeNull();
     fireEvent.click(screen.getByText('详情'));
     expect(onOpen).toHaveBeenCalled();
+  });
+
+  it('approval item renders badge and countdown only when given', () => {
+    render(
+      <ApprovalItem
+        title="永久删除"
+        badge={<span>高风险</span>}
+        countdown="4:32"
+        onOpenDetail={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('高风险')).toBeTruthy();
+    expect(screen.getByText('4:32')).toBeTruthy();
   });
 
   it('settings layout renders nav and content', () => {

@@ -17,21 +17,53 @@ const base = (over: Partial<ApprovalProposalLike> = {}): ApprovalProposalLike =>
 });
 
 describe('approval diff rendering', () => {
-  it('panel shows DiffView when payload.diff exists', () => {
+  it('does not show DiffView from payload.diff without preview', () => {
     render(<ApprovalPanel proposals={[base()]} onDecide={vi.fn()} onClose={vi.fn()} />);
-    fireEvent.click(screen.getByText(/冻结参数/));
-    expect(screen.getByTestId('diff-view')).toBeTruthy();
-  });
-
-  it('panel hides DiffView without diff', () => {
-    render(<ApprovalPanel proposals={[base({ payload: { path: 'a.txt' } })]} onDecide={vi.fn()} onClose={vi.fn()} />);
-    fireEvent.click(screen.getByText(/冻结参数/));
+    expect(screen.queryByTestId('diff-view')).toBeNull();
+    fireEvent.click(screen.getByText(/技术细节/));
     expect(screen.queryByTestId('diff-view')).toBeNull();
   });
 
-  it('modal shows DiffView when payload.diff exists', () => {
-    render(<ApprovalModal proposal={base()} onDecide={vi.fn()} onClose={vi.fn()} />);
-    fireEvent.click(screen.getByText(/冻结参数/));
+  it('shows DiffView by default when preview.kind is diff', () => {
+    const lines = ['--- a/a.txt', '+++ b/a.txt', '+hi'];
+    render(
+      <ApprovalPanel
+        proposals={[base({ preview: { kind: 'diff', lines } })]}
+        onDecide={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
     expect(screen.getByTestId('diff-view')).toBeTruthy();
+    expect(screen.getByText('+hi')).toBeTruthy();
+  });
+
+  it('expands hidden preview lines and can collapse them', () => {
+    const lines = ['1', '2', '3', '4', '5', '6', '7', '8'];
+    render(
+      <ApprovalPanel
+        proposals={[base({ preview: { kind: 'text', lines } })]}
+        onDecide={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    const preview = document.querySelector('.ui-approval-preview-text');
+    expect(preview?.textContent).toBe('1\n2\n3\n4\n5');
+    fireEvent.click(screen.getByText('还有 3 行 · 展开'));
+    expect(preview?.textContent).toBe('1\n2\n3\n4\n5\n6\n7\n8');
+    fireEvent.click(screen.getByText('收起'));
+    expect(preview?.textContent).toBe('1\n2\n3\n4\n5');
+  });
+
+  it('modal also requires preview.kind=diff rather than payload.diff', () => {
+    render(<ApprovalModal proposal={base({ risk: 'high-risk' })} onDecide={vi.fn()} onClose={vi.fn()} />);
+    expect(screen.queryByTestId('diff-view')).toBeNull();
+    render(
+      <ApprovalModal
+        proposal={base({ risk: 'high-risk', preview: { kind: 'diff', lines: ['+hi'] } })}
+        onDecide={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.getAllByTestId('diff-view').length).toBeGreaterThan(0);
   });
 });

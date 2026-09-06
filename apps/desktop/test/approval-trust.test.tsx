@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
 import { ApprovalPanel } from '../src/trust/ApprovalPanel.js';
 import { ApprovalModal } from '../src/trust/ApprovalModal.js';
 import { ApprovalCenter } from '../src/trust/ApprovalCenter.js';
@@ -13,32 +13,49 @@ const PROPOSAL = {
 };
 
 describe('ApprovalCenter', () => {
-  it('lists proposals with risk badges and opens detail', () => {
+  it('lists routine proposals by title without mid-risk chrome', () => {
     const onOpenDetail = vi.fn();
     render(<ApprovalCenter proposals={[PROPOSAL]} onOpenDetail={onOpenDetail} />);
     expect(screen.getByText('导出审核报告')).toBeTruthy();
-    expect(screen.getByText(/中风险/)).toBeTruthy();
+    expect(screen.queryByText(/中风险/)).toBeNull();
+    expect(screen.queryByText(/report\.export/)).toBeNull();
     fireEvent.click(screen.getByText('详情'));
     expect(onOpenDetail).toHaveBeenCalledWith(PROPOSAL);
     expect(document.querySelector('.dot')).toBeNull();
   });
+
+  it('shows high-risk badge and countdown', () => {
+    render(
+      <ApprovalCenter
+        proposals={[{ ...PROPOSAL, risk: 'high-risk', summary: '永久删除 reports/' }]}
+        onOpenDetail={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('永久删除 reports/')).toBeTruthy();
+    expect(screen.getByText('高风险')).toBeTruthy();
+    expect(document.querySelector('.ui-countdown')).toBeTruthy();
+  });
 });
 
 describe('ApprovalPanel', () => {
-  it('shows operation, target, source, risk and decides with note', () => {
+  it('shows the summary title and allows without a note', () => {
     const onDecide = vi.fn();
     render(<ApprovalPanel proposals={[PROPOSAL]} currentSessionId="session-1234" onDecide={onDecide} onClose={() => {}} />);
     expect(screen.getByText('导出审核报告')).toBeTruthy();
-    expect(screen.getByText(/本地文件目录/)).toBeTruthy();
+    expect(screen.getByRole('dialog', { name: '需要你确认' })).toBeTruthy();
+    expect(screen.getByText('1 处改动等你看')).toBeTruthy();
     expect(screen.getByText('当前会话')).toBeTruthy();
-    fireEvent.change(screen.getByPlaceholderText('审批意见(可选)'), { target: { value: '同意' } });
-    fireEvent.click(screen.getByText('批准'));
-    expect(onDecide).toHaveBeenCalledWith('p1', true, '同意');
+    expect(screen.queryByText(/本地文件目录/)).toBeNull();
+    expect(screen.queryByText(/中风险/)).toBeNull();
+    expect(screen.queryByPlaceholderText(/审批意见/)).toBeNull();
+    fireEvent.click(screen.getByText('允许'));
+    expect(onDecide).toHaveBeenCalledWith('p1', true);
   });
 
-  it('reveals frozen payload on demand', () => {
+  it('reveals payload JSON under 技术细节', () => {
     render(<ApprovalPanel proposals={[PROPOSAL]} onDecide={vi.fn()} onClose={() => {}} />);
-    fireEvent.click(screen.getByText(/冻结参数/));
+    expect(screen.queryByText(/"title": "报告"/)).toBeNull();
+    fireEvent.click(screen.getByText(/技术细节/));
     expect(screen.getByText(/"title": "报告"/)).toBeTruthy();
   });
 
@@ -48,24 +65,46 @@ describe('ApprovalPanel', () => {
     expect(screen.getByText('当前会话')).toBeTruthy();
     expect(screen.getByText('其他会话')).toBeTruthy();
     expect(screen.getAllByTestId('approval-queue-item')).toHaveLength(2);
+    expect(screen.queryByText(/session-1234/)).toBeNull();
+    expect(screen.queryByText(/session-9999/)).toBeNull();
+  });
+
+  it('keeps a hidden timeout path for routine cards', () => {
+    vi.useFakeTimers();
+    const onDecide = vi.fn();
+    render(
+      <ApprovalPanel
+        proposals={[{ ...PROPOSAL, createdAt: Date.now() }]}
+        timeoutMs={0}
+        onDecide={onDecide}
+        onClose={() => {}}
+      />,
+    );
+    expect(document.querySelector('.ui-countdown--hidden')).toBeTruthy();
+    expect(screen.queryByText('中风险')).toBeNull();
+    act(() => { vi.advanceTimersByTime(1000); });
+    expect(onDecide).toHaveBeenCalledWith('p1', false, 'timeout');
+    vi.useRealTimers();
   });
 });
 
 describe('ApprovalModal', () => {
   it('requires a second confirm for high-risk approvals', () => {
     const onDecide = vi.fn();
-    const high = { ...PROPOSAL, risk: 'high-risk' };
+    const high = { ...PROPOSAL, risk: 'high-risk', summary: '永久删除 reports/' };
     render(<ApprovalModal proposal={high} onDecide={onDecide} onClose={() => {}} />);
-    fireEvent.click(screen.getByText('批准'));
+    expect(screen.getByText('可能无法恢复')).toBeTruthy();
+    expect(screen.getByText('高风险')).toBeTruthy();
+    fireEvent.click(screen.getByText('允许'));
     expect(onDecide).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByText('再次确认批准'));
+    fireEvent.click(screen.getByText('再次确认允许'));
     expect(onDecide).toHaveBeenCalledWith('p1', true, '');
   });
 
   it('decides directly for non-high-risk approvals', () => {
     const onDecide = vi.fn();
     render(<ApprovalModal proposal={PROPOSAL} onDecide={onDecide} onClose={() => {}} />);
-    fireEvent.click(screen.getByText('批准'));
+    fireEvent.click(screen.getByText('允许'));
     expect(onDecide).toHaveBeenCalledWith('p1', true, '');
   });
 });

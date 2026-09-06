@@ -3,9 +3,10 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { BrowserWindow } from 'electron';
 import { LinearRunner, type ProposalDecision, type RunContext, type WorkflowDef } from '@sparkii/agent-host';
-import { computeEditDiff } from '@sparkii/agent-host';
+import { computeEditDiff, connectorWriteProposal } from '@sparkii/agent-host';
 import { documentConnector, knowledgeConnector, reportConnector, type ToolDef } from '@sparkii/connectors';
 import type { ProposalRequest } from '@sparkii/approval';
+import { toPreviewLines } from '@sparkii/approval';
 import type { ModelTask } from '@sparkii/model-router';
 import type { Runtime } from './runtime.js';
 import type { Logger } from './logger.js';
@@ -47,9 +48,13 @@ export function createBroker(rt: Runtime, getWindow: () => BrowserWindow | null)
         return this.requestReadOnly(req, meta);
       }
       if (req.toolName === 'edit' || req.toolName === 'write' || req.toolName === 'bash') {
-        const command = String((req.payload as any)?.command ?? '');
+        const command = String((req.payload as { command?: unknown })?.command ?? '');
         const risk = req.toolName === 'bash' ? riskOfCommand(command) : req.risk;
-        req = { ...req, payload: attachDiff(rt, req), risk };
+        const { payload, diff } = attachDiff(rt, req);
+        req = { ...req, payload, risk };
+        if ((req.toolName === 'edit' || req.toolName === 'write') && req.preview == null && diff) {
+          req = { ...req, preview: { kind: 'diff', lines: toPreviewLines(diff) } };
+        }
       }
       return this.request(req, meta);
     },
@@ -60,14 +65,15 @@ export function createBroker(rt: Runtime, getWindow: () => BrowserWindow | null)
   };
 }
 
-function attachDiff(rt: Runtime, req: ProposalRequest & { requestId: string }): unknown {
+function attachDiff(_rt: Runtime, req: ProposalRequest & { requestId: string }): { payload: unknown; diff?: string } {
   const payload = (req.payload ?? {}) as { path?: string; content?: string };
   if ((req.toolName === 'edit' || req.toolName === 'write') && payload.path) {
     let oldText = '';
     try { oldText = readFileSync(payload.path, 'utf8'); } catch { oldText = ''; }
-    return { ...payload, diff: computeEditDiff(oldText, String(payload.content ?? ''), payload.path) };
+    const diff = computeEditDiff(oldText, String(payload.content ?? ''), payload.path);
+    return { payload: { ...payload, diff }, diff };
   }
-  return payload;
+  return { payload };
 }
 
 export function resolveModelTarget(
@@ -228,9 +234,10 @@ async function runTool(
       profileId: rt.profileOf(profileId).profile.manifest.name, sessionId, actor: rt.subject?.userId ?? 'agent', requestId: randomUUID(),
     });
   }
-  const d = await broker.route({
-    requestId: randomUUID(), toolName, targetSystem: toolName.split('.')[0], summary: JSON.stringify(args).slice(0, 512), payload: args, risk: tool.sideEffect,
-  }, { sessionId, profileId });
+  const d = await broker.route(connectorWriteProposal(toolName, args, {
+    requestId: randomUUID(),
+    risk: tool.sideEffect,
+  }), { sessionId, profileId });
   return { ok: d.approved, data: d.result };
 }
 

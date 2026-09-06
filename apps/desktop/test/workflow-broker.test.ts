@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mkdtempSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createBroker, resolveWorkflowTemplates, runWorkflow, workflowRuntimeTools } from '../electron/main/workflow.js';
@@ -597,5 +597,72 @@ describe('runWorkflow session id and JSONL', () => {
       output: '第3条存在期限不对齐',
     });
     expect(sessionId).toBeTruthy();
+  });
+});
+
+describe('broker presentation contract', () => {
+  it('fills edit/write preview from the computed diff and does not override an existing one', async () => {
+    const { rt, getWindow } = makeHarness({ steps: [] });
+    const submitted: any[] = [];
+    rt.gate.submit = async (req: any) => {
+      submitted.push(req);
+      return { id: 'p1', ...req, status: 'pending', payloadHash: 'h', createdAt: Date.now() };
+    };
+    const broker = createBroker(rt, getWindow);
+    const file = join(rt.dataDir, 'a.txt');
+    await writeFile(file, 'old\n');
+
+    const first = broker.route({
+      requestId: 'r1',
+      toolName: 'edit',
+      targetSystem: 'general',
+      summary: '修改 a.txt',
+      payload: { path: file, content: 'new\n' },
+      risk: 'write',
+    }, { sessionId: 's1', profileId: 'contract-review' });
+    await waitUntil(() => submitted.length === 1);
+    expect(submitted[0].preview.kind).toBe('diff');
+    expect(submitted[0].preview.lines).toEqual(expect.arrayContaining([expect.stringMatching(/^[+-]/)]));
+    expect(submitted[0].payload.diff).toEqual(expect.any(String));
+    expect(submitted[0].payload.diff).toContain('+new');
+    broker.decide('p1', { approved: false, status: 'denied' });
+    await first;
+
+    submitted.length = 0;
+    const second = broker.route({
+      requestId: 'r2',
+      toolName: 'write',
+      targetSystem: 'general',
+      summary: '写入 a.txt',
+      preview: { kind: 'diff', lines: ['custom'] },
+      payload: { path: file, content: 'other\n' },
+      risk: 'write',
+    }, { sessionId: 's1', profileId: 'contract-review' });
+    await waitUntil(() => submitted.length === 1);
+    expect(submitted[0].preview).toEqual({ kind: 'diff', lines: ['custom'] });
+    broker.decide('p1', { approved: false, status: 'denied' });
+    await second;
+  });
+
+  it('does not scan payload.diff to invent preview for other tools', async () => {
+    const { rt, getWindow } = makeHarness({ steps: [] });
+    const submitted: any[] = [];
+    rt.gate.submit = async (req: any) => {
+      submitted.push(req);
+      return { id: 'p1', ...req, status: 'pending', payloadHash: 'h', createdAt: Date.now() };
+    };
+    const broker = createBroker(rt, getWindow);
+    const pending = broker.route({
+      requestId: 'r3',
+      toolName: 'report.export',
+      targetSystem: 'report',
+      summary: '导出报告',
+      payload: { title: 'x', diff: '--- a\n+foo', sections: [{ heading: '摘要' }] },
+      risk: 'write',
+    }, { sessionId: 's1', profileId: 'contract-review' });
+    await waitUntil(() => submitted.length === 1);
+    expect(submitted[0].preview).toBeUndefined();
+    broker.decide('p1', { approved: false, status: 'denied' });
+    await pending;
   });
 });
