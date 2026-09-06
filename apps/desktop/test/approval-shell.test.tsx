@@ -93,7 +93,7 @@ describe('App approval shell', () => {
     await screen.findByText(/工作台 · 上午好/);
     act(() => { channels['approval'](highProposal()); });
     fireEvent.click(screen.getByRole('button', { name: /审批/ }));
-    await screen.findByText('审批中心');
+    await screen.findByRole('heading', { name: '审批中心' });
     fireEvent.click(screen.getByText('详情'));
     expect(screen.getByRole('dialog', { name: '永久删除 reports/' })).toBeTruthy();
     expect(screen.queryByRole('dialog', { name: '需要你确认' })).toBeNull();

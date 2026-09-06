@@ -2,12 +2,6 @@ import type { ApprovalPreviewKind } from '@sparkii/approval';
 
 export const PREVIEW_VISIBLE_LINES = 5;
 
-export type PresentableProposal = {
-  summary?: string | null;
-  preview?: { kind?: string; lines?: unknown } | null;
-  risk?: string | null;
-};
-
 export type ApprovalViewModel = {
   title: string;
   subtitle: string | null;
@@ -30,21 +24,28 @@ export type ApprovalViewModel = {
   };
 };
 
-function previewLines(preview: PresentableProposal['preview']): string[] {
-  if (!Array.isArray(preview?.lines)) return [];
-  return preview.lines.filter((line): line is string => typeof line === 'string');
+function recordOf(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' ? value as Record<string, unknown> : {};
 }
 
-function previewKind(preview: PresentableProposal['preview']): ApprovalPreviewKind | 'none' {
-  return preview?.kind === 'diff' || preview?.kind === 'text' ? preview.kind : 'none';
+function previewLines(preview: unknown): string[] {
+  const rec = recordOf(preview);
+  if (!Array.isArray(rec.lines)) return [];
+  return rec.lines.filter((line): line is string => typeof line === 'string');
 }
 
-export function present(proposal: PresentableProposal): ApprovalViewModel {
-  const highRisk = proposal.risk === 'high-risk';
-  const lines = previewKind(proposal.preview) === 'none' ? [] : previewLines(proposal.preview);
-  const kind = previewKind(proposal.preview);
+function previewKind(preview: unknown): ApprovalPreviewKind | 'none' {
+  const rec = recordOf(preview);
+  return rec.kind === 'diff' || rec.kind === 'text' ? rec.kind : 'none';
+}
+
+export function present(proposal: unknown): ApprovalViewModel {
+  const rec = recordOf(proposal);
+  const highRisk = rec.risk === 'high-risk';
+  const kind = previewKind(rec.preview);
+  const lines = kind === 'none' ? [] : previewLines(rec.preview);
   return {
-    title: (proposal.summary ?? '').trim() || '需要你确认',
+    title: (typeof rec.summary === 'string' ? rec.summary : '').trim() || '需要你确认',
     subtitle: highRisk ? '可能无法恢复' : null,
     preview: {
       kind,
@@ -66,7 +67,7 @@ export function present(proposal: PresentableProposal): ApprovalViewModel {
   };
 }
 
-export function partitionApprovals<T extends PresentableProposal>(pending: T[]): { routine: T[]; highRisk: T[] } {
+export function partitionApprovals<T>(pending: T[]): { routine: T[]; highRisk: T[] } {
   const routine: T[] = [];
   const highRisk: T[] = [];
   for (const proposal of pending) {

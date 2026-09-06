@@ -24,7 +24,7 @@ export function ApprovalItem({
         <span className="ui-approval-item-meta">
           {badge}
           {badge != null && countdown != null ? ' · ' : null}
-          {countdown}
+          {countdown != null ? <span>{countdown}</span> : null}
         </span>
       )}
       <button type="button" className="ui-btn ui-btn--sm ui-btn--primary" onClick={onOpenDetail}>详情</button>

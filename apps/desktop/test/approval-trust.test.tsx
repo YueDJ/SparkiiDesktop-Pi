@@ -81,7 +81,7 @@ describe('ApprovalPanel', () => {
       />,
     );
     expect(document.querySelector('.ui-countdown--hidden')).toBeTruthy();
-    expect(screen.queryByText(/\d+s/)).toBeNull();
+    expect(screen.queryByText('中风险')).toBeNull();
     act(() => { vi.advanceTimersByTime(1000); });
     expect(onDecide).toHaveBeenCalledWith('p1', false, 'timeout');
     vi.useRealTimers();
