@@ -117,10 +117,15 @@ describe('applyApprovalStatus from JSONL history', () => {
         customType: 'approval_required',
         data: { requestId: 'r2', toolName: 'write', status: 'pending', toolCallId: 'c2' },
       },
+      {
+        type: 'message',
+        message: { role: 'toolResult', toolCallId: 'c1', toolName: 'write', content: [{ type: 'text', text: 'a' }] },
+      },
     ];
     const out = applyApprovalStatus(normalizeSessionEntries(raw));
     const tools = out.filter((e) => e.kind === 'tool');
-    expect(tools[0]).toMatchObject({ toolCallId: 'c1', awaitingApproval: false });
+    expect(tools).toHaveLength(2);
+    expect(tools[0]).toMatchObject({ toolCallId: 'c1', awaitingApproval: false, result: expect.anything() });
     expect(tools[1]).toMatchObject({ toolCallId: 'c2', awaitingApproval: true });
   });
 });

@@ -1,6 +1,7 @@
 import type { ChatEntry } from '@sparkii/ui';
 import {
   applyChatEvent as uiApplyChatEvent,
+  findLastUnresolvedTool,
   normalizeSessionEntries as uiNormalizeSessionEntries,
 } from '@sparkii/ui';
 import type { CustomSessionEntry, SessionEntry } from './contract.js';
@@ -37,13 +38,34 @@ function stepIdOf(e: CustomSessionEntry): string {
   return String(e.data.stepId ?? '');
 }
 
+/** JSONL is `toolCall` → custom rows → `toolResult`. Flushing at each custom would otherwise
+ *  emit a running card, then a second completed card that cannot pair across the gap. */
+function mergeChatChunk(out: SessionEntry[], chunk: ChatEntry[]): void {
+  for (const entry of chunk) {
+    if (entry.kind === 'tool' && entry.result !== undefined) {
+      const idx = findLastUnresolvedTool(out as ChatEntry[], entry.toolName, entry.toolCallId);
+      if (idx >= 0) {
+        const target = out[idx] as Extract<SessionEntry, { kind: 'tool' }>;
+        out[idx] = {
+          ...target,
+          result: entry.result,
+          awaitingApproval: false,
+          ...(entry.isError ? { isError: true } : {}),
+        };
+        continue;
+      }
+    }
+    out.push(entry);
+  }
+}
+
 /** Normalize a session history into the unified timeline (chat + custom JSONL rows, original order). */
 export function normalizeSessionEntries(entries: unknown[]): SessionEntry[] {
   const out: SessionEntry[] = [];
   const chatBuf: unknown[] = [];
   const flushChat = () => {
     if (!chatBuf.length) return;
-    out.push(...uiNormalizeSessionEntries(chatBuf));
+    mergeChatChunk(out, uiNormalizeSessionEntries(chatBuf));
     chatBuf.length = 0;
   };
   for (const e of entries) {

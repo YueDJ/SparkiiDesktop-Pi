@@ -79,6 +79,10 @@ Pi `custom` 行，`data` 只允许这些键（有就写，没有就省略，不�
 
 抽屉仍听 `sparkii:event:approval`：那是操作面，不是时间线。
 
+## History 路径
+
+`normalizeSessionEntries` 在每个 custom 行处 flush 聊天缓冲。JSONL 顺序是 `toolCall` → `approval_*` → `toolResult`，第一次 flush 会先产出一张无 `result` 的卡。后续 `toolResult` 必须并回那张未完成的同 `toolCallId` / 同名卡，不能再推一张「完成」卡。Live 路径走 `tool_execution_start/end`，不会裂成两张。
+
 ## Non-Goals
 
 - 不改 Gate 策略、超时、RBAC、执行器。
@@ -94,4 +98,4 @@ Pi `custom` 行，`data` 只允许这些键（有就写，没有就省略，不�
 - coding-tools：允许/拒绝各写 required + resolved；`data` 不得出现 `payload` / `preview` / `content` / `diff` / `command`；越界路径不写；`execute` 的 call id 进 `toolCallId`。
 - 投影：绑定表 + 两张 write 的历史顺序夹具；denied 无 result → `isError` 且不在等待。
 - StandardChat：`approval` IPC 不再改变卡片；entries 上已有 `awaitingApproval` 仍显示「等待审批」。
-- 历史：`normalizeSessionEntries` 之后走同一投影函数。
+- 历史：`normalizeSessionEntries` 之后走同一投影函数；`toolCall` 与 `toolResult` 中间夹着审批行时仍是一张卡（完成），不是「运行中」+「完成」。
