@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { listPiSessions, readPiSessionEntries, type PiProviderInfo, type SessionSaddle } from '@sparkii/agent-host';
+import { listPiSessions, readPiSessionEntries, connectorWriteProposal, type PiProviderInfo, type SessionSaddle } from '@sparkii/agent-host';
 import { applyThinkingLevel, createBroker, modelTargetKey, resolveModelTarget, resolveSessionModel, resolveThinkingLevel, runWorkflow, selectModel } from './workflow.js';
 import { findCompatibleModels, type ModelCapability } from '@sparkii/model-router';
 import { sortAgents } from './agent-catalog.js';
@@ -697,14 +697,10 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   ipcMain.handle('sparkii:requestExportReport', async (_e, sessionId: string, summary: Record<string, unknown>) => {
     const open = await ensureOpenSession(sessionId);
     ensureProcessPipe(open.slot);
-    const d = await broker.route({
+    const d = await broker.route(connectorWriteProposal('report.export', summary, {
       requestId: randomUUID(),
-      toolName: 'report.export',
-      targetSystem: 'report',
-      summary: `导出合同审核报告：${String(summary?.title ?? '')}`,
-      payload: summary,
       risk: 'write',
-    }, { sessionId, profileId: open.profileId });
+    }), { sessionId, profileId: open.profileId });
     if (d.approved && open.slot.client) {
       await open.slot.client.send({
         type: 'append_workflow_entry',

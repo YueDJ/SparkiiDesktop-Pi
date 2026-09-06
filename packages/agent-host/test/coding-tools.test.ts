@@ -30,7 +30,11 @@ describe("createCodingToolDefinitions", () => {
     const bash = defs.find((d) => d.name === "bash")!;
     const sessionCtx = { sessionManager: { getSessionId: () => "s1", getSessionFile: () => "/tmp/s1.jsonl" } };
     const result = await (bash as any).execute("t1", { command: "echo hi" }, undefined, undefined, sessionCtx);
-    expect(c.proposes).toHaveBeenCalledWith(expect.objectContaining({ toolName: "bash" }));
+    expect(c.proposes).toHaveBeenCalledWith(expect.objectContaining({
+      toolName: "bash",
+      summary: "echo hi",
+      preview: { kind: "text", lines: ["echo hi"] },
+    }));
     expect((result as any).content?.[0]?.text).toContain("ok");
   });
 
@@ -40,7 +44,12 @@ describe("createCodingToolDefinitions", () => {
     const defs = createCodingToolDefinitions(denied);
     const write = defs.find((d) => d.name === "write")!;
     await expect((write as any).execute("t1", { path: join(denied.workspaceRoot, "a.txt"), content: "x" }, undefined, undefined, toolCtx)).rejects.toThrow(/未执行/);
-    expect(denied.proposes).toHaveBeenCalledWith(expect.objectContaining({ toolName: "write", payload: expect.objectContaining({ path: expect.stringContaining("a.txt") }) }));
+    expect(denied.proposes).toHaveBeenCalledWith(expect.objectContaining({
+      toolName: "write",
+      summary: "写入 a.txt",
+      payload: expect.objectContaining({ path: expect.stringContaining("a.txt") }),
+    }));
+    expect(denied.proposes.mock.calls[0][0].preview).toBeUndefined();
   });
 
   it("blocks writes outside workspace before proposing", async () => {
@@ -61,5 +70,15 @@ describe("createCodingToolDefinitions", () => {
       toolName: "write",
       payload: expect.objectContaining({ path: join(c.workspaceRoot, "a.txt") }),
     }));
+  });
+
+  it("summarizes bash as the first line truncated to 120 characters", async () => {
+    const c = ctx();
+    const defs = createCodingToolDefinitions(c);
+    const bash = defs.find((d) => d.name === "bash")!;
+    const first = "x".repeat(200);
+    await (bash as any).execute("t1", { command: `${first}\nsecond` }, undefined, undefined, toolCtx);
+    expect(c.proposes.mock.calls[0][0].summary).toBe(first.slice(0, 120));
+    expect(c.proposes.mock.calls[0][0].preview).toEqual({ kind: "text", lines: [first, "second"] });
   });
 });
