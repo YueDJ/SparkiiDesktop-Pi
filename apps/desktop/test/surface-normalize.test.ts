@@ -107,6 +107,41 @@ describe('surface normalize', () => {
     expect(tool).toMatchObject({ kind: 'tool', toolName: 'bash', result: { content: [{ type: 'text', text: 'out' }] } });
   });
 
+  it('pairs toolResult across approval custom rows so history is one card', () => {
+    const out = normalizeSessionEntries([
+      { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', id: 'c1', name: 'write', arguments: { path: 'a.ts' } }] } },
+      { type: 'custom', id: 'e1', customType: 'approval_required', data: { requestId: 'r1', toolName: 'write', status: 'pending', toolCallId: 'c1' } },
+      { type: 'custom', id: 'e2', customType: 'approval_resolved', data: { requestId: 'r1', toolName: 'write', status: 'approved', toolCallId: 'c1' } },
+      { type: 'message', message: { role: 'toolResult', toolCallId: 'c1', toolName: 'write', content: [{ type: 'text', text: 'ok' }] } },
+    ]);
+    const tools = out.filter((e) => e.kind === 'tool');
+    expect(tools).toHaveLength(1);
+    expect(tools[0]).toMatchObject({
+      kind: 'tool',
+      toolName: 'write',
+      toolCallId: 'c1',
+      result: { content: [{ type: 'text', text: 'ok' }] },
+      awaitingApproval: false,
+    });
+  });
+
+  it('history of two sequential approved writes is two completed cards, not running+done pairs', () => {
+    const out = normalizeSessionEntries([
+      { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', id: 'c1', name: 'write', arguments: { path: 'a.ts' } }] } },
+      { type: 'custom', id: 'e1', customType: 'approval_required', data: { requestId: 'r1', toolName: 'write', status: 'pending', toolCallId: 'c1' } },
+      { type: 'custom', id: 'e2', customType: 'approval_resolved', data: { requestId: 'r1', toolName: 'write', status: 'approved', toolCallId: 'c1' } },
+      { type: 'message', message: { role: 'toolResult', toolCallId: 'c1', toolName: 'write', content: [{ type: 'text', text: 'a' }] } },
+      { type: 'message', message: { role: 'assistant', content: [{ type: 'toolCall', id: 'c2', name: 'write', arguments: { path: 'b.ts' } }] } },
+      { type: 'custom', id: 'e3', customType: 'approval_required', data: { requestId: 'r2', toolName: 'write', status: 'pending', toolCallId: 'c2' } },
+      { type: 'custom', id: 'e4', customType: 'approval_resolved', data: { requestId: 'r2', toolName: 'write', status: 'approved', toolCallId: 'c2' } },
+      { type: 'message', message: { role: 'toolResult', toolCallId: 'c2', toolName: 'write', content: [{ type: 'text', text: 'b' }] } },
+    ]);
+    const tools = out.filter((e) => e.kind === 'tool');
+    expect(tools).toHaveLength(2);
+    expect(tools[0]).toMatchObject({ toolCallId: 'c1', result: { content: [{ type: 'text', text: 'a' }] }, awaitingApproval: false });
+    expect(tools[1]).toMatchObject({ toolCallId: 'c2', result: { content: [{ type: 'text', text: 'b' }] }, awaitingApproval: false });
+  });
+
   it('derives done status when all steps completed', () => {
     const entries = normalizeSessionEntries([
       { type: 'custom', customType: 'workflow_step_start', data: { stepId: 'load' } },
