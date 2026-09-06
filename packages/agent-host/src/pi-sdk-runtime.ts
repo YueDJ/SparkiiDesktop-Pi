@@ -222,6 +222,7 @@ export async function createPiSdkSessionHost(
               pendingProposals.set(request.requestId, { resolve, reject });
               options.transport.postMessage(proposalEnvelope(request));
             }),
+          recordSessionEntry: (customType, data) => appendCustomEntryAndEmit(session, customType, data),
         })
       : [];
     session.agent.state.tools = saddleTools;

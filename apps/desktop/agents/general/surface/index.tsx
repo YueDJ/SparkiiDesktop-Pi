@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { StandardChatSurface, type StandardChatProps } from '../../../src/surface/standard-chat.js';
 import type { SparkiiApi } from '../../../src/types/sparkii-api.js';
+import { applyApprovalStatus } from './approval-timeline.js';
 import { decideTitle, firstAssistantText, firstUserText, placeholderOf } from './title.js';
 
 export { applyChatEvent, normalizeMessages, type ChatEntry } from '@sparkii/ui';
@@ -12,6 +13,7 @@ function sparkiiApi(): Pick<SparkiiApi, 'setChatTitle' | 'completeText'> {
 export default function GeneralAgentSurface(props: StandardChatProps) {
   const { sessionId, session, title, api: apiOverride } = props;
   const lastDecisionKey = useRef('');
+  const entries = useMemo(() => applyApprovalStatus(session.entries), [session.entries]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -46,5 +48,5 @@ export default function GeneralAgentSurface(props: StandardChatProps) {
     void api.setChatTitle?.(id, placeholderOf(userText), 'agent');
   };
 
-  return <StandardChatSurface {...props} onSessionCreated={onSessionCreated} />;
+  return <StandardChatSurface {...props} session={{ ...session, entries }} onSessionCreated={onSessionCreated} />;
 }

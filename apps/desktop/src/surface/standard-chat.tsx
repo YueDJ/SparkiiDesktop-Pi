@@ -193,7 +193,6 @@ export function StandardChatSurface(props: StandardChatProps) {
   const { agent, sessionId, session, actions, title, api: apiOverride, active = true, draft, onSessionCreated } = props;
   const api = apiOverride ?? (window.sparkii as SparkiiApi);
   const { reportError } = useErrors();
-  const [pendingApprovals, setPendingApprovals] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [stopping, setStopping] = useState(false);
   const [queues, setQueues] = useState<QueueMap>({ steering: [], followUp: [] });
@@ -280,7 +279,6 @@ export function StandardChatSurface(props: StandardChatProps) {
   useEffect(() => {
     setBusy(false);
     setStopping(false);
-    setPendingApprovals(new Set());
     setQueues({ steering: [], followUp: [] });
     setDrafts({ steering: [], followUp: [] });
     setModel(null);
@@ -321,16 +319,7 @@ export function StandardChatSurface(props: StandardChatProps) {
       }
       if (p?.type === 'compaction_start' || p?.type === 'compaction_end' || p?.type === 'agent_settled') refreshContext();
     });
-    const off2 = api.on('approval', (p: any) => {
-      if (p?.sessionId !== sessionId || !p?.toolName) return;
-      setPendingApprovals((xs) => {
-        const next = new Set(xs);
-        if (typeof p?.toolCallId === 'string') next.add(p.toolCallId);
-        if (typeof p?.toolName === 'string') next.add(p.toolName);
-        return next;
-      });
-    });
-    return () => { off1(); off2(); };
+    return () => { off1(); };
   }, [api, sessionId, agent.name]);
 
   useEffect(() => {
@@ -441,18 +430,9 @@ export function StandardChatSurface(props: StandardChatProps) {
   };
   // The authoritative timeline is props.session.entries, normalized once by useAgentSession from
   // Pi's JSONL (live event increments and history replay produce the same ordered entries). We
-  // render it directly, overlaying only the live approval state. There is no local/optimistic
-  // timeline, so the display stays 1:1 with the session truth source.
-  const entries = (session.entries ?? []).filter(isChatEntry).map((e) => {
-    if (
-      e.kind === 'tool'
-      && !e.awaitingApproval
-      && (pendingApprovals.has(e.toolName) || (e.toolCallId ? pendingApprovals.has(e.toolCallId) : false))
-    ) {
-      return { ...e, awaitingApproval: true };
-    }
-    return e;
-  });
+  // render it directly. There is no local/optimistic timeline, so the display stays 1:1 with the
+  // session truth source.
+  const entries = (session.entries ?? []).filter(isChatEntry);
 
   if (!sessionId && !draft) {
     return (
