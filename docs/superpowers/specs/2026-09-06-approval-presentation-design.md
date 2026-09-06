@@ -1,9 +1,10 @@
 # 审批展示（平台）— Design Spec
 
-**Status:** Draft（待用户审阅；本轮只写规格，不改运行时）
+**Status:** 已确认（2026-09-06；展示契约：`summary` + 可选 `preview`，审批端不猜 payload）
 **Date:** 2026-09-06
+**Plan:** `docs/superpowers/plans/2026-09-06-approval-presentation.md`
 **Depends on:** `PRODUCT.md`（无事不打扰，有事必清楚；写操作必须人工把关）；`DESIGN.md` Approval Ritual；`packages/approval` 提案模型
-**Amends:** `DESIGN.md` Approval Ritual 的例行字段清单；`docs/superpowers/specs/2026-08-25-sparkii-desktop-ux-design.md` §4 审批条目的例行呈现
+**Amends:** `DESIGN.md` Approval Ritual 的例行字段清单；`PRODUCT.md` 审批倒计时可见性（例行隐藏主视觉、超时仍生效）；`docs/superpowers/specs/2026-08-25-sparkii-desktop-ux-design.md` §4 审批条目的例行呈现
 
 ## Goal
 
@@ -20,15 +21,16 @@
 3. **`summary` 原样当标题。** 提交端填好人话一行。审批端不剥路径、不加「新建/修改」前缀、不 `JSON.stringify`。空则显示「需要你确认」。
 4. **`preview` 是可选的已切好的行。** `{ kind: 'diff' | 'text'; lines: string[] }`。审批端只做 `lines.slice(0, 5)` 和「还有 N 行 · 展开」。`kind === 'diff'` 用现有着色；`text` 为纯文本。没有 `preview` 或 `lines` 为空：只有标题和按钮。
 5. **按钮文案统一为「拒绝」「允许」。** 高风险第二次确认为「再次确认允许」。
-6. **外观只看 `risk`。** `write` 为例行抽屉；`high-risk` 为居中模态 + 二次确认，并显示高风险徽标、倒计时、审批意见。例行不显示「中风险」、倒计时、审批意见、工具名、目标系统、会话 UUID。
+6. **外观只看 `risk`。** `write` 为例行抽屉；`high-risk` 为居中模态 + 二次确认，并显示高风险徽标、倒计时、审批意见。例行不显示「中风险」、倒计时数字、审批意见、工具名、目标系统、会话 UUID。**例行超时仍生效**：主视觉不放倒计时，但 UI 必须保留隐藏到期回调（现有 `onDecide(id, false, 'timeout')`），因为 Main `gate.expire` 不会推 renderer。
 7. **「技术细节」始终存在、默认关上**，内容是冻结 `payload` 的 JSON。这是排查入口，不是默认可审物件，也不是契约的一部分。
 8. **填契约的是 `propose()` 的调用方（平台工具包装 / 连接器），不是模型。** 新智能体只要在提议时带上 `summary` + 可选 `preview`。
+9. **edit/write 的 preview 只在 Main 算出 diff 的那一处填写。** Pi `coding-tools` 只填 `summary`，不填 `preview`。`broker.route` 仅当 `toolName` 为 `edit`/`write` 且 `preview` 为空时，用刚算出的 diff 字符串生成 `preview.lines`。禁止扫描任意 payload 的 `diff`/`command`/`sections`。新智能体不要指望 broker 代填。
 
 ## Non-Goals
 
 - 不改审批频率、会话授权、`evaluate` 规则表、只读白名单。
 - 不改自动弹出抽屉、聊天 ToolCard 就地批准。
-- 不改超时自动拒绝（例行只是不把倒计时放在主视觉）。
+- 不改超时自动拒绝（例行不把倒计时放在主视觉，但必须保留隐藏到期回调）。
 - 不让模型为审批生成摘要或大纲。
 - 不把合同导出改成系统保存对话框（那是后续切片）。
 - 不为单个智能体写 `if (toolName === …)` 展示模板。
@@ -59,7 +61,12 @@ interface ProposalRequest {
   summary: string;         // 标题，原样显示
   preview?: ApprovalPreview;
   payload: unknown;       // 冻结执行参数；UI 不当预览源
-  risk: 'write' | 'high-risk';
+  risk: SideEffect;        // 现有类型含 read；present() 把非 high-risk 当例行抽屉
+}
+
+interface Proposal {
+  // …现有字段
+  preview?: ApprovalPreview;   // 从 Request 原样拷贝；不进 payloadHash
 }
 ```
 
@@ -70,7 +77,8 @@ interface ProposalRequest {
 - 把 `summary` 放到标题。
 - 把 `preview.lines` 默认显示前 5 行，其余折叠。
 - `kind === 'diff'` 时用现有 `DiffView` 着色，否则当纯文本。
-- 按 `risk` 选抽屉或模态、要不要倒计时/意见/二次确认。
+- 按 `risk` 选抽屉或模态、要不要**显示**倒计时/意见/二次确认。
+- 例行仍注册隐藏到期回调，到期 `onDecide(id, false, 'timeout')`。
 - 「技术细节」里把 `payload` 格式化成 JSON 供排查。
 
 ### 审批端不做的事
@@ -135,8 +143,9 @@ type ApprovalViewModel = {
 - `title` = `summary.trim()` 或「需要你确认」。
 - `preview.lines` = 请求里的 `preview.lines`（缺省 `[]`）。
 - 5 行截断只作用在 ViewModel。
-- `risk === 'high-risk'` → `mode: 'modal'`，三项 show* 为 true。
+- `risk === 'high-risk'` → `mode: 'modal'`，三项 show* 为 true。其它 `risk`（含 `write`、`read`）一律例行抽屉。
 - 展开状态是卡片局部 UI state。
+- 例行提案到达仍自动拉开抽屉（本轮不改打断时机）。高风险到达改为打开模态，不把高风险再塞进抽屉列表。两者同时 pending 时：抽屉只列例行，模态叠高风险。
 
 ## Surfaces
 
@@ -165,7 +174,7 @@ type ApprovalViewModel = {
 当前会话
 
 ┌─────────────────────────────────────┐
-│ 新建 hello.txt                       │
+│ 写入 hello.txt                       │
 │                                     │
 │ + Hello, Sparkii                     │
 │ + 第二行                            │
@@ -203,14 +212,16 @@ $ rm -rf reports
 
 翻译发生在这些 `propose` 调用处，**不是** `present()`。各提交点继续用自己的业务 payload 执行；同时填契约。
 
+平台连接器写工具（今日即 `report.export`）在 agent-host 提供一个很小的 `writeToolPresentation(toolName, args)`：只为已知工具填 `summary`/`preview`，其它工具 `summary = toolName`、无 preview。`pi-runtime-tools`、`runTool`、`requestExportReport` 都走它，避免同一工具两套标题。
+
 | 提交点 | payload（执行，不变） | 本轮填入契约 |
 | --- | --- | --- |
-| `edit` / `write` | `path`、`content`；（Main 已有 `diff` 可复用） | `summary`：如「修改 src/a.ts」/「新建 hello.txt」；`preview: { kind: 'diff', lines: diff.split('\\n') }` |
-| `bash` | `command`、cwd、workspaceRoot | `summary`：命令首行或「运行 …」；`preview: { kind: 'text', lines: command 按行 }` |
-| `report.export` | `title`、`sections`、format | `summary`：如「导出《{title}》」；`preview: { kind: 'text', lines: headings }` |
-| 其他连接器写工具 | 该工具自己的参数 | 自己写 `summary`；有可审行再填 `preview`，否则省略 |
+| `edit` / `write` | `path`、`content`；Main `attachDiff` 仍写入 `payload.diff` 供执行/排查 | Pi `coding-tools` **只**填 `summary`（相对工作区的「修改 {rel}」/「写入 {rel}」），不填 `preview`。Main `broker.route` 仅当 `toolName === 'edit'\|'write'` 且 `preview` 为空，用**刚算出的** diff 字符串 `toPreviewLines(diff)`。禁止 `payload.diff` 泛扫描。 |
+| `bash` | `command`、cwd、workspaceRoot | `coding-tools` 填 `summary`（命令首行，截 120）和 `preview: { kind: 'text', lines }`。broker 已有 preview 则不覆盖。 |
+| `report.export`（Pi 工具、`runTool`、导出 IPC） | `title`、`sections`、format | 一律 `writeToolPresentation`：`导出《{title}》` 或「导出报告」；`preview.lines` = 非空 `heading`。 |
+| 其他连接器写工具 | 该工具自己的参数 | `summary = toolName`；无 preview。禁止 `JSON.stringify(params)` 当标题。 |
 
-今日 `JSON.stringify(params)` 当 `summary` 的路径（`pi-runtime-tools` / workflow broker）改为写短 `summary`（至少用工具名 + 一句，**禁止**把参数 JSON 当标题）。来不及做预览就省略 `preview`，卡片仍然合法。
+`broker.route` **禁止**对任意 payload 扫描 `diff`/`command`/`sections` 来补 `preview`。新智能体在自己的 `propose()` 带齐字段，不要指望 broker 代填。已有 `preview` 则原样传递。
 
 ## Security & Invariants
 
@@ -221,13 +232,15 @@ $ rm -rf reports
 
 ## Acceptance
 
-- 例行卡片：标题来自 `summary` 原文、预览来自 `preview.lines`（默认 ≤5 行）、拒绝/允许；无中风险/倒计时/意见/工具名/UUID。
-- 无 `preview` 时不出现假 diff / 假大纲。
+- 例行卡片：标题来自 `summary` 原文、预览来自 `preview.lines`（默认 ≤5 行）、拒绝/允许；无中风险徽标/可见倒计时/意见/工具名/UUID。隐藏到期仍会拒绝。
+- 无 `preview` 时不出现假 diff / 假大纲。payload 里有 `diff` 但无 `preview` 时，预览区没有 `DiffView`。
 - `present()` **不**因 payload 里有 `diff`/`sections` 就自动出预览——没带 `preview` 字段就不显示预览。
 - 超过 5 行可展开，收起回到 5 行。
-- 高风险走模态；先点允许不成决定，再点「再次确认允许」才批准。
+- 高风险走模态；先点允许不成决定，再点「再次确认允许」才批准。只剩高风险时不留空抽屉。
 - `present()` 单测：原样 summary、截断计数、无 preview、diff vs text、高风险 chrome。不测路径剥离或 heading 抽取。
-- 现有审批 UI 测试改新文案；不改 Gate / Executor / 安全不变量测试。
+- 现有审批 UI 测试改新文案，并**反转**「payload.diff 即出 DiffView」。
+- 不改 Gate / Executor / 安全不变量测试语义。
+- `report.export` 无论经 Pi 工具、`runTool` 还是导出按钮，标题和大纲一致。
 
 ## Out of Scope Follow-ups
 
