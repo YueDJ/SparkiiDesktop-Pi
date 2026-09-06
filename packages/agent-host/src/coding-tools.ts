@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
 import { access, readFile } from "node:fs/promises";
 import { relative } from "node:path";
@@ -16,7 +17,10 @@ export interface CodingToolsContext {
   cwd: string;
   workspaceRoot: string;
   propose(request: ProposalRequest & { requestId: string }): Promise<ProposalDecision>;
+  recordSessionEntry?(customType: string, data: Record<string, unknown>): void;
 }
+
+const activeToolCallId = new AsyncLocalStorage<string>();
 
 function workspaceRelative(workspaceRoot: string, absolutePath: string): string {
   const rel = relative(workspaceRoot, absolutePath);
@@ -35,9 +39,42 @@ function guardPath(ctx: CodingToolsContext, absolutePath: string): void {
   }
 }
 
+function slimApprovalData(
+  requestId: string,
+  toolName: string,
+  status: "pending" | "approved" | "denied",
+  extra: { proposalId?: string } = {},
+): Record<string, unknown> {
+  const data: Record<string, unknown> = { requestId, toolName, status };
+  const toolCallId = activeToolCallId.getStore();
+  if (toolCallId) data.toolCallId = toolCallId;
+  if (extra.proposalId) data.proposalId = extra.proposalId;
+  return data;
+}
+
+async function proposeWrite(
+  ctx: CodingToolsContext,
+  request: ProposalRequest & { requestId: string },
+): Promise<ProposalDecision> {
+  ctx.recordSessionEntry?.("approval_required", slimApprovalData(request.requestId, request.toolName, "pending"));
+  try {
+    const decision = await ctx.propose(request);
+    ctx.recordSessionEntry?.("approval_resolved", slimApprovalData(
+      request.requestId,
+      request.toolName,
+      decision.approved ? "approved" : "denied",
+      decision.proposalId ? { proposalId: decision.proposalId } : {},
+    ));
+    return decision;
+  } catch (error) {
+    ctx.recordSessionEntry?.("approval_resolved", slimApprovalData(request.requestId, request.toolName, "denied"));
+    throw error;
+  }
+}
+
 function shellExec(ctx: CodingToolsContext) {
   return async (command: string, cwd: string, opts: { onData: (data: Buffer) => void }) => {
-    const decision = await ctx.propose({
+    const decision = await proposeWrite(ctx, {
       requestId: randomUUID(),
       toolName: "bash",
       targetSystem: "general",
@@ -53,6 +90,15 @@ function shellExec(ctx: CodingToolsContext) {
     const result = (decision.result ?? {}) as { exitCode?: number | null; output?: string };
     if (result.output) opts.onData(Buffer.from(result.output));
     return { exitCode: result.exitCode ?? 0 };
+  };
+}
+
+function withToolCallScope(def: ToolDefinition<any, any, any>): ToolDefinition<any, any, any> {
+  const original = def.execute.bind(def);
+  return {
+    ...def,
+    execute: (toolCallId: string, params: any, signal: any, onUpdate: any, sessionCtx: any) =>
+      activeToolCallId.run(toolCallId, () => original(toolCallId, params, signal, onUpdate, sessionCtx)),
   };
 }
 
@@ -79,7 +125,7 @@ export function createCodingToolDefinitions(ctx: CodingToolsContext): Array<Tool
       },
       writeFile: async (absolutePath: string, content: string) => {
         guardPath(ctx, absolutePath);
-        const decision = await ctx.propose({
+        const decision = await proposeWrite(ctx, {
           requestId: randomUUID(),
           toolName: "edit",
           targetSystem: "general",
@@ -99,7 +145,7 @@ export function createCodingToolDefinitions(ctx: CodingToolsContext): Array<Tool
       },
       writeFile: async (absolutePath: string, content: string) => {
         guardPath(ctx, absolutePath);
-        const decision = await ctx.propose({
+        const decision = await proposeWrite(ctx, {
           requestId: randomUUID(),
           toolName: "write",
           targetSystem: "general",
@@ -112,5 +158,5 @@ export function createCodingToolDefinitions(ctx: CodingToolsContext): Array<Tool
     },
   });
 
-  return [bash, edit, write];
+  return [bash, edit, write].map(withToolCallScope);
 }

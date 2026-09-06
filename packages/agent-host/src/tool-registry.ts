@@ -20,6 +20,7 @@ export interface RegistryContext {
   cwd: string;
   workspaceRoot?: string;
   propose(request: ProposalRequest & { requestId: string }): Promise<ProposalDecision>;
+  recordSessionEntry?(customType: string, data: Record<string, unknown>): void;
 }
 
 const CONNECTOR_TOOLS = new Map<string, ToolDef>(
@@ -45,7 +46,12 @@ function withWorkspaceGuard(def: ToolDefinition, root: string, pathCwd: string):
 
 export function resolveToolDefinitions(toolNames: string[], ctx: RegistryContext): ToolDefinition[] {
   const pathCwd = ctx.workspaceRoot ?? ctx.cwd;
-  const codingByName = new Map(createCodingToolDefinitions({ cwd: pathCwd, workspaceRoot: ctx.workspaceRoot ?? pathCwd, propose: ctx.propose }).map((d) => [d.name, d]));
+  const codingByName = new Map(createCodingToolDefinitions({
+    cwd: pathCwd,
+    workspaceRoot: ctx.workspaceRoot ?? pathCwd,
+    propose: ctx.propose,
+    recordSessionEntry: ctx.recordSessionEntry,
+  }).map((d) => [d.name, d]));
   const out: ToolDefinition[] = [];
   for (const name of toolNames) {
     if (name === "bash" || name === "edit" || name === "write") {

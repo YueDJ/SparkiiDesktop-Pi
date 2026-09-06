@@ -261,13 +261,27 @@ describe('StandardChatSurface behaviors', () => {
     expect(screen.queryByTestId('model-warning')).toBeNull();
   });
 
-  it('marks a tool card awaiting approval from approval events', async () => {
-    const { api, channels } = makeApi();
-    const session = { entries: [{ kind: 'tool', id: 't1', toolName: 'write', input: { path: 'C:/ws/a.txt' } }], streaming: false, meta: {} };
+  it('shows awaiting approval from the session entry, not from approval IPC', async () => {
+    const { api } = makeApi();
+    const session = {
+      entries: [{ kind: 'tool', id: 't1', toolName: 'write', input: { path: 'C:/ws/a.txt' }, awaitingApproval: true }],
+      streaming: false,
+      meta: {},
+    };
     render(<StandardChatSurface {...baseProps('s1', { session, api })} />);
-    await screen.findByText('write');
-    act(() => channels['approval']({ sessionId: 's1', toolName: 'write' }));
-    expect(screen.getByText(/等待审批/)).toBeTruthy();
+    expect(await screen.findByText(/等待审批/)).toBeTruthy();
+  });
+
+  it('does not subscribe to approval events for the tool card', async () => {
+    const { api } = makeApi();
+    const session = {
+      entries: [{ kind: 'tool', id: 't1', toolName: 'write', input: { path: 'C:/ws/a.txt' }, result: { ok: true } }],
+      streaming: false,
+      meta: {},
+    };
+    render(<StandardChatSurface {...baseProps('s1', { session, api })} />);
+    expect(await screen.findByText(/完成/)).toBeTruthy();
+    expect(api.on.mock.calls.every((call: unknown[]) => call[0] !== 'approval')).toBe(true);
   });
 
   it('changes the thinking level through the composer', async () => {

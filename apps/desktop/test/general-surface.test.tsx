@@ -178,4 +178,21 @@ describe('GeneralAgentSurface titles', () => {
     expect(api.setChatTitle).toHaveBeenCalledTimes(1);
     expect(api.setChatTitle).toHaveBeenCalledWith('g1', '你好', 'agent');
   });
+
+  it('projects approval_required onto the tool card', async () => {
+    const api = makeApi();
+    renderGeneral({
+      api,
+      entries: [
+        { kind: 'tool', id: 't1', toolName: 'write', input: { path: 'a.ts' }, toolCallId: 'c1' },
+        {
+          kind: 'custom',
+          id: 'e1',
+          customType: 'approval_required',
+          data: { requestId: 'r1', toolName: 'write', status: 'pending', toolCallId: 'c1' },
+        },
+      ],
+    });
+    expect(await screen.findByText(/等待审批/)).toBeTruthy();
+  });
 });
