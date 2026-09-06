@@ -140,6 +140,9 @@ describe('surface normalize', () => {
     expect(tools).toHaveLength(2);
     expect(tools[0]).toMatchObject({ toolCallId: 'c1', result: { content: [{ type: 'text', text: 'a' }] }, awaitingApproval: false });
     expect(tools[1]).toMatchObject({ toolCallId: 'c2', result: { content: [{ type: 'text', text: 'b' }] }, awaitingApproval: false });
+    const toolCardLabel = (e: (typeof tools)[number]) =>
+      e.kind === 'tool' && ('awaitingApproval' in e && e.awaitingApproval ? '等待审批' : e.result ? '完成' : '运行中');
+    expect(tools.map(toolCardLabel)).toEqual(['完成', '完成']);
   });
 
   it('derives done status when all steps completed', () => {
