@@ -1,7 +1,7 @@
-import { app, BrowserWindow, Menu, nativeImage } from 'electron';
+import { app, BrowserWindow, Menu, nativeImage, shell } from 'electron';
 import { mkdirSync, readdirSync, existsSync, readFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { assemble, type Runtime } from './runtime.js';
 import { registerIpc } from './ipc.js';
 import { Logger } from './logger.js';
@@ -71,6 +71,25 @@ app.whenReady().then(async () => {
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, preload: join(__dirname, '../preload/index.cjs') },
   });
   registerIpc(rt, () => win, logger);
-  if (process.env.VITE_DEV_SERVER_URL) await win.loadURL(process.env.VITE_DEV_SERVER_URL);
+
+  // 导航守卫：Sparkii 是本地页面应用，任何外链（聊天里点链接等）都必须交给系统浏览器打开，
+  // 绝不允许主窗口离开应用页面——否则窗口会去加载外网并可能白屏/丢失整个 UI。
+  const devServerUrl = process.env.VITE_DEV_SERVER_URL;
+  const appIndexUrl = devServerUrl ?? pathToFileURL(join(__dirname, '../../dist/index.html')).toString();
+  const isAppUrl = (url: string) => url === appIndexUrl || url.startsWith(appIndexUrl);
+  const openExternalIfWeb = (url: string) => {
+    if (/^https?:\/\//i.test(url)) void shell.openExternal(url);
+  };
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    openExternalIfWeb(url);
+    return { action: 'deny' };
+  });
+  win.webContents.on('will-navigate', (event, url) => {
+    if (isAppUrl(url)) return;
+    event.preventDefault();
+    openExternalIfWeb(url);
+  });
+
+  if (devServerUrl) await win.loadURL(devServerUrl);
   else await win.loadFile(join(__dirname, '../../dist/index.html'));
 });

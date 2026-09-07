@@ -40,6 +40,10 @@ export function Markdown({ text }: { text: string }) {
         remarkPlugins={[remarkGfm]}
         components={{
           pre: (p) => <>{p.children}</>,
+          a: ({ href, children }) => (
+            // 外链一律新窗口打开：由主进程 setWindowOpenHandler 拦截后交给系统浏览器，避免主窗口被导航走
+            <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>
+          ),
           code: (p) => {
             const { className = '', children } = p as unknown as { className?: string; children?: ReactNode };
             const raw = String(children ?? '');
