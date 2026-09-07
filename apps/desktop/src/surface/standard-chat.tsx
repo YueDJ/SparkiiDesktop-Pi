@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { AgentSurfaceProps, SessionEntry } from './contract.js';
 import type { ChatAttachment, SparkiiApi } from '../types/sparkii-api.js';
 import {
@@ -216,6 +216,69 @@ export function StandardChatSurface(props: StandardChatProps) {
 
   useEffect(() => { modelRef.current = model; }, [model]);
 
+  // ---- 消息列表自动跟随最新内容 ----
+  // 跟随态：新内容到达自动贴底；用户上翻离开底部超过阈值后进入脱离态：绝不抢用户的滚动，
+  // 只在右下角浮现「回到最新」按钮，脱离期间有新内容到达时按钮亮红点。
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const stickRef = useRef(true); // true = 跟随底部
+  const lastCountRef = useRef(0);
+  const [detached, setDetached] = useState(false); // 用户已上翻离开底部
+  const [hasNew, setHasNew] = useState(false); // 脱离期间有新内容到达
+
+  const snapToBottom = () => {
+    const el = listRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  };
+
+  const jumpToLatest = () => {
+    stickRef.current = true;
+    setDetached(false);
+    setHasNew(false);
+    snapToBottom();
+  };
+
+  const onListScroll = () => {
+    const el = listRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    if (nearBottom !== stickRef.current) {
+      stickRef.current = nearBottom;
+      setDetached(!nearBottom);
+    }
+  };
+
+  // 每次渲染评估跟随状态：跟随中 → 贴底并清红点；脱离中 → 有新条目只亮红点，不滚动。
+  useLayoutEffect(() => {
+    const count = (session.entries ?? []).length;
+    if (stickRef.current) {
+      if (hasNew) setHasNew(false);
+      snapToBottom();
+    } else if (count > lastCountRef.current) {
+      setHasNew(true);
+    }
+    lastCountRef.current = count;
+  });
+
+  // 切换会话：重置为跟随态（首个布局周期即贴底）。
+  useEffect(() => {
+    stickRef.current = true;
+    setDetached(false);
+    setHasNew(false);
+  }, [sessionId]);
+
+  // 忙碌（流式/工具执行）期间逐帧贴底，覆盖 React 感知不到的布局增长（图片、代码块、复制按钮等）。
+  useEffect(() => {
+    if (!isBusy) return undefined;
+    let raf = 0;
+    const tick = () => {
+      const el = listRef.current;
+      if (el && stickRef.current) el.scrollTop = el.scrollHeight;
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [isBusy]);
+
   const refreshContext = () => {
     if (!sessionId) return;
     api.getChatState(sessionId).then((state: any) => {
@@ -337,6 +400,7 @@ export function StandardChatSurface(props: StandardChatProps) {
   const getLocalPath = (file: File): string => api.getPathForFile(file);
 
   const send = (text: string, attachments: ComposerAttachment[] = []) => {
+    jumpToLatest();
     const display = attachments.length ? `${attachments.map((a) => `📎 ${a.name}`).join(' ')}\n${text}` : text;
     const chatAttachments: ChatAttachment[] = attachments.map(({ path, name, size, type }) => ({ path, name, size, type }));
     const hasImage = attachments.some((a) => a.type?.startsWith('image/'));
@@ -396,6 +460,7 @@ export function StandardChatSurface(props: StandardChatProps) {
     if (!sessionId) return;
     const text = drafts[queue][index];
     if (!text) return;
+    jumpToLatest();
     api.promptSession(sessionId, text, { behavior })
       .then(() => setDrafts((current) => {
         const next = { steering: [...current.steering], followUp: [...current.followUp] };
@@ -451,7 +516,7 @@ export function StandardChatSurface(props: StandardChatProps) {
       <header className="chat-surface-head">
         <b data-testid="chat-title">{title || '新对话'}</b>
       </header>
-      <div className="chat-list">
+      <div className="chat-list" ref={listRef} onScroll={onListScroll}>
         {visibleEntries.map((e) => (
           e.kind === 'message' ? (
             e.role === 'assistant'
@@ -464,6 +529,12 @@ export function StandardChatSurface(props: StandardChatProps) {
           )
         ))}
         {visibleEntries.length === 0 && !isBusy && <div className="muted chat-hint">开始对话，或让智能体在工作区里做点什么。</div>}
+        {detached && (
+          <button type="button" className="chat-scroll-latest" data-testid="scroll-latest" onClick={jumpToLatest} title="回到最新">
+            <span aria-hidden="true">↓</span> 回到最新
+            {hasNew && <span className="chat-scroll-latest-dot" aria-label="有新内容" />}
+          </button>
+        )}
       </div>
       <div className="chat-queue-area">
         <QueueGroup title="引导队列" queue="steering" items={queues.steering} showReturn

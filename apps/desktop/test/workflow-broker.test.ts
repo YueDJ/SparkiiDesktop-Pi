@@ -666,3 +666,74 @@ describe('broker presentation contract', () => {
     await pending;
   });
 });
+
+describe('broker approval timeout vs long-running execution', () => {
+  function gateHarness(timeoutMs: number) {
+    const proposals = new Map<string, any>();
+    const gate = {
+      submit: async (req: any) => {
+        const p = { id: 'p1', ...req, status: 'pending', payloadHash: 'h', createdAt: Date.now() };
+        proposals.set(p.id, p);
+        return p;
+      },
+      decide: async (id: string, _by: unknown, approved: boolean) => {
+        const p = proposals.get(id);
+        if (p) p.status = approved ? 'approved' : 'denied';
+        return p;
+      },
+      // 与真实 gate.expire 语义一致：仅 pending 且到期才转 expired，否则原样返回当前提案
+      expire: async (id: string) => {
+        const p = proposals.get(id);
+        if (!p || p.status !== 'pending') return p;
+        p.status = 'expired';
+        return p;
+      },
+      proposals,
+    };
+    const rt = {
+      subject: { userId: 'admin' },
+      profileOf: () => ({ profile: { security: { approval: { timeoutMs } } } }),
+      gate,
+    } as any;
+    return { rt, gate, broker: createBroker(rt, () => null) };
+  }
+
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  it('does not resolve an approved write as 操作未执行:approved when the timeout elapses mid-execution', async () => {
+    const timeoutMs = 30;
+    const { rt, gate, broker } = gateHarness(timeoutMs);
+
+    const decision = broker.request({
+      requestId: 'r1', toolName: 'bash', targetSystem: 'general', summary: 'docker compose pull',
+      payload: { command: 'wsl.exe -d Ubuntu-26.04 -- bash -c "docker compose pull"' }, risk: 'write',
+    }, { sessionId: 's1', profileId: 'general' });
+
+    // 用户立刻点了「批准」，Main 开始执行；但命令耗时长于审批超时，期间提案保持 approved
+    await gate.decide('p1', rt.subject, true);
+
+    const before = await Promise.race([
+      decision.then((d) => ({ tag: 'resolved' as const, d })),
+      sleep(timeoutMs + 40).then(() => ({ tag: 'pending' as const })),
+    ]);
+    // 修复前：超时回调会抢先 resolve 成 {approved:false, status:'approved'}（对应「操作未执行:approved」）
+    expect(before.tag).toBe('pending');
+
+    // 执行完成后 decideApproval 才调 broker.decide 回真实结果
+    broker.decide('p1', { approved: true, status: 'executed', result: { exitCode: 0, output: 'ok' } });
+    await expect(decision).resolves.toEqual({
+      approved: true, proposalId: 'p1', status: 'executed', result: { exitCode: 0, output: 'ok' },
+    });
+  });
+
+  it('still resolves an untouched pending proposal as expired after the timeout', async () => {
+    const { broker } = gateHarness(30);
+
+    const decision = broker.request({
+      requestId: 'r2', toolName: 'bash', targetSystem: 'general', summary: 'long sleep',
+      payload: { command: 'sleep 1' }, risk: 'write',
+    }, { sessionId: 's1', profileId: 'general' });
+
+    await expect(decision).resolves.toEqual({ approved: false, proposalId: 'p1', status: 'expired' });
+  });
+});

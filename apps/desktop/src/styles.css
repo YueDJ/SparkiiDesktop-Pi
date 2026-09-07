@@ -136,7 +136,19 @@ table.tbl th { background: var(--color-controlBg); color: var(--color-textSecond
 .chat-surface { display: flex; flex-direction: column; height: 100%; min-height: 0; }
 .chat-surface-head { display: flex; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--color-border); flex: none; }
 .chat-surface-head b { font-size: var(--font-size-md); font-weight: var(--font-weight-semibold); }
-.chat-list { flex: 1; overflow-y: auto; padding: var(--spacing-md); display: flex; flex-direction: column; gap: var(--spacing-sm); }
+.chat-list { flex: 1; overflow-y: auto; position: relative; padding: var(--spacing-md); display: flex; flex-direction: column; gap: var(--spacing-sm); }
+/* 回到最新：用户上翻阅读历史时出现在消息列表右下角，悬浮于可视区，不随内容滚动 */
+.chat-scroll-latest {
+  position: absolute; right: var(--spacing-md); bottom: var(--spacing-md);
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border: 1px solid var(--color-borderStrong);
+  border-radius: var(--radius-pill); background: var(--color-surface);
+  color: var(--color-textSecondary); font-size: var(--font-size-xs);
+  cursor: pointer; box-shadow: var(--shadow-card);
+  transition: background var(--motion-fast) var(--motion-ease), color var(--motion-fast) var(--motion-ease);
+}
+.chat-scroll-latest:hover { background: var(--color-controlBg); color: var(--color-text); }
+.chat-scroll-latest-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-primary); box-shadow: 0 0 0 2px var(--color-surface); }
 .chat-hint { text-align: center; margin-top: var(--spacing-lg); }
 .chat-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: var(--spacing-sm); text-align: center; }
 .pi-lifecycle-card { align-self: flex-start; max-width: min(680px, 92%); width: fit-content; min-width: 0; border: none; border-left: 2px solid var(--color-borderStrong); background: transparent; padding: 1px var(--spacing-xs); display: flex; flex-direction: column; gap: 2px; box-shadow: none; font-size: var(--font-size-xs); color: var(--color-textSecondary); }
