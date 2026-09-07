@@ -26,9 +26,17 @@ export function createBroker(rt: Runtime, getWindow: () => BrowserWindow | null)
       getWindow()?.webContents.send('sparkii:event:approval', p);
       return new Promise<ProposalDecision>((resolve) => {
         const timer = setTimeout(() => {
-          rt.gate.expire(p.id).then((expired) => {
-            resolve({ approved: false, proposalId: p.id, status: expired?.status ?? 'expired' });
-            resolvers.delete(p.id);
+          // 只把「仍处于 pending、用户一直没处理」的提案判为超时拒绝。
+          // 提案一旦已被批准并进入执行（status 已离开 pending），超时回调绝不能
+          // 抢先回「未执行」——否则长命令（docker compose pull / git clone 等）
+          // 会在真实下载进行中收到 {approved:false, status:'approved'}，
+          // 子进程据此打印「操作未执行:approved」。此时应继续等 decideApproval
+          // 执行完毕由 broker.decide 回真实结果。
+          void rt.gate.expire(p.id).then((expired) => {
+            if (!expired || expired.status === 'expired') {
+              resolvers.delete(p.id);
+              resolve({ approved: false, proposalId: p.id, status: expired?.status ?? 'expired' });
+            }
           });
         }, rt.profileOf(meta.profileId).profile.security.approval.timeoutMs);
         resolvers.set(p.id, { resolve, timer });
