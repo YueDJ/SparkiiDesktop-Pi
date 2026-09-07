@@ -136,10 +136,11 @@ table.tbl th { background: var(--color-controlBg); color: var(--color-textSecond
 .chat-surface { display: flex; flex-direction: column; height: 100%; min-height: 0; }
 .chat-surface-head { display: flex; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--color-border); flex: none; }
 .chat-surface-head b { font-size: var(--font-size-md); font-weight: var(--font-weight-semibold); }
-.chat-list { flex: 1; overflow-y: auto; position: relative; padding: var(--spacing-md); display: flex; flex-direction: column; gap: var(--spacing-sm); }
-/* 回到最新：用户上翻阅读历史时出现在消息列表右下角，悬浮于可视区，不随内容滚动 */
+.chat-list { flex: 1; overflow-y: auto; padding: var(--spacing-md); display: flex; flex-direction: column; gap: var(--spacing-sm); }
+/* 回到最新：用户上翻阅读历史时钉在消息列表可视区右下角（sticky 相对滚动容器可视区，不会随内容滚走） */
 .chat-scroll-latest {
-  position: absolute; right: var(--spacing-md); bottom: var(--spacing-md);
+  position: sticky; bottom: 10px;
+  align-self: flex-end;
   display: inline-flex; align-items: center; gap: 6px;
   padding: 5px 12px; border: 1px solid var(--color-borderStrong);
   border-radius: var(--radius-pill); background: var(--color-surface);

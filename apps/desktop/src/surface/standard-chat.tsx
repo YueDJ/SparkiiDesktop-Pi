@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { WheelEvent as ReactWheelEvent } from 'react';
 import type { AgentSurfaceProps, SessionEntry } from './contract.js';
 import type { ChatAttachment, SparkiiApi } from '../types/sparkii-api.js';
 import {
@@ -240,10 +241,21 @@ export function StandardChatSurface(props: StandardChatProps) {
   const onListScroll = () => {
     const el = listRef.current;
     if (!el) return;
-    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    // 距底 24px 内视为「在底部」。阈值很小是安全的：内容增长只会改变 scrollHeight，
+    // 不会移动 scrollTop，所以只有用户主动滚动才会离开底部。
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
     if (nearBottom !== stickRef.current) {
       stickRef.current = nearBottom;
       setDetached(!nearBottom);
+    }
+  };
+
+  const onListWheel = (e: ReactWheelEvent<HTMLDivElement>) => {
+    // 向上滚动（含触控板）说明用户要回看历史：立刻脱离跟随，不等滚动距离累积——
+    // 否则流式期间的逐帧贴底会和用户抢滚动，造成很难往上翻。
+    if (stickRef.current && e.deltaY < 0) {
+      stickRef.current = false;
+      setDetached(true);
     }
   };
 
@@ -266,13 +278,18 @@ export function StandardChatSurface(props: StandardChatProps) {
     setHasNew(false);
   }, [sessionId]);
 
-  // 忙碌（流式/工具执行）期间逐帧贴底，覆盖 React 感知不到的布局增长（图片、代码块、复制按钮等）。
+  // 忙碌（流式/工具执行）期间逐帧检查：仅当内容实际增长（scrollHeight 变化）才贴底，
+  // 覆盖 React 感知不到的布局增长（图片、代码块等），同时避免与用户滚动抢位置。
   useEffect(() => {
     if (!isBusy) return undefined;
     let raf = 0;
+    let lastHeight = listRef.current?.scrollHeight ?? 0;
     const tick = () => {
       const el = listRef.current;
-      if (el && stickRef.current) el.scrollTop = el.scrollHeight;
+      if (el && stickRef.current && el.scrollHeight !== lastHeight) {
+        lastHeight = el.scrollHeight;
+        el.scrollTop = el.scrollHeight;
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -516,7 +533,7 @@ export function StandardChatSurface(props: StandardChatProps) {
       <header className="chat-surface-head">
         <b data-testid="chat-title">{title || '新对话'}</b>
       </header>
-      <div className="chat-list" ref={listRef} onScroll={onListScroll}>
+      <div className="chat-list" ref={listRef} onScroll={onListScroll} onWheel={onListWheel}>
         {visibleEntries.map((e) => (
           e.kind === 'message' ? (
             e.role === 'assistant'
