@@ -6,24 +6,26 @@ export type UserSkillRow = {
   description: string;
   hasScripts: boolean;
   warnings: string[];
+  kind?: 'skill' | 'pack';
+  skillCount?: number;
 };
 
 export type SkillsPaneApi = {
   listUserSkills?(): Promise<{ agent: { id: string; name: string } | null; skills: UserSkillRow[] }>;
   previewUserSkill?(sourceDir: string): Promise<
-    | { ok: true; skill: UserSkillRow; destName?: string }
+    | { ok: true; skill: UserSkillRow; destName: string }
     | { ok: false; reason: string; diagnostics?: string[] }
   >;
   chooseSkillFolder?(): Promise<{ path?: string }>;
   importUserSkill?(opts: { sourceDir: string; overwrite?: boolean }): Promise<
-    { ok: true; name: string } | { ok: false; reason: string; name?: string }
+    { ok: true; name: string } | { ok: false; reason: string; name?: string; diagnostics?: string[] }
   >;
   uninstallUserSkill?(opts: { name: string }): Promise<{ ok: true } | { ok: false; reason: string }>;
   openUserSkillsDir?(): Promise<{ ok: true; path: string } | { ok: false; reason: string }>;
 };
 
 const REASON_TEXT: Record<string, string> = {
-  'not-skill-root': '所选文件夹不是技能根目录（需要直接包含 SKILL.md）',
+  'not-skill-root': '所选文件夹不是技能或技能包（需要 SKILL.md，或含 skills/ / Pi 技能包）',
   'invalid-skill': '无法加载该技能（缺少可用的 description）',
   exists: '已存在同名技能',
   overlap: '源路径与技能库重叠，无法导入',
@@ -78,14 +80,18 @@ export function SettingsSkillsPane({ api }: { api?: SkillsPaneApi }) {
         return;
       }
       const scriptsHint = preview.skill.hasScripts ? '\n其中的命令仍要审批。' : '';
-      if (!window.confirm(`导入技能「${preview.skill.name}」？\n${preview.skill.description}${scriptsHint}`)) return;
+      const packHint = preview.skill.kind === 'pack' && preview.skill.skillCount
+        ? `（${preview.skill.skillCount} 个技能）`
+        : '';
+      const label = preview.skill.kind === 'pack' ? '技能包' : '技能';
+      if (!window.confirm(`导入${label}「${preview.skill.name}」${packHint}？\n${preview.skill.description}${scriptsHint}`)) return;
       let result = await api.importUserSkill({ sourceDir: chosen.path });
       if (!result.ok && result.reason === 'exists') {
         if (!window.confirm(`技能「${result.name ?? preview.skill.name}」已存在，要覆盖吗？`)) return;
         result = await api.importUserSkill({ sourceDir: chosen.path, overwrite: true });
       }
       if (!result.ok) {
-        reportError(reasonMessage(result.reason), { source: '系统设置' });
+        reportError(reasonMessage(result.reason, result.diagnostics), { source: '系统设置' });
         return;
       }
       await refresh();

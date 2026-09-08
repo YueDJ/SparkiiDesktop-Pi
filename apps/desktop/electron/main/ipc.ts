@@ -743,9 +743,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   });
 
   ipcMain.handle('sparkii:previewUserSkill', async (_e, sourceDir: string) => {
-    const preview = await previewUserSkill(String(sourceDir ?? ''));
-    if (!preview.ok) return preview;
-    return { ...preview, destName: preview.skill.name };
+    return previewUserSkill(String(sourceDir ?? ''));
   });
 
   ipcMain.handle('sparkii:chooseSkillFolder', async () => {

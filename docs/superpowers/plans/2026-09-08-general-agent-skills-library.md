@@ -20,6 +20,7 @@
 4. **system.md 改工作区句：** 允许读已安装 skill 目录，即使工作区未创建。
 5. IPC 表含 `previewUserSkill`；覆盖只走 import 的 `exists`；文案用 `displayName`；隔离锁走 `buildAgentSaddle` / `agent.skillsDir`，不新增 `buildProfileSaddle` 生产调用。
 6. import **先校验再改盘**（含 source===dest 的 overlap，避免打开库后再导入把自己删掉）。preview 行的 `name === destName`。设置页补「无 user library」空态。
+7. **包内子 destName 闭包失败：** 每个将安装的 skill 根在改盘前必须有唯一合法子 destName（frontmatter name，否则文件夹名）。冲突或无法生成 → preview/import 都 `bad-name`，不得 `ok: true` 后静默跳过。空的 `skills/` 且不是 Pi 包 → `not-skill-root`。
 
 ## Product forks
 
@@ -190,7 +191,8 @@ uninstallUserSkill(skillsDir: string, name: string): Promise<
 
 - 合法 `SKILL.md` 预览成功；导入后 `list` 的 `name` 等于 destName；目的地有 `references/` 若源有。
 - frontmatter `name: My Skill`（非法）但有 description：仍安装；`list`/`uninstall` 用净化后的 destName，不是 `My Skill`。
-- 根上无 `SKILL.md`、子目录才有 → `not-skill-root`，不写盘。
+- 根上无 `SKILL.md`、子目录才有（且不是 `skills/` / Pi 包）→ `not-skill-root`，不写盘。
+- Pi 包 / 约定 `skills/`：一个 destName；只拷 `package.json` + 各 skill 根；不拷 `.cloud` / `.git` / `.pi` / README。
 - 无 description → `invalid-skill`。
 - 再导同名无 overwrite → `exists`，原文件不变；`overwrite: true` 替换。
 - `uninstall` 只删 `skillsDir/destName`；`../x`、`a/b`、`.`、`''` → `bad-name`，库根仍在。

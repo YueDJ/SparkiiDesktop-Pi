@@ -58,9 +58,10 @@ describe('preview / import / list / uninstall', () => {
     const preview = await previewUserSkill(source);
     expect(preview).toMatchObject({
       ok: true,
+      destName: 'summarize',
       skill: { name: 'summarize', description: 'Summarize a document.', hasScripts: false },
     });
-    if (preview.ok) expect(preview.skill.name).toBe('summarize');
+    if (preview.ok) expect(preview.skill.name).toBe(preview.destName);
 
     const skillsDir = join(tmp('skill-lib-'), 'skills');
     const imported = await importUserSkill(skillsDir, source);
@@ -78,7 +79,8 @@ describe('preview / import / list / uninstall', () => {
     const preview = await previewUserSkill(source);
     expect(preview.ok).toBe(true);
     if (preview.ok) {
-      expect(preview.skill.name).toBe('my-skill');
+      expect(preview.destName).toBe('my-skill');
+      expect(preview.skill.name).toBe(preview.destName);
       expect(preview.skill.warnings.length).toBeGreaterThan(0);
     }
     const skillsDir = join(tmp('skill-lib-'), 'skills');
@@ -178,5 +180,198 @@ describe('preview / import / list / uninstall', () => {
     const preview = await previewUserSkill(source);
     expect(preview.ok).toBe(true);
     if (preview.ok) expect(preview.skill.hasScripts).toBe(true);
+  });
+
+  it('skips dotfiles when importing a single skill root', async () => {
+    const source = join(tmp('skill-src-'), 'summarize');
+    writeSkill(source, '---\nname: summarize\ndescription: Clean copy.\n---\n# body\n');
+    mkdirSync(join(source, '.git'), { recursive: true });
+    writeFileSync(join(source, '.git', 'HEAD'), 'ref', 'utf8');
+    mkdirSync(join(source, '.cloud'), { recursive: true });
+    writeFileSync(join(source, '.cloud', 'meta.json'), '{}', 'utf8');
+    const skillsDir = join(tmp('skill-lib-'), 'skills');
+    expect(await importUserSkill(skillsDir, source)).toEqual({ ok: true, name: 'summarize' });
+    expect(existsSync(join(skillsDir, 'summarize', 'SKILL.md'))).toBe(true);
+    expect(existsSync(join(skillsDir, 'summarize', '.git'))).toBe(false);
+    expect(existsSync(join(skillsDir, 'summarize', '.cloud'))).toBe(false);
+  });
+
+  it('imports a Pi skill pack as one destName and copies only useful files', async () => {
+    const source = join(tmp('skill-pack-'), 'superpowers');
+    mkdirSync(source, { recursive: true });
+    writeFileSync(
+      join(source, 'package.json'),
+      JSON.stringify({
+        name: 'superpowers',
+        description: 'Superpowers skills and runtime bootstrap for coding agents',
+        keywords: ['pi-package'],
+        pi: { skills: ['./skills'], extensions: ['./.pi/extensions/superpowers.ts'] },
+      }),
+      'utf8',
+    );
+    writeFileSync(join(source, 'README.md'), 'not a skill', 'utf8');
+    mkdirSync(join(source, '.cloud'), { recursive: true });
+    writeFileSync(join(source, '.cloud', 'config.json'), '{}', 'utf8');
+    mkdirSync(join(source, '.git'), { recursive: true });
+    writeFileSync(join(source, '.git', 'HEAD'), 'ref', 'utf8');
+    mkdirSync(join(source, '.pi', 'extensions'), { recursive: true });
+    writeFileSync(join(source, '.pi', 'extensions', 'superpowers.ts'), 'export {}', 'utf8');
+    writeSkill(
+      join(source, 'skills', 'brainstorming'),
+      '---\nname: brainstorming\ndescription: Brainstorm before coding.\n---\n# brainstorm\n',
+      { 'references/notes.md': 'notes' },
+    );
+    writeSkill(
+      join(source, 'skills', 'writing-plans'),
+      '---\nname: writing-plans\ndescription: Write an implementation plan.\n---\n# plan\n',
+      { 'scripts/run.sh': 'echo hi' },
+    );
+
+    const preview = await previewUserSkill(source);
+    expect(preview).toMatchObject({
+      ok: true,
+      destName: 'superpowers',
+      skill: {
+        name: 'superpowers',
+        description: 'Superpowers skills and runtime bootstrap for coding agents',
+        kind: 'pack',
+        skillCount: 2,
+        hasScripts: true,
+      },
+    });
+    if (preview.ok) expect(preview.skill.name).toBe(preview.destName);
+
+    const skillsDir = join(tmp('skill-lib-'), 'skills');
+    expect(await importUserSkill(skillsDir, source)).toEqual({ ok: true, name: 'superpowers' });
+    expect(await listUserSkills(skillsDir)).toMatchObject([
+      {
+        name: 'superpowers',
+        description: 'Superpowers skills and runtime bootstrap for coding agents',
+        kind: 'pack',
+        skillCount: 2,
+        hasScripts: true,
+      },
+    ]);
+    expect(existsSync(join(skillsDir, 'superpowers', 'package.json'))).toBe(true);
+    expect(existsSync(join(skillsDir, 'brainstorming'))).toBe(false);
+    expect(existsSync(join(skillsDir, 'writing-plans'))).toBe(false);
+    expect(readFileSync(join(skillsDir, 'superpowers', 'brainstorming', 'references', 'notes.md'), 'utf8')).toBe('notes');
+    expect(existsSync(join(skillsDir, 'superpowers', 'writing-plans', 'scripts', 'run.sh'))).toBe(true);
+    expect(existsSync(join(skillsDir, 'superpowers', 'skills'))).toBe(false);
+    expect(existsSync(join(skillsDir, 'superpowers', 'README.md'))).toBe(false);
+    expect(existsSync(join(skillsDir, 'superpowers', '.cloud'))).toBe(false);
+    expect(existsSync(join(skillsDir, 'superpowers', '.git'))).toBe(false);
+    expect(existsSync(join(skillsDir, 'superpowers', '.pi'))).toBe(false);
+  });
+
+  it('imports a conventional skills/ folder using the parent destName', async () => {
+    const pack = join(tmp('skill-pack-'), 'My Pack');
+    writeSkill(
+      join(pack, 'skills', 'outline'),
+      '---\nname: outline\ndescription: Make an outline.\n---\n# outline\n',
+    );
+    const skillsDir = join(tmp('skill-lib-'), 'skills');
+    expect(await importUserSkill(skillsDir, join(pack, 'skills'))).toEqual({ ok: true, name: 'my-pack' });
+    expect(existsSync(join(skillsDir, 'my-pack', 'outline', 'SKILL.md'))).toBe(true);
+  });
+
+  it('fails closed when pack child destNames collide', async () => {
+    const source = join(tmp('skill-pack-'), 'collide-pack');
+    mkdirSync(source, { recursive: true });
+    writeFileSync(
+      join(source, 'package.json'),
+      JSON.stringify({ name: 'collide-pack', keywords: ['pi-package'], pi: { skills: ['./skills'] } }),
+      'utf8',
+    );
+    writeSkill(
+      join(source, 'skills', 'My Skill'),
+      '---\nname: My Skill\ndescription: First.\n---\n# a\n',
+    );
+    writeSkill(
+      join(source, 'skills', 'my-skill'),
+      '---\nname: my-skill\ndescription: Second.\n---\n# b\n',
+    );
+    const skillsDir = join(tmp('skill-lib-'), 'skills');
+    const preview = await previewUserSkill(source);
+    expect(preview.ok).toBe(false);
+    if (!preview.ok) {
+      expect(preview.reason).toBe('bad-name');
+      expect(preview.diagnostics?.some((d) => d.includes('冲突'))).toBe(true);
+    }
+    expect(await importUserSkill(skillsDir, source)).toMatchObject({ ok: false, reason: 'bad-name' });
+    expect(existsSync(skillsDir)).toBe(false);
+  });
+
+  it('fails closed when a pack child cannot form a destName', async () => {
+    const source = join(tmp('skill-pack-'), 'illegal-child');
+    mkdirSync(source, { recursive: true });
+    writeFileSync(
+      join(source, 'package.json'),
+      JSON.stringify({ name: 'illegal-child', keywords: ['pi-package'], pi: { skills: ['./skills'] } }),
+      'utf8',
+    );
+    writeSkill(
+      join(source, 'skills', '你好'),
+      '---\nname: 你好\ndescription: Cannot sanitize.\n---\n# body\n',
+    );
+    const skillsDir = join(tmp('skill-lib-'), 'skills');
+    const preview = await previewUserSkill(source);
+    expect(preview.ok).toBe(false);
+    if (!preview.ok) {
+      expect(preview.reason).toBe('bad-name');
+      expect(preview.diagnostics?.some((d) => d.includes('合法安装名'))).toBe(true);
+    }
+    expect(await importUserSkill(skillsDir, source)).toMatchObject({ ok: false, reason: 'bad-name' });
+    expect(existsSync(skillsDir)).toBe(false);
+  });
+
+  it('uses a legal frontmatter name when the pack child folder is illegal', async () => {
+    const source = join(tmp('skill-pack-'), 'named-pack');
+    mkdirSync(source, { recursive: true });
+    writeFileSync(
+      join(source, 'package.json'),
+      JSON.stringify({ name: 'named-pack', keywords: ['pi-package'], pi: { skills: ['./skills'] } }),
+      'utf8',
+    );
+    writeSkill(
+      join(source, 'skills', '!!!'),
+      '---\nname: legal-name\ndescription: Saved by frontmatter.\n---\n# body\n',
+    );
+    const skillsDir = join(tmp('skill-lib-'), 'skills');
+    expect(await importUserSkill(skillsDir, source)).toEqual({ ok: true, name: 'named-pack' });
+    expect(existsSync(join(skillsDir, 'named-pack', 'legal-name', 'SKILL.md'))).toBe(true);
+  });
+
+  it('rejects an empty skills/ folder that is not a Pi package', async () => {
+    const source = tmp('skill-empty-skills-');
+    mkdirSync(join(source, 'skills'), { recursive: true });
+    const skillsDir = join(tmp('skill-lib-'), 'skills');
+    expect(await previewUserSkill(source)).toEqual({ ok: false, reason: 'not-skill-root' });
+    expect(await importUserSkill(skillsDir, source)).toEqual({ ok: false, reason: 'not-skill-root' });
+    expect(existsSync(skillsDir)).toBe(false);
+  });
+
+  it('rejects an empty Pi package as invalid-skill', async () => {
+    const source = tmp('skill-empty-pi-');
+    mkdirSync(join(source, 'skills'), { recursive: true });
+    writeFileSync(
+      join(source, 'package.json'),
+      JSON.stringify({ name: 'empty-pack', keywords: ['pi-package'], pi: { skills: ['./skills'] } }),
+      'utf8',
+    );
+    const skillsDir = join(tmp('skill-lib-'), 'skills');
+    expect(await previewUserSkill(source)).toMatchObject({ ok: false, reason: 'invalid-skill' });
+    expect(await importUserSkill(skillsDir, source)).toMatchObject({ ok: false, reason: 'invalid-skill' });
+    expect(existsSync(skillsDir)).toBe(false);
+  });
+
+  it('still rejects a repo that only hides SKILL.md outside skills/', async () => {
+    const source = tmp('skill-repo-junk-');
+    writeSkill(join(source, 'docs', 'hidden'), '---\nname: hidden\ndescription: Hidden.\n---\n# hidden\n');
+    mkdirSync(join(source, '.cloud'), { recursive: true });
+    const skillsDir = join(tmp('skill-lib-'), 'skills');
+    expect(await previewUserSkill(source)).toEqual({ ok: false, reason: 'not-skill-root' });
+    expect(await importUserSkill(skillsDir, source)).toEqual({ ok: false, reason: 'not-skill-root' });
+    expect(existsSync(skillsDir)).toBe(false);
   });
 });

@@ -195,6 +195,28 @@ describe("PiRuntimePool", () => {
     });
   });
 
+  it("reuses one process and sends the next session's skillsDir on configure_session", async () => {
+    const handle = new FakeHandle();
+    const pool = new PiRuntimePool({ maxAgents: 1, makeSupervisor: () => handle });
+    await pool.acquire("a");
+    handle.ready();
+
+    await pool.release("a");
+    const first = await pool.acquire("general-session", {
+      saddle: { tools: ["read"], skillsDir: "/skills-a" },
+    });
+    await pool.release("general-session");
+    const second = await pool.acquire("contract-session", {
+      saddle: { tools: ["read"], skillsDir: "/skills-b" },
+    });
+
+    expect(second.client).toBe(first.client);
+    const skillsDirs = handle.sent
+      .filter((e) => "command" in e && (e as { command: { type: string } }).command.type === "configure_session")
+      .map((e) => (e as { command: { saddle: { skillsDir?: string } } }).command.saddle.skillsDir);
+    expect(skillsDirs).toEqual(["/skills-a", "/skills-b"]);
+  });
+
   it("hides internal probe slots and queue items from the snapshot", async () => {
     const handle = new FakeHandle();
     const pool = new PiRuntimePool({ maxAgents: 1, makeSupervisor: () => handle });
