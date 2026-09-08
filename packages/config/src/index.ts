@@ -4,6 +4,7 @@ export * from './integrity.js';
 export * from './loader.js';
 export * from './compose.js';
 export * from './agent.js';
+export * from './skills.js';
 
 export function ping(): string {
   return 'pong';

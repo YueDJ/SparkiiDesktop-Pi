@@ -181,7 +181,6 @@ export async function uninstallUserSkill(
   if (!isDestName(name)) return { ok: false, reason: 'bad-name' };
   const dest = resolve(skillsDir, name);
   if (!destInsideLibrary(skillsDir, dest)) return { ok: false, reason: 'bad-name' };
-  if (!(await isDir(dest)) && !existsSync(dest)) return { ok: false, reason: 'not-found' };
   if (!existsSync(dest)) return { ok: false, reason: 'not-found' };
   await rm(dest, { recursive: true, force: true });
   return { ok: true };
