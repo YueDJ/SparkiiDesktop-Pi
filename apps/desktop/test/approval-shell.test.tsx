@@ -42,11 +42,13 @@ function makeApi() {
 function writeProposal(over: Record<string, unknown> = {}) {
   return {
     id: 'w1',
+    requestId: 'wr1',
     summary: '写入 hello.txt',
     toolName: 'write',
     risk: 'write',
     createdAt: Date.now(),
     sessionId: 's1',
+    status: 'pending',
     payload: { path: 'hello.txt' },
     ...over,
   };
@@ -55,11 +57,13 @@ function writeProposal(over: Record<string, unknown> = {}) {
 function highProposal(over: Record<string, unknown> = {}) {
   return {
     id: 'h1',
+    requestId: 'hr1',
     summary: '永久删除 reports/',
     toolName: 'bash',
     risk: 'high-risk',
     createdAt: Date.now(),
     sessionId: 's1',
+    status: 'pending',
     payload: { command: 'rm -rf reports' },
     ...over,
   };

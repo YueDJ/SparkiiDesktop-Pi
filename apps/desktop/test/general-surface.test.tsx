@@ -3,6 +3,7 @@ import { render, waitFor, cleanup, act, screen, fireEvent } from '@testing-libra
 import GeneralAgentSurface from '../agents/general/surface/index.js';
 import { placeholderOf, shortTitlePrompt } from '../agents/general/surface/title.js';
 import type { AgentSession } from '../src/surface/contract.js';
+import { ApprovalInboxProvider } from '../src/trust/ApprovalInbox.js';
 
 afterEach(() => {
   cleanup();
@@ -12,6 +13,8 @@ afterEach(() => {
 function makeApi(over: Record<string, unknown> = {}) {
   return {
     on: vi.fn(() => () => {}),
+    listPendingApprovals: vi.fn().mockResolvedValue([]),
+    decideApproval: vi.fn().mockResolvedValue({}),
     openChatSession: vi.fn().mockResolvedValue({ entries: [], streamingMessage: null, streaming: false }),
     getChatSession: vi.fn().mockResolvedValue({}),
     getChatState: vi.fn().mockResolvedValue({ streaming: false, steering: [], followUp: [] }),
@@ -52,15 +55,17 @@ function renderGeneral(opts: {
   entries?: AgentSession['entries'];
 }) {
   return render(
-    <GeneralAgentSurface
-      agent={{ id: 'general', name: '通用智能体', surfaceType: 'chat' }}
-      sessionId={opts.sessionId === undefined ? 'g1' : opts.sessionId}
-      mode="live"
-      session={session(opts.entries ?? [])}
-      actions={actions}
-      title={opts.title}
-      api={opts.api as any}
-    />,
+    <ApprovalInboxProvider api={opts.api as any}>
+      <GeneralAgentSurface
+        agent={{ id: 'general', name: '通用智能体', surfaceType: 'chat' }}
+        sessionId={opts.sessionId === undefined ? 'g1' : opts.sessionId}
+        mode="live"
+        session={session(opts.entries ?? [])}
+        actions={actions}
+        title={opts.title}
+        api={opts.api as any}
+      />
+    </ApprovalInboxProvider>,
   );
 }
 
@@ -70,15 +75,17 @@ describe('GeneralAgentSurface titles', () => {
       promptSession: vi.fn().mockResolvedValue({ ok: true, sessionId: 'g-left' }),
     });
     render(
-      <GeneralAgentSurface
-        agent={{ id: 'general', name: '通用智能体', surfaceType: 'chat' }}
-        sessionId={null}
-        mode="live"
-        draft
-        session={{ entries: [], streaming: false, meta: {} }}
-        actions={actions}
-        api={api as any}
-      />,
+      <ApprovalInboxProvider api={api as any}>
+        <GeneralAgentSurface
+          agent={{ id: 'general', name: '通用智能体', surfaceType: 'chat' }}
+          sessionId={null}
+          mode="live"
+          draft
+          session={{ entries: [], streaming: false, meta: {} }}
+          actions={actions}
+          api={api as any}
+        />
+      </ApprovalInboxProvider>,
     );
     const input = await screen.findByTestId('composer-input');
     fireEvent.change(input, { target: { value: '你好世界' } });
@@ -160,18 +167,20 @@ describe('GeneralAgentSurface titles', () => {
     await waitFor(() => expect(api.setChatTitle).toHaveBeenCalledWith('g1', '你好', 'agent'));
 
     rerender(
-      <GeneralAgentSurface
-        agent={{ id: 'general', name: '通用智能体', surfaceType: 'chat' }}
-        sessionId="g1"
-        mode="live"
-        session={session([
-          { kind: 'message', id: 'u1', role: 'user', text: '你好', streaming: false },
-          { kind: 'message', id: 'a1', role: 'assistant', text: '在的', streaming: false },
-        ])}
-        actions={actions}
-        title="你好"
-        api={api as any}
-      />,
+      <ApprovalInboxProvider api={api as any}>
+        <GeneralAgentSurface
+          agent={{ id: 'general', name: '通用智能体', surfaceType: 'chat' }}
+          sessionId="g1"
+          mode="live"
+          session={session([
+            { kind: 'message', id: 'u1', role: 'user', text: '你好', streaming: false },
+            { kind: 'message', id: 'a1', role: 'assistant', text: '在的', streaming: false },
+          ])}
+          actions={actions}
+          title="你好"
+          api={api as any}
+        />
+      </ApprovalInboxProvider>,
     );
     await waitFor(() => expect(api.completeText).toHaveBeenCalled());
     await act(async () => { await new Promise((r) => setTimeout(r, 40)); });
@@ -194,5 +203,32 @@ describe('GeneralAgentSurface titles', () => {
       ],
     });
     expect(await screen.findByText(/等待审批/)).toBeTruthy();
+  });
+
+  it('renders an inline approval card under the awaiting tool card', async () => {
+    const api = makeApi({
+      listPendingApprovals: vi.fn().mockResolvedValue([
+        {
+          id: 'p1', requestId: 'r1', sessionId: 'g1', risk: 'write', status: 'pending',
+          summary: '写入 a.ts', toolName: 'write', targetSystem: 'general', payload: {}, payloadHash: 'h',
+          profileId: 'general', createdAt: Date.now(),
+        },
+      ]),
+    });
+    renderGeneral({
+      api,
+      entries: [
+        { kind: 'tool', id: 't1', toolName: 'write', input: { path: 'a.ts' }, toolCallId: 'c1' },
+        {
+          kind: 'custom',
+          id: 'e1',
+          customType: 'approval_required',
+          data: { requestId: 'r1', toolName: 'write', status: 'pending', toolCallId: 'c1' },
+        },
+      ],
+    });
+    expect(await screen.findByTestId('approval-queue-item')).toBeTruthy();
+    expect(screen.getByText('等待审批')).toBeTruthy();
+    expect(screen.getByText('写入 a.ts')).toBeTruthy();
   });
 });

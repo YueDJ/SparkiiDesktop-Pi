@@ -1,37 +1,36 @@
 import { useState } from 'react';
 import { Button, Countdown, Modal, RiskBadge, TextArea } from '@sparkii/ui';
-import { payloadSummary, type ApprovalProposalLike } from './types.js';
+import { payloadSummary } from './types.js';
 import { present } from './present.js';
 import { ApprovalPreviewBlock } from './ApprovalPreviewBlock.js';
+import { useApprovalInbox } from './ApprovalInbox.js';
 
-export interface ApprovalModalProps {
-  proposal: ApprovalProposalLike;
+export interface HighRiskApprovalDialogProps {
   timeoutMs?: number;
-  onDecide(id: string, approved: boolean, note?: string): void;
-  onClose(): void;
 }
 
-export function ApprovalModal(props: ApprovalModalProps) {
-  const { proposal, timeoutMs = 120000, onDecide, onClose } = props;
-  const vm = present(proposal);
+export function HighRiskApprovalDialog({ timeoutMs = 120000 }: HighRiskApprovalDialogProps) {
+  const { proposals, decide } = useApprovalInbox();
+  const proposal = [...proposals.values()].find((p) => p.risk === 'high-risk');
   const [note, setNote] = useState('');
   const [showPayload, setShowPayload] = useState(false);
   const [armed, setArmed] = useState(false);
-  const until = proposal.createdAt + timeoutMs;
-  const needsConfirm = vm.chrome.mode === 'modal';
 
+  if (!proposal) return null;
+
+  const vm = present(proposal);
   const approve = () => {
-    if (needsConfirm && !armed) { setArmed(true); return; }
-    onDecide(proposal.id, true, note);
+    if (!armed) { setArmed(true); return; }
+    void decide(proposal.id, true, note);
   };
 
   return (
-    <Modal open title={vm.title} onClose={onClose}>
+    <Modal open title={vm.title} onClose={() => {}}>
       <div className="ui-kv">
         {vm.subtitle && <div>{vm.subtitle}</div>}
         {vm.chrome.showRisk && <RiskBadge risk={proposal.risk} />}
         {vm.chrome.showCountdown && (
-          <> · 剩余 <Countdown until={until} onExpire={() => onDecide(proposal.id, false, 'timeout')} className="ui-countdown" /></>
+          <> · 剩余 <Countdown until={proposal.createdAt + timeoutMs} className="ui-countdown" /></>
         )}
       </div>
       <ApprovalPreviewBlock preview={vm.preview} />
@@ -43,9 +42,9 @@ export function ApprovalModal(props: ApprovalModalProps) {
         <TextArea rows={2} placeholder="审批意见（可选）" value={note} onChange={(e) => setNote(e.target.value)} />
       )}
       <div className="ui-panel-actions">
-        <Button className="ui-panel-action" onClick={() => onDecide(proposal.id, false, note)}>{vm.actions.reject}</Button>
+        <Button className="ui-panel-action" onClick={() => void decide(proposal.id, false, note)}>{vm.actions.reject}</Button>
         <Button variant="primary" className="ui-panel-action" onClick={approve}>
-          {needsConfirm && armed ? vm.actions.confirmAllow : vm.actions.allow}
+          {armed ? vm.actions.confirmAllow : vm.actions.allow}
         </Button>
       </div>
       <div className="ui-muted ui-panel-hint">超时自动拒绝 · 拒绝即不写</div>

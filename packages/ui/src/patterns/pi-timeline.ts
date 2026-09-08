@@ -48,6 +48,7 @@ export type ChatEntry =
       isError?: boolean;
       awaitingApproval?: boolean;
       toolCallId?: string;
+      approvalRequestId?: string;
     }
   | {
       kind: 'event';

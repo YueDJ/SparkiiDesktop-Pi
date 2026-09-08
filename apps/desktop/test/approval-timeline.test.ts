@@ -41,6 +41,15 @@ describe('applyApprovalStatus', () => {
     expect(entries[0]).not.toHaveProperty('awaitingApproval', true);
   });
 
+  it('carries approvalRequestId onto the bound tool card', () => {
+    const entries: SessionEntry[] = [
+      tool({ id: 't1', toolName: 'write', toolCallId: 'c1' }),
+      required('r1', 'write', 'c1'),
+    ];
+    const out = applyApprovalStatus(entries);
+    expect(out[0]).toMatchObject({ kind: 'tool', approvalRequestId: 'r1' });
+  });
+
   it('pairs two write cards by FIFO when both are already in the list', () => {
     const entries: SessionEntry[] = [
       tool({ id: 't1', toolName: 'write', toolCallId: 'c1' }),

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import type { WheelEvent as ReactWheelEvent } from 'react';
 import type { AgentSurfaceProps, SessionEntry } from './contract.js';
 import type { ChatAttachment, SparkiiApi } from '../types/sparkii-api.js';
@@ -24,6 +24,7 @@ export type StandardChatProps = AgentSurfaceProps & {
   active?: boolean;
   draft?: boolean;
   onSessionCreated?(sessionId: string, userText: string): void;
+  renderApprovalCard?(entry: Extract<SessionEntry, { kind: 'tool' }>): ReactNode;
 };
 
 function isChatEntry(e: SessionEntry): e is ChatEntry {
@@ -191,7 +192,7 @@ function modelIdOf(value: string | null | undefined): string {
 }
 
 export function StandardChatSurface(props: StandardChatProps) {
-  const { agent, sessionId, session, actions, title, api: apiOverride, active = true, draft, onSessionCreated } = props;
+  const { agent, sessionId, session, actions, title, api: apiOverride, active = true, draft, onSessionCreated, renderApprovalCard } = props;
   const api = apiOverride ?? (window.sparkii as SparkiiApi);
   const { reportError } = useErrors();
   const [busy, setBusy] = useState(false);
@@ -542,7 +543,10 @@ export function StandardChatSurface(props: StandardChatProps) {
           ) : e.kind === 'event' ? (
             <LifecycleCard key={e.id} entry={e} />
           ) : (
-            <ToolCard key={e.id} toolName={e.toolName} input={e.input} result={e.result} awaitingApproval={e.awaitingApproval} defaultOpen={detailLevel === 'debug'} />
+            <Fragment key={e.id}>
+              <ToolCard toolName={e.toolName} input={e.input} result={e.result} awaitingApproval={e.awaitingApproval} defaultOpen={detailLevel === 'debug'} />
+              {e.awaitingApproval && renderApprovalCard ? renderApprovalCard(e) : null}
+            </Fragment>
           )
         ))}
         {visibleEntries.length === 0 && !isBusy && <div className="muted chat-hint">开始对话，或让智能体在工作区里做点什么。</div>}
