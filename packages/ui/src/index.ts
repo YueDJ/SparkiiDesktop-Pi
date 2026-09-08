@@ -24,6 +24,7 @@ export * from './patterns/Markdown.js';
 export * from './patterns/LifecycleCard.js';
 export * from './patterns/ModelEffortControl.js';
 export * from './patterns/ChatComposer.js';
+export * from './patterns/skill-slash.js';
 export * from './patterns/AgentNav.js';
 export * from './patterns/SessionList.js';
 export * from './patterns/StatusBar.js';
