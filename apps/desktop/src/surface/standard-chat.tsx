@@ -234,10 +234,16 @@ export function StandardChatSurface(props: StandardChatProps) {
   useEffect(() => { modelRef.current = model; }, [model]);
   useEffect(() => {
     if (!sessionId && !draft) return;
+    setSkills(null);
     let cancelled = false;
+    let reportedMissing = false;
     const load = () => {
       if (typeof api.listAgentSkills !== 'function') {
         setSkills(null);
+        if (!reportedMissing) {
+          reportedMissing = true;
+          reportError('无法加载技能列表', { source: agent.name });
+        }
         return;
       }
       void api.listAgentSkills(agent.id).then(

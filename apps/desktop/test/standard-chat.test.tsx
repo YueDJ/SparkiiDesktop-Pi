@@ -6,6 +6,12 @@ import type { ChatEntry } from '@sparkii/ui';
 
 afterEach(cleanup);
 
+function typeDraft(input: HTMLElement, value: string, cursor = value.length) {
+  fireEvent.change(input, { target: { value, selectionStart: cursor, selectionEnd: cursor } });
+  (input as HTMLTextAreaElement).setSelectionRange(cursor, cursor);
+  fireEvent.select(input);
+}
+
 function makeApi(over: Record<string, unknown> = {}) {
   const channels: Record<string, (p: any) => void> = {};
   const api = {
@@ -29,6 +35,7 @@ function makeApi(over: Record<string, unknown> = {}) {
     getModelOptions: vi.fn().mockResolvedValue({ defaultModel: 'deepseek-v4-flash', models: ['deepseek-v4-pro', 'deepseek-v4-flash'], provider: 'deepseek' }),
     getSettings: vi.fn().mockResolvedValue({ chatDetailLevel: 'standard' }),
     getPathForFile: vi.fn((file: File) => `C:/downloads/${file.name}`),
+    listAgentSkills: vi.fn().mockResolvedValue({ skills: [] }),
     ...over,
   };
   return { api: api as any, channels };
@@ -427,13 +434,14 @@ describe('StandardChatSurface skill menu and timeline chips', () => {
       }),
     }).api;
     render(<StandardChatSurface {...baseProps('s1', { api, session: { entries: [], streaming: false, meta: {} } })} />);
-    fireEvent.change(await screen.findByTestId('composer-input'), { target: { value: '/' } });
+    typeDraft(await screen.findByTestId('composer-input'), '/');
     await waitFor(() => expect(screen.getByText('brainstorming')).toBeTruthy());
     expect(api.listAgentSkills).toHaveBeenCalledWith('general');
   });
 
   it('omits the menu when listAgentSkills is missing and shows empty state only after []', async () => {
     const omitted = makeApi().api;
+    delete omitted.listAgentSkills;
     const view = render(<StandardChatSurface {...baseProps('s1', { api: omitted, session: { entries: [], streaming: false, meta: {} } })} />);
     fireEvent.change(await screen.findByTestId('composer-input'), { target: { value: '/' } });
     expect(screen.queryByTestId('composer-skill-menu')).toBeNull();
@@ -442,7 +450,7 @@ describe('StandardChatSurface skill menu and timeline chips', () => {
     const api = makeApi({ listAgentSkills: vi.fn().mockResolvedValue({ skills: [] }) }).api;
     render(<StandardChatSurface {...baseProps('s1', { api, session: { entries: [], streaming: false, meta: {} } })} />);
     await waitFor(() => expect(api.listAgentSkills).toHaveBeenCalled());
-    fireEvent.change(screen.getByTestId('composer-input'), { target: { value: '/' } });
+    typeDraft(screen.getByTestId('composer-input'), '/');
     expect(screen.getByText('还没有安装技能')).toBeTruthy();
   });
 
@@ -481,5 +489,65 @@ describe('StandardChatSurface skill menu and timeline chips', () => {
     expect(screen.getByText('/contract_risk_review')).toBeTruthy();
     expect(screen.getByText('<skill name="brainstorming">full body')).toBeTruthy();
     expect(screen.getAllByTestId('timeline-skill-chip')).toHaveLength(1);
+  });
+
+  it('reports list failures and a missing API with agent.name', async () => {
+    const failedStore = createMemoryErrorStore();
+    const failedApi = makeApi({ listAgentSkills: vi.fn().mockRejectedValue(new Error('disk down')) }).api;
+    render(
+      <ErrorProvider store={failedStore}>
+        <StandardChatSurface {...baseProps('s1', { api: failedApi, session: { entries: [], streaming: false, meta: {} } })} />
+      </ErrorProvider>,
+    );
+    await waitFor(async () => {
+      const records = await failedStore.load();
+      expect(records[0]?.source).toBe('通用智能体');
+      expect(records[0]?.message).toContain('disk down');
+    });
+
+    const missingStore = createMemoryErrorStore();
+    const missingApi = makeApi().api;
+    delete missingApi.listAgentSkills;
+    render(
+      <ErrorProvider store={missingStore}>
+        <StandardChatSurface {...baseProps('s1', { api: missingApi, session: { entries: [], streaming: false, meta: {} } })} />
+      </ErrorProvider>,
+    );
+    await waitFor(async () => {
+      const records = await missingStore.load();
+      expect(records[0]?.source).toBe('通用智能体');
+      expect(records[0]?.message).toContain('无法加载技能列表');
+    });
+  });
+
+  it('loads skills for a draft session and clears them when the agent changes', async () => {
+    const listAgentSkills = vi.fn().mockResolvedValue({
+      skills: [{ name: 'brainstorming', description: 'ideas', hasScripts: false, warnings: [] }],
+    });
+    const api = makeApi({ listAgentSkills }).api;
+    const view = render(<StandardChatSurface {...baseProps(null, { api, draft: true })} />);
+    await waitFor(() => expect(listAgentSkills).toHaveBeenCalledWith('general'));
+    typeDraft(screen.getByTestId('composer-input'), '/');
+    await waitFor(() => expect(screen.getByText('brainstorming')).toBeTruthy());
+
+    let resolveNext: (value: { skills: Array<{ name: string; description: string }> }) => void = () => {};
+    const pending = new Promise<{ skills: Array<{ name: string; description: string }> }>((resolve) => {
+      resolveNext = resolve;
+    });
+    listAgentSkills.mockImplementation(() => pending);
+    view.rerender(<StandardChatSurface {...baseProps(null, {
+      api,
+      draft: true,
+      agent: { id: 'writer', name: '写作助手', surfaceType: 'chat' },
+    })} />);
+    await waitFor(() => expect(listAgentSkills).toHaveBeenCalledWith('writer'));
+    typeDraft(screen.getByTestId('composer-input'), '/');
+    expect(screen.queryByText('brainstorming')).toBeNull();
+    expect(screen.queryByTestId('composer-skill-menu')).toBeNull();
+    resolveNext({ skills: [] });
+    await waitFor(() => {
+      typeDraft(screen.getByTestId('composer-input'), '/');
+      expect(screen.getByText('还没有安装技能')).toBeTruthy();
+    });
   });
 });

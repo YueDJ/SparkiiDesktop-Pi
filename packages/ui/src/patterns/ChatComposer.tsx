@@ -130,11 +130,12 @@ export function ChatComposer({ busy, stopping = false, workspacePath, onChooseWo
   const [files, setFiles] = useState<ComposerAttachment[]>([]);
   const [highlight, setHighlight] = useState(0);
   const [menuDismissed, setMenuDismissed] = useState(false);
+  const [cursor, setCursor] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const name = workspaceDisplay(workspacePath);
-  const slash = skills != null ? trailingSlashToken(draft) : null;
+  const slash = skills != null ? trailingSlashToken(draft.slice(0, cursor)) : null;
   const menuOpen = skills != null && slash !== null && !menuDismissed;
   const query = slash?.prefix.toLowerCase() ?? '';
   const filtered = (skills ?? []).filter((skill) => (
@@ -165,12 +166,25 @@ export function ChatComposer({ busy, stopping = false, workspacePath, onChooseWo
     return () => document.removeEventListener('pointerdown', onPointerDown, true);
   }, [menuOpen]);
 
+  const syncCursor = (el: HTMLTextAreaElement) => {
+    setCursor(el.selectionStart ?? el.value.length);
+  };
+
   const insertSkill = (skillName: string) => {
     if (!slash) return;
     const before = draft.slice(0, slash.start);
     const after = draft.slice(slash.start + 1 + slash.prefix.length);
-    setDraft(`${before}/${skillName} ${after}`);
+    const inserted = `${before}/${skillName} `;
+    setDraft(inserted + after);
     setMenuDismissed(true);
+    const pos = inserted.length;
+    setCursor(pos);
+    requestAnimationFrame(() => {
+      const el = textareaRef.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(pos, pos);
+    });
   };
 
   const send = () => {
@@ -310,7 +324,11 @@ export function ChatComposer({ busy, stopping = false, workspacePath, onChooseWo
           onChange={(e) => {
             setMenuDismissed(false);
             setDraft(e.target.value);
+            syncCursor(e.currentTarget);
           }}
+          onSelect={(e) => syncCursor(e.currentTarget)}
+          onKeyUp={(e) => syncCursor(e.currentTarget)}
+          onClick={(e) => syncCursor(e.currentTarget)}
           onKeyDown={(e: KeyboardEvent<HTMLTextAreaElement>) => {
             if (menuOpen) {
               if (e.key === 'ArrowDown') {
