@@ -127,10 +127,10 @@ button { font: inherit; color: inherit; }
 .ui-composer-skill-menu { margin: var(--spacing-xs) var(--spacing-sm) 0; border: 1px solid var(--color-border); border-radius: var(--radius-control); background: var(--color-surface); max-height: 220px; overflow-y: auto; box-shadow: var(--shadow-card); }
 .ui-composer-skill-empty { padding: var(--spacing-sm) var(--spacing-md); color: var(--color-textSecondary); font-size: var(--font-size-sm); display: flex; flex-direction: column; gap: 2px; }
 .ui-composer-skill-empty-hint { color: var(--color-textMuted); font-size: var(--font-size-xs); }
-.ui-composer-skill-item { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; border: none; background: none; padding: var(--spacing-xs) var(--spacing-md); text-align: left; cursor: pointer; color: var(--color-text); }
+.ui-composer-skill-item { display: flex; flex-direction: row; align-items: baseline; gap: 8px; width: 100%; min-width: 0; border: none; background: none; padding: 6px var(--spacing-md); text-align: left; cursor: pointer; color: var(--color-text); }
 .ui-composer-skill-item.is-active, .ui-composer-skill-item:hover { background: var(--color-primaryBg); }
-.ui-composer-skill-item-name { font-size: var(--font-size-sm); }
-.ui-composer-skill-item-desc { font-size: var(--font-size-xs); color: var(--color-textSecondary); }
+.ui-composer-skill-item-name { font-size: var(--font-size-sm); flex: none; }
+.ui-composer-skill-item-desc { font-size: var(--font-size-xs); color: var(--color-textSecondary); min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ui-chat-skill-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .ui-chat-message--user .ui-skill-chip { background: rgba(255,255,255,.18); color: var(--color-onPrimary); }
 .ui-composer-input { width: 100%; min-height: var(--control-textarea-min); max-height: 33vh; border: none; background: transparent; resize: none; overflow-y: auto; padding: var(--spacing-sm) var(--spacing-md); color: var(--color-text); font: var(--font-size-md)/1.5 var(--font-body); }
