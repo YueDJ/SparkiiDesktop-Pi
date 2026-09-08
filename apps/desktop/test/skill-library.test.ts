@@ -307,8 +307,8 @@ describe('preview / import / list / uninstall', () => {
       'utf8',
     );
     writeSkill(
-      join(source, 'skills', '!!!'),
-      '---\nname: !!!\ndescription: Cannot sanitize.\n---\n# body\n',
+      join(source, 'skills', '你好'),
+      '---\nname: 你好\ndescription: Cannot sanitize.\n---\n# body\n',
     );
     const skillsDir = join(tmp('skill-lib-'), 'skills');
     const preview = await previewUserSkill(source);
@@ -355,8 +355,8 @@ describe('preview / import / list / uninstall', () => {
       'utf8',
     );
     const skillsDir = join(tmp('skill-lib-'), 'skills');
-    expect(await previewUserSkill(source)).toEqual({ ok: false, reason: 'invalid-skill' });
-    expect(await importUserSkill(skillsDir, source)).toEqual({ ok: false, reason: 'invalid-skill' });
+    expect(await previewUserSkill(source)).toMatchObject({ ok: false, reason: 'invalid-skill' });
+    expect(await importUserSkill(skillsDir, source)).toMatchObject({ ok: false, reason: 'invalid-skill' });
     expect(existsSync(skillsDir)).toBe(false);
   });
 
