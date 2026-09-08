@@ -7,6 +7,7 @@ import { listPiSessions } from '@sparkii/agent-host';
 import { Keyring } from '../electron/main/keyring.js';
 import { registerIpc } from '../electron/main/ipc.js';
 import { buildAgentSaddle } from '../electron/main/saddle.js';
+import { listUserSkills } from '../electron/main/skill-library.js';
 import { resetGrantedDocumentPaths } from '../electron/main/document-bytes.js';
 import { selectModel } from '../electron/main/workflow.js';
 import type { Runtime } from '../electron/main/runtime.js';
@@ -2297,6 +2298,55 @@ describe('ipc user skill library', () => {
     expect(existsSync(writer.skillsDir)).toBe(true);
     const electron = await import('electron') as unknown as { shell: { openPath: ReturnType<typeof vi.fn> } };
     expect(electron.shell.openPath).toHaveBeenCalledWith(writer.skillsDir);
+  });
+
+  it('lists skills for an agent id from that agent skillsDir only', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-agent-skills-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const writer = userAgent(dataDir);
+    const reviewer = packageAgent(dataDir);
+    await mkdir(join(writer.skillsDir, 'brainstorming'), { recursive: true });
+    await writeFile(
+      join(writer.skillsDir, 'brainstorming', 'SKILL.md'),
+      '---\nname: brainstorming\ndescription: Brainstorm ideas.\n---\n# brainstorm\n',
+      'utf8',
+    );
+    await mkdir(join(writer.skillsDir, 'my-skill'), { recursive: true });
+    await writeFile(
+      join(writer.skillsDir, 'my-skill', 'SKILL.md'),
+      '---\nname: My Skill\ndescription: Works anyway.\n---\n# body\n',
+      'utf8',
+    );
+    await mkdir(join(reviewer.skillsDir, 'contract_risk_review'), { recursive: true });
+    await writeFile(
+      join(reviewer.skillsDir, 'contract_risk_review', 'SKILL.md'),
+      '---\nname: contract_risk_review\ndescription: Review contract risk.\n---\n# risk\n',
+      'utf8',
+    );
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      agents: new Map([[writer.id, writer], [reviewer.id, reviewer]]),
+    });
+    const handlers = await registeredHandlers();
+    const listAgentSkills = handlers.get('sparkii:listAgentSkills')!;
+
+    const writerListed = await listAgentSkills(null, writer.id) as { skills: Array<{ name: string }> };
+    expect(writerListed.skills.map((s) => s.name).sort()).toEqual(['brainstorming', 'my-skill']);
+    expect(writerListed.skills.some((s) => s.name === 'My Skill')).toBe(false);
+    expect(writerListed.skills.map((s) => s.name)).not.toContain('contract_risk_review');
+
+    const reviewerListed = await listAgentSkills(null, reviewer.id) as { skills: Array<{ name: string }> };
+    expect(reviewerListed.skills.map((s) => s.name)).toEqual(['contract_risk_review']);
+    expect(reviewerListed.skills.map((s) => s.name)).not.toContain('brainstorming');
+
+    const packageListed = await listUserSkills(reviewer.skillsDir);
+    expect(packageListed.map((s) => s.name)).toContain('contract_risk_review');
+
+    expect(await listAgentSkills(null, 'unknown-agent')).toEqual({ skills: [] });
   });
 });
 

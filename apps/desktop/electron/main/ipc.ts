@@ -742,6 +742,12 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     };
   });
 
+  ipcMain.handle('sparkii:listAgentSkills', async (_e, agentId: string) => {
+    const agent = rt.agents.get(String(agentId ?? ''));
+    if (!agent) return { skills: [] };
+    return { skills: await listUserSkills(agent.skillsDir) };
+  });
+
   ipcMain.handle('sparkii:previewUserSkill', async (_e, sourceDir: string) => {
     const preview = await previewUserSkill(String(sourceDir ?? ''));
     if (!preview.ok) return preview;
