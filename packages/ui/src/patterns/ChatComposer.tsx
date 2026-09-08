@@ -1,7 +1,8 @@
-import { useLayoutEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react';
 import { TextArea } from '../primitives/TextArea.js';
 import { ModelEffortControl, type ModelEffortProps } from './ModelEffortControl.js';
 import { PlusIcon, FolderIcon, ClipIcon, ArrowUpIcon, StopIcon } from '../icons/index.js';
+import { parseLeadingSkillSlash } from './skill-slash.js';
 
 export interface ComposerAttachment {
   path: string;
@@ -17,6 +18,11 @@ export interface ContextUsage {
   percent?: number | null;
 }
 
+export interface ComposerSkill {
+  name: string;
+  description: string;
+}
+
 export interface ChatComposerProps {
   busy: boolean;
   stopping?: boolean;
@@ -26,8 +32,15 @@ export interface ChatComposerProps {
   modelProps: ModelEffortProps;
   contextUsage?: ContextUsage | null;
   isCompacting?: boolean;
+  skills?: ComposerSkill[] | null;
   onSend(text: string, attachments: ComposerAttachment[]): void;
   onStop(): void;
+}
+
+function trailingSlashToken(draft: string): { start: number; prefix: string } | null {
+  const match = /(^|[\s])\/(\S*)$/.exec(draft);
+  if (!match) return null;
+  return { start: match.index + match[1].length, prefix: match[2] };
 }
 
 function workspaceDisplay(path: string | null): string {
@@ -112,12 +125,25 @@ export function ContextUsageBar({
   );
 }
 
-export function ChatComposer({ busy, stopping = false, workspacePath, onChooseWorkspace, getLocalPath, modelProps, contextUsage = null, isCompacting = false, onSend, onStop }: ChatComposerProps) {
+export function ChatComposer({ busy, stopping = false, workspacePath, onChooseWorkspace, getLocalPath, modelProps, contextUsage = null, isCompacting = false, skills, onSend, onStop }: ChatComposerProps) {
   const [draft, setDraft] = useState('');
   const [files, setFiles] = useState<ComposerAttachment[]>([]);
+  const [highlight, setHighlight] = useState(0);
+  const [menuDismissed, setMenuDismissed] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
   const name = workspaceDisplay(workspacePath);
+  const slash = skills != null ? trailingSlashToken(draft) : null;
+  const menuOpen = skills != null && slash !== null && !menuDismissed;
+  const query = slash?.prefix.toLowerCase() ?? '';
+  const filtered = (skills ?? []).filter((skill) => (
+    skill.name.toLowerCase().includes(query) || skill.description.toLowerCase().includes(query)
+  ));
+  const parsed = parseLeadingSkillSlash(draft);
+  const leadingChip = skills != null && parsed !== null && skills.some((skill) => skill.name === parsed.name)
+    ? parsed
+    : null;
 
   const syncHeight = () => {
     const el = textareaRef.current;
@@ -126,6 +152,26 @@ export function ChatComposer({ busy, stopping = false, workspacePath, onChooseWo
     el.style.height = `${el.scrollHeight}px`;
   };
   useLayoutEffect(() => { syncHeight(); }, [draft]);
+  useEffect(() => { setHighlight(0); }, [query, skills]);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (menuRef.current?.contains(target)) return;
+      if (textareaRef.current?.contains(target)) return;
+      setMenuDismissed(true);
+    };
+    document.addEventListener('pointerdown', onPointerDown, true);
+    return () => document.removeEventListener('pointerdown', onPointerDown, true);
+  }, [menuOpen]);
+
+  const insertSkill = (skillName: string) => {
+    if (!slash) return;
+    const before = draft.slice(0, slash.start);
+    const after = draft.slice(slash.start + 1 + slash.prefix.length);
+    setDraft(`${before}/${skillName} ${after}`);
+    setMenuDismissed(true);
+  };
 
   const send = () => {
     const text = draft.trim();
@@ -204,6 +250,56 @@ export function ChatComposer({ busy, stopping = false, workspacePath, onChooseWo
           </div>
         )}
 
+        {leadingChip && (
+          <div className="ui-composer-skill-chip-row">
+            <span className="ui-skill-chip" data-testid="composer-skill-chip">
+              技能 · {leadingChip.name}
+              <button
+                type="button"
+                className="ui-skill-chip-remove"
+                data-testid="composer-skill-chip-remove"
+                aria-label={`移除 ${leadingChip.name}`}
+                onClick={() => setDraft(leadingChip.rest)}
+              >
+                ×
+              </button>
+            </span>
+          </div>
+        )}
+
+        {menuOpen && (
+          <div
+            ref={menuRef}
+            className="ui-composer-skill-menu"
+            data-testid="composer-skill-menu"
+            role="listbox"
+            aria-label="技能"
+          >
+            {(skills ?? []).length === 0 ? (
+              <div className="ui-composer-skill-empty" role="status">
+                还没有安装技能
+                <span className="ui-composer-skill-empty-hint">可到设置 → 技能安装</span>
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="ui-composer-skill-empty" role="status">没有匹配的技能</div>
+            ) : filtered.map((skill, index) => (
+              <button
+                key={skill.name}
+                type="button"
+                role="option"
+                aria-selected={index === highlight}
+                className={`ui-composer-skill-item${index === highlight ? ' is-active' : ''}`}
+                data-testid="composer-skill-menu-item"
+                onMouseEnter={() => setHighlight(index)}
+                onClick={() => insertSkill(skill.name)}
+              >
+                <span className="ui-composer-skill-item-name">{skill.name}</span>
+                {skill.description ? <span className="ui-composer-skill-item-desc">{skill.description}</span> : null}
+              </button>
+            ))}
+          </div>
+        )}
+
         <TextArea
           ref={textareaRef}
           className="ui-composer-input"
@@ -211,8 +307,34 @@ export function ChatComposer({ busy, stopping = false, workspacePath, onChooseWo
           rows={1}
           placeholder="随心输入"
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
+          onChange={(e) => {
+            setMenuDismissed(false);
+            setDraft(e.target.value);
+          }}
+          onKeyDown={(e: KeyboardEvent<HTMLTextAreaElement>) => {
+            if (menuOpen) {
+              if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setHighlight((index) => Math.min(filtered.length - 1, index + 1));
+                return;
+              }
+              if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setHighlight((index) => Math.max(0, index - 1));
+                return;
+              }
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                setMenuDismissed(true);
+                return;
+              }
+              if ((e.key === 'Enter' || e.key === 'Tab') && !e.nativeEvent.isComposing) {
+                e.preventDefault();
+                const selected = filtered[highlight];
+                if (selected) insertSkill(selected.name);
+                return;
+              }
+            }
             if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();
               send();
