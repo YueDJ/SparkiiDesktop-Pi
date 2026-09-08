@@ -195,6 +195,12 @@ describe('assemble', () => {
     expect(general.systemPrompt).toContain('即使工作区尚未创建');
     expect(general.systemPrompt).toContain('available_skills');
     expect(general.systemPrompt).toContain('不要在工作区里搜索');
+    expect(general.systemPrompt).toContain('父目录');
+    expect(general.systemPrompt).toContain('read');
+    expect(general.systemPrompt).toContain('不要只');
+    expect(general.systemPrompt).not.toContain('/skill:');
+    expect(contract.systemPrompt).not.toContain('父目录');
+    expect(contract.systemPrompt).not.toContain('/token');
 
     mkdirSync(join(general.skillsDir, 'extra-user-skill'), { recursive: true });
     writeFileSync(
