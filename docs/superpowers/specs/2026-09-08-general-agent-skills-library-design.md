@@ -27,7 +27,7 @@
    - `user`：`join(dataDir, 'agents', <agentId>, 'skills')`。
    - 通用智能体 manifest 写 `skillLibrary: user`。财务等专用体不写，保持包内目录。
 3. **用户库磁盘即事实源。** 在 `skills/` 里 = 已安装 = 会进鞍。不做启用/停用，不做 `skills-disabled/`，不做旁路索引。
-4. **这一期只从文件夹导入。** 选中的目录必须自己就是 skill 根（该目录下直接有 `SKILL.md`）。拷贝整目录，不建快捷方式。不做 zip、不做 GitHub URL、不做自动改写、不扫 `~/.agents/skills` / `~/.claude/skills`。
+4. **这一期只从文件夹导入。** 选中的目录必须是 **skill 根**（直接有 `SKILL.md`）或 **skill 包**（见 Install）。不整仓盲拷、不建快捷方式。不做 zip、不做 GitHub URL、不做 `pi install`、不跑 `pi.extensions`、不扫 `~/.agents/skills` / `~/.claude/skills`。
 5. **鉴定只问「能不能被现有 loader 加载」。** 复用 `loadSkillsFromDir`：没有可用 `description` 则拒绝安装。name 不规范只警告仍可装。不按 Claude / Pi 出身拦截，不改写 `SKILL.md`。
 6. **设置 → 技能** 只管理 `skillLibrary: user` 的智能体。本轮恰好一个（通用智能体）。页上写清「这些技能仅用于{displayName}」。四个动作：列表、导入文件夹、卸载、打开文件夹。Composer 不做技能选择器。
 7. **只读工具放行当前鞍的 `skillsDir`。** `read` / `ls` / `grep` / `find` 的允许根 = 工作区（若已创建）∪ 本会话 `skillsDir`。路径在 skill 目录内时，即使工作区尚未创建也允许读。`bash` / `edit` / `write` 不因 skill 免批；`scripts/` 走现有 bash 审批。
@@ -100,11 +100,11 @@ resolveAgentSkillsDir({
 
 ```text
 <dataDir>/agents/general/skills/
-  <skill-name>/
-    SKILL.md
-    references/   # 可选
-    scripts/      # 可选
-    assets/       # 可选
+  <destName>/                 # 单个 skill 根，或一个包
+    SKILL.md                  # 仅单个 skill
+    package.json              # 仅包，可选
+    <skill-a>/SKILL.md        # 包内 skill 提到 destName 下，不再套一层仓库里的 skills/
+    <skill-b>/SKILL.md
 ```
 
 **磁盘目录名 = IPC/UI 的 `name` = `destName`。** 全程只用这一个身份，禁止用 frontmatter `name` 当卸载键。
@@ -126,12 +126,20 @@ frontmatter name 不合法但 description 有效时仍可安装（与 Pi / 现�
 导入（`importUserSkill`）：
 
 1. `sourceDir` 必须是已存在的目录。
-2. `join(sourceDir, 'SKILL.md')` 必须是文件。子目录里有 `SKILL.md` 但根上没有 → 失败，`reason: 'not-skill-root'`（不递归收割仓库）。
-3. 对 `sourceDir` 调 `loadSkillsFromDir`。0 个 skill（缺 description 等）→ `reason: 'invalid-skill'`，带 diagnostics。
-4. 取该根上加载到的那一个 skill（skill 根不再向下扫兄弟项）。
+2. **识别（先命中先用）：**
+   1. 根上有 `SKILL.md` → 单个 skill。
+   2. 根 `package.json` 含 `pi.skills`（字符串数组）或 `keywords` 含 `pi-package` → skill 包。
+   3. 约定目录 `skills/` 下有直接子目录是 skill 根 → skill 包。
+   4. 选中目录名是 `skills` 且其直接子目录是 skill 根 → skill 包（`destName` 优先用父目录名）。
+   5. 否则 `not-skill-root`。`docs/` / `hooks/` 里单独一个 `SKILL.md` 仍拒绝（不深扫收割仓库）。
+3. 单个 skill：对 `sourceDir` 调 `loadSkillsFromDir`。0 个 skill → `invalid-skill`。`destName` 仍按 frontmatter / 文件夹名。
+4. 包：只收集 **一跳** skill 根（`pi.skills` 指向的路径或其直接子目录；否则 `skills/` 的直接子目录）。路径必须 `resolve` 后仍在 `sourceDir` 内。每个根单独 `loadSkillsFromDir`；无 description 的根跳过并进 warnings；一个合法根都没有 → `invalid-skill`。`destName`：合法的 `package.json` `name`（去掉 scope）→ 否则源文件夹名；源文件夹名是 `skills` 则试父目录名。
 5. 目的地 `dest = join(skillsDir, destName)`。**先做完全部校验再改盘**：`dest` 必须在 `skillsDir` 内且 `relative(skillsDir, dest) !== ''`；`resolve` 后源与 dest 相等、或 `isPathInside(source, dest)`、或 `isPathInside(dest, source)` → `overlap`；已存在且 `overwrite !== true` → `exists`（返回 `name: destName`）。
-6. 校验通过后：若 overwrite 则先删 dest，再 `fs.cp`（recursive）拷贝 `sourceDir`。
-7. 成功则审计 `skill.installed`（`resource` = `destName`）。
+6. **允许清单拷贝**（不是整仓 `cp`）：
+   - 单个 skill：拷该 skill 根到 `dest`。
+   - 包：一个 `destName`；拷根上的 `package.json`（若有）；每个合法 skill 根拷到 `dest/<skillFolderDestName>/`（提到包下一层，不保留仓库里的 `skills/` 外壳）。
+   - 拷贝过滤器：跳过 `node_modules` 与 `.` 开头的文件/目录（`.git`、`.cloud`、`.pi`、`.github` 等）。不拷 README、扩展、CI、测试、文档等包根杂项。
+7. 成功则审计 `skill.installed`（`resource` = `destName`）。一包一事，不拆成多个 destName。
 
 卸载（`uninstallUserSkill`）：
 
@@ -150,10 +158,14 @@ frontmatter name 不合法但 description 有效时仍可安装（与 Pi / 现�
 {
   name: string
   description: string
-  hasScripts: boolean          // 该 skill 目录下存在 scripts/ 目录
+  hasScripts: boolean          // 该 dest 或包内任一 skill 根存在 scripts/
   warnings: string[]           // loader diagnostics 的 message
+  kind?: 'skill' | 'pack'
+  skillCount?: number          // 包内合法 skill 数
 }
 ```
+
+包的 `description`：`package.json` `description`，否则「N 个技能」。
 
 导入预览（选中文件夹、确认前）用同形，且 **`name` 必须等于 `destName`**（不要展示非法 frontmatter name）。`hasScripts === true` 时页上固定一句：「其中的命令仍要审批。」不做正文工具名启发式扫描。
 

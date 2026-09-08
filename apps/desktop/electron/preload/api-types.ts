@@ -92,10 +92,10 @@ export interface SparkiiApi {
   chooseWorkspace(): Promise<{ path?: string }>;
   listUserSkills(): Promise<{
     agent: { id: string; name: string } | null;
-    skills: Array<{ name: string; description: string; hasScripts: boolean; warnings: string[] }>;
+    skills: Array<{ name: string; description: string; hasScripts: boolean; warnings: string[]; kind?: 'skill' | 'pack'; skillCount?: number }>;
   }>;
   previewUserSkill(sourceDir: string): Promise<
-    | { ok: true; skill: { name: string; description: string; hasScripts: boolean; warnings: string[] }; destName: string }
+    | { ok: true; skill: { name: string; description: string; hasScripts: boolean; warnings: string[]; kind?: 'skill' | 'pack'; skillCount?: number }; destName: string }
     | { ok: false; reason: string; diagnostics?: string[] }
   >;
   chooseSkillFolder(): Promise<{ path?: string }>;

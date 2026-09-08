@@ -153,6 +153,35 @@ describe('SettingsView skills pane', () => {
     expect(confirm.mock.calls[0]?.[0]).toContain('其中的命令仍要审批。');
   });
 
+  it('confirms a skill pack import with pack wording', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const api = skillsApi({
+      chooseSkillFolder: vi.fn().mockResolvedValue({ path: '/tmp/superpowers' }),
+      previewUserSkill: vi.fn().mockResolvedValue({
+        ok: true,
+        destName: 'superpowers',
+        skill: {
+          name: 'superpowers',
+          description: 'Superpowers skills',
+          hasScripts: false,
+          warnings: [],
+          kind: 'pack',
+          skillCount: 2,
+        },
+      }),
+      importUserSkill: vi.fn().mockResolvedValue({ ok: true, name: 'superpowers' }),
+    });
+    render(<SettingsView api={api} />);
+    await screen.findByText('已加载本机配置');
+    fireEvent.click(screen.getByText('技能'));
+    await screen.findByText(/仅用于/);
+    fireEvent.click(screen.getByText('导入文件夹'));
+    await waitFor(() => expect(api.importUserSkill).toHaveBeenCalledWith({ sourceDir: '/tmp/superpowers' }));
+    expect(confirm.mock.calls[0]?.[0]).toContain('技能包');
+    expect(confirm.mock.calls[0]?.[0]).toContain('superpowers');
+    expect(confirm.mock.calls[0]?.[0]).toContain('2 个技能');
+  });
+
   it('asks for overwrite when import returns exists', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     const importUserSkill = vi.fn()

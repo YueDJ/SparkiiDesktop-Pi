@@ -190,7 +190,8 @@ uninstallUserSkill(skillsDir: string, name: string): Promise<
 
 - 合法 `SKILL.md` 预览成功；导入后 `list` 的 `name` 等于 destName；目的地有 `references/` 若源有。
 - frontmatter `name: My Skill`（非法）但有 description：仍安装；`list`/`uninstall` 用净化后的 destName，不是 `My Skill`。
-- 根上无 `SKILL.md`、子目录才有 → `not-skill-root`，不写盘。
+- 根上无 `SKILL.md`、子目录才有（且不是 `skills/` / Pi 包）→ `not-skill-root`，不写盘。
+- Pi 包 / 约定 `skills/`：一个 destName；只拷 `package.json` + 各 skill 根；不拷 `.cloud` / `.git` / `.pi` / README。
 - 无 description → `invalid-skill`。
 - 再导同名无 overwrite → `exists`，原文件不变；`overwrite: true` 替换。
 - `uninstall` 只删 `skillsDir/destName`；`../x`、`a/b`、`.`、`''` → `bad-name`，库根仍在。

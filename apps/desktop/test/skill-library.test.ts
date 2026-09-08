@@ -179,4 +179,105 @@ describe('preview / import / list / uninstall', () => {
     expect(preview.ok).toBe(true);
     if (preview.ok) expect(preview.skill.hasScripts).toBe(true);
   });
+
+  it('skips dotfiles when importing a single skill root', async () => {
+    const source = join(tmp('skill-src-'), 'summarize');
+    writeSkill(source, '---\nname: summarize\ndescription: Clean copy.\n---\n# body\n');
+    mkdirSync(join(source, '.git'), { recursive: true });
+    writeFileSync(join(source, '.git', 'HEAD'), 'ref', 'utf8');
+    mkdirSync(join(source, '.cloud'), { recursive: true });
+    writeFileSync(join(source, '.cloud', 'meta.json'), '{}', 'utf8');
+    const skillsDir = join(tmp('skill-lib-'), 'skills');
+    expect(await importUserSkill(skillsDir, source)).toEqual({ ok: true, name: 'summarize' });
+    expect(existsSync(join(skillsDir, 'summarize', 'SKILL.md'))).toBe(true);
+    expect(existsSync(join(skillsDir, 'summarize', '.git'))).toBe(false);
+    expect(existsSync(join(skillsDir, 'summarize', '.cloud'))).toBe(false);
+  });
+
+  it('imports a Pi skill pack as one destName and copies only useful files', async () => {
+    const source = join(tmp('skill-pack-'), 'superpowers');
+    mkdirSync(source, { recursive: true });
+    writeFileSync(
+      join(source, 'package.json'),
+      JSON.stringify({
+        name: 'superpowers',
+        description: 'Superpowers skills and runtime bootstrap for coding agents',
+        keywords: ['pi-package'],
+        pi: { skills: ['./skills'], extensions: ['./.pi/extensions/superpowers.ts'] },
+      }),
+      'utf8',
+    );
+    writeFileSync(join(source, 'README.md'), 'not a skill', 'utf8');
+    mkdirSync(join(source, '.cloud'), { recursive: true });
+    writeFileSync(join(source, '.cloud', 'config.json'), '{}', 'utf8');
+    mkdirSync(join(source, '.git'), { recursive: true });
+    writeFileSync(join(source, '.git', 'HEAD'), 'ref', 'utf8');
+    mkdirSync(join(source, '.pi', 'extensions'), { recursive: true });
+    writeFileSync(join(source, '.pi', 'extensions', 'superpowers.ts'), 'export {}', 'utf8');
+    writeSkill(
+      join(source, 'skills', 'brainstorming'),
+      '---\nname: brainstorming\ndescription: Brainstorm before coding.\n---\n# brainstorm\n',
+      { 'references/notes.md': 'notes' },
+    );
+    writeSkill(
+      join(source, 'skills', 'writing-plans'),
+      '---\nname: writing-plans\ndescription: Write an implementation plan.\n---\n# plan\n',
+      { 'scripts/run.sh': 'echo hi' },
+    );
+
+    const preview = await previewUserSkill(source);
+    expect(preview).toMatchObject({
+      ok: true,
+      skill: {
+        name: 'superpowers',
+        description: 'Superpowers skills and runtime bootstrap for coding agents',
+        kind: 'pack',
+        skillCount: 2,
+        hasScripts: true,
+      },
+    });
+
+    const skillsDir = join(tmp('skill-lib-'), 'skills');
+    expect(await importUserSkill(skillsDir, source)).toEqual({ ok: true, name: 'superpowers' });
+    expect(await listUserSkills(skillsDir)).toMatchObject([
+      {
+        name: 'superpowers',
+        description: 'Superpowers skills and runtime bootstrap for coding agents',
+        kind: 'pack',
+        skillCount: 2,
+        hasScripts: true,
+      },
+    ]);
+    expect(existsSync(join(skillsDir, 'superpowers', 'package.json'))).toBe(true);
+    expect(existsSync(join(skillsDir, 'brainstorming'))).toBe(false);
+    expect(existsSync(join(skillsDir, 'writing-plans'))).toBe(false);
+    expect(readFileSync(join(skillsDir, 'superpowers', 'brainstorming', 'references', 'notes.md'), 'utf8')).toBe('notes');
+    expect(existsSync(join(skillsDir, 'superpowers', 'writing-plans', 'scripts', 'run.sh'))).toBe(true);
+    expect(existsSync(join(skillsDir, 'superpowers', 'skills'))).toBe(false);
+    expect(existsSync(join(skillsDir, 'superpowers', 'README.md'))).toBe(false);
+    expect(existsSync(join(skillsDir, 'superpowers', '.cloud'))).toBe(false);
+    expect(existsSync(join(skillsDir, 'superpowers', '.git'))).toBe(false);
+    expect(existsSync(join(skillsDir, 'superpowers', '.pi'))).toBe(false);
+  });
+
+  it('imports a conventional skills/ folder using the parent destName', async () => {
+    const pack = join(tmp('skill-pack-'), 'My Pack');
+    writeSkill(
+      join(pack, 'skills', 'outline'),
+      '---\nname: outline\ndescription: Make an outline.\n---\n# outline\n',
+    );
+    const skillsDir = join(tmp('skill-lib-'), 'skills');
+    expect(await importUserSkill(skillsDir, join(pack, 'skills'))).toEqual({ ok: true, name: 'my-pack' });
+    expect(existsSync(join(skillsDir, 'my-pack', 'outline', 'SKILL.md'))).toBe(true);
+  });
+
+  it('still rejects a repo that only hides SKILL.md outside skills/', async () => {
+    const source = tmp('skill-repo-junk-');
+    writeSkill(join(source, 'docs', 'hidden'), '---\nname: hidden\ndescription: Hidden.\n---\n# hidden\n');
+    mkdirSync(join(source, '.cloud'), { recursive: true });
+    const skillsDir = join(tmp('skill-lib-'), 'skills');
+    expect(await previewUserSkill(source)).toEqual({ ok: false, reason: 'not-skill-root' });
+    expect(await importUserSkill(skillsDir, source)).toEqual({ ok: false, reason: 'not-skill-root' });
+    expect(existsSync(skillsDir)).toBe(false);
+  });
 });
