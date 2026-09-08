@@ -33,6 +33,12 @@ describe('SettingsView', () => {
     expect(screen.getByText('数据目录')).toBeTruthy();
   });
 
+  it('shows the skills pane in the settings nav', async () => {
+    render(<SettingsView api={makeApi()} />);
+    fireEvent.click(screen.getByText('技能'));
+    expect(await screen.findByText('未配置用户技能库')).toBeTruthy();
+  });
+
   it('fetches models over the network and populates the default-model dropdown', async () => {
     const api = makeApi();
     render(<SettingsView api={api} />);

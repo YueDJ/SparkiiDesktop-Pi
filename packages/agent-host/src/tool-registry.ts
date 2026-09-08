@@ -19,6 +19,7 @@ export const WORKSPACE_NOT_CREATED = "工作区尚未创建（尚无写操作）
 export interface RegistryContext {
   cwd: string;
   workspaceRoot?: string;
+  skillsDir?: string;
   propose(request: ProposalRequest & { requestId: string }): Promise<ProposalDecision>;
   recordSessionEntry?(customType: string, data: Record<string, unknown>): void;
 }
@@ -27,15 +28,23 @@ const CONNECTOR_TOOLS = new Map<string, ToolDef>(
   [documentConnector, knowledgeConnector, reportConnector].flatMap((c) => c.tools.map((t) => [t.name, t] as const)),
 );
 
-function withWorkspaceGuard(def: ToolDefinition, root: string, pathCwd: string): ToolDefinition {
+function withWorkspaceGuard(
+  def: ToolDefinition,
+  root: string,
+  pathCwd: string,
+  skillsDir?: string,
+): ToolDefinition {
   const original = def.execute.bind(def);
   return {
     ...def,
     execute: async (toolCallId: string, params: any, signal: any, onUpdate: any, ctx: any) => {
+      const path: unknown = params?.path;
+      if (typeof path === "string" && skillsDir && isPathInside(skillsDir, resolve(pathCwd, path))) {
+        return original(toolCallId, params, signal, onUpdate, ctx);
+      }
       if (!existsSync(root)) {
         return { content: [{ type: "text", text: WORKSPACE_NOT_CREATED }], details: {} };
       }
-      const path: unknown = params?.path;
       if (typeof path === "string" && !isPathInside(root, resolve(pathCwd, path))) {
         return { content: [{ type: "text", text: `拒绝访问:${path} 不在工作区内` }], details: {} };
       }
@@ -62,13 +71,13 @@ export function resolveToolDefinitions(toolNames: string[], ctx: RegistryContext
     }
     if (name === "read") {
       const def = createReadToolDefinition(pathCwd, { autoResizeImages: false }) as ToolDefinition;
-      out.push(ctx.workspaceRoot ? withWorkspaceGuard(def, ctx.workspaceRoot, pathCwd) : def);
+      out.push(ctx.workspaceRoot ? withWorkspaceGuard(def, ctx.workspaceRoot, pathCwd, ctx.skillsDir) : def);
       continue;
     }
     if (name === "ls" || name === "grep" || name === "find") {
       const factory = { ls: createLsToolDefinition, grep: createGrepToolDefinition, find: createFindToolDefinition }[name];
       const def = factory(pathCwd) as ToolDefinition;
-      out.push(ctx.workspaceRoot ? withWorkspaceGuard(def, ctx.workspaceRoot, pathCwd) : def);
+      out.push(ctx.workspaceRoot ? withWorkspaceGuard(def, ctx.workspaceRoot, pathCwd, ctx.skillsDir) : def);
       continue;
     }
     const connector = CONNECTOR_TOOLS.get(name);

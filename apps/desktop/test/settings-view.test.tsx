@@ -81,3 +81,131 @@ describe('SettingsView provider rendering', () => {
     expect(arg.chatDetailLevel).toBe('debug');
   });
 });
+
+describe('SettingsView skills pane', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function skillsApi(over: Record<string, unknown> = {}) {
+    return makeApi({
+      listUserSkills: vi.fn().mockResolvedValue({
+        agent: { id: 'writer', name: '写作助手' },
+        skills: [],
+      }),
+      previewUserSkill: vi.fn().mockResolvedValue({
+        ok: true,
+        skill: { name: 'summarize', description: 'Summarize text.', hasScripts: false, warnings: [] },
+        destName: 'summarize',
+      }),
+      chooseSkillFolder: vi.fn().mockResolvedValue({ path: '/tmp/summarize' }),
+      importUserSkill: vi.fn().mockResolvedValue({ ok: true, name: 'summarize' }),
+      uninstallUserSkill: vi.fn().mockResolvedValue({ ok: true }),
+      openUserSkillsDir: vi.fn().mockResolvedValue({ ok: true, path: '/tmp/skills' }),
+      ...over,
+    });
+  }
+
+  it('shows the user-library hint and empty copy', async () => {
+    render(<SettingsView api={skillsApi()} />);
+    await screen.findByText('已加载本机配置');
+    fireEvent.click(screen.getByText('技能'));
+    expect(await screen.findByText(/仅用于「写作助手」/)).toBeTruthy();
+    expect(screen.getByText('还没有安装技能。')).toBeTruthy();
+  });
+
+  it('lists installed skill names', async () => {
+    render(<SettingsView api={skillsApi({
+      listUserSkills: vi.fn().mockResolvedValue({
+        agent: { id: 'writer', name: '写作助手' },
+        skills: [
+          { name: 'summarize', description: 'Summarize text.', hasScripts: false, warnings: [] },
+          { name: 'outline', description: 'Make an outline.', hasScripts: true, warnings: [] },
+        ],
+      }),
+    })} />);
+    await screen.findByText('已加载本机配置');
+    fireEvent.click(screen.getByText('技能'));
+    expect(await screen.findByText('summarize')).toBeTruthy();
+    expect(screen.getByText('outline')).toBeTruthy();
+    expect(screen.getByText('其中的命令仍要审批。')).toBeTruthy();
+  });
+
+  it('imports a chosen folder after preview confirm', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const api = skillsApi({
+      previewUserSkill: vi.fn().mockResolvedValue({
+        ok: true,
+        skill: { name: 'summarize', description: 'Summarize text.', hasScripts: true, warnings: [] },
+        destName: 'summarize',
+      }),
+    });
+    render(<SettingsView api={api} />);
+    await screen.findByText('已加载本机配置');
+    fireEvent.click(screen.getByText('技能'));
+    await screen.findByText(/仅用于/);
+    fireEvent.click(screen.getByText('导入文件夹'));
+    await waitFor(() => expect(api.chooseSkillFolder).toHaveBeenCalled());
+    await waitFor(() => expect(api.previewUserSkill).toHaveBeenCalledWith('/tmp/summarize'));
+    await waitFor(() => expect(api.importUserSkill).toHaveBeenCalledWith({ sourceDir: '/tmp/summarize' }));
+    expect(api.importUserSkill).toHaveBeenCalledTimes(1);
+    expect(confirm.mock.calls[0]?.[0]).toContain('summarize');
+    expect(confirm.mock.calls[0]?.[0]).toContain('其中的命令仍要审批。');
+  });
+
+  it('asks for overwrite when import returns exists', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const importUserSkill = vi.fn()
+      .mockResolvedValueOnce({ ok: false, reason: 'exists', name: 'summarize' })
+      .mockResolvedValueOnce({ ok: true, name: 'summarize' });
+    const api = skillsApi({ importUserSkill });
+    render(<SettingsView api={api} />);
+    await screen.findByText('已加载本机配置');
+    fireEvent.click(screen.getByText('技能'));
+    await screen.findByText(/仅用于/);
+    fireEvent.click(screen.getByText('导入文件夹'));
+    await waitFor(() => expect(importUserSkill).toHaveBeenCalledTimes(2));
+    expect(importUserSkill).toHaveBeenNthCalledWith(1, { sourceDir: '/tmp/summarize' });
+    expect(importUserSkill).toHaveBeenNthCalledWith(2, { sourceDir: '/tmp/summarize', overwrite: true });
+  });
+
+  it('uninstalls a destName after confirm', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const uninstallUserSkill = vi.fn().mockResolvedValue({ ok: true });
+    const api = skillsApi({
+      listUserSkills: vi.fn().mockResolvedValue({
+        agent: { id: 'writer', name: '写作助手' },
+        skills: [{ name: 'summarize', description: 'Summarize text.', hasScripts: false, warnings: [] }],
+      }),
+      uninstallUserSkill,
+    });
+    render(<SettingsView api={api} />);
+    await screen.findByText('已加载本机配置');
+    fireEvent.click(screen.getByText('技能'));
+    await screen.findByText('summarize');
+    fireEvent.click(screen.getByText('卸载'));
+    await waitFor(() => expect(uninstallUserSkill).toHaveBeenCalledWith({ name: 'summarize' }));
+  });
+
+  it('opens the skills folder', async () => {
+    const api = skillsApi();
+    render(<SettingsView api={api} />);
+    await screen.findByText('已加载本机配置');
+    fireEvent.click(screen.getByText('技能'));
+    await screen.findByText(/仅用于/);
+    fireEvent.click(screen.getByText('打开技能文件夹'));
+    await waitFor(() => expect(api.openUserSkillsDir).toHaveBeenCalled());
+  });
+
+  it('shows the no-user-library empty state and disables actions', async () => {
+    const api = skillsApi({
+      listUserSkills: vi.fn().mockResolvedValue({ agent: null, skills: [] }),
+    });
+    render(<SettingsView api={api} />);
+    await screen.findByText('已加载本机配置');
+    fireEvent.click(screen.getByText('技能'));
+    expect(await screen.findByText('未配置用户技能库')).toBeTruthy();
+    expect((screen.getByText('导入文件夹') as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByText('打开技能文件夹') as HTMLButtonElement).disabled).toBe(true);
+  });
+});

@@ -18,8 +18,21 @@ export interface AgentRuntimeInput {
   systemPrompt?: string;
 }
 
+export function resolveAgentSkillsDir(input: {
+  id: string;
+  dir: string;
+  dataDir: string;
+  skillLibrary?: 'package' | 'user';
+}): string {
+  if (input.skillLibrary === 'user') {
+    return join(input.dataDir, 'agents', input.id, 'skills');
+  }
+  return join(input.dir, 'agent', 'skills');
+}
+
 export async function loadAgentRuntimes(
   inputs: AgentRuntimeInput[],
+  opts: { dataDir: string },
 ): Promise<Map<string, AgentRuntime>> {
   return new Map(
     inputs.map(({ id, manifest, dir, tools, systemPrompt }) => [
@@ -29,7 +42,12 @@ export async function loadAgentRuntimes(
         manifest,
         tools: tools ?? manifest.capabilities.tools ?? [],
         dir,
-        skillsDir: join(dir, 'agent', 'skills'),
+        skillsDir: resolveAgentSkillsDir({
+          id,
+          dir,
+          dataDir: opts.dataDir,
+          skillLibrary: manifest.skillLibrary,
+        }),
         systemPrompt,
       },
     ]),

@@ -24,6 +24,7 @@ export const manifestSchema = z.object({
     tasks: z.record(z.string(), z.array(modelTarget)),
   }),
   integrity: z.object({ sha256: z.string().regex(/^[a-f0-9]{64}$/) }).optional(),
+  skillLibrary: z.enum(['package', 'user']).optional(),
 });
 
 export function parseProfileManifest(raw: unknown): ProfileManifest {

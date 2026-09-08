@@ -29,4 +29,25 @@ describe('parseAgentManifest', () => {
 
     expect(manifest.surface.entry).toBe('surface.tsx');
   });
+
+  it('accepts skillLibrary user or package', () => {
+    const user = parseAgentManifest({
+      id: 'writer',
+      version: '1.0.0',
+      surface: { type: 'chat' },
+      capabilities: { tools: ['read'] },
+      skillLibrary: 'user',
+    });
+    expect(user.skillLibrary).toBe('user');
+  });
+
+  it('rejects unknown skillLibrary values', () => {
+    expect(() => parseAgentManifest({
+      id: 'writer',
+      version: '1.0.0',
+      surface: { type: 'chat' },
+      capabilities: { tools: ['read'] },
+      skillLibrary: 'mixed',
+    })).toThrow();
+  });
 });

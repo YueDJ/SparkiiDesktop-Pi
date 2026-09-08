@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it, expect, vi } from "vitest";
@@ -54,5 +54,103 @@ describe("resolveToolDefinitions", () => {
     expect(image.mimeType).toBe("image/png");
     expect(typeof image.data).toBe("string");
     expect(image.data.length).toBeGreaterThan(0);
+  });
+
+  it("reads a skill-root file when the workspace does not exist", async () => {
+    const skillsDir = mkdtempSync(join(tmpdir(), "skills-"));
+    mkdirSync(join(skillsDir, "foo"), { recursive: true });
+    writeFileSync(join(skillsDir, "foo", "SKILL.md"), "skill body", "utf8");
+    const ws = join(tmpdir(), "missing-ws-skill-" + Date.now());
+    const defs = resolveToolDefinitions(["read"], {
+      cwd: tmpdir(), workspaceRoot: ws, skillsDir, propose,
+    });
+    const result = await (defs[0] as any).execute(
+      "t1",
+      { path: join(skillsDir, "foo", "SKILL.md") },
+      undefined,
+      undefined,
+      {},
+    );
+    expect((result as any).content?.[0]?.text).toContain("skill body");
+    expect((result as any).content?.[0]?.text).not.toBe(WORKSPACE_NOT_CREATED);
+  });
+
+  it("still reads workspace files when the workspace exists", async () => {
+    const ws = mkdtempSync(join(tmpdir(), "ws-"));
+    const skillsDir = mkdtempSync(join(tmpdir(), "skills-"));
+    writeFileSync(join(ws, "a.txt"), "hello workspace", "utf8");
+    const defs = resolveToolDefinitions(["read"], {
+      cwd: tmpdir(), workspaceRoot: ws, skillsDir, propose,
+    });
+    const result = await (defs[0] as any).execute("t1", { path: "a.txt" }, undefined, undefined, {});
+    expect((result as any).content?.[0]?.text).toContain("hello workspace");
+  });
+
+  it("denies another agent's skill path even when workspace exists", async () => {
+    const ws = mkdtempSync(join(tmpdir(), "ws-"));
+    const skillsDir = mkdtempSync(join(tmpdir(), "skills-own-"));
+    const otherSkills = mkdtempSync(join(tmpdir(), "skills-other-"));
+    mkdirSync(join(otherSkills, "secret"), { recursive: true });
+    writeFileSync(join(otherSkills, "secret", "SKILL.md"), "other agent skill", "utf8");
+    const defs = resolveToolDefinitions(["read"], {
+      cwd: tmpdir(), workspaceRoot: ws, skillsDir, propose,
+    });
+    const otherPath = join(otherSkills, "secret", "SKILL.md");
+    const result = await (defs[0] as any).execute("t1", { path: otherPath }, undefined, undefined, {});
+    expect((result as any).content?.[0]?.text).toBe(`拒绝访问:${otherPath} 不在工作区内`);
+  });
+
+  it("still returns WORKSPACE_NOT_CREATED for workspace paths when workspace is missing", async () => {
+    const skillsDir = mkdtempSync(join(tmpdir(), "skills-"));
+    const ws = join(tmpdir(), "missing-ws-still-" + Date.now());
+    const defs = resolveToolDefinitions(["read"], {
+      cwd: tmpdir(), workspaceRoot: ws, skillsDir, propose,
+    });
+    const result = await (defs[0] as any).execute("t1", { path: join(ws, "a.txt") }, undefined, undefined, {});
+    expect((result as any).content?.[0]?.text).toBe(WORKSPACE_NOT_CREATED);
+  });
+
+  it("lists a skill-root directory when the workspace does not exist", async () => {
+    const skillsDir = mkdtempSync(join(tmpdir(), "skills-"));
+    mkdirSync(join(skillsDir, "foo"), { recursive: true });
+    writeFileSync(join(skillsDir, "foo", "SKILL.md"), "skill body", "utf8");
+    const ws = join(tmpdir(), "missing-ws-ls-" + Date.now());
+    const defs = resolveToolDefinitions(["ls"], {
+      cwd: tmpdir(), workspaceRoot: ws, skillsDir, propose,
+    });
+    const result = await (defs[0] as any).execute("t1", { path: join(skillsDir, "foo") }, undefined, undefined, {});
+    const text = (result as any).content?.[0]?.text ?? "";
+    expect(text).toContain("SKILL.md");
+    expect(text).not.toBe(WORKSPACE_NOT_CREATED);
+  });
+
+  it("isolates user-library and package skill roots across two agent saddles", async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "data-"));
+    const packageDir = mkdtempSync(join(tmpdir(), "pkg-"));
+    const userSkills = join(dataDir, "agents", "general", "skills");
+    const packageSkills = join(packageDir, "agent", "skills");
+    mkdirSync(join(userSkills, "extra-user-skill"), { recursive: true });
+    mkdirSync(join(packageSkills, "clause_extract"), { recursive: true });
+    writeFileSync(join(userSkills, "extra-user-skill", "SKILL.md"), "user library skill", "utf8");
+    writeFileSync(join(packageSkills, "clause_extract", "SKILL.md"), "package skill", "utf8");
+    const ws = mkdtempSync(join(tmpdir(), "ws-iso-"));
+    const userPath = join(userSkills, "extra-user-skill", "SKILL.md");
+    const packagePath = join(packageSkills, "clause_extract", "SKILL.md");
+
+    const generalRead = resolveToolDefinitions(["read"], {
+      cwd: tmpdir(), workspaceRoot: ws, skillsDir: userSkills, propose,
+    })[0] as any;
+    const ownUser = await generalRead.execute("t1", { path: userPath }, undefined, undefined, {});
+    const crossPackage = await generalRead.execute("t2", { path: packagePath }, undefined, undefined, {});
+    expect(ownUser.content?.[0]?.text).toContain("user library skill");
+    expect(crossPackage.content?.[0]?.text).toBe(`拒绝访问:${packagePath} 不在工作区内`);
+
+    const packageRead = resolveToolDefinitions(["read"], {
+      cwd: tmpdir(), workspaceRoot: ws, skillsDir: packageSkills, propose,
+    })[0] as any;
+    const ownPackage = await packageRead.execute("t3", { path: packagePath }, undefined, undefined, {});
+    const crossUser = await packageRead.execute("t4", { path: userPath }, undefined, undefined, {});
+    expect(ownPackage.content?.[0]?.text).toContain("package skill");
+    expect(crossUser.content?.[0]?.text).toBe(`拒绝访问:${userPath} 不在工作区内`);
   });
 });

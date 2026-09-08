@@ -98,9 +98,10 @@ export async function assemble(opts: {
         surface,
         capabilities: manifest.capabilities ?? { tools: [] },
         modelRequirements: manifest.modelRequirements,
+        skillLibrary: manifest.skillLibrary,
       },
     };
-  }));
+  }), { dataDir: opts.dataDir });
   const audit = new AuditStore(join(opts.dataDir, "audit.db"));
   const gate = new ApprovalGate({ audit });
   for (const [id, pr] of profiles) {
