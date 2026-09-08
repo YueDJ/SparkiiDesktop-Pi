@@ -1,6 +1,6 @@
 # 通用聊天技能调用 — Design Spec
 
-**Status:** Approved（架构师第二轮 Approve；可以改产品代码）
+**Status:** Implemented
 **Date:** 2026-09-08
 **Plan:** `docs/superpowers/plans/2026-09-08-chat-skill-invocation.md`
 **Depends on:**

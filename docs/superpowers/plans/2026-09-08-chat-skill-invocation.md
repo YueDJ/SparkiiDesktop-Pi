@@ -1,6 +1,6 @@
 # 通用聊天技能调用 Implementation Plan
 
-> **For agentic workers:** 本 plan 已经架构师审过（第二轮 Approve）。用 superpowers:executing-plans（或 subagent-driven-development）按任务逐步落地。Steps 用 checkbox (`- [ ]`) 跟踪。
+> **For agentic workers:** 本 plan 已经架构师审过（第二轮 Approve）。用 superpowers:executing-plans（或 subagent-driven-development）按任务逐步落地。Steps 用 checkbox (`- [x]`) 跟踪。
 
 **Goal:** 聊天不再把 `/name` 改写成 `/skill:name`。用户原文写入 Pi jsonl；模型用 `<available_skills>` + `read` 加载 SKILL.md。Composer 提供 `/` 菜单与前导 chip；时间线把 destName 形 `/name` 投影成技能 chip。合同审核 workflow 的 `/skill:` 展开不动。
 
@@ -135,11 +135,11 @@ pnpm exec vitest run packages/agent-host/test/skill-prompt.test.ts \
 
 跑：`pnpm exec vitest run packages/agent-host/test/skill-prompt.test.ts packages/agent-host/test/pi-sdk-runtime.test.ts packages/agent-host/test/workflow.test.ts apps/desktop/test/workflow-broker.test.ts`
 
-- [ ] Step 1: 改测试（改写用例改为「不再导出 / 不再改写」）
-- [ ] Step 2: 跑红
-- [ ] Step 3: 最小实现
-- [ ] Step 4: 跑绿
-- [ ] Step 5: Commit
+- [x] Step 1: 改测试（改写用例改为「不再导出 / 不再改写」）
+- [x] Step 2: 跑红
+- [x] Step 3: 最小实现
+- [x] Step 4: 跑绿
+- [x] Step 5: Commit
 
 ```bash
 git add packages/agent-host/src/skill-prompt.ts packages/agent-host/src/pi-sdk-runtime.ts \
@@ -185,11 +185,11 @@ const DEST_NAME_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 跑：`pnpm exec vitest run apps/desktop/test/skill-slash.test.ts`
 
-- [ ] Step 1: 写失败测试
-- [ ] Step 2: 跑红
-- [ ] Step 3: 实现并 `export *` from `@sparkii/ui`
-- [ ] Step 4: 跑绿
-- [ ] Step 5: Commit
+- [x] Step 1: 写失败测试
+- [x] Step 2: 跑红
+- [x] Step 3: 实现并 `export *` from `@sparkii/ui`
+- [x] Step 4: 跑绿
+- [x] Step 5: Commit
 
 ```bash
 git add packages/ui/src/patterns/skill-slash.ts packages/ui/src/index.ts apps/desktop/test/skill-slash.test.ts
@@ -227,11 +227,11 @@ preload：`listAgentSkills(agentId: string)` → `invoke('listAgentSkills', agen
 
 跑：`pnpm exec vitest run apps/desktop/test/ipc.test.ts apps/desktop/test/preload-api.test.ts`
 
-- [ ] Step 1: 写失败测试
-- [ ] Step 2: 跑红
-- [ ] Step 3: 最小实现
-- [ ] Step 4: 跑绿
-- [ ] Step 5: Commit
+- [x] Step 1: 写失败测试
+- [x] Step 2: 跑红
+- [x] Step 3: 最小实现
+- [x] Step 4: 跑绿
+- [x] Step 5: Commit
 
 ```bash
 git commit -m "feat(desktop): IPC listAgentSkills for composer menu"
@@ -278,11 +278,11 @@ Props：`skills?: Array<{ name: string; description: string }> | null`
 
 跑：`pnpm exec vitest run apps/desktop/test/ui-chat-patterns.test.tsx apps/desktop/test/chat-composer.test.tsx`
 
-- [ ] Step 1: 写失败测试
-- [ ] Step 2: 跑红
-- [ ] Step 3: 最小实现 + CSS
-- [ ] Step 4: 跑绿
-- [ ] Step 5: Commit
+- [x] Step 1: 写失败测试
+- [x] Step 2: 跑红
+- [x] Step 3: 最小实现 + CSS
+- [x] Step 4: 跑绿
+- [x] Step 5: Commit
 
 ```bash
 git commit -m "feat(ui): composer skill slash menu and leading chip"
@@ -315,11 +315,11 @@ git commit -m "feat(ui): composer skill slash menu and leading chip"
 
 跑：`pnpm exec vitest run apps/desktop/test/standard-chat.test.tsx`
 
-- [ ] Step 1: 写失败测试
-- [ ] Step 2: 跑红
-- [ ] Step 3: 最小实现
-- [ ] Step 4: 跑绿
-- [ ] Step 5: Commit
+- [x] Step 1: 写失败测试
+- [x] Step 2: 跑红
+- [x] Step 3: 最小实现
+- [x] Step 4: 跑绿
+- [x] Step 5: Commit
 
 ```bash
 git commit -m "feat(desktop): skill chips in composer and user timeline"
@@ -345,10 +345,10 @@ git commit -m "feat(desktop): skill chips in composer and user timeline"
 
 跑：`pnpm exec vitest run apps/desktop/test/runtime-assemble.test.ts apps/desktop/test/saddle.test.ts`
 
-- [ ] Step 1: 更新 assemble 断言（先红）
-- [ ] Step 2: 改 system.md / DESIGN.md
-- [ ] Step 3: 跑绿
-- [ ] Step 4: Commit
+- [x] Step 1: 更新 assemble 断言（先红）
+- [x] Step 2: 改 system.md / DESIGN.md
+- [x] Step 3: 跑绿
+- [x] Step 4: Commit
 
 ```bash
 git commit -m "docs(general): resolve /token via skill location folder name"
@@ -364,8 +364,8 @@ git commit -m "docs(general): resolve /token via skill location folder name"
 - `docs/superpowers/specs/2026-09-08-chat-skill-invocation-design.md` —— 全部做完后 Status → **Implemented**。
 - 本 plan 任务 checkbox 勾完。
 
-- [ ] Step 1: 改 Status
-- [ ] Step 2: Commit
+- [x] Step 1: 改 Status
+- [x] Step 2: Commit
 
 ```bash
 git commit -m "docs: mark chat skill invocation implemented"
