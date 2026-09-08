@@ -58,9 +58,10 @@ describe('preview / import / list / uninstall', () => {
     const preview = await previewUserSkill(source);
     expect(preview).toMatchObject({
       ok: true,
+      destName: 'summarize',
       skill: { name: 'summarize', description: 'Summarize a document.', hasScripts: false },
     });
-    if (preview.ok) expect(preview.skill.name).toBe('summarize');
+    if (preview.ok) expect(preview.skill.name).toBe(preview.destName);
 
     const skillsDir = join(tmp('skill-lib-'), 'skills');
     const imported = await importUserSkill(skillsDir, source);
@@ -78,7 +79,8 @@ describe('preview / import / list / uninstall', () => {
     const preview = await previewUserSkill(source);
     expect(preview.ok).toBe(true);
     if (preview.ok) {
-      expect(preview.skill.name).toBe('my-skill');
+      expect(preview.destName).toBe('my-skill');
+      expect(preview.skill.name).toBe(preview.destName);
       expect(preview.skill.warnings.length).toBeGreaterThan(0);
     }
     const skillsDir = join(tmp('skill-lib-'), 'skills');
@@ -228,6 +230,7 @@ describe('preview / import / list / uninstall', () => {
     const preview = await previewUserSkill(source);
     expect(preview).toMatchObject({
       ok: true,
+      destName: 'superpowers',
       skill: {
         name: 'superpowers',
         description: 'Superpowers skills and runtime bootstrap for coding agents',
@@ -236,6 +239,7 @@ describe('preview / import / list / uninstall', () => {
         hasScripts: true,
       },
     });
+    if (preview.ok) expect(preview.skill.name).toBe(preview.destName);
 
     const skillsDir = join(tmp('skill-lib-'), 'skills');
     expect(await importUserSkill(skillsDir, source)).toEqual({ ok: true, name: 'superpowers' });
@@ -344,6 +348,7 @@ describe('preview / import / list / uninstall', () => {
     const skillsDir = join(tmp('skill-lib-'), 'skills');
     expect(await previewUserSkill(source)).toEqual({ ok: false, reason: 'not-skill-root' });
     expect(await importUserSkill(skillsDir, source)).toEqual({ ok: false, reason: 'not-skill-root' });
+    expect(existsSync(skillsDir)).toBe(false);
   });
 
   it('rejects an empty Pi package as invalid-skill', async () => {

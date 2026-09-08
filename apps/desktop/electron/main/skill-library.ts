@@ -14,7 +14,7 @@ export type UserSkillRow = {
 };
 
 export type PreviewUserSkillResult =
-  | { ok: true; skill: UserSkillRow }
+  | { ok: true; skill: UserSkillRow; destName: string }
   | { ok: false; reason: 'not-skill-root' | 'invalid-skill' | 'unavailable' | 'bad-name'; diagnostics?: string[] };
 
 export type ImportUserSkillResult =
@@ -334,7 +334,7 @@ async function inspectSource(sourceDir: string): Promise<
 export async function previewUserSkill(sourceDir: string): Promise<PreviewUserSkillResult> {
   const inspected = await inspectSource(sourceDir);
   if (!inspected.ok) return inspected;
-  return { ok: true, skill: inspected.skill };
+  return { ok: true, skill: inspected.skill, destName: inspected.destName };
 }
 
 export async function listUserSkills(skillsDir: string): Promise<UserSkillRow[]> {

@@ -13,7 +13,7 @@ export type UserSkillRow = {
 export type SkillsPaneApi = {
   listUserSkills?(): Promise<{ agent: { id: string; name: string } | null; skills: UserSkillRow[] }>;
   previewUserSkill?(sourceDir: string): Promise<
-    | { ok: true; skill: UserSkillRow; destName?: string }
+    | { ok: true; skill: UserSkillRow; destName: string }
     | { ok: false; reason: string; diagnostics?: string[] }
   >;
   chooseSkillFolder?(): Promise<{ path?: string }>;
