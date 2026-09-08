@@ -18,7 +18,7 @@ export type SkillsPaneApi = {
   >;
   chooseSkillFolder?(): Promise<{ path?: string }>;
   importUserSkill?(opts: { sourceDir: string; overwrite?: boolean }): Promise<
-    { ok: true; name: string } | { ok: false; reason: string; name?: string }
+    { ok: true; name: string } | { ok: false; reason: string; name?: string; diagnostics?: string[] }
   >;
   uninstallUserSkill?(opts: { name: string }): Promise<{ ok: true } | { ok: false; reason: string }>;
   openUserSkillsDir?(): Promise<{ ok: true; path: string } | { ok: false; reason: string }>;
@@ -91,7 +91,7 @@ export function SettingsSkillsPane({ api }: { api?: SkillsPaneApi }) {
         result = await api.importUserSkill({ sourceDir: chosen.path, overwrite: true });
       }
       if (!result.ok) {
-        reportError(reasonMessage(result.reason), { source: '系统设置' });
+        reportError(reasonMessage(result.reason, result.diagnostics), { source: '系统设置' });
         return;
       }
       await refresh();

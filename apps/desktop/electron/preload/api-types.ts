@@ -100,7 +100,7 @@ export interface SparkiiApi {
   >;
   chooseSkillFolder(): Promise<{ path?: string }>;
   importUserSkill(opts: { sourceDir: string; overwrite?: boolean }): Promise<
-    { ok: true; name: string } | { ok: false; reason: string; name?: string }
+    { ok: true; name: string } | { ok: false; reason: string; name?: string; diagnostics?: string[] }
   >;
   uninstallUserSkill(opts: { name: string }): Promise<{ ok: true } | { ok: false; reason: string }>;
   openUserSkillsDir(): Promise<{ ok: true; path: string } | { ok: false; reason: string }>;

@@ -19,7 +19,7 @@ export type PreviewUserSkillResult =
 
 export type ImportUserSkillResult =
   | { ok: true; name: string }
-  | { ok: false; reason: 'not-skill-root' | 'invalid-skill' | 'exists' | 'overlap' | 'unavailable' | 'bad-name'; name?: string };
+  | { ok: false; reason: 'not-skill-root' | 'invalid-skill' | 'exists' | 'overlap' | 'unavailable' | 'bad-name'; name?: string; diagnostics?: string[] };
 
 export type UninstallUserSkillResult =
   | { ok: true }
@@ -215,13 +215,21 @@ async function copySkillRoot(from: string, to: string): Promise<void> {
   await cp(from, to, { recursive: true, filter: copyFilter(from) });
 }
 
+type PackCopy = { root: string; destName: string };
+
 type InspectedSource = {
   destName: string;
   skill: UserSkillRow;
   kind: 'skill' | 'pack';
-  skillRoots: string[];
+  copies: PackCopy[];
   packageJson?: string;
 };
+
+function failedDestName(diagnostics?: string[]): PreviewUserSkillResult {
+  return diagnostics?.length
+    ? { ok: false, reason: 'bad-name', diagnostics }
+    : { ok: false, reason: 'bad-name' };
+}
 
 async function inspectSource(sourceDir: string): Promise<
   | { ok: true } & InspectedSource
@@ -243,12 +251,12 @@ async function inspectSource(sourceDir: string): Promise<
       return { ok: false, reason: 'invalid-skill', diagnostics };
     }
     const dest = destNameFor(loaded.skills[0]?.name, sourceDir);
-    if (typeof dest !== 'string') return dest;
+    if (typeof dest !== 'string') return failedDestName();
     return {
       ok: true,
       destName: dest,
       kind: 'skill',
-      skillRoots: [sourceDir],
+      copies: [{ root: sourceDir, destName: dest }],
       skill: {
         name: dest,
         description: loaded.skills[0]!.description,
@@ -269,39 +277,53 @@ async function inspectSource(sourceDir: string): Promise<
   }
 
   const discovered = await collectPackSkillRoots(sourceDir, manifest);
+  if (discovered.length === 0 && !manifest?.isPiPackage) {
+    return { ok: false, reason: 'not-skill-root' };
+  }
+
   const warnings: string[] = [];
-  const skillRoots: string[] = [];
-  let skillCount = 0;
+  const copies: PackCopy[] = [];
+  const used = new Set<string>();
+  let firstDescription = '';
   for (const root of discovered) {
     let loaded;
     try {
       loaded = await loadSkillsFromDir(root);
     } catch {
-      continue;
+      return { ok: false, reason: 'unavailable', diagnostics: [`无法读取子技能「${basename(root)}」`] };
     }
     warnings.push(...loaded.diagnostics.map((d) => d.message));
     if (loaded.skills.length === 0) continue;
-    skillRoots.push(root);
-    skillCount += loaded.skills.length;
+    const childDest = destNameFor(loaded.skills[0]?.name, root);
+    if (typeof childDest !== 'string') {
+      return failedDestName([`无法为子技能「${basename(root)}」生成合法安装名`]);
+    }
+    if (used.has(childDest)) {
+      return failedDestName([`子技能安装名冲突：${childDest}`]);
+    }
+    used.add(childDest);
+    copies.push({ root, destName: childDest });
+    if (!firstDescription) firstDescription = loaded.skills[0]!.description;
   }
-  if (skillRoots.length === 0) {
+  if (copies.length === 0) {
     return { ok: false, reason: 'invalid-skill', diagnostics: warnings };
   }
   const dest = destNameForPack(sourceDir, manifest?.name);
-  if (typeof dest !== 'string') return dest;
+  if (typeof dest !== 'string') return failedDestName();
+  const skillCount = copies.length;
   const description = manifest?.description?.trim()
-    || (skillCount > 1 ? `${skillCount} 个技能` : (await loadSkillsFromDir(skillRoots[0]!)).skills[0]?.description)
+    || (skillCount > 1 ? `${skillCount} 个技能` : firstDescription)
     || '';
   return {
     ok: true,
     destName: dest,
     kind: 'pack',
-    skillRoots,
+    copies,
     packageJson: await isFile(join(sourceDir, 'package.json')) ? join(sourceDir, 'package.json') : undefined,
     skill: {
       name: dest,
       description,
-      hasScripts: await hasScriptsAnywhere(sourceDir, skillRoots),
+      hasScripts: await hasScriptsAnywhere(sourceDir, copies.map((copy) => copy.root)),
       warnings,
       kind: 'pack',
       skillCount,
@@ -377,12 +399,8 @@ export async function importUserSkill(
       if (inspected.packageJson) {
         await cp(inspected.packageJson, join(dest, 'package.json'));
       }
-      const used = new Set<string>();
-      for (const root of inspected.skillRoots) {
-        const childName = destNameFor(undefined, root);
-        if (typeof childName !== 'string' || used.has(childName)) continue;
-        used.add(childName);
-        await copySkillRoot(root, join(dest, childName));
+      for (const copy of inspected.copies) {
+        await copySkillRoot(copy.root, join(dest, copy.destName));
       }
     }
   } catch {

@@ -20,6 +20,7 @@
 4. **system.md 改工作区句：** 允许读已安装 skill 目录，即使工作区未创建。
 5. IPC 表含 `previewUserSkill`；覆盖只走 import 的 `exists`；文案用 `displayName`；隔离锁走 `buildAgentSaddle` / `agent.skillsDir`，不新增 `buildProfileSaddle` 生产调用。
 6. import **先校验再改盘**（含 source===dest 的 overlap，避免打开库后再导入把自己删掉）。preview 行的 `name === destName`。设置页补「无 user library」空态。
+7. **包内子 destName 闭包失败：** 每个将安装的 skill 根在改盘前必须有唯一合法子 destName（frontmatter name，否则文件夹名）。冲突或无法生成 → preview/import 都 `bad-name`，不得 `ok: true` 后静默跳过。空的 `skills/` 且不是 Pi 包 → `not-skill-root`。
 
 ## Product forks
 

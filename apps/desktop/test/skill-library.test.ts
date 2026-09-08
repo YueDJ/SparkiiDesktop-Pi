@@ -271,6 +271,95 @@ describe('preview / import / list / uninstall', () => {
     expect(existsSync(join(skillsDir, 'my-pack', 'outline', 'SKILL.md'))).toBe(true);
   });
 
+  it('fails closed when pack child destNames collide', async () => {
+    const source = join(tmp('skill-pack-'), 'collide-pack');
+    mkdirSync(source, { recursive: true });
+    writeFileSync(
+      join(source, 'package.json'),
+      JSON.stringify({ name: 'collide-pack', keywords: ['pi-package'], pi: { skills: ['./skills'] } }),
+      'utf8',
+    );
+    writeSkill(
+      join(source, 'skills', 'My Skill'),
+      '---\nname: My Skill\ndescription: First.\n---\n# a\n',
+    );
+    writeSkill(
+      join(source, 'skills', 'my-skill'),
+      '---\nname: my-skill\ndescription: Second.\n---\n# b\n',
+    );
+    const skillsDir = join(tmp('skill-lib-'), 'skills');
+    const preview = await previewUserSkill(source);
+    expect(preview.ok).toBe(false);
+    if (!preview.ok) {
+      expect(preview.reason).toBe('bad-name');
+      expect(preview.diagnostics?.some((d) => d.includes('冲突'))).toBe(true);
+    }
+    expect(await importUserSkill(skillsDir, source)).toMatchObject({ ok: false, reason: 'bad-name' });
+    expect(existsSync(skillsDir)).toBe(false);
+  });
+
+  it('fails closed when a pack child cannot form a destName', async () => {
+    const source = join(tmp('skill-pack-'), 'illegal-child');
+    mkdirSync(source, { recursive: true });
+    writeFileSync(
+      join(source, 'package.json'),
+      JSON.stringify({ name: 'illegal-child', keywords: ['pi-package'], pi: { skills: ['./skills'] } }),
+      'utf8',
+    );
+    writeSkill(
+      join(source, 'skills', '!!!'),
+      '---\nname: !!!\ndescription: Cannot sanitize.\n---\n# body\n',
+    );
+    const skillsDir = join(tmp('skill-lib-'), 'skills');
+    const preview = await previewUserSkill(source);
+    expect(preview.ok).toBe(false);
+    if (!preview.ok) {
+      expect(preview.reason).toBe('bad-name');
+      expect(preview.diagnostics?.some((d) => d.includes('合法安装名'))).toBe(true);
+    }
+    expect(await importUserSkill(skillsDir, source)).toMatchObject({ ok: false, reason: 'bad-name' });
+    expect(existsSync(skillsDir)).toBe(false);
+  });
+
+  it('uses a legal frontmatter name when the pack child folder is illegal', async () => {
+    const source = join(tmp('skill-pack-'), 'named-pack');
+    mkdirSync(source, { recursive: true });
+    writeFileSync(
+      join(source, 'package.json'),
+      JSON.stringify({ name: 'named-pack', keywords: ['pi-package'], pi: { skills: ['./skills'] } }),
+      'utf8',
+    );
+    writeSkill(
+      join(source, 'skills', '!!!'),
+      '---\nname: legal-name\ndescription: Saved by frontmatter.\n---\n# body\n',
+    );
+    const skillsDir = join(tmp('skill-lib-'), 'skills');
+    expect(await importUserSkill(skillsDir, source)).toEqual({ ok: true, name: 'named-pack' });
+    expect(existsSync(join(skillsDir, 'named-pack', 'legal-name', 'SKILL.md'))).toBe(true);
+  });
+
+  it('rejects an empty skills/ folder that is not a Pi package', async () => {
+    const source = tmp('skill-empty-skills-');
+    mkdirSync(join(source, 'skills'), { recursive: true });
+    const skillsDir = join(tmp('skill-lib-'), 'skills');
+    expect(await previewUserSkill(source)).toEqual({ ok: false, reason: 'not-skill-root' });
+    expect(await importUserSkill(skillsDir, source)).toEqual({ ok: false, reason: 'not-skill-root' });
+  });
+
+  it('rejects an empty Pi package as invalid-skill', async () => {
+    const source = tmp('skill-empty-pi-');
+    mkdirSync(join(source, 'skills'), { recursive: true });
+    writeFileSync(
+      join(source, 'package.json'),
+      JSON.stringify({ name: 'empty-pack', keywords: ['pi-package'], pi: { skills: ['./skills'] } }),
+      'utf8',
+    );
+    const skillsDir = join(tmp('skill-lib-'), 'skills');
+    expect(await previewUserSkill(source)).toEqual({ ok: false, reason: 'invalid-skill' });
+    expect(await importUserSkill(skillsDir, source)).toEqual({ ok: false, reason: 'invalid-skill' });
+    expect(existsSync(skillsDir)).toBe(false);
+  });
+
   it('still rejects a repo that only hides SKILL.md outside skills/', async () => {
     const source = tmp('skill-repo-junk-');
     writeSkill(join(source, 'docs', 'hidden'), '---\nname: hidden\ndescription: Hidden.\n---\n# hidden\n');

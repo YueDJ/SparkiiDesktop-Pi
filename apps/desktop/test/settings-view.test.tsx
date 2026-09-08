@@ -182,6 +182,25 @@ describe('SettingsView skills pane', () => {
     expect(confirm.mock.calls[0]?.[0]).toContain('2 个技能');
   });
 
+  it('does not import when preview fails on pack destNames', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const api = skillsApi({
+      previewUserSkill: vi.fn().mockResolvedValue({
+        ok: false,
+        reason: 'bad-name',
+        diagnostics: ['子技能安装名冲突：my-skill'],
+      }),
+    });
+    render(<SettingsView api={api} />);
+    await screen.findByText('已加载本机配置');
+    fireEvent.click(screen.getByText('技能'));
+    await screen.findByText(/仅用于/);
+    fireEvent.click(screen.getByText('导入文件夹'));
+    await waitFor(() => expect(api.previewUserSkill).toHaveBeenCalledWith('/tmp/summarize'));
+    expect(api.importUserSkill).not.toHaveBeenCalled();
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
   it('asks for overwrite when import returns exists', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     const importUserSkill = vi.fn()

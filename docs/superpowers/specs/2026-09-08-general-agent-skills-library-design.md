@@ -133,7 +133,7 @@ frontmatter name 不合法但 description 有效时仍可安装（与 Pi / 现�
    4. 选中目录名是 `skills` 且其直接子目录是 skill 根 → skill 包（`destName` 优先用父目录名）。
    5. 否则 `not-skill-root`。`docs/` / `hooks/` 里单独一个 `SKILL.md` 仍拒绝（不深扫收割仓库）。
 3. 单个 skill：对 `sourceDir` 调 `loadSkillsFromDir`。0 个 skill → `invalid-skill`。`destName` 仍按 frontmatter / 文件夹名。
-4. 包：只收集 **一跳** skill 根（`pi.skills` 指向的路径或其直接子目录；否则 `skills/` 的直接子目录）。路径必须 `resolve` 后仍在 `sourceDir` 内。每个根单独 `loadSkillsFromDir`；无 description 的根跳过并进 warnings；一个合法根都没有 → `invalid-skill`。`destName`：合法的 `package.json` `name`（去掉 scope）→ 否则源文件夹名；源文件夹名是 `skills` 则试父目录名。
+4. 包：只收集 **一跳** skill 根（`pi.skills` 指向的路径或其直接子目录；否则 `skills/` 的直接子目录）。路径必须 `resolve` 后仍在 `sourceDir` 内。每个根单独 `loadSkillsFromDir`；无 description 的根跳过并进 warnings；一个合法根都没有 → `invalid-skill`。空的 `skills/` 且不是 Pi 包 → `not-skill-root`。每个**将安装**的根必须在改盘前得到唯一合法子 `destName`（frontmatter name，否则文件夹名）；冲突或无法生成 → `bad-name`，不写盘、预览也失败。包 `destName`：合法的 `package.json` `name`（去掉 scope）→ 否则源文件夹名；源文件夹名是 `skills` 则试父目录名。
 5. 目的地 `dest = join(skillsDir, destName)`。**先做完全部校验再改盘**：`dest` 必须在 `skillsDir` 内且 `relative(skillsDir, dest) !== ''`；`resolve` 后源与 dest 相等、或 `isPathInside(source, dest)`、或 `isPathInside(dest, source)` → `overlap`；已存在且 `overwrite !== true` → `exists`（返回 `name: destName`）。
 6. **允许清单拷贝**（不是整仓 `cp`）：
    - 单个 skill：拷该 skill 根到 `dest`。
