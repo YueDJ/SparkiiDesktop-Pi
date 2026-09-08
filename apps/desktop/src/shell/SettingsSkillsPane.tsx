@@ -77,7 +77,8 @@ export function SettingsSkillsPane({ api }: { api?: SkillsPaneApi }) {
         reportError(reasonMessage(preview.reason, preview.diagnostics), { source: '系统设置' });
         return;
       }
-      if (!window.confirm(`导入技能「${preview.skill.name}」？\n${preview.skill.description}`)) return;
+      const scriptsHint = preview.skill.hasScripts ? '\n其中的命令仍要审批。' : '';
+      if (!window.confirm(`导入技能「${preview.skill.name}」？\n${preview.skill.description}${scriptsHint}`)) return;
       let result = await api.importUserSkill({ sourceDir: chosen.path });
       if (!result.ok && result.reason === 'exists') {
         if (!window.confirm(`技能「${result.name ?? preview.skill.name}」已存在，要覆盖吗？`)) return;

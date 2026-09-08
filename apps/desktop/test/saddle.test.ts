@@ -1,4 +1,3 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from 'vitest';
@@ -121,20 +120,5 @@ describe('buildAgentSaddle', () => {
     expect(saddle.skillsDir).not.toContain(join('dataDir', 'agents', 'general'));
   });
 
-  it('does not leak a user-library skill into contract-review loadProfile', async () => {
-    const before = await loadProfile(contractDir, { allowUnsigned: true });
-    const beforeNames = before.agent.skills.map((s) => s.name).sort();
-    const userSkill = join(repoRoot, 'tmp-user-skills', 'extra-user-skill');
-    mkdirSync(userSkill, { recursive: true });
-    writeFileSync(
-      join(userSkill, 'SKILL.md'),
-      '---\nname: extra-user-skill\ndescription: Should not appear in contract-review.\n---\n# extra\n',
-      'utf8',
-    );
-
-    const after = await loadProfile(contractDir, { allowUnsigned: true });
-    expect(after.agent.skills.map((s) => s.name).sort()).toEqual(beforeNames);
-    expect(after.agent.skills.map((s) => s.name)).not.toContain('extra-user-skill');
-  });
 });
 

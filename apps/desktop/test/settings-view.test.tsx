@@ -132,8 +132,14 @@ describe('SettingsView skills pane', () => {
   });
 
   it('imports a chosen folder after preview confirm', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
-    const api = skillsApi();
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const api = skillsApi({
+      previewUserSkill: vi.fn().mockResolvedValue({
+        ok: true,
+        skill: { name: 'summarize', description: 'Summarize text.', hasScripts: true, warnings: [] },
+        destName: 'summarize',
+      }),
+    });
     render(<SettingsView api={api} />);
     await screen.findByText('已加载本机配置');
     fireEvent.click(screen.getByText('技能'));
@@ -143,6 +149,8 @@ describe('SettingsView skills pane', () => {
     await waitFor(() => expect(api.previewUserSkill).toHaveBeenCalledWith('/tmp/summarize'));
     await waitFor(() => expect(api.importUserSkill).toHaveBeenCalledWith({ sourceDir: '/tmp/summarize' }));
     expect(api.importUserSkill).toHaveBeenCalledTimes(1);
+    expect(confirm.mock.calls[0]?.[0]).toContain('summarize');
+    expect(confirm.mock.calls[0]?.[0]).toContain('其中的命令仍要审批。');
   });
 
   it('asks for overwrite when import returns exists', async () => {

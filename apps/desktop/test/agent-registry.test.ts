@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -94,25 +94,18 @@ describe('loadAgentRuntimes', () => {
   });
 
   it('does not branch skill assembly on agent id in production sources', () => {
-    const desktopFiles = [
-      'agent-registry.ts',
-      'runtime.ts',
-      'saddle.ts',
-      'skill-library.ts',
-      'ipc.ts',
+    const repoRoot = join(mainDir, '..', '..', '..', '..');
+    const files = [
+      ...readdirSync(mainDir)
+        .filter((name) => name.endsWith('.ts'))
+        .map((name) => join(mainDir, name)),
+      join(repoRoot, 'packages', 'config', 'src', 'schema.ts'),
+      join(repoRoot, 'packages', 'config', 'src', 'agent.ts'),
+      join(repoRoot, 'packages', 'config', 'src', 'loader.ts'),
+      join(repoRoot, 'packages', 'agent-host', 'src', 'tool-registry.ts'),
+      join(repoRoot, 'packages', 'agent-host', 'src', 'pi-sdk-runtime.ts'),
     ];
-    const packageFiles = [
-      join(mainDir, '..', '..', '..', '..', 'packages', 'config', 'src', 'schema.ts'),
-      join(mainDir, '..', '..', '..', '..', 'packages', 'config', 'src', 'agent.ts'),
-      join(mainDir, '..', '..', '..', '..', 'packages', 'agent-host', 'src', 'tool-registry.ts'),
-      join(mainDir, '..', '..', '..', '..', 'packages', 'agent-host', 'src', 'pi-sdk-runtime.ts'),
-    ];
-    for (const file of desktopFiles) {
-      const src = readFileSync(join(mainDir, file), 'utf8');
-      expect(src, file).not.toMatch(/id\s*===\s*['"]general['"]/);
-      expect(src, file).not.toMatch(/id\s*===\s*['"]contract-review['"]/);
-    }
-    for (const file of packageFiles) {
+    for (const file of files) {
       const src = readFileSync(file, 'utf8');
       expect(src, file).not.toMatch(/id\s*===\s*['"]general['"]/);
       expect(src, file).not.toMatch(/id\s*===\s*['"]contract-review['"]/);
