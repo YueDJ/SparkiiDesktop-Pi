@@ -217,6 +217,7 @@ export async function createPiSdkSessionHost(
       ? resolveToolDefinitions(pendingSaddle.tools, {
           cwd: sessionCwd,
           workspaceRoot,
+          skillsDir: pendingSaddle.skillsDir,
           propose: async (request) =>
             new Promise<ProposalDecision>((resolve, reject) => {
               pendingProposals.set(request.requestId, { resolve, reject });

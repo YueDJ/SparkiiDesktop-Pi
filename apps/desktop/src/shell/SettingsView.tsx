@@ -8,6 +8,7 @@ import {
   type ChatDetailLevel,
 } from '../workbench/chat-detail-level.js';
 import { AuditView } from '../audit/AuditView.js';
+import { SettingsSkillsPane, type SkillsPaneApi } from './SettingsSkillsPane.js';
 
 export interface ProviderEntry {
   id: string;
@@ -35,14 +36,20 @@ export interface SettingsApi {
   testConnection?(provider: string, apiKey?: string | null): Promise<{ ok: boolean; latencyMs?: number; httpStatus?: number; reason?: string; error?: string }>;
   queryAudit?(filter: object): Promise<unknown[]>;
   diagnostics?(): Promise<{ logs: string }>;
+  listUserSkills?: SkillsPaneApi['listUserSkills'];
+  previewUserSkill?: SkillsPaneApi['previewUserSkill'];
+  chooseSkillFolder?: SkillsPaneApi['chooseSkillFolder'];
+  importUserSkill?: SkillsPaneApi['importUserSkill'];
+  uninstallUserSkill?: SkillsPaneApi['uninstallUserSkill'];
+  openUserSkillsDir?: SkillsPaneApi['openUserSkillsDir'];
 }
 
 export interface SettingsViewProps { api?: SettingsApi; onExportAudit?(jsonl: string): void; }
 
-const PANES = ['llm', 'data', 'runtime', 'approval', 'appearance', 'audit'] as const;
+const PANES = ['llm', 'data', 'runtime', 'skills', 'approval', 'appearance', 'audit'] as const;
 type Pane = (typeof PANES)[number];
 const PANE_LABELS: Record<Pane, string> = {
-  llm: '大模型连接', data: '数据与隐私', runtime: '智能体与运行', approval: '审批与安全', appearance: '外观与语言', audit: '审计',
+  llm: '大模型连接', data: '数据与隐私', runtime: '智能体与运行', skills: '技能', approval: '审批与安全', appearance: '外观与语言', audit: '审计',
 };
 
 const ROUTE_TASKS = [
@@ -335,6 +342,7 @@ export function SettingsView(props: SettingsViewProps) {
           </div>
         </>
       )}
+      {pane === 'skills' && <SettingsSkillsPane api={api} />}
       {pane === 'approval' && (
         <>
           <h3 className="settings-section-title">审批与安全</h3>

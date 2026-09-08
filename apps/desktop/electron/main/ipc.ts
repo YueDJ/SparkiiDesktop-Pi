@@ -1,4 +1,4 @@
-import { ipcMain, dialog, app, type BrowserWindow } from 'electron';
+import { ipcMain, dialog, app, shell, type BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm } from 'node:fs/promises';
@@ -22,6 +22,13 @@ import type { Runtime } from './runtime.js';
 import type { Logger } from './logger.js';
 import type { ChatAttachment, ChooseDocumentOptions } from '../preload/api-types.js';
 import { DEFAULT_CHOOSE_EXTENSIONS, grantDocumentPath, readGrantedDocumentBytes } from './document-bytes.js';
+import {
+  importUserSkill,
+  listUserSkills,
+  previewUserSkill,
+  uninstallUserSkill,
+} from './skill-library.js';
+import type { AgentRuntime } from './agent-registry.js';
 
 function parseSessionInputs(raw: string | null | undefined): { path: string; name?: string; missing?: boolean }[] | undefined {
   if (!raw) return undefined;
@@ -90,6 +97,12 @@ async function recoverInFlightAssistant(
   const committed = lastAssistantOfBranch(branch);
   if (committed && assistantText(committed) === assistantText(candidate)) return null;
   return candidate;
+}
+
+function userLibraryAgent(rt: Runtime): AgentRuntime | null {
+  return [...rt.agents.values()]
+    .filter((agent) => agent.manifest.skillLibrary === 'user')
+    .sort((a, b) => (a.manifest.sortOrder ?? 0) - (b.manifest.sortOrder ?? 0))[0] ?? null;
 }
 
 export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, logger: Logger) {
@@ -718,6 +731,75 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       ? await dialog.showOpenDialog(win, { properties: ['openDirectory'] })
       : { canceled: true, filePaths: [] as string[] };
     return result.canceled ? {} : { path: result.filePaths[0] };
+  });
+
+  ipcMain.handle('sparkii:listUserSkills', async () => {
+    const agent = userLibraryAgent(rt);
+    if (!agent) return { agent: null, skills: [] };
+    return {
+      agent: { id: agent.id, name: agent.manifest.displayName ?? agent.id },
+      skills: await listUserSkills(agent.skillsDir),
+    };
+  });
+
+  ipcMain.handle('sparkii:previewUserSkill', async (_e, sourceDir: string) => {
+    const preview = await previewUserSkill(String(sourceDir ?? ''));
+    if (!preview.ok) return preview;
+    return { ...preview, destName: preview.skill.name };
+  });
+
+  ipcMain.handle('sparkii:chooseSkillFolder', async () => {
+    const e2e = process.env.SPARKII_E2E_SKILL_DIR;
+    if (e2e) return { path: e2e };
+    const win = getWindow();
+    const result = win
+      ? await dialog.showOpenDialog(win, { properties: ['openDirectory'] })
+      : { canceled: true, filePaths: [] as string[] };
+    return result.canceled ? {} : { path: result.filePaths[0] };
+  });
+
+  ipcMain.handle('sparkii:importUserSkill', async (_e, opts: { sourceDir?: string; overwrite?: boolean } = {}) => {
+    const agent = userLibraryAgent(rt);
+    if (!agent) return { ok: false, reason: 'no-user-library' };
+    const sourceDir = String(opts.sourceDir ?? '');
+    const result = await importUserSkill(agent.skillsDir, sourceDir, { overwrite: opts.overwrite });
+    if (result.ok) {
+      await rt.audit.append({
+        actor: rt.subject.userId,
+        action: 'skill.installed',
+        resource: result.name,
+        payloadSummary: sourceDir,
+      });
+    }
+    return result;
+  });
+
+  ipcMain.handle('sparkii:uninstallUserSkill', async (_e, opts: { name?: string } = {}) => {
+    const agent = userLibraryAgent(rt);
+    if (!agent) return { ok: false, reason: 'no-user-library' };
+    const name = String(opts.name ?? '');
+    const result = await uninstallUserSkill(agent.skillsDir, name);
+    if (result.ok) {
+      await rt.audit.append({
+        actor: rt.subject.userId,
+        action: 'skill.uninstalled',
+        resource: name,
+        payloadSummary: name,
+      });
+    }
+    return result;
+  });
+
+  ipcMain.handle('sparkii:openUserSkillsDir', async () => {
+    const agent = userLibraryAgent(rt);
+    if (!agent) return { ok: false, reason: 'no-user-library' };
+    await mkdir(agent.skillsDir, { recursive: true });
+    try {
+      await shell.openPath(agent.skillsDir);
+    } catch {
+      /* headless / E2E: still return the path */
+    }
+    return { ok: true, path: agent.skillsDir };
   });
 
   ipcMain.handle('sparkii:getModelOptions', async (_e, agentId?: string) => {

@@ -59,6 +59,11 @@ html, body { margin: 0; height: 100%; overflow-x: hidden; }
 .settings-route-row { display: flex; align-items: center; gap: var(--spacing-xs); }
 .settings-route-label { width: 60px; }
 .settings-actions { display: flex; gap: var(--spacing-sm); margin-top: var(--spacing-md); flex-wrap: wrap; }
+.settings-skill-list { display: flex; flex-direction: column; gap: var(--spacing-sm); margin-top: var(--spacing-md); }
+.settings-skill-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--spacing-md); padding: var(--spacing-sm) 0; border-bottom: 1px solid var(--color-border); }
+.settings-skill-main { min-width: 0; flex: 1; }
+.settings-skill-name { font-weight: var(--font-weight-semibold); }
+.settings-skill-desc, .settings-skill-note, .settings-skill-warn { margin-top: 2px; font-size: var(--font-size-sm); }
 .settings-models { display: flex; flex-direction: column; gap: var(--spacing-xs); }
 .settings-model { font-size: var(--font-size-sm); }
 .settings-timeout { width: 120px; }

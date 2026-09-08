@@ -29,6 +29,7 @@ export interface AgentManifest {
   prompts?: string;
   security?: { roles?: string; approval?: string };
   modelRequirements?: ModelRequirement;
+  skillLibrary?: 'package' | 'user';
 }
 
 const surfaceSchema = z.object({
@@ -61,6 +62,7 @@ export const agentManifestSchema = z.object({
     approval: z.string().optional(),
   }).optional(),
   modelRequirements: modelRequirementSchema.optional(),
+  skillLibrary: z.enum(['package', 'user']).optional(),
 });
 
 export function parseAgentManifest(raw: unknown): AgentManifest {

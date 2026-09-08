@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { listPiSessions } from '@sparkii/agent-host';
 import { Keyring } from '../electron/main/keyring.js';
 import { registerIpc } from '../electron/main/ipc.js';
+import { buildAgentSaddle } from '../electron/main/saddle.js';
 import { resetGrantedDocumentPaths } from '../electron/main/document-bytes.js';
 import { selectModel } from '../electron/main/workflow.js';
 import type { Runtime } from '../electron/main/runtime.js';
@@ -31,6 +32,9 @@ vi.mock('electron', () => {
     dialog: {
       showOpenDialog: vi.fn(),
       showSaveDialog: vi.fn(),
+    },
+    shell: {
+      openPath: vi.fn(async () => ''),
     },
     nativeImage: {
       createFromPath: vi.fn(),
@@ -78,6 +82,8 @@ async function makeRuntime(opts: {
   chatSession?: { profileId: string; model: string | null; piSessionFile?: string | null; kind?: string };
   profile?: unknown;
   agentOf?: (id: string) => unknown;
+  agents?: Map<string, unknown>;
+  audit?: { append: (ev: unknown) => Promise<unknown>; query?: (filter: object) => Promise<unknown[]> };
   getWindow?: () => { webContents: { send: (...args: unknown[]) => void } } | null;
   /** 测试用：收集 ipc 订上的 `supervisor.onExit` 回调，用来模拟子进程退出。 */
   exitCbs?: Array<(code: number | null) => void>;
@@ -103,7 +109,8 @@ async function makeRuntime(opts: {
     profiles: new Map(),
     gate: {},
     executor: {},
-    audit: {},
+    agents: opts.agents ?? new Map(),
+    audit: opts.audit ?? { append: vi.fn(async (ev) => ev), query: vi.fn(async () => []) },
     pool: {
       acquire: vi.fn(async (sessionId: string, acquireOpts?: { meta?: { internal?: boolean } }) => {
         // 内部探测在真实池子里占的是另一个槽位，不动这条会话的牌子。
@@ -2125,3 +2132,171 @@ describe('ipc provider handlers', () => {
     expect(sent.some((c) => c.type === 'set_session_name')).toBe(false);
   });
 });
+
+describe('ipc user skill library', () => {
+  function userAgent(dataDir: string, id = 'writer') {
+    const skillsDir = join(dataDir, 'agents', id, 'skills');
+    return {
+      id,
+      dir: join(dataDir, 'pkg', id),
+      tools: ['read'],
+      skillsDir,
+      systemPrompt: 'writer',
+      manifest: {
+        id,
+        displayName: '写作助手',
+        version: '1.0.0',
+        sortOrder: 10,
+        surface: { type: 'chat' as const },
+        capabilities: { tools: ['read'] },
+        skillLibrary: 'user' as const,
+      },
+    };
+  }
+
+  function packageAgent(dataDir: string) {
+    const dir = join(dataDir, 'pkg', 'reviewer');
+    return {
+      id: 'reviewer',
+      dir,
+      tools: ['read'],
+      skillsDir: join(dir, 'agent', 'skills'),
+      systemPrompt: 'reviewer',
+      manifest: {
+        id: 'reviewer',
+        displayName: '审核助手',
+        version: '1.0.0',
+        sortOrder: 20,
+        surface: { type: 'workflow' as const },
+        capabilities: { tools: ['read'] },
+      },
+    };
+  }
+
+  async function writeSkillFolder(dir: string, name: string, description: string): Promise<string> {
+    const source = join(dir, name);
+    await mkdir(source, { recursive: true });
+    await writeFile(
+      join(source, 'SKILL.md'),
+      `---\nname: ${name}\ndescription: ${description}\n---\n# ${name}\n`,
+      'utf8',
+    );
+    return source;
+  }
+
+  it('imports, lists, audits, and uninstalls a user skill', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-skill-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const writer = userAgent(dataDir);
+    const reviewer = packageAgent(dataDir);
+    const audit = { append: vi.fn(async (ev) => ev), query: vi.fn(async () => []) };
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      agents: new Map([[writer.id, writer], [reviewer.id, reviewer]]),
+      agentOf: (id) => (id === reviewer.id ? reviewer : writer),
+      audit,
+    });
+    const source = await writeSkillFolder(dataDir, 'summarize', 'Summarize text.');
+    const handlers = await registeredHandlers();
+
+    const imported = await handlers.get('sparkii:importUserSkill')!(null, { sourceDir: source });
+    expect(imported).toEqual({ ok: true, name: 'summarize' });
+    expect(audit.append).toHaveBeenCalledWith(expect.objectContaining({
+      actor: 'tester',
+      action: 'skill.installed',
+      resource: 'summarize',
+      payloadSummary: source,
+    }));
+
+    const listed = await handlers.get('sparkii:listUserSkills')!(null);
+    expect(listed).toMatchObject({
+      agent: { id: 'writer', name: '写作助手' },
+      skills: [{ name: 'summarize', description: 'Summarize text.' }],
+    });
+
+    const uninstalled = await handlers.get('sparkii:uninstallUserSkill')!(null, { name: 'summarize' });
+    expect(uninstalled).toEqual({ ok: true });
+    expect(audit.append).toHaveBeenCalledWith(expect.objectContaining({
+      action: 'skill.uninstalled',
+      resource: 'summarize',
+    }));
+
+    const after = await handlers.get('sparkii:listUserSkills')!(null);
+    expect(after.skills).toEqual([]);
+
+    expect(reviewer.skillsDir.endsWith(join('agent', 'skills')) || reviewer.skillsDir.replace(/\\/g, '/').endsWith('agent/skills')).toBe(true);
+    expect(buildAgentSaddle(reviewer as any, join(dataDir, 'anchor')).skillsDir).toBe(reviewer.skillsDir);
+    expect(buildAgentSaddle(reviewer as any, join(dataDir, 'anchor')).skillsDir).not.toBe(writer.skillsDir);
+  });
+
+  it('returns no-user-library when no skillLibrary user agent is assembled', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-skill-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      agents: new Map(),
+    });
+    const handlers = await registeredHandlers();
+    expect(await handlers.get('sparkii:listUserSkills')!(null)).toEqual({ agent: null, skills: [] });
+    expect(await handlers.get('sparkii:importUserSkill')!(null, { sourceDir: dataDir })).toEqual({
+      ok: false,
+      reason: 'no-user-library',
+    });
+    expect(await handlers.get('sparkii:uninstallUserSkill')!(null, { name: 'x' })).toEqual({
+      ok: false,
+      reason: 'no-user-library',
+    });
+    expect(await handlers.get('sparkii:openUserSkillsDir')!(null)).toEqual({
+      ok: false,
+      reason: 'no-user-library',
+    });
+  });
+
+  it('prefers SPARKII_E2E_SKILL_DIR for chooseSkillFolder', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-skill-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+    });
+    process.env.SPARKII_E2E_SKILL_DIR = '/tmp/e2e-skill';
+    try {
+      const handlers = await registeredHandlers();
+      expect(await handlers.get('sparkii:chooseSkillFolder')!(null)).toEqual({ path: '/tmp/e2e-skill' });
+    } finally {
+      delete process.env.SPARKII_E2E_SKILL_DIR;
+    }
+  });
+
+  it('opens the user skills dir after creating it', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-skill-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const writer = userAgent(dataDir);
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      agents: new Map([[writer.id, writer]]),
+    });
+    const handlers = await registeredHandlers();
+    const opened = await handlers.get('sparkii:openUserSkillsDir')!(null);
+    expect(opened).toEqual({ ok: true, path: writer.skillsDir });
+    expect(existsSync(writer.skillsDir)).toBe(true);
+    const electron = await import('electron') as unknown as { shell: { openPath: ReturnType<typeof vi.fn> } };
+    expect(electron.shell.openPath).toHaveBeenCalledWith(writer.skillsDir);
+  });
+});
+

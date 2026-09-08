@@ -90,6 +90,20 @@ export interface SparkiiApi {
   updateWorkflowState(sessionId: string, entry: Record<string, unknown>): Promise<{ ok: boolean }>;
   requestExportReport(sessionId: string, summary: Record<string, unknown>): Promise<{ ok: boolean; approved: boolean }>;
   chooseWorkspace(): Promise<{ path?: string }>;
+  listUserSkills(): Promise<{
+    agent: { id: string; name: string } | null;
+    skills: Array<{ name: string; description: string; hasScripts: boolean; warnings: string[] }>;
+  }>;
+  previewUserSkill(sourceDir: string): Promise<
+    | { ok: true; skill: { name: string; description: string; hasScripts: boolean; warnings: string[] }; destName: string }
+    | { ok: false; reason: string; diagnostics?: string[] }
+  >;
+  chooseSkillFolder(): Promise<{ path?: string }>;
+  importUserSkill(opts: { sourceDir: string; overwrite?: boolean }): Promise<
+    { ok: true; name: string } | { ok: false; reason: string; name?: string }
+  >;
+  uninstallUserSkill(opts: { name: string }): Promise<{ ok: true } | { ok: false; reason: string }>;
+  openUserSkillsDir(): Promise<{ ok: true; path: string } | { ok: false; reason: string }>;
   getPathForFile(file: File): string;
   getModelOptions(agentId?: string): Promise<{ defaultModel: string | null; models: string[]; provider: string; supportsImages?: Record<string, boolean>; modelRequirements?: { requires: string[]; prefers?: string[] }; compatibleModels?: string[]; incompatibleModels?: string[] }>;
   listThinkingLevels(providerId: string, modelId: string): Promise<string[]>;

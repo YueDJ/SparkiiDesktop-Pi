@@ -22,6 +22,7 @@ export interface ProfileManifest {
     tasks: Record<string, Array<{ provider: string; modelId: string }>>;
   };
   integrity?: { sha256: string };
+  skillLibrary?: 'package' | 'user';
 }
 
 export type PageSchema = Record<string, unknown>;
