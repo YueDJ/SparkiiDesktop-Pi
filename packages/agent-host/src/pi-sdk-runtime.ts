@@ -12,8 +12,6 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import {
   applySaddleSystemPrompt,
-  expandLeadingSkillSlash,
-  loadSkillSlashAliases,
 } from "./skill-prompt.js";
 import { join } from "node:path";
 import type { ToolDef } from "@sparkii/connectors";
@@ -138,7 +136,6 @@ export async function createPiSdkSessionHost(
   options: PiSdkRuntimeOptions,
 ): Promise<PiRuntimeSessionHost> {
   let pendingSaddle: SessionSaddle | null = null;
-  let pendingSkillAliases = new Map<string, string>();
   const pendingProposals = new Map<
     string,
     { resolve: (decision: ProposalDecision) => void; reject: (error: Error) => void }
@@ -217,7 +214,6 @@ export async function createPiSdkSessionHost(
   function adaptSession(): PiRuntimeSession {
     const session: any = runtime.session;
     const runtimeErrorListeners = new Set<(error: { message: string; command?: string; stack?: string }) => void>();
-    const withSkillSlash = (text: string) => expandLeadingSkillSlash(text, pendingSkillAliases);
     const sessionCwd = pendingSaddle?.cwd ?? fallbackCwd;
     const workspaceRoot = pendingSaddle?.workspaceRoot ?? fallbackWorkspaceRoot;
     const saddleTools: ToolDefinition[] = pendingSaddle
@@ -237,12 +233,12 @@ export async function createPiSdkSessionHost(
     return {
       prompt: (text, promptOptions) => startPromptWithoutBlocking(
         session,
-        withSkillSlash(text),
+        text,
         promptOptions,
         (error) => runtimeErrorListeners.forEach((listener) => listener(error)),
       ),
-      steer: (text, images) => session.steer(withSkillSlash(text), images),
-      followUp: (text, images) => session.followUp(withSkillSlash(text), images),
+      steer: (text, images) => session.steer(text, images),
+      followUp: (text, images) => session.followUp(text, images),
       clearQueue: async () => clearSessionQueue(session),
       setSteeringMode: async (mode) => {
         session.setSteeringMode(mode);
@@ -348,7 +344,6 @@ export async function createPiSdkSessionHost(
     },
     configureSaddle: async (saddle: SessionSaddle | null) => {
       pendingSaddle = saddle;
-      pendingSkillAliases = loadSkillSlashAliases(saddle?.skillsDir);
       adaptSession();
     },
   };
