@@ -22,7 +22,7 @@ describe('security invariants', () => {
     const g = gate(audit);
     const handler = vi.fn(async () => ({ ok: true, data: {} }));
     const ex = new ConnectorExecutor(audit); ex.register('report.export', handler);
-    const p = await g.submit({ toolName: 'report.export', targetSystem: 'report', summary: '', payload: {}, risk: 'write' }, { profileId: 'p', sessionId: 's', actor: 'agent' });
+    const p = await g.submit({ requestId: 'r1', toolName: 'report.export', targetSystem: 'report', summary: '', payload: {}, risk: 'write' }, { profileId: 'p', sessionId: 's', actor: 'agent' });
     await g.decide(p.id, { userId: 'u1', roles: ['admin'] }, false, 'no');
     const out = await ex.execute(g.get(p.id)!, { actor: 'system' });
     expect(handler).not.toHaveBeenCalled();
@@ -32,7 +32,7 @@ describe('security invariants', () => {
   it('every write attempt produces exactly one proposal.created audit record', async () => {
     const audit = new AuditStore(join(mkdtempSync(join(tmpdir(), 'inv-')), 'a.db')); dbs.push(audit);
     const g = gate(audit);
-    await g.submit({ toolName: 'report.export', targetSystem: 'report', summary: '', payload: {}, risk: 'write' }, { profileId: 'p', sessionId: 's', actor: 'agent' });
+    await g.submit({ requestId: 'r1', toolName: 'report.export', targetSystem: 'report', summary: '', payload: {}, risk: 'write' }, { profileId: 'p', sessionId: 's', actor: 'agent' });
     expect((await audit.query({ action: 'proposal.created' }))).toHaveLength(1);
   });
 
@@ -41,7 +41,7 @@ describe('security invariants', () => {
     const g = gate(audit);
     const handler = vi.fn(async () => ({ ok: true, data: {} }));
     const ex = new ConnectorExecutor(audit); ex.register('report.export', handler);
-    const p = await g.submit({ toolName: 'report.export', targetSystem: 'report', summary: '', payload: {}, risk: 'write' }, { profileId: 'p', sessionId: 's', actor: 'agent' });
+    const p = await g.submit({ requestId: 'r1', toolName: 'report.export', targetSystem: 'report', summary: '', payload: {}, risk: 'write' }, { profileId: 'p', sessionId: 's', actor: 'agent' });
     // 模拟 LLM 谎报「已批准」，但权威状态仍是 pending
     const out = await ex.execute(g.get(p.id)!, { actor: 'system' });
     expect(handler).not.toHaveBeenCalled();

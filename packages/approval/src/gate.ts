@@ -1,6 +1,6 @@
 import type { ApprovalPolicy } from '@sparkii/config';
 import { Rbac, type Subject } from '@sparkii/identity';
-import { createProposal, transition, summarizePayload, type Proposal, type ProposalRequest } from './proposal.js';
+import { createProposal, transition, summarizePayload, type Proposal, type ProposalSubmission } from './proposal.js';
 import { AuditStore } from './audit.js';
 
 export class GateError extends Error {
@@ -27,7 +27,7 @@ export class ApprovalGate {
     return p;
   }
 
-  async submit(req: ProposalRequest, meta: { profileId: string; sessionId: string; actor: string }): Promise<Proposal> {
+  async submit(req: ProposalSubmission, meta: { profileId: string; sessionId: string; actor: string }): Promise<Proposal> {
     const p = createProposal(req, { profileId: meta.profileId, sessionId: meta.sessionId });
     this.proposals.set(p.id, p);
     await this.opts.audit.append({ actor: meta.actor, action: 'proposal.created', resource: p.toolName, payloadSummary: summarizePayload(p.payload), sessionId: meta.sessionId });
