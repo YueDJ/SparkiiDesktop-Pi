@@ -4,9 +4,9 @@ import { ErrorProvider, useErrors, type ErrorStoreAdapter, type RuntimePoolSumma
 import type { SparkiiApi } from './types/sparkii-api.js';
 import { SettingsView } from './shell/SettingsView.js';
 import { ApprovalCenter } from './trust/ApprovalCenter.js';
-import { ApprovalPanel } from './trust/ApprovalPanel.js';
-import { ApprovalModal } from './trust/ApprovalModal.js';
-import { partitionApprovals, present } from './trust/present.js';
+import { ApprovalDrawer } from './trust/ApprovalDrawer.js';
+import { HighRiskApprovalDialog } from './trust/HighRiskApprovalDialog.js';
+import { ApprovalInboxProvider, useApprovalInbox } from './trust/ApprovalInbox.js';
 import { AuditView } from './audit/AuditView.js';
 import { HomeView } from './platform/HomeView.js';
 import { useAgentSurface } from './platform/surface-registry.js';
@@ -96,10 +96,13 @@ function makeErrorStore(api: SparkiiApi): ErrorStoreAdapter {
 }
 
 export function App() {
-  const store = useMemo(() => makeErrorStore(window.sparkii), []);
+  const api = window.sparkii;
+  const store = useMemo(() => makeErrorStore(api), [api]);
   return (
     <ErrorProvider store={store}>
-      <AppShell />
+      <ApprovalInboxProvider api={api}>
+        <AppShell />
+      </ApprovalInboxProvider>
     </ErrorProvider>
   );
 }
@@ -141,13 +144,13 @@ function AppShell() {
   const api = window.sparkii;
   const { reportError } = useErrors();
   const [userName, setUserName] = useState('');
-  const [pending, setPending] = useState<any[]>([]);
   const [auditVersion, setAuditVersion] = useState(0);
   const [current, setCurrent] = useState<CurrentWork>(() => openPage('home'));
   const [roles, setRoles] = useState<string[]>([]);
   const [agents, setAgents] = useState<ShellAgent[]>([]);
   const [sessions, setSessions] = useState<Record<string, ShellSession[]>>({});
-  const [approvalOpen, setApprovalOpen] = useState(false);
+  const [drawerDismissed, setDrawerDismissed] = useState(false);
+  const { proposals, claimed, onDecided } = useApprovalInbox();
   const [runtimePool, setRuntimePool] = useState<RuntimePoolSummary>({
     active: 0,
     queued: 0,
@@ -179,15 +182,20 @@ function AppShell() {
   };
   const surfaceTypeOf = (agentId: string) => agents.find((agent) => agent.id === agentId)?.surfaceType;
 
-  const { routine, highRisk } = useMemo(() => partitionApprovals(pending), [pending]);
+  const unclaimedRoutine = useMemo(
+    () => [...proposals.values()].filter((p) => p.risk !== 'high-risk' && !claimed.has(p.id)),
+    [proposals, claimed],
+  );
+  const pendingList = useMemo(() => [...proposals.values()], [proposals]);
 
-  useEffect(() => api.on('approval', (p) => {
-    setPending((xs) => [...xs, p]);
-    if (present(p).chrome.mode === 'panel') setApprovalOpen(true);
-  }), [api]);
+  useEffect(() => onDecided(() => setAuditVersion((v) => v + 1)), [onDecided]);
+
+  const prevUnclaimedRef = useRef(unclaimedRoutine.length);
   useEffect(() => {
-    if (routine.length === 0 && approvalOpen) setApprovalOpen(false);
-  }, [routine.length, approvalOpen]);
+    if (unclaimedRoutine.length > prevUnclaimedRef.current) setDrawerDismissed(false);
+    prevUnclaimedRef.current = unclaimedRoutine.length;
+  }, [unclaimedRoutine.length]);
+
   useEffect(() => api.on('chat-event', (p: any) => {
     if (p?.sessionId) {
       const ov = sessionOverridesRef.current.get(p.sessionId);
@@ -232,12 +240,10 @@ function AppShell() {
     }
   }), [api, reportError]);
   useEffect(() => {
-    const off = api.on('runtime-pool', (p: any) => setRuntimePool(mapRuntimePool(p, pending)));
-    api.getRuntimePool?.().then((p: any) => setRuntimePool(mapRuntimePool(p, pending))).catch(() => {});
+    const off = api.on('runtime-pool', (p: any) => setRuntimePool(mapRuntimePool(p, pendingList)));
+    api.getRuntimePool?.().then((p: any) => setRuntimePool(mapRuntimePool(p, pendingList))).catch(() => {});
     return off;
-  }, [api, pending]);
-
-  const refreshApprovals = () => api.listPendingApprovals().then((xs) => setPending(xs as any[]));
+  }, [api, pendingList]);
 
   useEffect(() => {
     let cancelled = false;
@@ -247,7 +253,6 @@ function AppShell() {
         if (cancelled) return;
         setUserName(subject.userId);
         setRoles(subject.roles ?? []);
-        await refreshApprovals();
         api.listAgents?.().then((list: Array<{ id: string; name: string }>) => {
           if (cancelled || !Array.isArray(list) || !list.length) return;
           setAgents(list.map((a) => ({
@@ -263,15 +268,6 @@ function AppShell() {
     })();
     return () => { cancelled = true; };
   }, [api]);
-
-  const decide = (id: string, ok: boolean, note?: string) => {
-    // 先本地移除,避免抽屉等待服务器往返;失败时 refreshApprovals 恢复
-    setPending((xs) => xs.filter((p) => p.id !== id));
-    api.decideApproval(id, ok, note).then(() => {
-      refreshApprovals();
-      setAuditVersion((v) => v + 1);
-    });
-  };
 
   const exportAudit = (jsonl: string) => {
     // 服务器权威导出:使用主进程 diagnostics 返回的完整审计 JSONL
@@ -513,16 +509,13 @@ function AppShell() {
 
   const surfaces: Partial<Record<ScreenId, ReactNode>> = {
     home: (
-      <HomeView userName={userName} agents={derivedAgents} pendingApprovals={pending} onNavigate={navigate} />
+      <HomeView userName={userName} agents={derivedAgents} pendingApprovals={pendingList} onNavigate={navigate} />
     ),
     approvals: (
       <div>
         <h3 style={{ margin: '0 0 12px', fontSize: 15 }}>审批中心</h3>
         <ApprovalCenter
-          proposals={pending}
-          onOpenDetail={(p) => {
-            if (present(p).chrome.mode === 'panel') setApprovalOpen(true);
-          }}
+          onOpenDetail={() => setDrawerDismissed(false)}
         />
       </div>
     ),
@@ -563,7 +556,7 @@ function AppShell() {
         active={shellActive(current)}
         agents={derivedAgents}
         sessions={sessionsView}
-        pendingApprovals={pending.length}
+        pendingApprovals={pendingList.length}
         statusText={statusText}
         runtimePool={runtimePool}
         userName={userName}
@@ -583,21 +576,12 @@ function AppShell() {
         {surfaceNode}
         {agentFrames}
       </Shell>
-      {approvalOpen && routine.length > 0 && (
-        <ApprovalPanel
-          proposals={routine}
-          currentSessionId={isSession(current) ? current.sessionId ?? '' : ''}
-          onDecide={decide}
-          onClose={() => setApprovalOpen(false)}
-        />
-      )}
-      {highRisk[0] && (
-        <ApprovalModal
-          proposal={highRisk[0]}
-          onDecide={decide}
-          onClose={() => {}}
-        />
-      )}
+      <ApprovalDrawer
+        open={unclaimedRoutine.length > 0 && !drawerDismissed}
+        currentSessionId={isSession(current) ? current.sessionId ?? '' : ''}
+        onClose={() => setDrawerDismissed(true)}
+      />
+      <HighRiskApprovalDialog />
     </>
   );
 }

@@ -62,7 +62,7 @@ export function applyApprovalStatus(entries: SessionEntry[]): SessionEntry[] {
       if (i < 0 || !requestId) continue;
       byRequestId.set(requestId, i);
       const tool = next[i];
-      if (tool.kind === 'tool') next[i] = { ...tool, awaitingApproval: true };
+      if (tool.kind === 'tool') next[i] = { ...tool, awaitingApproval: true, approvalRequestId: requestId };
       continue;
     }
 

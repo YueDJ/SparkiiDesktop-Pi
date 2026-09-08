@@ -11,7 +11,7 @@ describe('ConnectorExecutor', () => {
     const handler = vi.fn(async () => ({ ok: true, data: {} }));
     const ex = new ConnectorExecutor(new AuditStore(join(mkdtempSync(join(tmpdir(), 'ex-')), 'a.db')));
     ex.register('report.export', handler);
-    const p = transition(createProposal({ toolName: 'report.export', targetSystem: 'report', summary: '', payload: {}, risk: 'write' }, { profileId: 'p', sessionId: 's' }), 'denied');
+    const p = transition(createProposal({ requestId: 'r1', toolName: 'report.export', targetSystem: 'report', summary: '', payload: {}, risk: 'write' }, { profileId: 'p', sessionId: 's' }), 'denied');
     const out = await ex.execute(p, { actor: 'system' });
     expect(handler).not.toHaveBeenCalled();
     expect(out.status).toBe('denied');
@@ -21,7 +21,7 @@ describe('ConnectorExecutor', () => {
     const handler = vi.fn(async (args) => ({ ok: true, data: { got: args } }));
     const ex = new ConnectorExecutor(new AuditStore(join(mkdtempSync(join(tmpdir(), 'ex-')), 'a.db')));
     ex.register('report.export', handler);
-    const p = transition(createProposal({ toolName: 'report.export', targetSystem: 'report', summary: '', payload: { title: 'r' }, risk: 'write' }, { profileId: 'p', sessionId: 's' }), 'approved');
+    const p = transition(createProposal({ requestId: 'r1', toolName: 'report.export', targetSystem: 'report', summary: '', payload: { title: 'r' }, risk: 'write' }, { profileId: 'p', sessionId: 's' }), 'approved');
     const out = await ex.execute(p, { actor: 'system' });
     expect(handler).toHaveBeenCalledWith({ title: 'r' }, expect.objectContaining({ actor: 'system' }));
     expect(out.status).toBe('executed');

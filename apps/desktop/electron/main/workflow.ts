@@ -5,7 +5,7 @@ import type { BrowserWindow } from 'electron';
 import { LinearRunner, type ProposalDecision, type RunContext, type WorkflowDef } from '@sparkii/agent-host';
 import { computeEditDiff, connectorWriteProposal } from '@sparkii/agent-host';
 import { documentConnector, knowledgeConnector, reportConnector, type ToolDef } from '@sparkii/connectors';
-import type { ProposalRequest } from '@sparkii/approval';
+import type { ProposalRequest, ProposalSubmission } from '@sparkii/approval';
 import { toPreviewLines } from '@sparkii/approval';
 import type { ModelTask } from '@sparkii/model-router';
 import type { Runtime } from './runtime.js';
@@ -21,7 +21,7 @@ const allTools = new Map<string, ToolDef>(
 export function createBroker(rt: Runtime, getWindow: () => BrowserWindow | null) {
   const resolvers = new Map<string, { resolve: (d: ProposalDecision) => void; timer: ReturnType<typeof setTimeout> }>();
   return {
-    async request(req: ProposalRequest, meta: { sessionId: string; profileId: string }): Promise<ProposalDecision> {
+    async request(req: ProposalSubmission, meta: { sessionId: string; profileId: string }): Promise<ProposalDecision> {
       const p = await rt.gate.submit(req, { profileId: meta.profileId, sessionId: meta.sessionId, actor: rt.subject?.userId ?? 'agent' });
       getWindow()?.webContents.send('sparkii:event:approval', p);
       return new Promise<ProposalDecision>((resolve) => {
@@ -33,16 +33,25 @@ export function createBroker(rt: Runtime, getWindow: () => BrowserWindow | null)
           // 子进程据此打印「操作未执行:approved」。此时应继续等 decideApproval
           // 执行完毕由 broker.decide 回真实结果。
           void rt.gate.expire(p.id).then((expired) => {
-            if (!expired || expired.status === 'expired') {
+            if (!expired) {
               resolvers.delete(p.id);
-              resolve({ approved: false, proposalId: p.id, status: expired?.status ?? 'expired' });
+              resolve({ approved: false, proposalId: p.id, status: 'expired' });
+              return;
             }
+            if (expired.status === 'expired') {
+              getWindow()?.webContents.send('sparkii:event:approval', expired);
+              resolvers.delete(p.id);
+              resolve({ approved: false, proposalId: p.id, status: 'expired' });
+              return;
+            }
+            // approved/executed（长命令执行中）或仍未到期：不推、不 resolve，
+            // 等 decideApproval 完成由 broker.decide 回真实结果。
           });
         }, rt.profileOf(meta.profileId).profile.security.approval.timeoutMs);
         resolvers.set(p.id, { resolve, timer });
       });
     },
-    async requestReadOnly(req: ProposalRequest & { requestId: string }, meta: { sessionId: string; profileId: string }): Promise<ProposalDecision> {
+    async requestReadOnly(req: ProposalSubmission, meta: { sessionId: string; profileId: string }): Promise<ProposalDecision> {
       const result = await rt.executor.execute({
         ...req,
         id: req.requestId, profileId: meta.profileId, sessionId: meta.sessionId,
@@ -51,7 +60,7 @@ export function createBroker(rt: Runtime, getWindow: () => BrowserWindow | null)
       await rt.audit.append({ actor: rt.subject?.userId ?? 'agent', action: 'tool.read', resource: req.toolName, sessionId: meta.sessionId });
       return { approved: true, proposalId: req.requestId, status: result.status, result: result.execution?.result };
     },
-    route(req: ProposalRequest & { requestId: string }, meta: { sessionId: string; profileId: string }): Promise<ProposalDecision> {
+    route(req: ProposalSubmission, meta: { sessionId: string; profileId: string }): Promise<ProposalDecision> {
       if (req.toolName === 'bash' && isReadOnlyBashCommand(String((req.payload as any)?.command ?? ''))) {
         return this.requestReadOnly(req, meta);
       }

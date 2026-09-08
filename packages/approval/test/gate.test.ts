@@ -17,7 +17,7 @@ describe('ApprovalGate', () => {
     const audit = new AuditStore(join(mkdtempSync(join(tmpdir(), 'g-')), 'a.db'));
     stores.push(audit);
     const gate = new ApprovalGate({ policy, rbac, audit });
-    const p = await gate.submit({ toolName: 'report.export', targetSystem: 'report', summary: 'x', payload: {}, risk: 'write' }, { profileId: 'p', sessionId: 's', actor: 'agent' });
+    const p = await gate.submit({ requestId: 'r1', toolName: 'report.export', targetSystem: 'report', summary: 'x', payload: {}, risk: 'write' }, { profileId: 'p', sessionId: 's', actor: 'agent' });
     const out = await gate.decide(p.id, { userId: 'u1', roles: ['admin'] }, true, 'ok');
     expect(out.status).toBe('approved');
     expect((await audit.query({})).map((e) => e.action)).toEqual(expect.arrayContaining(['proposal.created', 'proposal.approved']));
@@ -26,7 +26,7 @@ describe('ApprovalGate', () => {
     const audit = new AuditStore(join(mkdtempSync(join(tmpdir(), 'g-')), 'a.db'));
     stores.push(audit);
     const gate = new ApprovalGate({ policy, rbac: new Rbac([{ name: 'viewer', pages: [], tools: [], canApprove: [] }]), audit });
-    const p = await gate.submit({ toolName: 'report.export', targetSystem: 'report', summary: 'x', payload: {}, risk: 'write' }, { profileId: 'p', sessionId: 's', actor: 'agent' });
+    const p = await gate.submit({ requestId: 'r1', toolName: 'report.export', targetSystem: 'report', summary: 'x', payload: {}, risk: 'write' }, { profileId: 'p', sessionId: 's', actor: 'agent' });
     await expect(gate.decide(p.id, { userId: 'u2', roles: ['viewer'] }, true)).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
   });
 });

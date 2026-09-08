@@ -27,7 +27,7 @@ function makeGate() {
 describe('ApprovalGate multi-profile', () => {
   it('applies per-profile rbac for approval', async () => {
     const gate = makeGate();
-    const p = await gate.submit({ toolName: 'edit', targetSystem: 'general', summary: 'x', payload: { path: '/tmp/x' }, risk: 'write' }, { profileId: 'general', sessionId: 's1', actor: 'agent' });
+    const p = await gate.submit({ requestId: 'r1', toolName: 'edit', targetSystem: 'general', summary: 'x', payload: { path: '/tmp/x' }, risk: 'write' }, { profileId: 'general', sessionId: 's1', actor: 'agent' });
     await expect(gate.decide(p.id, reviewer, true)).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
     const ok = await gate.decide(p.id, admin, true);
     expect(ok.status).toBe('approved');
@@ -35,7 +35,7 @@ describe('ApprovalGate multi-profile', () => {
 
   it('applies per-profile timeout for expiry', async () => {
     const gate = makeGate();
-    const p = await gate.submit({ toolName: 'bash', targetSystem: 'general', summary: 'x', payload: { command: 'rm -rf x' }, risk: 'high-risk' }, { profileId: 'general', sessionId: 's1', actor: 'agent' });
+    const p = await gate.submit({ requestId: 'r1', toolName: 'bash', targetSystem: 'general', summary: 'x', payload: { command: 'rm -rf x' }, risk: 'high-risk' }, { profileId: 'general', sessionId: 's1', actor: 'agent' });
     const expired = await gate.expire(p.id);
     expect(expired?.status).toBe('expired');
   });
@@ -48,7 +48,7 @@ describe('ApprovalGate multi-profile', () => {
       policy: { requireApproval: [], timeoutMs: 60_000, highRiskDoubleConfirm: true },
       rbac: new Rbac([{ name: 'admin', pages: [], tools: [], canApprove: ['write', 'high-risk'] }]),
     });
-    const p = await gate.submit({ toolName: 'report.export', targetSystem: 'report', summary: 'x', payload: {}, risk: 'write' }, { profileId: 'default', sessionId: 's1', actor: 'agent' });
+    const p = await gate.submit({ requestId: 'r1', toolName: 'report.export', targetSystem: 'report', summary: 'x', payload: {}, risk: 'write' }, { profileId: 'default', sessionId: 's1', actor: 'agent' });
     const ok = await gate.decide(p.id, admin, true);
     expect(ok.status).toBe('approved');
   });

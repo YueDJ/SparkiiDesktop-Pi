@@ -3,6 +3,9 @@ import { StandardChatSurface, type StandardChatProps } from '../../../src/surfac
 import type { SparkiiApi } from '../../../src/types/sparkii-api.js';
 import { applyApprovalStatus } from './approval-timeline.js';
 import { decideTitle, firstAssistantText, firstUserText, placeholderOf } from './title.js';
+import { useSessionApprovals } from '../../../src/trust/ApprovalInbox.js';
+import { InlineApprovalCard } from '../../../src/trust/InlineApprovalCard.js';
+import type { SessionEntry } from '../../../src/surface/contract.js';
 
 export { applyChatEvent, normalizeMessages, type ChatEntry } from '@sparkii/ui';
 
@@ -14,6 +17,8 @@ export default function GeneralAgentSurface(props: StandardChatProps) {
   const { sessionId, session, title, api: apiOverride } = props;
   const lastDecisionKey = useRef('');
   const entries = useMemo(() => applyApprovalStatus(session.entries), [session.entries]);
+  const { waiting } = useSessionApprovals(sessionId);
+  const byRequestId = useMemo(() => new Map(waiting.map((p) => [p.requestId, p])), [waiting]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -48,5 +53,19 @@ export default function GeneralAgentSurface(props: StandardChatProps) {
     void api.setChatTitle?.(id, placeholderOf(userText), 'agent');
   };
 
-  return <StandardChatSurface {...props} session={{ ...session, entries }} onSessionCreated={onSessionCreated} />;
+  const renderApprovalCard = (entry: Extract<SessionEntry, { kind: 'tool' }>) => {
+    const requestId = entry.approvalRequestId;
+    if (!requestId) return null;
+    const proposal = byRequestId.get(requestId);
+    return proposal ? <InlineApprovalCard proposal={proposal} /> : null;
+  };
+
+  return (
+    <StandardChatSurface
+      {...props}
+      session={{ ...session, entries }}
+      onSessionCreated={onSessionCreated}
+      renderApprovalCard={renderApprovalCard}
+    />
+  );
 }

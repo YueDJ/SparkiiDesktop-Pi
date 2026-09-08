@@ -15,6 +15,7 @@ describe("connector registry", () => {
     registerConnectorHandlers(executor);
 
     const proposal = createProposal({
+      requestId: "r1",
       toolName: "report.export",
       targetSystem: "report",
       summary: "export",

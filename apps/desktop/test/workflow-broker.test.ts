@@ -668,7 +668,7 @@ describe('broker presentation contract', () => {
 });
 
 describe('broker approval timeout vs long-running execution', () => {
-  function gateHarness(timeoutMs: number) {
+  function gateHarness(timeoutMs: number, getWindow: () => any = () => null) {
     const proposals = new Map<string, any>();
     const gate = {
       submit: async (req: any) => {
@@ -678,15 +678,18 @@ describe('broker approval timeout vs long-running execution', () => {
       },
       decide: async (id: string, _by: unknown, approved: boolean) => {
         const p = proposals.get(id);
-        if (p) p.status = approved ? 'approved' : 'denied';
-        return p;
+        if (!p) return p;
+        const out = { ...p, status: approved ? 'approved' : 'denied' };
+        proposals.set(id, out);
+        return out;
       },
       // 与真实 gate.expire 语义一致：仅 pending 且到期才转 expired，否则原样返回当前提案
       expire: async (id: string) => {
         const p = proposals.get(id);
         if (!p || p.status !== 'pending') return p;
-        p.status = 'expired';
-        return p;
+        const out = { ...p, status: 'expired' };
+        proposals.set(id, out);
+        return out;
       },
       proposals,
     };
@@ -695,7 +698,7 @@ describe('broker approval timeout vs long-running execution', () => {
       profileOf: () => ({ profile: { security: { approval: { timeoutMs } } } }),
       gate,
     } as any;
-    return { rt, gate, broker: createBroker(rt, () => null) };
+    return { rt, gate, broker: createBroker(rt, getWindow) };
   }
 
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -735,5 +738,38 @@ describe('broker approval timeout vs long-running execution', () => {
     }, { sessionId: 's1', profileId: 'general' });
 
     await expect(decision).resolves.toEqual({ approved: false, proposalId: 'p1', status: 'expired' });
+  });
+
+  it('pushes the expired proposal to the renderer only when truly expired', async () => {
+    const sent: unknown[] = [];
+    const { broker } = gateHarness(30, () => ({ webContents: { send: (_c: string, p: unknown) => sent.push(p) } }));
+
+    const decision = broker.request({
+      requestId: 'r3', toolName: 'bash', targetSystem: 'general', summary: 'sleep',
+      payload: { command: 'sleep 1' }, risk: 'write',
+    }, { sessionId: 's1', profileId: 'general' });
+
+    await expect(decision).resolves.toEqual({ approved: false, proposalId: 'p1', status: 'expired' });
+    expect(sent.filter((s: any) => s.status === 'expired')).toHaveLength(1);
+    expect((sent.find((s: any) => s.status === 'expired') as any).id).toBe('p1');
+  });
+
+  it('does not push expired while an approved write is still executing', async () => {
+    const timeoutMs = 30;
+    const sent: unknown[] = [];
+    const { rt, gate, broker } = gateHarness(timeoutMs, () => ({ webContents: { send: (_c: string, p: unknown) => sent.push(p) } }));
+
+    const decision = broker.request({
+      requestId: 'r4', toolName: 'bash', targetSystem: 'general', summary: 'pull',
+      payload: { command: 'docker compose pull' }, risk: 'write',
+    }, { sessionId: 's1', profileId: 'general' });
+
+    await gate.decide('p1', rt.subject, true);
+    await sleep(timeoutMs + 40);
+    expect(sent.filter((s: any) => s.status === 'expired')).toHaveLength(0);
+    expect(sent.some((s: any) => s.status === 'pending')).toBe(true);
+
+    broker.decide('p1', { approved: true, status: 'executed', result: { exitCode: 0 } });
+    await expect(decision).resolves.toEqual({ approved: true, proposalId: 'p1', status: 'executed', result: { exitCode: 0 } });
   });
 });

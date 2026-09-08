@@ -1,7 +1,8 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   desktopRootFromMeta,
@@ -55,11 +56,13 @@ describe('install-native-deps prebuild selection', () => {
   });
 
   it('resolves desktop root from a file URL and falls back off cwd', () => {
-    expect(desktopRootFromMeta('file:///workspace/apps/desktop/scripts/install-native-deps.mjs')).toBe(
-      '/workspace/apps/desktop',
-    );
-    expect(desktopRootFromMeta('http://vite/test', '/workspace')).toBe('/workspace/apps/desktop');
-    expect(desktopRootFromMeta('http://vite/test', '/workspace/apps/desktop')).toBe('/workspace/apps/desktop');
+    const desktop = resolve('/workspace/apps/desktop');
+    const scriptUrl = pathToFileURL(join(desktop, 'scripts', 'install-native-deps.mjs')).href;
+    expect(desktopRootFromMeta(scriptUrl)).toBe(desktop);
+
+    const base = resolve('/workspace');
+    expect(desktopRootFromMeta('http://vite/test', base)).toBe(join(base, 'apps', 'desktop'));
+    expect(desktopRootFromMeta('http://vite/test', desktop)).toBe(desktop);
   });
 
   it('resolves the installed package and its win32-x64 prebuild', () => {

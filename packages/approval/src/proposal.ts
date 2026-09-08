@@ -8,8 +8,9 @@ export interface ProposalRequest {
   toolName: string; targetSystem: string; summary: string;
   preview?: ApprovalPreview; payload: unknown; risk: SideEffect;
 }
+export type ProposalSubmission = ProposalRequest & { requestId: string };
 export interface Proposal {
-  id: string; profileId: string; sessionId: string;
+  id: string; requestId: string; profileId: string; sessionId: string;
   toolName: string; targetSystem: string; summary: string;
   preview?: ApprovalPreview;
   payloadHash: string; payload: unknown; risk: SideEffect;
@@ -40,9 +41,9 @@ export function summarizePayload(value: unknown, maxLen = 512): string {
   return s.length > maxLen ? `${s.slice(0, maxLen)}…` : s;
 }
 
-export function createProposal(req: ProposalRequest, meta: { profileId: string; sessionId: string }): Proposal {
+export function createProposal(req: ProposalSubmission, meta: { profileId: string; sessionId: string }): Proposal {
   return {
-    id: randomUUID(), ...meta, toolName: req.toolName, targetSystem: req.targetSystem,
+    id: randomUUID(), requestId: req.requestId, ...meta, toolName: req.toolName, targetSystem: req.targetSystem,
     summary: req.summary, payloadHash: hashPayload(req.payload), payload: req.payload,
     risk: req.risk, status: 'pending', createdAt: Date.now(),
     ...(req.preview !== undefined ? { preview: req.preview } : {}),
