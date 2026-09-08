@@ -233,6 +233,7 @@ Pi 在 `read` 可用且 skills 非空时仍会注入 `<available_skills>`。本�
 - 单元：`resolveAgentSkillsDir`、`preview`/`import`/`uninstall`、只读多根守卫、鞍路径。
 - 组件：设置技能页空态、列表、导入确认、覆盖确认、卸载确认、无 user library。
 - IPC：list / preview / import / uninstall / choose（E2E env）/ 合同审核 skillsDir 不变。
+- 运行时：`createPiSdkSessionHost` 在 `configure_session` 后必须再 `new_session` 才重绑 `additionalSkillPaths`；同一池进程换鞍后 Pi `getSkills()` 只含新鞍目录。
 - 不强制 Playwright 弹系统文件夹对话框；E2E 若加，只用 `SPARKII_E2E_SKILL_DIR`。
 
 ## DESIGN.md
