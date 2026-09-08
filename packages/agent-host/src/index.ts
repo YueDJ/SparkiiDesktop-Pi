@@ -10,6 +10,7 @@ export * from "./pi-runtime.js";
 export * from "./pi-runtime-tools.js";
 export * from "./write-tool-presentation.js";
 export * from "./pi-sdk-runtime.js";
+export * from "./skill-prompt.js";
 export * from "./session-catalog.js";
 export * from "./bridge/typebox.js";
 export * from "./workflow/types.js";

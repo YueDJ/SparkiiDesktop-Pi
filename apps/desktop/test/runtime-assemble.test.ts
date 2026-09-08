@@ -193,6 +193,8 @@ describe('assemble', () => {
     expect(buildAgentSaddle(contract, join(dataDir, 'anchor')).skillsDir).toBe(contract.skillsDir);
     expect(general.systemPrompt).toContain('已安装 skill');
     expect(general.systemPrompt).toContain('即使工作区尚未创建');
+    expect(general.systemPrompt).toContain('available_skills');
+    expect(general.systemPrompt).toContain('不要在工作区里搜索');
 
     mkdirSync(join(general.skillsDir, 'extra-user-skill'), { recursive: true });
     writeFileSync(
