@@ -1,15 +1,13 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { createSyntheticSourceInfo, type Skill } from "@earendil-works/pi-coding-agent";
 import {
   applySaddleSystemPrompt,
-  expandLeadingSkillSlash,
-  loadSkillSlashAliases,
   mergeSaddleSystemPrompt,
-  skillSlashAliases,
 } from "../src/skill-prompt.js";
+import * as skillPrompt from "../src/skill-prompt.js";
 
 function skill(name: string, extras: Partial<Skill> = {}): Skill {
   const filePath = extras.filePath ?? `/data/agents/general/skills/${name}/SKILL.md`;
@@ -80,42 +78,12 @@ describe("mergeSaddleSystemPrompt", () => {
   });
 });
 
-describe("expandLeadingSkillSlash", () => {
-  const aliases = skillSlashAliases([
-    skill("using-superpowers", { baseDir: "/lib/superpowers" }),
-    skill("brainstorming"),
-  ]);
-
-  it("rewrites /name to /skill:name when the skill exists", () => {
-    expect(expandLeadingSkillSlash("/brainstorming", aliases)).toBe("/skill:brainstorming");
-    expect(expandLeadingSkillSlash("/brainstorming please", aliases)).toBe("/skill:brainstorming please");
-  });
-
-  it("maps a single-skill folder destName to the frontmatter name", () => {
-    expect(expandLeadingSkillSlash("/superpowers", aliases)).toBe("/skill:using-superpowers");
-  });
-
-  it("leaves unknown slashes and already-expanded commands alone", () => {
-    expect(expandLeadingSkillSlash("/tmp", aliases)).toBe("/tmp");
-    expect(expandLeadingSkillSlash("/skill:brainstorming extra", aliases)).toBe("/skill:brainstorming extra");
-    expect(expandLeadingSkillSlash("please /brainstorming", aliases)).toBe("please /brainstorming");
-  });
-});
-
-describe("loadSkillSlashAliases", () => {
-  it("reads frontmatter names from a user skill library", () => {
-    const root = mkdtempSync(join(tmpdir(), "skill-aliases-"));
-    const dest = join(root, "superpowers");
-    mkdirSync(dest, { recursive: true });
-    writeFileSync(
-      join(dest, "SKILL.md"),
-      "---\nname: using-superpowers\ndescription: Bootstrap skill use.\n---\n# using\n",
-      "utf8",
-    );
-
-    const aliases = loadSkillSlashAliases(root);
-    expect(aliases.get("using-superpowers")).toBe("using-superpowers");
-    expect(aliases.get("superpowers")).toBe("using-superpowers");
-    expect(loadSkillSlashAliases(undefined).size).toBe(0);
+describe("skill-prompt exports", () => {
+  it("no longer exports slash rewrite helpers", () => {
+    expect(skillPrompt).not.toHaveProperty("expandLeadingSkillSlash");
+    expect(skillPrompt).not.toHaveProperty("skillSlashAliases");
+    expect(skillPrompt).not.toHaveProperty("loadSkillSlashAliases");
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../src/skill-prompt.ts"), "utf8");
+    expect(src).not.toMatch(/expandLeadingSkillSlash|skillSlashAliases|loadSkillSlashAliases/);
   });
 });

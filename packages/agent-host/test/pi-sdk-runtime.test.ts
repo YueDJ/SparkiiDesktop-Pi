@@ -4,7 +4,10 @@ import {
   createPiSdkSessionHost,
   resolveAgentDir,
 } from "../src/pi-sdk-runtime.js";
-import { applySaddleSystemPrompt, expandLeadingSkillSlash } from "../src/skill-prompt.js";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { applySaddleSystemPrompt } from "../src/skill-prompt.js";
 
 const PREV_AGENT_DIR = process.env.PI_CODING_AGENT_DIR;
 
@@ -39,7 +42,16 @@ describe("pi-sdk-runtime skill loader options", () => {
     });
     expect(applied?.systemPrompt).toContain("<available_skills>");
     expect(applied?.systemPrompt).toContain("using-superpowers");
-    expect(expandLeadingSkillSlash("/using-superpowers", ["using-superpowers"])).toBe("/skill:using-superpowers");
+  });
+
+  it("passes prompt/steer/followUp text through without /skill: rewrite", () => {
+    const src = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../src/pi-sdk-runtime.ts"), "utf8");
+    expect(src).not.toMatch(/expandLeadingSkillSlash|loadSkillSlashAliases|skillSlashAliases|withSkillSlash/);
+    expect(src).not.toMatch(/`\/skill:\$\{/);
+    expect(src).not.toMatch(/"\/skill:"\s*\+/);
+    expect(src).toMatch(/startPromptWithoutBlocking\(\s*session,\s*text,/);
+    expect(src).toMatch(/session\.steer\(text,\s*images\)/);
+    expect(src).toMatch(/session\.followUp\(text,\s*images\)/);
   });
 });
 

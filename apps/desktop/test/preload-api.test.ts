@@ -13,7 +13,7 @@ describe('sparkii api shape', () => {
       'getLocalSubject', 'chooseDocument', 'readDocumentBytes', 'runWorkflow', 'prompt', 'listPendingApprovals', 'decideApproval', 'queryAudit', 'getSettings', 'saveSettings', 'getApiKey', 'listModels', 'testConnection', 'listProviders', 'diagnostics', 'on',
       'listErrors', 'appendError', 'clearError', 'clearErrors', 'markAllErrorsRead',
       'openChatSession', 'listChatSessions', 'getChatSession', 'promptSession', 'abortChat', 'getChatState', 'queueMutate', 'setChatTitle', 'completeText', 'setChatModel', 'setChatThinkingLevel', 'setChatWorkspace', 'updateWorkflowState', 'requestExportReport', 'chooseWorkspace', 'getModelOptions', 'listThinkingLevels', 'deleteChatSession', 'setSessionPinned', 'setSessionArchived', 'setSessionOrder', 'listAgents',
-      'listUserSkills', 'previewUserSkill', 'chooseSkillFolder', 'importUserSkill', 'uninstallUserSkill', 'openUserSkillsDir',
+      'listUserSkills', 'listAgentSkills', 'previewUserSkill', 'chooseSkillFolder', 'importUserSkill', 'uninstallUserSkill', 'openUserSkillsDir',
       'getRuntimePool', 'cancelQueuedSession', 'releaseSessionSlot',
       'getPathForFile',
       'windowMinimize', 'windowToggleMaximize', 'windowClose', 'windowIsMaximized',
@@ -37,9 +37,11 @@ describe('sparkii api shape', () => {
     void api.listThinkingLevels('deepseek', 'deepseek-v4-pro');
     void api.listAgents();
     void api.promptSession('s1', 'hi');
+    void api.listAgentSkills('writer');
     expect(calls).toEqual([
       'sparkii:listChatSessions', 'sparkii:getModelOptions',
       'sparkii:setChatThinkingLevel', 'sparkii:listThinkingLevels', 'sparkii:listAgents', 'sparkii:promptSession',
+      'sparkii:listAgentSkills',
     ]);
   });
 });

@@ -14,6 +14,7 @@ import {
   DEFAULT_CHAT_DETAIL_LEVEL,
   isChatDetailLevel,
   shouldShowEntry,
+  parseLeadingSkillSlash,
   type ChatEntry,
   type ChatDetailLevel,
   type ComposerAttachment,
@@ -29,6 +30,19 @@ export type StandardChatProps = AgentSurfaceProps & {
 
 function isChatEntry(e: SessionEntry): e is ChatEntry {
   return e.kind === 'message' || e.kind === 'tool' || e.kind === 'event';
+}
+
+function UserSkillMessage({ text }: { text: string }) {
+  const parsed = parseLeadingSkillSlash(text);
+  if (!parsed) return <ChatMessage role="user" text={text} />;
+  return (
+    <ChatMessage role="user" text={text}>
+      <span className="ui-chat-skill-line">
+        <span className="ui-skill-chip" data-testid="timeline-skill-chip">技能 · {parsed.name}</span>
+        {parsed.rest ? <span>{parsed.rest}</span> : null}
+      </span>
+    </ChatMessage>
+  );
 }
 
 type QueueName = 'steering' | 'followUp';
@@ -213,10 +227,48 @@ export function StandardChatSurface(props: StandardChatProps) {
   const [contextUsage, setContextUsage] = useState<{ tokens?: number | null; contextWindow?: number; percent?: number | null } | null>(null);
   const [isCompacting, setIsCompacting] = useState(false);
   const [detailLevel, setDetailLevel] = useState<ChatDetailLevel>(DEFAULT_CHAT_DETAIL_LEVEL);
+  const [skills, setSkills] = useState<Array<{ name: string; description: string }> | null>(null);
   const modelRef = useRef(model);
   const isBusy = busy || session.streaming;
 
   useEffect(() => { modelRef.current = model; }, [model]);
+  useEffect(() => {
+    if (!sessionId && !draft) return;
+    setSkills(null);
+    let cancelled = false;
+    let reportedMissing = false;
+    const load = () => {
+      if (typeof api.listAgentSkills !== 'function') {
+        setSkills(null);
+        if (!reportedMissing) {
+          reportedMissing = true;
+          reportError('无法加载技能列表', { source: agent.name });
+        }
+        return;
+      }
+      void api.listAgentSkills(agent.id).then(
+        (result) => {
+          if (cancelled) return;
+          setSkills((result.skills ?? []).map((row) => ({
+            name: row.name,
+            description: row.description,
+          })));
+        },
+        (error: unknown) => {
+          if (cancelled) return;
+          setSkills(null);
+          const message = error instanceof Error ? error.message : String(error);
+          reportError(message, { source: agent.name });
+        },
+      );
+    };
+    load();
+    window.addEventListener('focus', load);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('focus', load);
+    };
+  }, [agent.id, agent.name, api, draft, reportError, sessionId]);
 
   // ---- 消息列表自动跟随最新内容 ----
   // 跟随态：新内容到达自动贴底；用户上翻离开底部超过阈值后进入脱离态：绝不抢用户的滚动，
@@ -539,7 +591,7 @@ export function StandardChatSurface(props: StandardChatProps) {
           e.kind === 'message' ? (
             e.role === 'assistant'
               ? <ChatMessage key={e.id} role="assistant" text={e.text} thinking={e.thinking} streaming={e.streaming}><Markdown text={e.text} /></ChatMessage>
-              : <ChatMessage key={e.id} role="user" text={e.text} />
+              : <UserSkillMessage key={e.id} text={e.text} />
           ) : e.kind === 'event' ? (
             <LifecycleCard key={e.id} entry={e} />
           ) : (
@@ -599,6 +651,7 @@ export function StandardChatSurface(props: StandardChatProps) {
         }}
         contextUsage={contextUsage}
         isCompacting={isCompacting}
+        skills={skills}
         onSend={send}
         onStop={stop}
       />

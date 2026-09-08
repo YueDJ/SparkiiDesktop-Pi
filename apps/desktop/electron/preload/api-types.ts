@@ -94,6 +94,9 @@ export interface SparkiiApi {
     agent: { id: string; name: string } | null;
     skills: Array<{ name: string; description: string; hasScripts: boolean; warnings: string[]; kind?: 'skill' | 'pack'; skillCount?: number }>;
   }>;
+  listAgentSkills(agentId: string): Promise<{
+    skills: Array<{ name: string; description: string; hasScripts: boolean; warnings: string[] }>;
+  }>;
   previewUserSkill(sourceDir: string): Promise<
     | { ok: true; skill: { name: string; description: string; hasScripts: boolean; warnings: string[]; kind?: 'skill' | 'pack'; skillCount?: number }; destName: string }
     | { ok: false; reason: string; diagnostics?: string[] }

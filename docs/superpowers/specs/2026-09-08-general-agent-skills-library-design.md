@@ -29,7 +29,7 @@
 3. **用户库磁盘即事实源。** 在 `skills/` 里 = 已安装 = 会进鞍。不做启用/停用，不做 `skills-disabled/`，不做旁路索引。
 4. **这一期只从文件夹导入。** 选中的目录必须是 **skill 根**（直接有 `SKILL.md`）或 **skill 包**（见 Install）。不整仓盲拷、不建快捷方式。不做 zip、不做 GitHub URL、不做 `pi install`、不跑 `pi.extensions`、不扫 `~/.agents/skills` / `~/.claude/skills`。
 5. **鉴定只问「能不能被现有 loader 加载」。** 复用 `loadSkillsFromDir`：没有可用 `description` 则拒绝安装。name 不规范只警告仍可装。不按 Claude / Pi 出身拦截，不改写 `SKILL.md`。
-6. **设置 → 技能** 只管理 `skillLibrary: user` 的智能体。本轮恰好一个（通用智能体）。页上写清「这些技能仅用于{displayName}」。四个动作：列表、导入文件夹、卸载、打开文件夹。Composer 不做技能选择器。
+6. **设置 → 技能** 只管理 `skillLibrary: user` 的智能体。本轮恰好一个（通用智能体）。页上写清「这些技能仅用于{displayName}」。四个动作：列表、导入文件夹、卸载、打开文件夹。对话式 Composer 的 slash 菜单见 `docs/superpowers/specs/2026-09-08-chat-skill-invocation-design.md`（本文件不再把「Composer 不做选择器」当现行约束）。
 7. **只读工具放行当前鞍的 `skillsDir`。** `read` / `ls` / `grep` / `find` 的允许根 = 工作区（若已创建）∪ 本会话 `skillsDir`。路径在 skill 目录内时，即使工作区尚未创建也允许读。`bash` / `edit` / `write` 不因 skill 免批；`scripts/` 走现有 bash 审批。
 8. **已打开的会话不热更新技能列表。** Pi 的 `additionalSkillPaths` 在创建 session runtime 时绑定（`new_session`），不是 `configure_session` 单独重载。导入/卸载后须新开或重新打开会话（会 `new_session`）才看见变化。
 9. **平台生产代码不写死 `'general'` / `'contract-review'`。** 用 `skillLibrary` 与 `agent.skillsDir` 分辨。设置页文案可以用通用智能体的 `displayName`。
@@ -51,7 +51,7 @@
 - 智能体自写 skill、Skill Workshop、per-skill API Key。
 - 给专用智能体做技能页，或把用户库技能注入合同审核/财务会话。
 - 改合同审核 workflow、签名完整性收集规则、审批门状态机。
-- Composer / slash UI、热重载已打开会话的 `<available_skills>`。
+- 热重载已打开会话的 `<available_skills>`。Composer slash UI 已另开 `2026-09-08-chat-skill-invocation` spec，不在本文件范围。
 - 完整危险代码扫描（只做 loader 校验 + 人确认）。
 
 ## Architecture
@@ -222,7 +222,7 @@ Renderer `SparkiiApi` 增加对应方法。设置页只通过这些 IPC 改磁�
 - 增加：若用户任务匹配已安装 skill 的说明，先用 read 读取该 skill 的 SKILL.md 再按其中步骤执行。
 - **改**现有工作区句，避免和只读守卫打架：所有**工作区文件**的读写必须位于工作区根内；已安装 skill 目录可用 read/ls/grep/find 读取，即使工作区尚未创建。只读操作在工作区未创建且目标不在 skill 目录内时，仍提示「工作区尚未创建」。
 
-Pi 在 `read` 可用且 skills 非空时仍会注入 `<available_skills>`。本轮不改 Pi 注入格式，不实现 slash UI。`loadProfile` 继续只扫包内 `agent/skills`，不指向用户库。
+Pi 在 `read` 可用且 skills 非空时仍会注入 `<available_skills>`。本轮不改 Pi 注入格式。对话式 slash UI 见 `2026-09-08-chat-skill-invocation` spec。`loadProfile` 继续只扫包内 `agent/skills`，不指向用户库。
 
 ## Isolation invariants（测试必须锁）
 
