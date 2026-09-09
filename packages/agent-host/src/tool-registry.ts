@@ -11,7 +11,7 @@ import { documentConnector, knowledgeConnector, reportConnector, type ToolDef } 
 import type { ProposalRequest } from "@sparkii/approval";
 import { buildPiRuntimeTools } from "./pi-runtime-tools.js";
 import { createCodingToolDefinitions } from "./coding-tools.js";
-import type { ProposalDecision } from "./pi-runtime-transport.js";
+import type { ProposalDecision, ConnectorReadRequest, ConnectorReadResult } from "./pi-runtime-transport.js";
 import { isPathInside } from "./workspace-guard.js";
 
 export const WORKSPACE_NOT_CREATED = "工作区尚未创建（尚无写操作）。请先让智能体创建文件，或在输入框上方指定工作区。";
@@ -21,6 +21,7 @@ export interface RegistryContext {
   workspaceRoot?: string;
   skillsDir?: string;
   propose(request: ProposalRequest & { requestId: string }): Promise<ProposalDecision>;
+  connectorRead?(request: ConnectorReadRequest): Promise<ConnectorReadResult>;
   recordSessionEntry?(customType: string, data: Record<string, unknown>): void;
 }
 
@@ -82,7 +83,11 @@ export function resolveToolDefinitions(toolNames: string[], ctx: RegistryContext
     }
     const connector = CONNECTOR_TOOLS.get(name);
     if (connector) {
-      const wrapped = buildPiRuntimeTools({ tools: [connector], propose: ctx.propose })[0];
+      const wrapped = buildPiRuntimeTools({
+        tools: [connector],
+        propose: ctx.propose,
+        connectorRead: ctx.connectorRead,
+      })[0];
       // buildPiRuntimeTools already exposes an API-safe name ([a-zA-Z0-9_-])
       // while keeping the original connector name for proposals; do not
       // override it back, or OpenAI-compatible endpoints reject the tool.

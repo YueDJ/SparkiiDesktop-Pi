@@ -17,7 +17,9 @@ import { join } from "node:path";
 import type { ToolDef } from "@sparkii/connectors";
 import { resolveToolDefinitions } from "./tool-registry.js";
 import {
+  connectorReadEnvelope,
   proposalEnvelope,
+  type ConnectorReadResult,
   type ProposalDecision,
 } from "./pi-runtime-transport.js";
 import type { ImageContent, SessionSaddle } from "./types.js";
@@ -140,6 +142,10 @@ export async function createPiSdkSessionHost(
     string,
     { resolve: (decision: ProposalDecision) => void; reject: (error: Error) => void }
   >();
+  const pendingConnectorReads = new Map<
+    string,
+    { resolve: (result: ConnectorReadResult) => void; reject: (error: Error) => void }
+  >();
 
   options.transport.onMessage((envelope) => {
     if ("proposalDecision" in envelope) {
@@ -147,6 +153,12 @@ export async function createPiSdkSessionHost(
       if (!pending) return;
       pendingProposals.delete(envelope.requestId);
       pending.resolve(envelope.proposalDecision);
+    }
+    if ("connectorReadResult" in envelope) {
+      const pending = pendingConnectorReads.get(envelope.requestId);
+      if (!pending) return;
+      pendingConnectorReads.delete(envelope.requestId);
+      pending.resolve(envelope.connectorReadResult);
     }
   });
 
@@ -225,6 +237,11 @@ export async function createPiSdkSessionHost(
             new Promise<ProposalDecision>((resolve, reject) => {
               pendingProposals.set(request.requestId, { resolve, reject });
               options.transport.postMessage(proposalEnvelope(request));
+            }),
+          connectorRead: async (request) =>
+            new Promise<ConnectorReadResult>((resolve, reject) => {
+              pendingConnectorReads.set(request.requestId, { resolve, reject });
+              options.transport.postMessage(connectorReadEnvelope(request));
             }),
           recordSessionEntry: (customType, data) => appendCustomEntryAndEmit(session, customType, data),
         })

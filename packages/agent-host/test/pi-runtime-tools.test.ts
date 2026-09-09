@@ -49,4 +49,22 @@ describe("buildPiRuntimeTools", () => {
       preview: { kind: "text", lines: ["摘要"] },
     }));
   });
+
+  it("does not execute a main-hosted write locally either", async () => {
+    const write = {
+      name: "knowledge.search",
+      description: "search",
+      sideEffect: "read" as const,
+      host: "main" as const,
+      params: { type: "object", properties: {} },
+      handler: vi.fn(),
+    };
+    const tools = buildPiRuntimeTools({ tools: [write], propose: vi.fn() });
+    const result = await tools[0].execute("id4", { query: "q" });
+    expect(write.handler).not.toHaveBeenCalled();
+    expect(JSON.parse(result.content[0].text)).toMatchObject({
+      ok: false,
+      error: { code: "CONNECTOR_DENIED" },
+    });
+  });
 });

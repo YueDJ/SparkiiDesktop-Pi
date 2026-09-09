@@ -19,7 +19,7 @@ export function KnowledgeDatasetPicker(props: {
     }).catch(() => setDatasets([]));
   }, [api]);
 
-  const selected = value.mode === 'all' ? ALL : (value.datasetIds[0] ?? ALL);
+  const selected = value.mode === 'all' ? ALL : (value.datasetIds[0] ?? '');
 
   return (
     <Select
@@ -30,6 +30,7 @@ export function KnowledgeDatasetPicker(props: {
         onChange(next === ALL ? { mode: 'all' } : { mode: 'ids', datasetIds: [next] });
       }}
     >
+      {selected === '' ? <option value="" disabled>选择知识库</option> : null}
       <option value={ALL}>全部可见库</option>
       {datasets.map((d) => (
         <option key={d.id} value={d.id}>{d.name}</option>

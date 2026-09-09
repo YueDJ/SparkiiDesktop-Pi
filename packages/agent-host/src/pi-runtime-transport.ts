@@ -8,13 +8,27 @@ export interface ProposalDecision {
   result?: unknown;
 }
 
+export type ConnectorReadRequest = {
+  requestId: string;
+  toolName: string;
+  args: Record<string, unknown>;
+};
+
+export type ConnectorReadResult = {
+  ok: boolean;
+  data?: unknown;
+  error?: { code: string; message: string };
+};
+
 export type PiRuntimeEnvelope =
   | { direction: "main-to-runtime"; id: string; command: RpcCommand }
   | { direction: "runtime-to-main"; id: string; response: RpcResponse }
   | { direction: "runtime-to-main"; event: NormalizedEvent }
   | { direction: "runtime-to-main"; ready: true }
   | { direction: "runtime-to-main"; proposal: ProposalRequest & { requestId: string } }
-  | { direction: "main-to-runtime"; requestId: string; proposalDecision: ProposalDecision };
+  | { direction: "main-to-runtime"; requestId: string; proposalDecision: ProposalDecision }
+  | { direction: "runtime-to-main"; connectorRead: ConnectorReadRequest }
+  | { direction: "main-to-runtime"; requestId: string; connectorReadResult: ConnectorReadResult };
 
 export function readyEnvelope(): PiRuntimeEnvelope {
   return { direction: "runtime-to-main", ready: true };
@@ -54,4 +68,15 @@ export function proposalDecisionEnvelope(
   proposalDecision: ProposalDecision,
 ): PiRuntimeEnvelope {
   return { direction: "main-to-runtime", requestId, proposalDecision };
+}
+
+export function connectorReadEnvelope(connectorRead: ConnectorReadRequest): PiRuntimeEnvelope {
+  return { direction: "runtime-to-main", connectorRead };
+}
+
+export function connectorReadResultEnvelope(
+  requestId: string,
+  connectorReadResult: ConnectorReadResult,
+): PiRuntimeEnvelope {
+  return { direction: "main-to-runtime", requestId, connectorReadResult };
 }

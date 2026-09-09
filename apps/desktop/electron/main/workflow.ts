@@ -13,6 +13,8 @@ import type { Logger } from './logger.js';
 import { buildAgentSaddle } from './saddle.js';
 import { isReadOnlyBashCommand, riskOfCommand } from './general-executor.js';
 import { loadSettings, type AppSettings } from './settings.js';
+import { knowledgeFromManifest, patchRagSettings, ragFromSettings } from './rag-settings.js';
+import { runMainKnowledgeSearch } from './rag-search.js';
 
 const allTools = new Map<string, ToolDef>(
   [documentConnector, knowledgeConnector, reportConnector].flatMap((c) => c.tools.map((t) => [t.name, t] as const)),
@@ -247,6 +249,28 @@ async function runTool(
   const tool = allTools.get(toolName);
   if (!tool) return { ok: false, error: { code: 'UNKNOWN_TOOL', message: toolName } };
   if (tool.sideEffect === 'read') {
+    if (toolName === 'knowledge.search') {
+      const knowledge = knowledgeFromManifest(rt.profileOf(profileId).profile.manifest);
+      if (knowledge.backend === 'sparkiirag') {
+        const rag = ragFromSettings(await loadSettings(rt.dataDir));
+        return runMainKnowledgeSearch({
+          args: (args ?? {}) as Record<string, unknown>,
+          profileId,
+          sessionId,
+          selection: null,
+          knowledge,
+          rag,
+          apiKey: await rt.keyFor('sparkiirag'),
+          bm25: async () => { throw new Error('no bm25'); },
+          persistDefault: async (id) => {
+            const current = ragFromSettings(await loadSettings(rt.dataDir));
+            const next = current.bindings.filter((b) => b.agentId !== profileId);
+            next.push({ agentId: profileId, defaultDatasetId: id });
+            await patchRagSettings(rt.dataDir, { bindings: next });
+          },
+        });
+      }
+    }
     return tool.handler(args as Record<string, unknown>, {
       profileId: rt.profileOf(profileId).profile.manifest.name, sessionId, actor: rt.subject?.userId ?? 'agent', requestId: randomUUID(),
     });

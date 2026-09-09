@@ -52,6 +52,9 @@ describe("pi-sdk-runtime skill loader options", () => {
     expect(src).toMatch(/startPromptWithoutBlocking\(\s*session,\s*text,/);
     expect(src).toMatch(/session\.steer\(text,\s*images\)/);
     expect(src).toMatch(/session\.followUp\(text,\s*images\)/);
+    expect(src).toMatch(/pendingConnectorReads/);
+    expect(src).toMatch(/connectorRead:/);
+    expect(src).toMatch(/connectorReadEnvelope/);
   });
 });
 

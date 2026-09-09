@@ -9,6 +9,7 @@ import {
 } from '../workbench/chat-detail-level.js';
 import { AuditView } from '../audit/AuditView.js';
 import { SettingsSkillsPane, type SkillsPaneApi } from './SettingsSkillsPane.js';
+import { SettingsKnowledgePane } from './SettingsKnowledgePane.js';
 
 export interface ProviderEntry {
   id: string;
@@ -30,6 +31,16 @@ interface CustomProvider {
 export interface SettingsApi {
   getSettings?(): Promise<unknown>;
   saveSettings?(settings: unknown): Promise<unknown>;
+  saveRagSettings?(partial: {
+    baseUrl?: string;
+    similarityThreshold?: number;
+    vectorSimilarityWeight?: number;
+    bindings?: Array<{ agentId: string; defaultDatasetId: string }>;
+    apiKey?: string;
+  }): Promise<{ ok: true }>;
+  testRagConnection?(apiKey?: string | null): Promise<{ ok: boolean; datasets?: Array<{ id: string; name: string }>; error?: string }>;
+  listRagDatasets?(apiKey?: string | null): Promise<{ ok: boolean; datasets?: Array<{ id: string; name: string }>; error?: string }>;
+  listAgents?(): Promise<Array<{ id: string; name: string; displayName?: string; knowledge?: { enabled?: boolean } }>>;
   getApiKey?(provider: string): Promise<string | null>;
   listProviders?(): Promise<ProviderEntry[]>;
   listModels?(provider: string, apiKey?: string | null): Promise<{ ok: boolean; models?: string[]; httpStatus?: number; reason?: string; error?: string }>;
@@ -46,10 +57,10 @@ export interface SettingsApi {
 
 export interface SettingsViewProps { api?: SettingsApi; onExportAudit?(jsonl: string): void; }
 
-const PANES = ['llm', 'data', 'runtime', 'skills', 'approval', 'appearance', 'audit'] as const;
+const PANES = ['llm', 'knowledge', 'data', 'runtime', 'skills', 'approval', 'appearance', 'audit'] as const;
 type Pane = (typeof PANES)[number];
 const PANE_LABELS: Record<Pane, string> = {
-  llm: '大模型连接', data: '数据与隐私', runtime: '智能体与运行', skills: '技能', approval: '审批与安全', appearance: '外观与语言', audit: '审计',
+  llm: '大模型连接', knowledge: '知识库', data: '数据与隐私', runtime: '智能体与运行', skills: '技能', approval: '审批与安全', appearance: '外观与语言', audit: '审计',
 };
 
 const ROUTE_TASKS = [
@@ -286,6 +297,7 @@ export function SettingsView(props: SettingsViewProps) {
           </div>
         </>
       )}
+      {pane === 'knowledge' && <SettingsKnowledgePane api={api} />}
       {pane === 'data' && (
         <>
           <h3 className="settings-section-title">数据与隐私</h3>

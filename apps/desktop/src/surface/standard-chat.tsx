@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { Fragment, cloneElement, isValidElement, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import type { WheelEvent as ReactWheelEvent } from 'react';
 import type { AgentSurfaceProps, CustomSessionEntry, SessionEntry } from './contract.js';
 import type { ChatAttachment, SparkiiApi } from '../types/sparkii-api.js';
@@ -29,7 +29,7 @@ export type StandardChatProps = AgentSurfaceProps & {
   toolbarExtra?: ReactNode;
   hideWorkspace?: boolean;
   onBeforeSend?(): Promise<void>;
-  emptyCopy?: { heading?: string; body?: string };
+  emptyCopy?: { heading?: string; body?: string; hint?: string };
   hideToolNames?: string[];
   composerSkills?: Array<{ name: string; description: string }> | null;
   renderAssistantMessage?(args: {
@@ -41,6 +41,35 @@ export type StandardChatProps = AgentSurfaceProps & {
 
 function isChatEntry(e: SessionEntry): e is ChatEntry {
   return e.kind === 'message' || e.kind === 'tool' || e.kind === 'event';
+}
+
+function followingCustomsUntilMessage(entries: SessionEntry[], start: number): CustomSessionEntry[] {
+  const entry = entries[start];
+  if (entry?.kind !== 'message' || entry.role !== 'assistant') return [];
+  for (let j = start + 1; j < entries.length; j++) {
+    const next = entries[j];
+    if (next.kind === 'message' && next.role === 'assistant') return [];
+    if (next.kind === 'message' && next.role === 'user') break;
+  }
+  let lo = 0;
+  for (let j = start - 1; j >= 0; j--) {
+    if (entries[j].kind === 'message' && entries[j].role === 'user') {
+      lo = j + 1;
+      break;
+    }
+  }
+  let hi = entries.length;
+  for (let j = start + 1; j < entries.length; j++) {
+    if (entries[j].kind === 'message' && entries[j].role === 'user') {
+      hi = j;
+      break;
+    }
+  }
+  const following: CustomSessionEntry[] = [];
+  for (let j = lo; j < hi; j++) {
+    if (entries[j].kind === 'custom') following.push(entries[j] as CustomSessionEntry);
+  }
+  return following;
 }
 
 function UserSkillMessage({ text }: { text: string }) {
@@ -496,8 +525,13 @@ export function StandardChatSurface(props: StandardChatProps) {
       : null);
 
     if (isBusy && sessionId) {
-      api.promptSession(sessionId, display, { behavior: 'followUp' }, chatAttachments.length ? chatAttachments : undefined)
-      .catch((e: any) => reportError(String(e?.message ?? e), { source: agent.name }));
+      const followUp = () => api.promptSession(sessionId, display, { behavior: 'followUp' }, chatAttachments.length ? chatAttachments : undefined)
+        .catch((e: any) => reportError(String(e?.message ?? e), { source: agent.name }));
+      if (onBeforeSend) {
+        void onBeforeSend().then(followUp).catch((e: any) => reportError(String(e?.message ?? e), { source: agent.name }));
+        return;
+      }
+      void followUp();
       return;
     }
 
@@ -556,13 +590,18 @@ export function StandardChatSurface(props: StandardChatProps) {
     const text = drafts[queue][index];
     if (!text) return;
     jumpToLatest();
-    api.promptSession(sessionId, text, { behavior })
+    const proceed = () => api.promptSession(sessionId, text, { behavior })
       .then(() => setDrafts((current) => {
         const next = { steering: [...current.steering], followUp: [...current.followUp] };
         next[queue].splice(index, 1);
         return next;
       }))
       .catch((e: any) => reportError(String(e?.message ?? e), { source: agent.name }));
+    if (onBeforeSend) {
+      void onBeforeSend().then(proceed).catch((e: any) => reportError(String(e?.message ?? e), { source: agent.name }));
+      return;
+    }
+    void proceed();
   };
 
   const onModelChange = (next: string | null) => {
@@ -607,24 +646,27 @@ export function StandardChatSurface(props: StandardChatProps) {
 
   const timeline: ReactNode[] = [];
   let visibleCount = 0;
+  const foldedCustomIds = new Set<string>();
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i];
     if (entry.kind === 'message' && entry.role === 'assistant') {
-      const following: CustomSessionEntry[] = [];
-      let j = i + 1;
-      while (j < entries.length && entries[j].kind === 'custom') {
-        following.push(entries[j] as CustomSessionEntry);
-        j++;
+      const following = followingCustomsUntilMessage(entries, i);
+      if (renderAssistantMessage) {
+        for (const custom of following) foldedCustomIds.add(custom.id);
       }
       const rendered = renderAssistantMessage
         ? renderAssistantMessage({ entry, following })
         : <ChatMessage role="assistant" text={entry.text} thinking={entry.thinking} streaming={entry.streaming}><Markdown text={entry.text} /></ChatMessage>;
-      timeline.push(<Fragment key={entry.id}>{rendered}</Fragment>);
+      timeline.push(
+        isValidElement(rendered)
+          ? cloneElement(rendered, { key: entry.id })
+          : <Fragment key={entry.id}>{rendered}</Fragment>,
+      );
       visibleCount += 1;
-      i = j - 1;
       continue;
     }
     if (entry.kind === 'custom') {
+      if (foldedCustomIds.has(entry.id)) continue;
       const custom = renderCustomEntry?.(entry) ?? null;
       if (custom) {
         timeline.push(<Fragment key={entry.id}>{custom}</Fragment>);
@@ -644,7 +686,7 @@ export function StandardChatSurface(props: StandardChatProps) {
       continue;
     }
     const completed = entry.result !== undefined && !entry.awaitingApproval;
-    if (hideCompletedTools.has(entry.toolName) && completed && detailLevel !== 'debug') continue;
+    if (hideCompletedTools.has(entry.toolName) && completed) continue;
     timeline.push(
       <Fragment key={entry.id}>
         <ToolCard toolName={entry.toolName} input={entry.input} result={entry.result} awaitingApproval={entry.awaitingApproval} defaultOpen={detailLevel === 'debug'} />
@@ -661,7 +703,7 @@ export function StandardChatSurface(props: StandardChatProps) {
       </header>
       <div className="chat-list" ref={listRef} onScroll={onListScroll} onWheel={onListWheel}>
         {timeline}
-        {visibleCount === 0 && !isBusy && <div className="muted chat-hint">开始对话，或让智能体在工作区里做点什么。</div>}
+        {visibleCount === 0 && !isBusy && <div className="muted chat-hint">{emptyCopy?.hint ?? '开始对话，或让智能体在工作区里做点什么。'}</div>}
         {detached && (
           <button type="button" className="chat-scroll-latest" data-testid="scroll-latest" onClick={jumpToLatest} title="回到最新">
             <span aria-hidden="true">↓</span> 回到最新

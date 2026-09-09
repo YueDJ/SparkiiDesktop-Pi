@@ -2,6 +2,9 @@ import { randomUUID } from "node:crypto";
 import {
   commandEnvelope,
   proposalDecisionEnvelope,
+  connectorReadResultEnvelope,
+  type ConnectorReadRequest,
+  type ConnectorReadResult,
   type PiRuntimeClient,
   type PiRuntimeEnvelope,
   type PiRuntimeHostHandle,
@@ -13,6 +16,13 @@ import type { NormalizedEvent, RpcCommand, RpcResponse } from "./types.js";
 type ProposalHandler = (
   request: ProposalRequest & { requestId: string },
 ) => Promise<ProposalDecision>;
+
+type ConnectorReadHandler = (request: ConnectorReadRequest) => Promise<ConnectorReadResult>;
+
+const UNHANDLED_READ: ConnectorReadResult = {
+  ok: false,
+  error: { code: "CONNECTOR_DENIED", message: "unhandled" },
+};
 
 class PiRuntimeClientImpl implements PiRuntimeClient {
   private pending = new Map<string, {
@@ -29,6 +39,7 @@ class PiRuntimeClientImpl implements PiRuntimeClient {
   constructor(
     private handle: PiRuntimeHostHandle,
     private onProposal: ProposalHandler,
+    private onConnectorRead: ConnectorReadHandler,
     private sendTimeoutMs = 300_000,
     private readinessTimeoutMs = 60_000,
   ) {
@@ -104,6 +115,15 @@ class PiRuntimeClientImpl implements PiRuntimeClient {
           status: "denied",
         }));
       }
+      return;
+    }
+    if ("connectorRead" in envelope) {
+      try {
+        const result = await this.onConnectorRead(envelope.connectorRead);
+        this.handle.postMessage(connectorReadResultEnvelope(envelope.connectorRead.requestId, result));
+      } catch {
+        this.handle.postMessage(connectorReadResultEnvelope(envelope.connectorRead.requestId, UNHANDLED_READ));
+      }
     }
   }
 }
@@ -117,6 +137,7 @@ export class PiRuntimeSupervisor {
     proposalId: "unhandled",
     status: "denied",
   });
+  private connectorReadCb: ConnectorReadHandler = async () => UNHANDLED_READ;
 
   constructor(
     private makeHandle: () => PiRuntimeHostHandle,
@@ -130,6 +151,7 @@ export class PiRuntimeSupervisor {
     this.client = new PiRuntimeClientImpl(
       handle,
       (request) => this.proposalCb(request),
+      (request) => this.connectorReadCb(request),
       this.opts.sendTimeoutMs,
       this.opts.readinessTimeoutMs,
     );
@@ -156,5 +178,9 @@ export class PiRuntimeSupervisor {
 
   onProposal(cb: ProposalHandler): void {
     this.proposalCb = cb;
+  }
+
+  onConnectorRead(cb: ConnectorReadHandler): void {
+    this.connectorReadCb = cb;
   }
 }

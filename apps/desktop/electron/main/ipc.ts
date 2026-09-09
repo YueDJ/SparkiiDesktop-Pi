@@ -11,14 +11,14 @@ import { sortAgents } from './agent-catalog.js';
 import { resolveExportPath } from './export-path.js';
 import { loadSettings, saveSettings } from './settings.js';
 import { knowledgeFromManifest, patchRagSettings, ragFromSettings, type KnowledgeSelection } from './rag-settings.js';
-import { runMainKnowledgeSearch, searchAuditSummary } from './rag-search.js';
+import { runMainKnowledgeSearch, searchAuditSummary, SESSION_DATASET_GONE } from './rag-search.js';
 import { fetchAndCacheDocument } from './rag-open.js';
 import {
   KNOWLEDGE_TURN,
-  isVisibleAssistantEnd,
   knowledgeTurnPayload,
   markSearchResult,
   resetTurn,
+  sealTurn,
   shouldAbortGeneration,
   type GroundingTurn,
 } from './rag-grounding.js';
@@ -280,8 +280,8 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       const sessionId = slot.getSessionId();
       if (!sessionId) return;
       getWindow()?.webContents.send('sparkii:event:chat-event', { ...ev, sessionId });
-      if (ev.type === 'message_end') {
-        void persistHitTurn(sessionId, ev);
+      if (ev.type === 'agent_end' || ev.type === 'agent_settled') {
+        void persistHitTurn(sessionId);
       }
       if (ev.type === 'agent_settled' && !inFlightWorkflowRuns.has(sessionId)) {
         scheduleIdleRelease(sessionId);
@@ -319,14 +319,14 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     await open.slot.client.send({ type: 'append_workflow_entry', customType: KNOWLEDGE_TURN, data });
   }
 
-  async function persistHitTurn(sessionId: string, ev: unknown): Promise<void> {
-    if (!isVisibleAssistantEnd(ev)) return;
+  async function persistHitTurn(sessionId: string): Promise<void> {
     const open = openSessions.get(sessionId);
     if (!open) return;
     const knowledge = knowledgeFromManifest(rt.profileOf(open.profileId).profile.manifest);
     if (knowledge.backend !== 'sparkiirag') return;
     const turn = groundingTurns.get(sessionId);
-    if (!turn?.searchCalled || turn.miss) return;
+    if (!turn?.searchCalled || turn.miss || turn.sealed) return;
+    groundingTurns.set(sessionId, sealTurn(turn));
     await appendKnowledgeTurn(sessionId, knowledgeTurnPayload(turn));
   }
 
@@ -335,6 +335,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     if (!open) return;
     await open.slot.client.send({ type: 'abort' });
     await appendKnowledgeTurn(sessionId, payload);
+    groundingTurns.set(sessionId, sealTurn(groundingTurns.get(sessionId) ?? resetTurn()));
   }
 
   async function persistDefaultDataset(profileId: string, datasetId: string): Promise<void> {
@@ -422,6 +423,10 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
           void refuseEmptySearch(sessionId, payload);
         });
       }
+    } else if (!out.ok && knowledge.backend === 'sparkiirag' && out.error?.message === SESSION_DATASET_GONE) {
+      queueMicrotask(() => {
+        void refuseEmptySearch(sessionId, { refused: true, text: SESSION_DATASET_GONE, documents: [], citations: [] });
+      });
     }
     return out;
   }
@@ -665,11 +670,15 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     }
 
     const { open, sessionId: resolvedSessionId, workspacePath } = await openOrCreateSession(sessionId, context);
-    const draftKey = `draft:${open.profileId}`;
-    const draftSelection = sessionKnowledgeSelections.get(draftKey);
-    if (draftSelection) {
-      sessionKnowledgeSelections.set(resolvedSessionId, draftSelection);
-      sessionKnowledgeSelections.delete(draftKey);
+    if (!sessionId) {
+      const draftKey = `draft:${open.profileId}`;
+      const draftSelection = sessionKnowledgeSelections.get(draftKey);
+      if (draftSelection && !sessionKnowledgeSelections.has(resolvedSessionId)) {
+        sessionKnowledgeSelections.set(resolvedSessionId, draftSelection);
+        sessionKnowledgeSelections.delete(draftKey);
+      } else {
+        sessionKnowledgeSelections.delete(draftKey);
+      }
     }
 
     const list = attachments ?? [];

@@ -82,6 +82,42 @@ describe('StandardChat knowledge slots', () => {
     await waitFor(() => expect(order).toEqual(['knowledge', 'prompt']));
   });
 
+  it('awaits onBeforeSend before a busy follow-up prompt', async () => {
+    const order: string[] = [];
+    const api = makeApi({
+      setSessionKnowledge: vi.fn(async () => { order.push('knowledge'); return { ok: true }; }),
+      promptSession: vi.fn(async () => { order.push('prompt'); return { ok: true, sessionId: 's1' }; }),
+    });
+    render(<StandardChatSurface {...chatProps({
+      api,
+      session: { entries: [{ kind: 'message', id: 'a1', role: 'assistant', text: '…', streaming: true }], streaming: true, meta: {} },
+      onBeforeSend: async () => { await api.setSessionKnowledge('s1', { mode: 'all' }); },
+    })} />);
+    fireEvent.change(screen.getByTestId('composer-input'), { target: { value: '换库再问' } });
+    fireEvent.keyDown(screen.getByTestId('composer-input'), { key: 'Enter' });
+    await waitFor(() => expect(order).toEqual(['knowledge', 'prompt']));
+    expect(api.promptSession).toHaveBeenCalledWith('s1', '换库再问', { behavior: 'followUp' }, undefined);
+  });
+
+  it('awaits onBeforeSend before restoring a stopped follow-up draft', async () => {
+    const order: string[] = [];
+    const api = makeApi({
+      abortChat: vi.fn().mockResolvedValue({ ok: true, cleared: { steering: [], followUp: ['换库再问'] } }),
+      setSessionKnowledge: vi.fn(async () => { order.push('knowledge'); return { ok: true }; }),
+      promptSession: vi.fn(async () => { order.push('prompt'); return { ok: true, sessionId: 's1' }; }),
+    });
+    render(<StandardChatSurface {...chatProps({
+      api,
+      session: { entries: [{ kind: 'message', id: 'a1', role: 'assistant', text: '…', streaming: true }], streaming: true, meta: {} },
+      onBeforeSend: async () => { await api.setSessionKnowledge('s1', { mode: 'all' }); },
+    })} />);
+    fireEvent.click(screen.getByTestId('composer-send'));
+    await waitFor(() => expect(screen.getByText('重新追加')).toBeTruthy());
+    fireEvent.click(screen.getByText('重新追加'));
+    await waitFor(() => expect(order).toEqual(['knowledge', 'prompt']));
+    expect(api.promptSession).toHaveBeenCalledWith('s1', '换库再问', { behavior: 'followUp' });
+  });
+
   it('promptSession failure clears busy', async () => {
     const api = makeApi({
       promptSession: vi.fn().mockResolvedValue({ ok: false, error: '请先在设置 → 知识库配置 SparkiiRAG' }),
