@@ -590,6 +590,12 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     }
 
     const { open, sessionId: resolvedSessionId, workspacePath } = await openOrCreateSession(sessionId, context);
+    const draftKey = `draft:${open.profileId}`;
+    const draftSelection = sessionKnowledgeSelections.get(draftKey);
+    if (draftSelection) {
+      sessionKnowledgeSelections.set(resolvedSessionId, draftSelection);
+      sessionKnowledgeSelections.delete(draftKey);
+    }
 
     const list = attachments ?? [];
     const isImage = (a: ChatAttachment) => (a.type ?? '').toLowerCase().startsWith('image/')
@@ -1165,6 +1171,25 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   });
   ipcMain.handle('sparkii:listRagDatasets', async (_e, apiKey?: string | null) => {
     return probeRag(rt, apiKey);
+  });
+  ipcMain.handle('sparkii:setSessionKnowledge', (_e, sessionId: string, selection: KnowledgeSelection) => {
+    try {
+      if (typeof sessionId !== 'string' || !sessionId.trim()) return { ok: false, error: 'invalid session' };
+      if (!selection || (selection.mode !== 'ids' && selection.mode !== 'all')) {
+        return { ok: false, error: 'invalid selection' };
+      }
+      if (selection.mode === 'ids') {
+        if (!Array.isArray(selection.datasetIds) || !selection.datasetIds.every((id) => typeof id === 'string')) {
+          return { ok: false, error: 'invalid selection' };
+        }
+        sessionKnowledgeSelections.set(sessionId, { mode: 'ids', datasetIds: selection.datasetIds });
+      } else {
+        sessionKnowledgeSelections.set(sessionId, { mode: 'all' });
+      }
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: (e as Error).message };
+    }
   });
   ipcMain.handle('sparkii:listModels', async (_e, providerId: string, apiKey?: string | null) => {
     try {

@@ -26,6 +26,9 @@ export type StandardChatProps = AgentSurfaceProps & {
   draft?: boolean;
   onSessionCreated?(sessionId: string, userText: string): void;
   renderApprovalCard?(entry: Extract<SessionEntry, { kind: 'tool' }>): ReactNode;
+  toolbarExtra?: ReactNode;
+  hideWorkspace?: boolean;
+  onBeforeSend?(): Promise<void>;
 };
 
 function isChatEntry(e: SessionEntry): e is ChatEntry {
@@ -206,7 +209,7 @@ function modelIdOf(value: string | null | undefined): string {
 }
 
 export function StandardChatSurface(props: StandardChatProps) {
-  const { agent, sessionId, session, actions, title, api: apiOverride, active = true, draft, onSessionCreated, renderApprovalCard } = props;
+  const { agent, sessionId, session, actions, title, api: apiOverride, active = true, draft, onSessionCreated, renderApprovalCard, toolbarExtra, hideWorkspace, onBeforeSend } = props;
   const api = apiOverride ?? (window.sparkii as SparkiiApi);
   const { reportError } = useErrors();
   const [busy, setBusy] = useState(false);
@@ -490,14 +493,18 @@ export function StandardChatSurface(props: StandardChatProps) {
     }
 
     setBusy(true);
-
-    api.promptSession(
+    const proceed = () => api.promptSession(
       sessionId,
       display,
       undefined,
       chatAttachments.length ? chatAttachments : undefined,
       sessionId ? undefined : { profileId: agent.id, workspacePath, model, thinkingLevel },
     ).then((res: any) => {
+      if (!res?.ok && res?.ok !== undefined) {
+        reportError(String(res.error ?? '发送失败'), { source: agent.name });
+        setBusy(false);
+        return;
+      }
       if (!sessionId && res?.sessionId) {
         actions.openSession(res.sessionId);
         onSessionCreated?.(res.sessionId, display);
@@ -506,6 +513,15 @@ export function StandardChatSurface(props: StandardChatProps) {
       reportError(String(e?.message ?? e), { source: agent.name });
       setBusy(false);
     });
+
+    if (onBeforeSend) {
+      void onBeforeSend().then(proceed).catch((e: any) => {
+        reportError(String(e?.message ?? e), { source: agent.name });
+        setBusy(false);
+      });
+      return;
+    }
+    void proceed();
   };
 
   const stop = () => {
@@ -640,6 +656,8 @@ export function StandardChatSurface(props: StandardChatProps) {
         workspacePath={workspacePath}
         getLocalPath={getLocalPath}
         onChooseWorkspace={chooseWorkspace}
+        toolbarExtra={toolbarExtra}
+        hideWorkspace={hideWorkspace}
         modelProps={{
           model,
           defaultModel,

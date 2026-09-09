@@ -66,6 +66,10 @@ export interface OpenChatSessionResult {
   inputs?: Array<{ path: string; name?: string; missing?: boolean }>;
 }
 
+export type KnowledgeSelection =
+  | { mode: 'ids'; datasetIds: string[] }
+  | { mode: 'all' };
+
 export interface SparkiiApi {
   getLocalSubject(): Promise<{ userId: string; roles: string[] }>;
   chooseDocument(opts?: ChooseDocumentOptions): Promise<{ path?: string }>;
@@ -134,6 +138,7 @@ export interface SparkiiApi {
   }): Promise<{ ok: true }>;
   testRagConnection(apiKey?: string | null): Promise<{ ok: boolean; datasets?: Array<{ id: string; name: string }>; error?: string }>;
   listRagDatasets(apiKey?: string | null): Promise<{ ok: boolean; datasets?: Array<{ id: string; name: string }>; error?: string }>;
+  setSessionKnowledge(sessionId: string, selection: KnowledgeSelection): Promise<{ ok: boolean; error?: string }>;
   getApiKey(provider: string): Promise<string | null>;
   listProviders(): Promise<ProviderEntryInfo[]>;
   listModels(provider: string, apiKey?: string | null): Promise<{ ok: boolean; models?: string[]; httpStatus?: number; reason?: string; error?: string }>;
