@@ -59,6 +59,14 @@ describe('StandardChat knowledge slots', () => {
     expect(screen.queryByTestId('knowledge-dataset-select')).toBeNull();
   });
 
+  it('general chat without toolbarExtra has no dataset select', () => {
+    render(<StandardChatSurface {...chatProps({
+      session: { entries: [{ kind: 'message', id: 'a1', role: 'assistant', text: 'hello', streaming: false }], streaming: false, meta: {} },
+    })} />);
+    expect(screen.getByText('hello')).toBeTruthy();
+    expect(screen.queryByTestId('knowledge-dataset-select')).toBeNull();
+  });
+
   it('calls onBeforeSend before promptSession', async () => {
     const order: string[] = [];
     const api = makeApi({

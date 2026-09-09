@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import type { WheelEvent as ReactWheelEvent } from 'react';
-import type { AgentSurfaceProps, SessionEntry } from './contract.js';
+import type { AgentSurfaceProps, CustomSessionEntry, SessionEntry } from './contract.js';
 import type { ChatAttachment, SparkiiApi } from '../types/sparkii-api.js';
 import {
   Button,
@@ -29,6 +29,14 @@ export type StandardChatProps = AgentSurfaceProps & {
   toolbarExtra?: ReactNode;
   hideWorkspace?: boolean;
   onBeforeSend?(): Promise<void>;
+  emptyCopy?: { heading?: string; body?: string };
+  hideToolNames?: string[];
+  composerSkills?: Array<{ name: string; description: string }> | null;
+  renderAssistantMessage?(args: {
+    entry: Extract<ChatEntry, { kind: 'message'; role: 'assistant' }>;
+    following: CustomSessionEntry[];
+  }): ReactNode;
+  renderCustomEntry?(entry: CustomSessionEntry): ReactNode | null;
 };
 
 function isChatEntry(e: SessionEntry): e is ChatEntry {
@@ -209,7 +217,7 @@ function modelIdOf(value: string | null | undefined): string {
 }
 
 export function StandardChatSurface(props: StandardChatProps) {
-  const { agent, sessionId, session, actions, title, api: apiOverride, active = true, draft, onSessionCreated, renderApprovalCard, toolbarExtra, hideWorkspace, onBeforeSend } = props;
+  const { agent, sessionId, session, actions, title, api: apiOverride, active = true, draft, onSessionCreated, renderApprovalCard, toolbarExtra, hideWorkspace, onBeforeSend, emptyCopy, hideToolNames, composerSkills, renderAssistantMessage, renderCustomEntry } = props;
   const api = apiOverride ?? (window.sparkii as SparkiiApi);
   const { reportError } = useErrors();
   const [busy, setBusy] = useState(false);
@@ -236,6 +244,7 @@ export function StandardChatSurface(props: StandardChatProps) {
 
   useEffect(() => { modelRef.current = model; }, [model]);
   useEffect(() => {
+    if (composerSkills !== undefined) return;
     if (!sessionId && !draft) return;
     setSkills(null);
     let cancelled = false;
@@ -271,7 +280,7 @@ export function StandardChatSurface(props: StandardChatProps) {
       cancelled = true;
       window.removeEventListener('focus', load);
     };
-  }, [agent.id, agent.name, api, draft, reportError, sessionId]);
+  }, [agent.id, agent.name, api, composerSkills, draft, reportError, sessionId]);
 
   // ---- 消息列表自动跟随最新内容 ----
   // 跟随态：新内容到达自动贴底；用户上翻离开底部超过阈值后进入脱离态：绝不抢用户的滚动，
@@ -583,19 +592,67 @@ export function StandardChatSurface(props: StandardChatProps) {
   // Pi's JSONL (live event increments and history replay produce the same ordered entries). We
   // render it directly. There is no local/optimistic timeline, so the display stays 1:1 with the
   // session truth source.
-  const entries = (session.entries ?? []).filter(isChatEntry);
+  const entries = session.entries ?? [];
+  const hideCompletedTools = new Set(hideToolNames ?? []);
 
   if (!sessionId && !draft) {
     return (
       <div className="chat-empty">
-        <h3>{agent.name}</h3>
-        <p>可以对话问答，也可以在工作区内编程：读代码、跑命令、改文件。</p>
+        <h3>{emptyCopy?.heading ?? agent.name}</h3>
+        <p>{emptyCopy?.body ?? '可以对话问答，也可以在工作区内编程：读代码、跑命令、改文件。'}</p>
         <Button variant="primary" onClick={() => actions.newSession()}>新建会话</Button>
       </div>
     );
   }
 
-  const visibleEntries = entries.filter((entry) => shouldShowEntry(entry, detailLevel));
+  const timeline: ReactNode[] = [];
+  let visibleCount = 0;
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i];
+    if (entry.kind === 'message' && entry.role === 'assistant') {
+      const following: CustomSessionEntry[] = [];
+      let j = i + 1;
+      while (j < entries.length && entries[j].kind === 'custom') {
+        following.push(entries[j] as CustomSessionEntry);
+        j++;
+      }
+      const rendered = renderAssistantMessage
+        ? renderAssistantMessage({ entry, following })
+        : <ChatMessage role="assistant" text={entry.text} thinking={entry.thinking} streaming={entry.streaming}><Markdown text={entry.text} /></ChatMessage>;
+      timeline.push(<Fragment key={entry.id}>{rendered}</Fragment>);
+      visibleCount += 1;
+      i = j - 1;
+      continue;
+    }
+    if (entry.kind === 'custom') {
+      const custom = renderCustomEntry?.(entry) ?? null;
+      if (custom) {
+        timeline.push(<Fragment key={entry.id}>{custom}</Fragment>);
+        visibleCount += 1;
+      }
+      continue;
+    }
+    if (!isChatEntry(entry) || !shouldShowEntry(entry, detailLevel)) continue;
+    if (entry.kind === 'message') {
+      timeline.push(<UserSkillMessage key={entry.id} text={entry.text} />);
+      visibleCount += 1;
+      continue;
+    }
+    if (entry.kind === 'event') {
+      timeline.push(<LifecycleCard key={entry.id} entry={entry} />);
+      visibleCount += 1;
+      continue;
+    }
+    const completed = entry.result !== undefined && !entry.awaitingApproval;
+    if (hideCompletedTools.has(entry.toolName) && completed && detailLevel !== 'debug') continue;
+    timeline.push(
+      <Fragment key={entry.id}>
+        <ToolCard toolName={entry.toolName} input={entry.input} result={entry.result} awaitingApproval={entry.awaitingApproval} defaultOpen={detailLevel === 'debug'} />
+        {entry.awaitingApproval && renderApprovalCard ? renderApprovalCard(entry) : null}
+      </Fragment>,
+    );
+    visibleCount += 1;
+  }
 
   return (
     <div className="chat-surface">
@@ -603,21 +660,8 @@ export function StandardChatSurface(props: StandardChatProps) {
         <b data-testid="chat-title">{title || '新对话'}</b>
       </header>
       <div className="chat-list" ref={listRef} onScroll={onListScroll} onWheel={onListWheel}>
-        {visibleEntries.map((e) => (
-          e.kind === 'message' ? (
-            e.role === 'assistant'
-              ? <ChatMessage key={e.id} role="assistant" text={e.text} thinking={e.thinking} streaming={e.streaming}><Markdown text={e.text} /></ChatMessage>
-              : <UserSkillMessage key={e.id} text={e.text} />
-          ) : e.kind === 'event' ? (
-            <LifecycleCard key={e.id} entry={e} />
-          ) : (
-            <Fragment key={e.id}>
-              <ToolCard toolName={e.toolName} input={e.input} result={e.result} awaitingApproval={e.awaitingApproval} defaultOpen={detailLevel === 'debug'} />
-              {e.awaitingApproval && renderApprovalCard ? renderApprovalCard(e) : null}
-            </Fragment>
-          )
-        ))}
-        {visibleEntries.length === 0 && !isBusy && <div className="muted chat-hint">开始对话，或让智能体在工作区里做点什么。</div>}
+        {timeline}
+        {visibleCount === 0 && !isBusy && <div className="muted chat-hint">开始对话，或让智能体在工作区里做点什么。</div>}
         {detached && (
           <button type="button" className="chat-scroll-latest" data-testid="scroll-latest" onClick={jumpToLatest} title="回到最新">
             <span aria-hidden="true">↓</span> 回到最新
@@ -669,7 +713,7 @@ export function StandardChatSurface(props: StandardChatProps) {
         }}
         contextUsage={contextUsage}
         isCompacting={isCompacting}
-        skills={skills}
+        skills={composerSkills !== undefined ? composerSkills : skills}
         onSend={send}
         onStop={stop}
       />

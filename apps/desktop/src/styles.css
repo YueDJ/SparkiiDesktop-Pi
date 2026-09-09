@@ -156,7 +156,10 @@ table.tbl th { background: var(--color-controlBg); color: var(--color-textSecond
 .chat-scroll-latest:hover { background: var(--color-controlBg); color: var(--color-text); }
 .chat-scroll-latest-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-primary); box-shadow: 0 0 0 2px var(--color-surface); }
 .chat-hint { text-align: center; margin-top: var(--spacing-lg); }
-.chat-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: var(--spacing-sm); text-align: center; }
+.knowledge-source-divider { border: none; border-top: 1px solid var(--color-border); margin: var(--spacing-sm) 0; }
+.knowledge-sources { display: flex; flex-wrap: wrap; gap: var(--spacing-xs); }
+.knowledge-source-btn { border: none; background: none; padding: 0; color: var(--color-primary); cursor: pointer; font-size: var(--font-size-sm); text-align: left; }
+.knowledge-source-btn:hover { text-decoration: underline; }
 .pi-lifecycle-card { align-self: flex-start; max-width: min(680px, 92%); width: fit-content; min-width: 0; border: none; border-left: 2px solid var(--color-borderStrong); background: transparent; padding: 1px var(--spacing-xs); display: flex; flex-direction: column; gap: 2px; box-shadow: none; font-size: var(--font-size-xs); color: var(--color-textSecondary); }
 .pi-lifecycle-card--running { border-left: 2px solid var(--color-primary); }
 .pi-lifecycle-card--ok { border-left: 2px solid var(--color-ok); }
