@@ -504,6 +504,73 @@ describe('ipc provider handlers', () => {
     expect(retrieveBody?.dataset_ids).toEqual(['law', 'hr']);
   });
 
+  it('empty retrieval returns first then aborts and appends refused knowledge_turn', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({
+      rag: { baseUrl: 'http://127.0.0.1:9380' },
+    }), 'utf8');
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      const u = String(url);
+      if (u.includes('/datasets') && !u.includes('/documents')) {
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ code: 0, data: [{ id: 'law', name: '法规' }] }),
+        };
+      }
+      if (u.includes('/retrieval')) {
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ code: 0, data: { chunks: [], doc_aggs: [] } }),
+        };
+      }
+      throw new Error(u);
+    }));
+    const sent: any[] = [];
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's-empty', sessionFile: null, isStreaming: false } };
+        }
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      keyFor: async (id) => (id === 'sparkiirag' ? 'rag-key' : null),
+      profile: {
+        dir: join(dataDir, 'profiles', 'knowledge-qa'),
+        profile: {
+          manifest: { name: 'knowledge-qa', knowledge: { enabled: true, picker: 'session', backend: 'sparkiirag' } },
+          agent: { tools: ['knowledge.search'], prompts: { system: 'test' } },
+        },
+        router: { resolve: () => undefined },
+      },
+    });
+    const sessions = new Map<string, { id: string; profileId: string }>();
+    (rt as any).chatSessions.create = (rec: { id: string; profileId: string }) => { sessions.set(rec.id, rec); };
+    (rt as any).chatSessions.get = (id: string) => sessions.get(id) ?? null;
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:promptSession')!(null, null, '你好', undefined, undefined, { profileId: 'knowledge-qa' });
+    const read = (rt as any).__onConnectorRead;
+    const out = await read?.({ requestId: 'r1', toolName: 'knowledge.search', args: { query: 'q' } });
+    expect(out?.ok).toBe(true);
+    expect(Array.isArray((out as { data?: { chunks?: unknown[] } })?.data?.chunks)).toBe(true);
+    await waitUntil(() => sent.some((c) => c.type === 'abort'));
+    const refused = sent.find((c) => c.type === 'append_workflow_entry' && c.customType === 'knowledge_turn');
+    expect(refused?.data).toMatchObject({ refused: true, documents: [] });
+  });
+
   it('setSessionKnowledge rejects invalid payload', async () => {
     const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
     dirs.push(dataDir);

@@ -13,6 +13,15 @@ import { loadSettings, saveSettings } from './settings.js';
 import { knowledgeFromManifest, patchRagSettings, ragFromSettings, type KnowledgeSelection } from './rag-settings.js';
 import { runMainKnowledgeSearch, searchAuditSummary } from './rag-search.js';
 import { fetchAndCacheDocument } from './rag-open.js';
+import {
+  KNOWLEDGE_TURN,
+  isVisibleAssistantEnd,
+  knowledgeTurnPayload,
+  markSearchResult,
+  resetTurn,
+  shouldAbortGeneration,
+  type GroundingTurn,
+} from './rag-grounding.js';
 import { buildProviderList } from './provider-catalog.js';
 import { autoWorkspacePath, ensureWorkspaceDir } from './workspace.js';
 import { buildAgentSaddle } from './saddle.js';
@@ -151,6 +160,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   const processPipes = new WeakMap<object, () => void>();
   const appliedModelBySession = new Map<string, { provider: string; modelId: string }>();
   const sessionKnowledgeSelections = new Map<string, KnowledgeSelection>();
+  const groundingTurns = new Map<string, GroundingTurn>();
   const idleTimers = new Map<string, ReturnType<typeof setTimeout>>();
   const inFlightWorkflowRuns = new Set<string>();
   const sessionIdleReleaseMs = 60_000;
@@ -270,6 +280,9 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       const sessionId = slot.getSessionId();
       if (!sessionId) return;
       getWindow()?.webContents.send('sparkii:event:chat-event', { ...ev, sessionId });
+      if (ev.type === 'message_end') {
+        void persistHitTurn(sessionId, ev);
+      }
       if (ev.type === 'agent_settled' && !inFlightWorkflowRuns.has(sessionId)) {
         scheduleIdleRelease(sessionId);
       }
@@ -298,6 +311,30 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       }
       return handleConnectorRead(req, open.profileId, sessionId);
     });
+  }
+
+  async function appendKnowledgeTurn(sessionId: string, data: ReturnType<typeof knowledgeTurnPayload>): Promise<void> {
+    const open = openSessions.get(sessionId);
+    if (!open) return;
+    await open.slot.client.send({ type: 'append_workflow_entry', customType: KNOWLEDGE_TURN, data });
+  }
+
+  async function persistHitTurn(sessionId: string, ev: unknown): Promise<void> {
+    if (!isVisibleAssistantEnd(ev)) return;
+    const open = openSessions.get(sessionId);
+    if (!open) return;
+    const knowledge = knowledgeFromManifest(rt.profileOf(open.profileId).profile.manifest);
+    if (knowledge.backend !== 'sparkiirag') return;
+    const turn = groundingTurns.get(sessionId);
+    if (!turn?.searchCalled || turn.miss) return;
+    await appendKnowledgeTurn(sessionId, knowledgeTurnPayload(turn));
+  }
+
+  async function refuseEmptySearch(sessionId: string, payload: ReturnType<typeof knowledgeTurnPayload>): Promise<void> {
+    const open = openSessions.get(sessionId);
+    if (!open) return;
+    await open.slot.client.send({ type: 'abort' });
+    await appendKnowledgeTurn(sessionId, payload);
   }
 
   async function persistDefaultDataset(profileId: string, datasetId: string): Promise<void> {
@@ -372,6 +409,20 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       sessionId,
       payloadSummary: searchAuditSummary(String(req.args.query ?? ''), out.data),
     });
+    if (out.ok && knowledge.backend === 'sparkiirag') {
+      const data = (out.data ?? {}) as { chunks?: unknown[]; documents?: GroundingTurn['documents'] };
+      const next = markSearchResult(groundingTurns.get(sessionId) ?? resetTurn(), {
+        chunks: Array.isArray(data.chunks) ? data.chunks : [],
+        documents: data.documents,
+      });
+      groundingTurns.set(sessionId, next);
+      if (shouldAbortGeneration(next)) {
+        const payload = knowledgeTurnPayload(next);
+        queueMicrotask(() => {
+          void refuseEmptySearch(sessionId, payload);
+        });
+      }
+    }
     return out;
   }
 
@@ -660,6 +711,10 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         : { type: 'follow_up', message: finalText });
       if (!resp.success) throw new Error(resp.error ?? 'follow_up failed');
     } else {
+      const knowledge = knowledgeFromManifest(rt.profileOf(open.profileId).profile.manifest);
+      if (knowledge.backend === 'sparkiirag') {
+        groundingTurns.set(resolvedSessionId, resetTurn());
+      }
       const resp = await open.slot.client.send(images.length
         ? { type: 'prompt', message: finalText, images }
         : { type: 'prompt', message: finalText });
