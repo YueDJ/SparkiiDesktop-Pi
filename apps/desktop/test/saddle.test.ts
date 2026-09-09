@@ -8,6 +8,8 @@ import { buildAgentSaddle, buildProfileSaddle } from '../electron/main/saddle.js
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const contractDir = join(repoRoot, 'apps', 'desktop', 'agents', 'contract-review');
+const knowledgeQaDir = join(repoRoot, 'apps', 'desktop', 'agents', 'knowledge-qa');
+const generalDir = join(repoRoot, 'apps', 'desktop', 'agents', 'general');
 
 describe('buildProfileSaddle', () => {
   it('assembles the contract-review saddle with tools, skills dir, prompt, and anchor cwd', async () => {
@@ -24,6 +26,16 @@ describe('buildProfileSaddle', () => {
     expect(saddle.systemPrompt).toContain('合同审核智能体');
     expect(saddle.cwd).toBe(anchor);
     expect(saddle.workspaceRoot).toBeUndefined();
+  });
+
+  it('assembles knowledge-qa with search tools only and general without knowledge.search', async () => {
+    const qa = await loadProfile(knowledgeQaDir, { allowUnsigned: true });
+    const general = await loadProfile(generalDir, { allowUnsigned: true });
+    expect(buildProfileSaddle({ profile: qa, dir: knowledgeQaDir } as ProfileRuntime, 'C:/a').tools).toEqual([
+      'knowledge.search',
+      'knowledge.fetch_document',
+    ]);
+    expect(buildProfileSaddle({ profile: general, dir: generalDir } as ProfileRuntime, 'C:/a').tools).not.toContain('knowledge.search');
   });
 
   it('passes the workspace root through when provided', async () => {

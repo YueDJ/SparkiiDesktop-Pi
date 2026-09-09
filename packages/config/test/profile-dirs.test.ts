@@ -10,11 +10,13 @@ describe('repo profiles', () => {
     const p = await loadProfile(join(repoRoot, 'apps/desktop/agents/general'), { allowUnsigned: true });
     expect(p.manifest.displayName).toBe('通用智能体');
     expect(p.agent.tools).toEqual(['read', 'ls', 'grep', 'find', 'bash', 'edit', 'write']);
+    expect(p.agent.tools).not.toContain('knowledge.search');
     expect(p.agent.prompts.system).toContain('通用智能体');
   });
   it('loads contract profile with read tool and system prompt', async () => {
     const p = await loadProfile(join(repoRoot, 'apps/desktop/agents/contract-review'), { allowUnsigned: true });
     expect(p.agent.tools).toContain('read');
+    expect(p.manifest.knowledge).toEqual({ enabled: true, picker: 'hidden', backend: 'bm25' });
     expect(p.agent.prompts.system).toBeTruthy();
   });
   it('loads knowledge-qa with sparkiirag session picker and search-only tools', async () => {

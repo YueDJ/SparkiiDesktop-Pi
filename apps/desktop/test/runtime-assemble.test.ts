@@ -19,6 +19,7 @@ import { buildAgentSaddle } from '../electron/main/saddle.js';
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const generalDir = join(repoRoot, 'apps', 'desktop', 'agents', 'general');
 const contractDir = join(repoRoot, 'apps', 'desktop', 'agents', 'contract-review');
+const knowledgeQaDir = join(repoRoot, 'apps', 'desktop', 'agents', 'knowledge-qa');
 
 const dirs: string[] = [];
 const runtimes: Runtime[] = [];
@@ -179,6 +180,7 @@ describe('assemble', () => {
       profiles: [
         { id: 'general', dir: generalDir },
         { id: 'contract-review', dir: contractDir },
+        { id: 'knowledge-qa', dir: knowledgeQaDir },
       ],
       dataDir,
       allowUnsigned: true,
@@ -187,8 +189,11 @@ describe('assemble', () => {
 
     const general = rt.agentOf('general');
     const contract = rt.agentOf('contract-review');
+    const qa = rt.agentOf('knowledge-qa');
     expect(general.skillsDir).toBe(join(dataDir, 'agents', 'general', 'skills'));
     expect(contract.skillsDir).toBe(join(contractDir, 'agent', 'skills'));
+    expect(qa.tools).toEqual(['knowledge.search', 'knowledge.fetch_document']);
+    expect(general.tools).not.toContain('knowledge.search');
     expect(buildAgentSaddle(general, join(dataDir, 'anchor')).skillsDir).toBe(general.skillsDir);
     expect(buildAgentSaddle(contract, join(dataDir, 'anchor')).skillsDir).toBe(contract.skillsDir);
     expect(general.systemPrompt).toContain('已安装 skill');
