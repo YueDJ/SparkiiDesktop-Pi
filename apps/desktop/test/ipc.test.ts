@@ -567,6 +567,10 @@ describe('ipc provider handlers', () => {
     expect(out?.ok).toBe(true);
     expect(Array.isArray((out as { data?: { chunks?: unknown[] } })?.data?.chunks)).toBe(true);
     await waitUntil(() => sent.some((c) => c.type === 'abort'));
+    const abortIdx = sent.findIndex((c) => c.type === 'abort');
+    const refusedIdx = sent.findIndex((c) => c.type === 'append_workflow_entry' && c.customType === 'knowledge_turn');
+    expect(refusedIdx).toBeGreaterThanOrEqual(0);
+    expect(refusedIdx).toBeLessThan(abortIdx);
     const refused = sent.find((c) => c.type === 'append_workflow_entry' && c.customType === 'knowledge_turn');
     expect(refused?.data).toMatchObject({ refused: true, documents: [] });
   });
@@ -782,6 +786,9 @@ describe('ipc provider handlers', () => {
     await Promise.resolve();
     expect(sent.some((c) => c.type === 'append_workflow_entry' && c.customType === 'knowledge_turn')).toBe(false);
     emit?.({ type: 'agent_end' });
+    await Promise.resolve();
+    expect(sent.some((c) => c.type === 'append_workflow_entry' && c.customType === 'knowledge_turn')).toBe(false);
+    emit?.({ type: 'agent_settled' });
     await waitUntil(() => sent.some((c) => c.type === 'append_workflow_entry' && c.customType === 'knowledge_turn' && c.data?.refused === false));
     const hitTurn = sent.find((c) => c.type === 'append_workflow_entry' && c.customType === 'knowledge_turn' && c.data?.refused === false);
     expect(hitTurn?.data?.citations?.[0]).toMatchObject({ index: 1, documentId: 'd', documentName: 'f', datasetId: 'law' });
@@ -1050,6 +1057,91 @@ describe('ipc provider handlers', () => {
     events[0]?.({ type: 'session_info_changed', name: '标题生成后的事件' });
 
     expect(rt.pool.release).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(rt.pool.release).toHaveBeenCalledWith('s1');
+    vi.useRealTimers();
+  });
+
+  it('does not idle-release a knowledge session on agent_end before agent_settled', async () => {
+    vi.useFakeTimers();
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({
+      rag: { baseUrl: 'http://127.0.0.1:9380' },
+    }), 'utf8');
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      const u = String(url);
+      if (u.includes('/datasets') && !u.includes('/documents')) {
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ code: 0, data: [{ id: 'law', name: '法规' }] }),
+        };
+      }
+      if (u.includes('/retrieval')) {
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => 'application/json' },
+          json: async () => ({
+            code: 0,
+            data: {
+              chunks: [{ id: 'c', content: 'x', document_id: 'd', document_keyword: 'f', dataset_id: 'law', similarity: 1 }],
+              doc_aggs: [],
+            },
+          }),
+        };
+      }
+      throw new Error(u);
+    }));
+    const events: Array<(e: any) => void> = [];
+    const sent: any[] = [];
+    const client = {
+      onEvent: (cb: (event: any) => void) => {
+        events.push(cb);
+        return () => {};
+      },
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's1', sessionFile: '/tmp/s.json', isStreaming: false } };
+        }
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      keyFor: async (id) => (id === 'sparkiirag' ? 'rag-key' : null),
+      profile: {
+        dir: join(dataDir, 'profiles', 'knowledge-qa'),
+        profile: {
+          manifest: { name: 'knowledge-qa', knowledge: { enabled: true, picker: 'session', backend: 'sparkiirag' } },
+          agent: { tools: ['knowledge.search'], prompts: { system: 'test' } },
+        },
+        router: { resolve: () => undefined },
+      },
+    });
+    const sessions = new Map<string, { id: string; profileId: string }>();
+    (rt as any).chatSessions.create = (rec: { id: string; profileId: string }) => { sessions.set(rec.id, rec); };
+    (rt as any).chatSessions.get = (id: string) => sessions.get(id) ?? null;
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:promptSession')!(null, null, '津贴怎么发', undefined, undefined, { profileId: 'knowledge-qa' });
+    const read = (rt as any).__onConnectorRead;
+    await read?.({ requestId: 'r1', toolName: 'knowledge.search', args: { query: '津贴' } });
+    events[0]?.({ type: 'agent_end' });
+    await Promise.resolve();
+    expect(sent.some((c) => c.type === 'append_workflow_entry' && c.customType === 'knowledge_turn')).toBe(false);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(rt.pool.release).not.toHaveBeenCalled();
+    events[0]?.({ type: 'agent_settled' });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(sent.some((c) => c.type === 'append_workflow_entry' && c.customType === 'knowledge_turn')).toBe(true);
     await vi.advanceTimersByTimeAsync(60_000);
     expect(rt.pool.release).toHaveBeenCalledWith('s1');
     vi.useRealTimers();

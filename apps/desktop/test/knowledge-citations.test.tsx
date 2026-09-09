@@ -160,7 +160,36 @@ describe('knowledge-qa surface', () => {
     expect(screen.getByTestId('knowledge-source').textContent).toContain('高温作业津贴办法.pdf');
   });
 
-  it('hides completed knowledge.search even when detail is debug', async () => {
+  it('hides completed knowledge.search at standard detail', async () => {
+    const api = makeApi({
+      getSettings: vi.fn().mockResolvedValue({
+        chatDetailLevel: 'standard',
+        rag: { bindings: [{ agentId: 'knowledge-qa', defaultDatasetId: 'hr' }] },
+      }),
+    });
+    render(
+      <KnowledgeQaSurface
+        agent={{ id: 'knowledge-qa', name: '企业知识问答', surfaceType: 'chat', knowledge: { enabled: true, picker: 'session', backend: 'sparkiirag' } }}
+        sessionId="k1"
+        mode="live"
+        session={{
+          entries: [
+            { kind: 'message', id: 'u1', role: 'user', text: '津贴怎么发', streaming: false },
+            { kind: 'tool', id: 'tool1', toolName: 'knowledge.search', input: { query: '津贴' }, result: { ok: true } },
+            { kind: 'message', id: 'a1', role: 'assistant', text: '根据办法发放[1]', streaming: false },
+          ],
+          streaming: false,
+          meta: {},
+        }}
+        actions={actions}
+        api={api as any}
+      />,
+    );
+    await waitFor(() => expect(screen.getByText(/根据办法发放/)).toBeTruthy());
+    expect(screen.queryByTestId('tool-card')).toBeNull();
+  });
+
+  it('shows completed knowledge.search when detail is debug', async () => {
     const api = makeApi({
       getSettings: vi.fn().mockResolvedValue({
         chatDetailLevel: 'debug',
@@ -185,8 +214,8 @@ describe('knowledge-qa surface', () => {
         api={api as any}
       />,
     );
-    await waitFor(() => expect(screen.getByText(/根据办法发放/)).toBeTruthy());
-    expect(screen.queryByTestId('tool-card')).toBeNull();
+    await waitFor(() => expect(screen.getByTestId('tool-card')).toBeTruthy());
+    expect(screen.getByText(/根据办法发放/)).toBeTruthy();
   });
 
   it('shows dataset select when knowledge-qa surface mounts picker', async () => {

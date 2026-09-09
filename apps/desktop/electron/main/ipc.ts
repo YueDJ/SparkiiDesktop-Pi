@@ -280,11 +280,11 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       const sessionId = slot.getSessionId();
       if (!sessionId) return;
       getWindow()?.webContents.send('sparkii:event:chat-event', { ...ev, sessionId });
-      if (ev.type === 'agent_end' || ev.type === 'agent_settled') {
+      if (ev.type === 'agent_settled') {
         void persistHitTurn(sessionId);
-      }
-      if (ev.type === 'agent_settled' && !inFlightWorkflowRuns.has(sessionId)) {
-        scheduleIdleRelease(sessionId);
+        if (!inFlightWorkflowRuns.has(sessionId)) {
+          scheduleIdleRelease(sessionId);
+        }
       }
     });
     // 退出跟管子同一套去重：订多次会让一次崩溃打 N 行日志、卸 N 次。
@@ -333,9 +333,9 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   async function refuseEmptySearch(sessionId: string, payload: ReturnType<typeof knowledgeTurnPayload>): Promise<void> {
     const open = openSessions.get(sessionId);
     if (!open) return;
-    await open.slot.client.send({ type: 'abort' });
     await appendKnowledgeTurn(sessionId, payload);
     groundingTurns.set(sessionId, sealTurn(groundingTurns.get(sessionId) ?? resetTurn()));
+    await open.slot.client.send({ type: 'abort' });
   }
 
   async function persistDefaultDataset(profileId: string, datasetId: string): Promise<void> {
