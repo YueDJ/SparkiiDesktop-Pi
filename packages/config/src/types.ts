@@ -23,6 +23,11 @@ export interface ProfileManifest {
   };
   integrity?: { sha256: string };
   skillLibrary?: 'package' | 'user';
+  knowledge?: {
+    enabled: boolean;
+    picker: 'hidden' | 'session';
+    backend: 'bm25' | 'sparkiirag';
+  };
 }
 
 export type PageSchema = Record<string, unknown>;

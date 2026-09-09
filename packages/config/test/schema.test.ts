@@ -37,4 +37,21 @@ describe('parseProfileManifest', () => {
       modelRouting: { tasks: { default: [{ provider: 'local', modelId: 'qwen2.5:7b' }] } },
     })).toThrow();
   });
+  it('keeps optional knowledge on the parsed manifest', () => {
+    const m = parseProfileManifest({
+      name: 'knowledge-qa',
+      version: '1.0.0',
+      knowledge: { enabled: true, picker: 'session', backend: 'sparkiirag' },
+      modelRouting: { tasks: { default: [{ provider: 'deepseek', modelId: 'deepseek-v4-flash' }] } },
+    });
+    expect(m.knowledge).toEqual({ enabled: true, picker: 'session', backend: 'sparkiirag' });
+  });
+  it('strips invalid knowledge.backend', () => {
+    expect(() => parseProfileManifest({
+      name: 'x',
+      version: '1.0.0',
+      knowledge: { enabled: true, picker: 'session', backend: 'pinecone' },
+      modelRouting: { tasks: { default: [{ provider: 'local', modelId: 'qwen2.5:7b' }] } },
+    })).toThrow();
+  });
 });

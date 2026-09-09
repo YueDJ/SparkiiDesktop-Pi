@@ -25,6 +25,11 @@ export const manifestSchema = z.object({
   }),
   integrity: z.object({ sha256: z.string().regex(/^[a-f0-9]{64}$/) }).optional(),
   skillLibrary: z.enum(['package', 'user']).optional(),
+  knowledge: z.object({
+    enabled: z.boolean(),
+    picker: z.enum(['hidden', 'session']),
+    backend: z.enum(['bm25', 'sparkiirag']),
+  }).optional(),
 });
 
 export function parseProfileManifest(raw: unknown): ProfileManifest {
