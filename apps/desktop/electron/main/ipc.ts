@@ -12,6 +12,7 @@ import { resolveExportPath } from './export-path.js';
 import { loadSettings, saveSettings } from './settings.js';
 import { knowledgeFromManifest, patchRagSettings, ragFromSettings, type KnowledgeSelection } from './rag-settings.js';
 import { runMainKnowledgeSearch, searchAuditSummary } from './rag-search.js';
+import { fetchAndCacheDocument } from './rag-open.js';
 import { buildProviderList } from './provider-catalog.js';
 import { autoWorkspacePath, ensureWorkspaceDir } from './workspace.js';
 import { buildAgentSaddle } from './saddle.js';
@@ -306,13 +307,36 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     await patchRagSettings(rt.dataDir, { bindings });
   }
 
+  async function cacheRagFile(args: { datasetId: string; documentId: string; fileName?: string }): Promise<{ ok: true; path: string } | { ok: false; error: { code: string; message: string } }> {
+    const rag = ragFromSettings(await loadSettings(rt.dataDir));
+    const apiKey = await rt.keyFor('sparkiirag');
+    if (!apiKey) return { ok: false, error: { code: 'CONNECTOR_DENIED', message: '未配置 API Key' } };
+    try {
+      const cached = await fetchAndCacheDocument({
+        client: new SparkiiRagClient({ baseUrl: rag.baseUrl, apiKey }),
+        cacheDir: join(rt.dataDir, 'rag-cache'),
+        datasetId: args.datasetId,
+        documentId: args.documentId,
+        fileName: args.fileName,
+      });
+      return { ok: true, path: cached.path };
+    } catch (e) {
+      return { ok: false, error: { code: 'CONNECTOR_IO', message: (e as Error).message } };
+    }
+  }
+
   async function handleConnectorRead(
     req: ConnectorReadRequest,
     profileId: string,
     sessionId: string,
   ): Promise<ConnectorReadResult> {
     if (req.toolName === 'knowledge.fetch_document') {
-      return { ok: false, error: { code: 'CONNECTOR_DENIED', message: 'not implemented' } };
+      const datasetId = String(req.args.datasetId ?? '');
+      const documentId = String(req.args.documentId ?? '');
+      const fileName = typeof req.args.fileName === 'string' ? req.args.fileName : undefined;
+      const cached = await cacheRagFile({ datasetId, documentId, fileName });
+      if (!cached.ok) return { ok: false, error: cached.error };
+      return { ok: true, data: { path: cached.path } };
     }
     if (req.toolName !== 'knowledge.search') {
       return { ok: false, error: { code: 'CONNECTOR_DENIED', message: 'unhandled' } };
@@ -1171,6 +1195,17 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   });
   ipcMain.handle('sparkii:listRagDatasets', async (_e, apiKey?: string | null) => {
     return probeRag(rt, apiKey);
+  });
+  ipcMain.handle('sparkii:openRagDocument', async (_e, args: { datasetId: string; documentId: string; fileName?: string }) => {
+    const cached = await cacheRagFile({
+      datasetId: String(args?.datasetId ?? ''),
+      documentId: String(args?.documentId ?? ''),
+      fileName: args?.fileName,
+    });
+    if (!cached.ok) return { ok: false, error: cached.error.message };
+    const error = await shell.openPath(cached.path);
+    if (error) return { ok: false, error };
+    return { ok: true, path: cached.path };
   });
   ipcMain.handle('sparkii:setSessionKnowledge', (_e, sessionId: string, selection: KnowledgeSelection) => {
     try {

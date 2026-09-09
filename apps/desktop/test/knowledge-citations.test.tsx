@@ -46,6 +46,13 @@ describe('knowledge citations', () => {
     expect(screen.getByText(/根据办法发放/)).toBeTruthy();
     expect(screen.getByTestId('knowledge-source').textContent).toContain('高温作业津贴办法.pdf');
   });
+
+  it('opens the source document when the file name is clicked', () => {
+    const onOpenDocument = vi.fn();
+    render(<KnowledgeAnswerBubble text={'根据办法发放[1]'} documents={[{ documentId: 'd1', documentName: '高温作业津贴办法.pdf', datasetId: 'law' }]} onOpenDocument={onOpenDocument} />);
+    screen.getByTestId('knowledge-source').click();
+    expect(onOpenDocument).toHaveBeenCalledWith({ documentId: 'd1', documentName: '高温作业津贴办法.pdf', datasetId: 'law' });
+  });
 });
 
 describe('knowledge-qa surface', () => {

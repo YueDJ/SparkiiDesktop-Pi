@@ -46,6 +46,13 @@ export default function KnowledgeQaSurface(props: StandardChatProps) {
               thinking={entry.thinking}
               streaming={entry.streaming}
               documents={turn.documents}
+              onOpenDocument={(doc) => {
+                void api.openRagDocument?.({
+                  datasetId: doc.datasetId,
+                  documentId: doc.documentId,
+                  fileName: doc.documentName,
+                });
+              }}
             />
           );
         }

@@ -58,6 +58,7 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
     testRagConnection: (apiKey) => invoke('testRagConnection', apiKey) as Promise<{ ok: boolean; datasets?: Array<{ id: string; name: string }>; error?: string }>,
     listRagDatasets: (apiKey) => invoke('listRagDatasets', apiKey) as Promise<{ ok: boolean; datasets?: Array<{ id: string; name: string }>; error?: string }>,
     setSessionKnowledge: (sessionId, selection) => invoke('setSessionKnowledge', sessionId, selection) as Promise<{ ok: boolean; error?: string }>,
+    openRagDocument: (args) => invoke('openRagDocument', args) as Promise<{ ok: boolean; path?: string; error?: string }>,
     getApiKey: (provider) => invoke('getApiKey', provider) as Promise<string | null>,
     listProviders: () => invoke('listProviders') as Promise<ProviderEntryInfo[]>,
     listModels: (provider, apiKey) => invoke('listModels', provider, apiKey) as Promise<{ ok: boolean; models?: string[]; httpStatus?: number; reason?: string; error?: string }>,
