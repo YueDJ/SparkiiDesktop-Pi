@@ -21,6 +21,11 @@ export interface ShellAgent {
   status: AgentStatus;
   surfaceType?: string;
   queuePosition?: number;
+  knowledge?: {
+    enabled: boolean;
+    picker: 'hidden' | 'session';
+    backend: 'bm25' | 'sparkiirag';
+  };
 }
 
 export interface ShellSession {

@@ -14,6 +14,14 @@ describe('sortAgents', () => {
     ]);
   });
 
+  it('keeps optional knowledge on listed agents', () => {
+    const knowledge = { enabled: true, picker: 'session' as const, backend: 'sparkiirag' as const };
+    const out = sortAgents([
+      { id: 'knowledge-qa', name: 'knowledge-qa', displayName: '企业知识问答', sortOrder: 15, knowledge },
+    ]);
+    expect(out[0].knowledge).toEqual(knowledge);
+  });
+
   it('puts unspecified sortOrder after explicit ones and sorts ties by id', () => {
     const out = sortAgents([
       { id: 'zeta', name: 'zeta' },

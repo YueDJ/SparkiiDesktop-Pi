@@ -5,6 +5,10 @@ version: 1.0.0
 surface:
   type: workflow
   entry: surface/index.tsx
+knowledge:
+  enabled: true
+  picker: hidden
+  backend: bm25
 capabilities:
   entry: agent/capabilities.ts
   tools: [document.read, knowledge.search, report.export]

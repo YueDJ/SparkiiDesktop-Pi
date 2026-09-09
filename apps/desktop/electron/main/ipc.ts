@@ -3,12 +3,15 @@ import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { listPiSessions, readPiSessionEntries, connectorWriteProposal, type PiProviderInfo, type SessionSaddle } from '@sparkii/agent-host';
+import { listPiSessions, readPiSessionEntries, connectorWriteProposal, type PiProviderInfo, type SessionSaddle, type ConnectorReadRequest, type ConnectorReadResult } from '@sparkii/agent-host';
+import { knowledgeConnector, SparkiiRagClient } from '@sparkii/connectors';
 import { applyThinkingLevel, createBroker, modelTargetKey, resolveModelTarget, resolveSessionModel, resolveThinkingLevel, runWorkflow, selectModel } from './workflow.js';
 import { findCompatibleModels, type ModelCapability } from '@sparkii/model-router';
 import { sortAgents } from './agent-catalog.js';
 import { resolveExportPath } from './export-path.js';
 import { loadSettings, saveSettings } from './settings.js';
+import { knowledgeFromManifest, patchRagSettings, ragFromSettings, type KnowledgeSelection } from './rag-settings.js';
+import { runMainKnowledgeSearch, searchAuditSummary } from './rag-search.js';
 import { buildProviderList } from './provider-catalog.js';
 import { autoWorkspacePath, ensureWorkspaceDir } from './workspace.js';
 import { buildAgentSaddle } from './saddle.js';
@@ -29,6 +32,26 @@ import {
   uninstallUserSkill,
 } from './skill-library.js';
 import type { AgentRuntime } from './agent-registry.js';
+
+async function probeRag(
+  rt: Runtime,
+  apiKeyOverride?: string | null,
+): Promise<{ ok: boolean; datasets?: Array<{ id: string; name: string }>; error?: string }> {
+  const rag = ragFromSettings(await loadSettings(rt.dataDir));
+  const apiKey = (typeof apiKeyOverride === 'string' && apiKeyOverride.trim())
+    ? apiKeyOverride
+    : await rt.keyFor('sparkiirag');
+  if (!apiKey) return { ok: false, error: '未配置 API Key' };
+  try {
+    const client = new SparkiiRagClient({ baseUrl: rag.baseUrl, apiKey });
+    const health = await client.health();
+    if (!health.ok) return { ok: false, error: 'SparkiiRAG 不可达' };
+    const datasets = await client.listDatasets();
+    return { ok: true, datasets };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
 
 function parseSessionInputs(raw: string | null | undefined): { path: string; name?: string; missing?: boolean }[] | undefined {
   if (!raw) return undefined;
@@ -126,6 +149,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   /** 一根进程一根管子；键是 client（进程稳），不是每次 acquire 的新包装对象。 */
   const processPipes = new WeakMap<object, () => void>();
   const appliedModelBySession = new Map<string, { provider: string; modelId: string }>();
+  const sessionKnowledgeSelections = new Map<string, KnowledgeSelection>();
   const idleTimers = new Map<string, ReturnType<typeof setTimeout>>();
   const inFlightWorkflowRuns = new Set<string>();
   const sessionIdleReleaseMs = 60_000;
@@ -261,6 +285,89 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       void unbindAndRelease(sessionId).catch(() => {});
     });
     processPipes.set(slot.client, () => { off(); offExit(); });
+    bindConnectorRead(slot);
+  }
+
+  function bindConnectorRead(slot: Awaited<ReturnType<typeof rt.pool.acquire>>): void {
+    slot.supervisor.onConnectorRead?.(async (req: ConnectorReadRequest): Promise<ConnectorReadResult> => {
+      const sessionId = slot.getSessionId();
+      const open = sessionId ? openSessions.get(sessionId) : undefined;
+      if (!sessionId || !open) {
+        return { ok: false, error: { code: 'CONNECTOR_DENIED', message: 'unhandled' } };
+      }
+      return handleConnectorRead(req, open.profileId, sessionId);
+    });
+  }
+
+  async function persistDefaultDataset(profileId: string, datasetId: string): Promise<void> {
+    const rag = ragFromSettings(await loadSettings(rt.dataDir));
+    const bindings = rag.bindings.filter((b) => b.agentId !== profileId);
+    bindings.push({ agentId: profileId, defaultDatasetId: datasetId });
+    await patchRagSettings(rt.dataDir, { bindings });
+  }
+
+  async function handleConnectorRead(
+    req: ConnectorReadRequest,
+    profileId: string,
+    sessionId: string,
+  ): Promise<ConnectorReadResult> {
+    if (req.toolName === 'knowledge.fetch_document') {
+      return { ok: false, error: { code: 'CONNECTOR_DENIED', message: 'not implemented' } };
+    }
+    if (req.toolName !== 'knowledge.search') {
+      return { ok: false, error: { code: 'CONNECTOR_DENIED', message: 'unhandled' } };
+    }
+    const knowledge = knowledgeFromManifest(rt.profileOf(profileId).profile.manifest);
+    const rag = ragFromSettings(await loadSettings(rt.dataDir));
+    const apiKey = await rt.keyFor('sparkiirag');
+    const searchTool = knowledgeConnector.tools.find((t) => t.name === 'knowledge.search')!;
+    const out = await runMainKnowledgeSearch({
+      args: req.args,
+      profileId,
+      sessionId,
+      selection: sessionKnowledgeSelections.get(sessionId) ?? null,
+      knowledge,
+      rag,
+      apiKey,
+      bm25: async (query, topK) => {
+        const result = await searchTool.handler({ query, topK }, {
+          profileId,
+          sessionId,
+          actor: rt.subject.userId,
+          requestId: req.requestId,
+        });
+        if (!result.ok) throw new Error(result.error?.message ?? 'bm25 failed');
+        return result.data;
+      },
+      persistDefault: (id) => persistDefaultDataset(profileId, id),
+    });
+    await rt.audit.append({
+      actor: rt.subject.userId,
+      action: 'tool.read',
+      resource: 'knowledge.search',
+      sessionId,
+      payloadSummary: searchAuditSummary(String(req.args.query ?? ''), out.data),
+    });
+    return out;
+  }
+
+  async function assertSparkiiRagReady(profileId: string): Promise<{ ok: true } | { ok: false; code: string; error: string }> {
+    const knowledge = knowledgeFromManifest(rt.profileOf(profileId).profile.manifest);
+    if (knowledge.backend !== 'sparkiirag') return { ok: true };
+    const rag = ragFromSettings(await loadSettings(rt.dataDir));
+    const apiKey = await rt.keyFor('sparkiirag');
+    if (!rag.baseUrl || !apiKey) {
+      return { ok: false, code: 'CONNECTOR_DENIED', error: '请先在设置 → 知识库配置 SparkiiRAG' };
+    }
+    try {
+      const datasets = await new SparkiiRagClient({ baseUrl: rag.baseUrl, apiKey }).listDatasets();
+      if (datasets.length === 0) {
+        return { ok: false, code: 'CONNECTOR_DENIED', error: '请先在 SparkiiRAG 建库' };
+      }
+    } catch (e) {
+      return { ok: false, code: 'CONNECTOR_IO', error: e instanceof Error ? e.message : String(e) };
+    }
+    return { ok: true };
   }
 
   /** 解绑：先让窗口停转圈，再卸牌子（池子内部先 `sessionId = null` 才 `new_session`）。 */
@@ -316,6 +423,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       const open = await ensureOpenSession(sessionId);
       ensureProcessPipe(open.slot);
       open.slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId: open.profileId }));
+      open.slot.supervisor.onConnectorRead?.((req) => handleConnectorRead(req, open.profileId, sessionId));
       const rec = rt.chatSessions.get(sessionId);
       const target = rec?.model
         ? resolveSessionModel(await loadSettings(rt.dataDir), rec)
@@ -372,6 +480,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       openSessions.set(createdSessionId, entry);
       ensureProcessPipe(slot);
       slot.supervisor.onProposal((req) => broker.route(req, { sessionId: createdSessionId!, profileId }));
+      slot.supervisor.onConnectorRead?.((req) => handleConnectorRead(req, profileId, createdSessionId!));
       await mkdir(anchorDir(createdSessionId), { recursive: true });
       rt.chatSessions.create({
         id: createdSessionId,
@@ -472,6 +581,14 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     attachments: ChatAttachment[] = [],
     context: { profileId?: string; workspacePath?: string | null; model?: string | null; thinkingLevel?: string | null } = {},
   ) => {
+    const profileIdForGate = sessionId
+      ? rt.chatSessions.get(sessionId)?.profileId
+      : context.profileId;
+    if (profileIdForGate) {
+      const ragReady = await assertSparkiiRagReady(profileIdForGate);
+      if (!ragReady.ok) return ragReady;
+    }
+
     const { open, sessionId: resolvedSessionId, workspacePath } = await openOrCreateSession(sessionId, context);
 
     const list = attachments ?? [];
@@ -930,6 +1047,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       displayName: pr.profile.manifest.displayName,
       sortOrder: pr.profile.manifest.sortOrder,
       surfaceType: rt.agentOf(pr.profile.manifest.name).manifest.surface.type,
+      knowledge: pr.profile.manifest.knowledge,
     }))),
   );
   ipcMain.handle('sparkii:chooseDocument', async (_e, opts?: ChooseDocumentOptions) => {
@@ -985,10 +1103,19 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   ipcMain.handle('sparkii:queryAudit', (_e, filter: object) => rt.audit.query(filter));
   ipcMain.handle('sparkii:getSettings', async () => {
     const settings = await loadSettings(rt.dataDir);
+    const { rag: _storedRag, ...rest } = settings;
     const apiKey = settings.activeProviderId ? await rt.keyFor(settings.activeProviderId) : null;
-    return { ...settings, ...(apiKey ? { apiKey } : {}) };
+    const ragKey = await rt.keyFor('sparkiirag');
+    return {
+      ...rest,
+      ...(apiKey ? { apiKey } : {}),
+      rag: { ...ragFromSettings(settings), hasApiKey: Boolean(ragKey) },
+    };
   });
-  ipcMain.handle('sparkii:getApiKey', (_e, providerId: string) => rt.keyFor(providerId));
+  ipcMain.handle('sparkii:getApiKey', (_e, providerId: string) => {
+    if (providerId === 'sparkiirag' || providerId === 'apiKey:sparkiirag') return null;
+    return rt.keyFor(providerId);
+  });
   ipcMain.handle('sparkii:listProviders', async () => {
     const settings = await loadSettings(rt.dataDir);
     const runtimeProviders = await withProbeSlot(async (client) => {
@@ -999,9 +1126,10 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     return buildProviderList(runtimeProviders, settings.providers ?? []);
   });
   ipcMain.handle('sparkii:saveSettings', async (_e, settings: unknown) => {
-    const s = settings as Parameters<typeof saveSettings>[1] & { apiKey?: string };
-    const { apiKey, ...rest } = s;
-    await saveSettings(rt.dataDir, rest);
+    const s = settings as Parameters<typeof saveSettings>[1] & { apiKey?: string; rag?: unknown };
+    const { apiKey, rag: _dropRag, ...rest } = s;
+    const prev = await loadSettings(rt.dataDir);
+    await saveSettings(rt.dataDir, { ...prev, ...rest, rag: prev.rag });
     if (rest.logLevel) logger.level = rest.logLevel;
     if (s.activeProviderId) {
       await rt.setKey(s.activeProviderId, apiKey ?? '');
@@ -1013,6 +1141,30 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     }
     await writePiModelsConfig(rt.piAgentDir, s.providers ?? []);
     return { ok: true };
+  });
+  ipcMain.handle('sparkii:saveRagSettings', async (_e, partial: {
+    baseUrl?: string;
+    similarityThreshold?: number;
+    vectorSimilarityWeight?: number;
+    bindings?: Array<{ agentId: string; defaultDatasetId: string }>;
+    apiKey?: string;
+  } = {}) => {
+    await patchRagSettings(rt.dataDir, {
+      baseUrl: partial.baseUrl,
+      similarityThreshold: partial.similarityThreshold,
+      vectorSimilarityWeight: partial.vectorSimilarityWeight,
+      bindings: partial.bindings,
+    });
+    if (typeof partial.apiKey === 'string' && partial.apiKey.trim()) {
+      await rt.setKey('sparkiirag', partial.apiKey);
+    }
+    return { ok: true };
+  });
+  ipcMain.handle('sparkii:testRagConnection', async (_e, apiKey?: string | null) => {
+    return probeRag(rt, apiKey);
+  });
+  ipcMain.handle('sparkii:listRagDatasets', async (_e, apiKey?: string | null) => {
+    return probeRag(rt, apiKey);
   });
   ipcMain.handle('sparkii:listModels', async (_e, providerId: string, apiKey?: string | null) => {
     try {
@@ -1052,6 +1204,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       saddle: buildAgentSaddle(rt.agentOf(profileId), anchorDir(sessionId)),
     });
     slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId }));
+    slot.supervisor.onConnectorRead?.((req) => handleConnectorRead(req, profileId, sessionId));
     try {
       await selectModel(rt, 'chat', sessionId);
       const c = slot.client;

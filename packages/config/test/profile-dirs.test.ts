@@ -17,4 +17,11 @@ describe('repo profiles', () => {
     expect(p.agent.tools).toContain('read');
     expect(p.agent.prompts.system).toBeTruthy();
   });
+  it('loads knowledge-qa with sparkiirag session picker and search-only tools', async () => {
+    const p = await loadProfile(join(repoRoot, 'apps/desktop/agents/knowledge-qa'), { allowUnsigned: true });
+    expect(p.manifest.displayName).toBe('企业知识问答');
+    expect(p.manifest.knowledge).toEqual({ enabled: true, picker: 'session', backend: 'sparkiirag' });
+    expect(p.agent.tools).toEqual(['knowledge.search', 'knowledge.fetch_document']);
+    expect(p.agent.prompts.system).toContain('knowledge.search');
+  });
 });

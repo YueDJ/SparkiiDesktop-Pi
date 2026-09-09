@@ -1,0 +1,21 @@
+name: knowledge-qa
+displayName: 企业知识问答
+sortOrder: 15
+version: 1.0.0
+surface:
+  type: chat
+knowledge:
+  enabled: true
+  picker: session
+  backend: sparkiirag
+capabilities:
+  entry: agent/capabilities.ts
+  tools: [knowledge.search, knowledge.fetch_document]
+modelRequirements:
+  requires: [chat, toolCall]
+modelRouting:
+  tasks:
+    default:
+      - { provider: deepseek, modelId: deepseek-v4-flash }
+    title:
+      - { provider: deepseek, modelId: deepseek-v4-flash }
