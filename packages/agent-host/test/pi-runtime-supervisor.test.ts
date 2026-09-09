@@ -8,6 +8,7 @@ import {
   proposalEnvelope,
   proposalDecisionEnvelope,
   readyEnvelope,
+  connectorReadResultEnvelope,
   type PiRuntimeEnvelope,
   type PiRuntimeHostHandle,
 } from "../src/pi-runtime-transport.js";
@@ -105,6 +106,38 @@ describe("PiRuntimeSupervisor", () => {
       approved: false, proposalId: "p2", status: "denied",
     }));
     expect(client).toBeTruthy();
+  });
+
+  it("routes connector_read to the handler and replies", async () => {
+    const handle = new FakeHandle();
+    const sup = new PiRuntimeSupervisor(() => handle);
+    const onConnectorRead = vi.fn(async () => ({ ok: true, data: { chunks: [] } }));
+    sup.onConnectorRead(onConnectorRead);
+    await sup.start();
+    handle.emit({
+      direction: "runtime-to-main",
+      connectorRead: { requestId: "r1", toolName: "knowledge.search", args: { query: "q" } },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(onConnectorRead).toHaveBeenCalledWith({
+      requestId: "r1", toolName: "knowledge.search", args: { query: "q" },
+    });
+    expect(handle.sent).toContainEqual(connectorReadResultEnvelope("r1", { ok: true, data: { chunks: [] } }));
+  });
+
+  it("denies connector_read when no handler is registered", async () => {
+    const handle = new FakeHandle();
+    const sup = new PiRuntimeSupervisor(() => handle);
+    await sup.start();
+    handle.emit({
+      direction: "runtime-to-main",
+      connectorRead: { requestId: "r2", toolName: "knowledge.search", args: { query: "q" } },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(handle.sent).toContainEqual(connectorReadResultEnvelope("r2", {
+      ok: false,
+      error: { code: "CONNECTOR_DENIED", message: "unhandled" },
+    }));
   });
 
   it("clears the client and reports exit", async () => {

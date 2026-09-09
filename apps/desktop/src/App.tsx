@@ -253,13 +253,14 @@ function AppShell() {
         if (cancelled) return;
         setUserName(subject.userId);
         setRoles(subject.roles ?? []);
-        api.listAgents?.().then((list: Array<{ id: string; name: string }>) => {
+        api.listAgents?.().then((list: Array<{ id: string; name: string; surfaceType?: string; knowledge?: ShellAgent['knowledge'] }>) => {
           if (cancelled || !Array.isArray(list) || !list.length) return;
           setAgents(list.map((a) => ({
             id: a.id,
             name: a.name,
-            status: 'idle',
-            surfaceType: (a as { surfaceType?: string }).surfaceType,
+            status: 'idle' as const,
+            surfaceType: a.surfaceType,
+            knowledge: a.knowledge,
           })));
         }).catch(() => {});
       } catch {

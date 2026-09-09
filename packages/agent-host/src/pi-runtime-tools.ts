@@ -1,7 +1,7 @@
 import type { ProposalRequest } from "@sparkii/approval";
 import type { ToolDef } from "@sparkii/connectors";
 import { jsonSchemaToTypeBox } from "./bridge/typebox.js";
-import type { ProposalDecision } from "./pi-runtime-transport.js";
+import type { ConnectorReadRequest, ConnectorReadResult, ProposalDecision } from "./pi-runtime-transport.js";
 import { connectorWriteProposal } from "./write-tool-presentation.js";
 
 export interface PiToolDefinition {
@@ -20,6 +20,7 @@ export function buildPiRuntimeTools(opts: {
   propose: (
     request: ProposalRequest & { requestId: string },
   ) => Promise<ProposalDecision>;
+  connectorRead?: (request: ConnectorReadRequest) => Promise<ConnectorReadResult>;
 }): PiToolDefinition[] {
   return opts.tools.map((def) => {
     // Model APIs restrict function names to [a-zA-Z0-9_-]; keep the original
@@ -31,6 +32,16 @@ export function buildPiRuntimeTools(opts: {
       description: def.description,
       parameters: jsonSchemaToTypeBox(def.params),
       async execute(toolCallId: string, params: Record<string, unknown>) {
+        if (def.host === "main") {
+          const result = opts.connectorRead
+            ? await opts.connectorRead({
+              requestId: toolCallId,
+              toolName: def.name,
+              args: params,
+            })
+            : { ok: false, error: { code: "CONNECTOR_DENIED", message: "unhandled" } };
+          return { content: [{ type: "text", text: JSON.stringify(result) }], details: {} };
+        }
         if (def.sideEffect === "read") {
           const result = await def.handler(params, {
             profileId: process.env.SPARKII_PROFILE_ID ?? "dev",

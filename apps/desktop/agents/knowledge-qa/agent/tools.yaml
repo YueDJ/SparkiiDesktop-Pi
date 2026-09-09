@@ -1,0 +1,3 @@
+tools:
+  - knowledge.search
+  - knowledge.fetch_document

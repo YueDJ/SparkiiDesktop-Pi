@@ -53,17 +53,22 @@ export function buildIndexFromLines(lines: string[]): Bm25Index {
 
 const indexes = new Map<string, Bm25Index>();
 
-const handler: ToolHandler = async (args, ctx) => {
+const searchHandler: ToolHandler = async (args, ctx) => {
   const index = indexes.get(ctx.profileId) ?? indexes.get('default');
   if (!index) return { ok: false, error: { code: 'CONNECTOR_NOT_INIT', message: 'knowledge corpus not loaded' } };
   return { ok: true, data: index.search(String(args.query), Number(args.topK ?? 5)) };
 };
 
+const fetchDocumentHandler: ToolHandler = async () => ({
+  ok: false,
+  error: { code: 'CONNECTOR_NOT_INIT', message: 'fetch_document must run on main' },
+});
+
 export const knowledgeConnector: Connector = {
   id: 'knowledge',
   tools: [{
     name: 'knowledge.search',
-    description: '在法规知识库中检索与查询最相关的条款片段。',
+    description: '在知识库中检索与查询最相关的条款片段。',
     params: {
       type: 'object',
       properties: {
@@ -73,7 +78,22 @@ export const knowledgeConnector: Connector = {
       required: ['query'],
     },
     sideEffect: 'read',
-    handler,
+    host: 'main',
+    handler: searchHandler,
+  }, {
+    name: 'knowledge.fetch_document',
+    description: '按检索命中的 documentId 打开原文。界面点出处时也可走 IPC，不经模型。',
+    params: {
+      type: 'object',
+      properties: {
+        documentId: { type: 'string' },
+        datasetId: { type: 'string' },
+      },
+      required: ['documentId', 'datasetId'],
+    },
+    sideEffect: 'read',
+    host: 'main',
+    handler: fetchDocumentHandler,
   }],
   async init(cfg: unknown) {
     const parsed = cfg as { corpus?: Array<{ id: string; text: string }>; profileId?: string } | undefined;

@@ -18,6 +18,12 @@ export interface AppSettings {
   theme?: 'light' | 'dark';
   language?: string;
   logLevel?: LogLevel;
+  rag?: {
+    baseUrl?: string;
+    similarityThreshold?: number;
+    vectorSimilarityWeight?: number;
+    bindings?: Array<{ agentId: string; defaultDatasetId: string }>;
+  };
 }
 
 export type { CustomProvider } from './provider-catalog.js';

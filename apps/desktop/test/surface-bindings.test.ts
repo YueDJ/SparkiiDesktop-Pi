@@ -6,4 +6,7 @@ describe('agent surface bindings', () => {
     expect(typeof surfaceByAgent['general']).toBe('function');
     expect(typeof surfaceByAgent['contract-review']).toBe('function');
   });
+  it('binds knowledge-qa to a component', () => {
+    expect(typeof surfaceByAgent['knowledge-qa']).toBe('function');
+  });
 });

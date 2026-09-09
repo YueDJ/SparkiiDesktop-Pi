@@ -66,6 +66,10 @@ export interface OpenChatSessionResult {
   inputs?: Array<{ path: string; name?: string; missing?: boolean }>;
 }
 
+export type KnowledgeSelection =
+  | { mode: 'ids'; datasetIds: string[] }
+  | { mode: 'all' };
+
 export interface SparkiiApi {
   getLocalSubject(): Promise<{ userId: string; roles: string[] }>;
   chooseDocument(opts?: ChooseDocumentOptions): Promise<{ path?: string }>;
@@ -114,12 +118,28 @@ export interface SparkiiApi {
   getRuntimePool(): Promise<RuntimePoolSnapshot>;
   cancelQueuedSession(queueId: string): Promise<{ ok: boolean }>;
   releaseSessionSlot(sessionId: string): Promise<{ ok: boolean }>;
-  listAgents(): Promise<Array<{ id: string; name: string; surfaceType?: string }>>;
+  listAgents(): Promise<Array<{
+    id: string;
+    name: string;
+    surfaceType?: string;
+    knowledge?: { enabled: boolean; picker: 'hidden' | 'session'; backend: 'bm25' | 'sparkiirag' };
+  }>>;
   listPendingApprovals(): Promise<unknown[]>;
   decideApproval(id: string, approved: boolean, note?: string): Promise<unknown>;
   queryAudit(filter: object): Promise<unknown[]>;
   getSettings(): Promise<unknown>;
   saveSettings(settings: unknown): Promise<unknown>;
+  saveRagSettings(partial: {
+    baseUrl?: string;
+    similarityThreshold?: number;
+    vectorSimilarityWeight?: number;
+    bindings?: Array<{ agentId: string; defaultDatasetId: string }>;
+    apiKey?: string;
+  }): Promise<{ ok: true }>;
+  testRagConnection(apiKey?: string | null): Promise<{ ok: boolean; datasets?: Array<{ id: string; name: string }>; error?: string }>;
+  listRagDatasets(apiKey?: string | null): Promise<{ ok: boolean; datasets?: Array<{ id: string; name: string }>; error?: string }>;
+  setSessionKnowledge(sessionId: string, selection: KnowledgeSelection): Promise<{ ok: boolean; error?: string }>;
+  openRagDocument(args: { datasetId: string; documentId: string; fileName?: string }): Promise<{ ok: boolean; path?: string; error?: string }>;
   getApiKey(provider: string): Promise<string | null>;
   listProviders(): Promise<ProviderEntryInfo[]>;
   listModels(provider: string, apiKey?: string | null): Promise<{ ok: boolean; models?: string[]; httpStatus?: number; reason?: string; error?: string }>;

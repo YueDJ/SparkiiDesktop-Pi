@@ -80,6 +80,7 @@ async function makeRuntime(opts: {
   piAgentDir: string;
   client: { send: (command: any) => Promise<any>; onEvent?: (cb: (event: any) => void) => () => void };
   setKey?: (providerId: string, key: string) => Promise<void>;
+  keyFor?: (providerId: string) => Promise<string | null>;
   chatSession?: { profileId: string; model: string | null; piSessionFile?: string | null; kind?: string };
   profile?: unknown;
   agentOf?: (id: string) => unknown;
@@ -96,6 +97,9 @@ async function makeRuntime(opts: {
     client: opts.client,
     supervisor: {
       onProposal: () => {},
+      onConnectorRead: (cb: (req: unknown) => Promise<unknown>) => {
+        (rt as unknown as { __onConnectorRead?: (req: unknown) => Promise<unknown> }).__onConnectorRead = cb;
+      },
       onExit: (cb: (code: number | null) => void) => {
         opts.exitCbs?.push(cb);
         return () => {
@@ -106,7 +110,7 @@ async function makeRuntime(opts: {
     },
     getSessionId: () => boundSessionId,
   };
-  const rt = {
+    const rt: any = {
     profiles: new Map(),
     gate: {},
     executor: {},
@@ -166,7 +170,7 @@ async function makeRuntime(opts: {
         systemPrompt,
       };
     },
-    keyFor: async () => null,
+    keyFor: opts.keyFor ?? (async () => null),
     setKey: opts.setKey ?? (async () => {}),
   } as unknown as Runtime;
   registerIpc(
@@ -280,6 +284,527 @@ describe('ipc provider handlers', () => {
     const settings = (await getSettings!(null)) as { activeProviderId: string; apiKey?: string };
     expect(settings.activeProviderId).toBe('deepseek');
     expect(settings.apiKey).toBe('sk-ds');
+  });
+
+  it('getSettings reports hasApiKey without returning the secret', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const keys = new Map<string, string>();
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      keyFor: async (id) => keys.get(id) ?? null,
+      setKey: async (id, key) => { keys.set(id, key); },
+    });
+    await rt.setKey('sparkiirag', 'rag-secret-please-hide');
+    const handlers = await registeredHandlers();
+    const s = await handlers.get('sparkii:getSettings')!(null) as { rag: { hasApiKey: boolean } };
+    expect(JSON.stringify(s)).not.toContain('rag-secret-please-hide');
+    expect(s.rag.hasApiKey).toBe(true);
+  });
+
+  it('getApiKey(sparkiirag) returns null even when keyring has the secret', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const keys = new Map<string, string>([['sparkiirag', 'rag-secret-please-hide']]);
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      keyFor: async (id) => keys.get(id) ?? null,
+    });
+    const handlers = await registeredHandlers();
+    expect(await handlers.get('sparkii:getApiKey')!(null, 'sparkiirag')).toBeNull();
+  });
+
+  it('empty saveRagSettings apiKey keeps the keyring value', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const keys = new Map<string, string>([['sparkiirag', 'keep-me']]);
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      keyFor: async (id) => keys.get(id) ?? null,
+      setKey: async (id, key) => { keys.set(id, key); },
+    });
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:saveRagSettings')!(null, { baseUrl: 'http://127.0.0.1:9380', apiKey: '' });
+    expect(await rt.keyFor('sparkiirag')).toBe('keep-me');
+  });
+
+  it('saveSettings does not wipe rag', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const keys = new Map<string, string>();
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      keyFor: async (id) => keys.get(id) ?? null,
+      setKey: async (id, key) => { keys.set(id, key); },
+    });
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:saveRagSettings')!(null, { baseUrl: 'http://rag.example' });
+    await handlers.get('sparkii:saveSettings')!(null, { activeProviderId: 'deepseek', apiKey: 'sk-ds' });
+    const s = await handlers.get('sparkii:getSettings')!(null) as { rag: { baseUrl: string } };
+    expect(s.rag.baseUrl).toBe('http://rag.example');
+  });
+
+  it('promptSession refuses sparkiirag profiles when RAG is unconfigured', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const sent: any[] = [];
+    const client = {
+      onEvent: () => () => {},
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') return { success: true, data: { sessionFile: null } };
+        return { success: true };
+      },
+    };
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'qa', model: null },
+      profile: {
+        dir: join(dataDir, 'profiles', 'qa'),
+        profile: {
+          manifest: { name: 'qa', knowledge: { enabled: true, picker: 'session', backend: 'sparkiirag' } },
+          agent: { tools: [], prompts: { system: 'test' } },
+        },
+        router: { resolve: () => undefined },
+      },
+    });
+    const handlers = await registeredHandlers();
+    const result = await handlers.get('sparkii:promptSession')!(null, 's1', '你好');
+    expect(result).toMatchObject({ ok: false, code: 'CONNECTOR_DENIED' });
+    expect(sent.some((c) => c.type === 'prompt')).toBe(false);
+  });
+
+  it('promptSession does not create a session when sparkiirag is unconfigured', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const sent: any[] = [];
+    const create = vi.fn();
+    const client = {
+      onEvent: () => () => {},
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') return { success: true, data: { sessionId: 's-new', sessionFile: null } };
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      profile: {
+        dir: join(dataDir, 'profiles', 'qa'),
+        profile: {
+          manifest: { name: 'qa', knowledge: { enabled: true, picker: 'session', backend: 'sparkiirag' } },
+          agent: { tools: [], prompts: { system: 'test' } },
+        },
+        router: { resolve: () => undefined },
+      },
+    });
+    (rt as any).chatSessions.create = create;
+    const handlers = await registeredHandlers();
+    const result = await handlers.get('sparkii:promptSession')!(null, null, '你好', undefined, undefined, { profileId: 'qa' });
+    expect(result).toMatchObject({ ok: false, code: 'CONNECTOR_DENIED' });
+    expect(create).not.toHaveBeenCalled();
+    expect(sent.some((c) => c.type === 'prompt' || c.type === 'new_session')).toBe(false);
+  });
+
+  it('setSessionKnowledge stores selection and promptSession migrates draft key before prompt', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({
+      rag: { baseUrl: 'http://127.0.0.1:9380', bindings: [{ agentId: 'knowledge-qa', defaultDatasetId: 'law' }] },
+    }), 'utf8');
+    let retrieveBody: Record<string, unknown> | undefined;
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      const u = String(url);
+      if (u.includes('/datasets') && !u.includes('/documents')) {
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ code: 0, data: [{ id: 'law', name: '法规' }, { id: 'hr', name: '制度' }] }),
+        };
+      }
+      if (u.includes('/retrieval')) {
+        retrieveBody = JSON.parse(String(init?.body ?? '{}'));
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => 'application/json' },
+          json: async () => ({
+            code: 0,
+            data: { chunks: [{ id: 'c', content: 'x', document_id: 'd', document_keyword: 'f', dataset_id: 'law', similarity: 1 }], doc_aggs: [] },
+          }),
+        };
+      }
+      throw new Error(u);
+    }));
+    const sent: any[] = [];
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's-real', sessionFile: null, isStreaming: false } };
+        }
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      keyFor: async (id) => (id === 'sparkiirag' ? 'rag-key' : null),
+      profile: {
+        dir: join(dataDir, 'profiles', 'knowledge-qa'),
+        profile: {
+          manifest: { name: 'knowledge-qa', knowledge: { enabled: true, picker: 'session', backend: 'sparkiirag' } },
+          agent: { tools: ['knowledge.search'], prompts: { system: 'test' } },
+        },
+        router: { resolve: () => undefined },
+      },
+    });
+    const sessions = new Map<string, { id: string; profileId: string }>();
+    (rt as any).chatSessions.create = (rec: { id: string; profileId: string }) => { sessions.set(rec.id, rec); };
+    (rt as any).chatSessions.get = (id: string) => sessions.get(id) ?? null;
+    const handlers = await registeredHandlers();
+    const setResult = await handlers.get('sparkii:setSessionKnowledge')!(null, 'draft:knowledge-qa', { mode: 'all' });
+    expect(setResult).toEqual({ ok: true });
+    const result = await handlers.get('sparkii:promptSession')!(null, null, '你好', undefined, undefined, { profileId: 'knowledge-qa' });
+    expect(result).toMatchObject({ ok: true, sessionId: 's-real' });
+    const promptIndex = sent.findIndex((c) => c.type === 'prompt');
+    expect(promptIndex).toBeGreaterThan(-1);
+    const read = (rt as any).__onConnectorRead;
+    const out = await read?.({ requestId: 'r1', toolName: 'knowledge.search', args: { query: 'q' } });
+    expect(out?.ok).toBe(true);
+    expect(retrieveBody?.dataset_ids).toEqual(['law', 'hr']);
+  });
+
+  it('empty retrieval returns first then aborts and appends refused knowledge_turn', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({
+      rag: { baseUrl: 'http://127.0.0.1:9380' },
+    }), 'utf8');
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      const u = String(url);
+      if (u.includes('/datasets') && !u.includes('/documents')) {
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ code: 0, data: [{ id: 'law', name: '法规' }] }),
+        };
+      }
+      if (u.includes('/retrieval')) {
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ code: 0, data: { chunks: [], doc_aggs: [] } }),
+        };
+      }
+      throw new Error(u);
+    }));
+    const sent: any[] = [];
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's-empty', sessionFile: null, isStreaming: false } };
+        }
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      keyFor: async (id) => (id === 'sparkiirag' ? 'rag-key' : null),
+      profile: {
+        dir: join(dataDir, 'profiles', 'knowledge-qa'),
+        profile: {
+          manifest: { name: 'knowledge-qa', knowledge: { enabled: true, picker: 'session', backend: 'sparkiirag' } },
+          agent: { tools: ['knowledge.search'], prompts: { system: 'test' } },
+        },
+        router: { resolve: () => undefined },
+      },
+    });
+    const sessions = new Map<string, { id: string; profileId: string }>();
+    (rt as any).chatSessions.create = (rec: { id: string; profileId: string }) => { sessions.set(rec.id, rec); };
+    (rt as any).chatSessions.get = (id: string) => sessions.get(id) ?? null;
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:promptSession')!(null, null, '你好', undefined, undefined, { profileId: 'knowledge-qa' });
+    const read = (rt as any).__onConnectorRead;
+    const out = await read?.({ requestId: 'r1', toolName: 'knowledge.search', args: { query: 'q' } });
+    expect(out?.ok).toBe(true);
+    expect(Array.isArray((out as { data?: { chunks?: unknown[] } })?.data?.chunks)).toBe(true);
+    await waitUntil(() => sent.some((c) => c.type === 'abort'));
+    const refused = sent.find((c) => c.type === 'append_workflow_entry' && c.customType === 'knowledge_turn');
+    expect(refused?.data).toMatchObject({ refused: true, documents: [] });
+  });
+
+  it('does not copy leftover draft selection onto an existing session', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({
+      rag: { baseUrl: 'http://127.0.0.1:9380', bindings: [{ agentId: 'knowledge-qa', defaultDatasetId: 'law' }] },
+    }), 'utf8');
+    let retrieveBody: Record<string, unknown> | undefined;
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      const u = String(url);
+      if (u.includes('/datasets') && !u.includes('/documents')) {
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ code: 0, data: [{ id: 'law', name: '法规' }, { id: 'hr', name: '制度' }] }),
+        };
+      }
+      if (u.includes('/retrieval')) {
+        retrieveBody = JSON.parse(String(init?.body ?? '{}'));
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => 'application/json' },
+          json: async () => ({
+            code: 0,
+            data: { chunks: [{ id: 'c', content: 'x', document_id: 'd', document_keyword: 'f', dataset_id: 'law', similarity: 1 }], doc_aggs: [] },
+          }),
+        };
+      }
+      throw new Error(u);
+    }));
+    const sent: any[] = [];
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's-real', sessionFile: null, isStreaming: false } };
+        }
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      keyFor: async (id) => (id === 'sparkiirag' ? 'rag-key' : null),
+      profile: {
+        dir: join(dataDir, 'profiles', 'knowledge-qa'),
+        profile: {
+          manifest: { name: 'knowledge-qa', knowledge: { enabled: true, picker: 'session', backend: 'sparkiirag' } },
+          agent: { tools: ['knowledge.search'], prompts: { system: 'test' } },
+        },
+        router: { resolve: () => undefined },
+      },
+    });
+    const sessions = new Map<string, { id: string; profileId: string; model: string | null }>([
+      ['s-real', { id: 's-real', profileId: 'knowledge-qa', model: null }],
+    ]);
+    (rt as any).chatSessions.create = (rec: { id: string; profileId: string }) => { sessions.set(rec.id, rec); };
+    (rt as any).chatSessions.get = (id: string) => sessions.get(id) ?? null;
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:setSessionKnowledge')!(null, 's-real', { mode: 'ids', datasetIds: ['law'] });
+    await handlers.get('sparkii:setSessionKnowledge')!(null, 'draft:knowledge-qa', { mode: 'all' });
+    const result = await handlers.get('sparkii:promptSession')!(null, 's-real', '你好', undefined, undefined, { profileId: 'knowledge-qa' });
+    expect(result).toMatchObject({ ok: true, sessionId: 's-real' });
+    const read = (rt as any).__onConnectorRead;
+    const out = await read?.({ requestId: 'r1', toolName: 'knowledge.search', args: { query: 'q' } });
+    expect(out?.ok).toBe(true);
+    expect(retrieveBody?.dataset_ids).toEqual(['law']);
+  });
+
+  it('aborts when the session dataset is no longer visible', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({
+      rag: { baseUrl: 'http://127.0.0.1:9380' },
+    }), 'utf8');
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      const u = String(url);
+      if (u.includes('/datasets') && !u.includes('/documents')) {
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ code: 0, data: [{ id: 'law', name: '法规' }] }),
+        };
+      }
+      throw new Error(u);
+    }));
+    const sent: any[] = [];
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's-gone', sessionFile: null, isStreaming: false } };
+        }
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      keyFor: async (id) => (id === 'sparkiirag' ? 'rag-key' : null),
+      profile: {
+        dir: join(dataDir, 'profiles', 'knowledge-qa'),
+        profile: {
+          manifest: { name: 'knowledge-qa', knowledge: { enabled: true, picker: 'session', backend: 'sparkiirag' } },
+          agent: { tools: ['knowledge.search'], prompts: { system: 'test' } },
+        },
+        router: { resolve: () => undefined },
+      },
+    });
+    const sessions = new Map<string, { id: string; profileId: string }>();
+    (rt as any).chatSessions.create = (rec: { id: string; profileId: string }) => { sessions.set(rec.id, rec); };
+    (rt as any).chatSessions.get = (id: string) => sessions.get(id) ?? null;
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:promptSession')!(null, null, '你好', undefined, undefined, { profileId: 'knowledge-qa' });
+    await handlers.get('sparkii:setSessionKnowledge')!(null, 's-gone', { mode: 'ids', datasetIds: ['gone'] });
+    const read = (rt as any).__onConnectorRead;
+    const out = await read?.({ requestId: 'r1', toolName: 'knowledge.search', args: { query: 'q' } });
+    expect(out?.ok).toBe(false);
+    expect((out as { error?: { message?: string } })?.error?.message).toBe('所选知识库已不可见，请重新选择');
+    await waitUntil(() => sent.some((c) => c.type === 'abort'));
+    const refused = sent.find((c) => c.type === 'append_workflow_entry' && c.customType === 'knowledge_turn');
+    expect(refused?.data).toMatchObject({
+      refused: true,
+      text: '所选知识库已不可见，请重新选择',
+      documents: [],
+    });
+  });
+
+  it('empty search after a sealed hit aborts a new turn', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({
+      rag: { baseUrl: 'http://127.0.0.1:9380' },
+    }), 'utf8');
+    let retrievals = 0;
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      const u = String(url);
+      if (u.includes('/datasets') && !u.includes('/documents')) {
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ code: 0, data: [{ id: 'law', name: '法规' }] }),
+        };
+      }
+      if (u.includes('/retrieval')) {
+        retrievals += 1;
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => 'application/json' },
+          json: async () => (retrievals === 1
+            ? { code: 0, data: { chunks: [{ id: 'c', content: 'x', document_id: 'd', document_keyword: 'f', dataset_id: 'law', similarity: 1 }], doc_aggs: [] } }
+            : { code: 0, data: { chunks: [], doc_aggs: [] } }),
+        };
+      }
+      throw new Error(u);
+    }));
+    const sent: any[] = [];
+    let emit: ((ev: any) => void) | undefined;
+    const client = {
+      onEvent: (cb: (ev: any) => void) => {
+        emit = cb;
+        return () => {};
+      },
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's-follow', sessionFile: null, isStreaming: false } };
+        }
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      keyFor: async (id) => (id === 'sparkiirag' ? 'rag-key' : null),
+      profile: {
+        dir: join(dataDir, 'profiles', 'knowledge-qa'),
+        profile: {
+          manifest: { name: 'knowledge-qa', knowledge: { enabled: true, picker: 'session', backend: 'sparkiirag' } },
+          agent: { tools: ['knowledge.search'], prompts: { system: 'test' } },
+        },
+        router: { resolve: () => undefined },
+      },
+    });
+    const sessions = new Map<string, { id: string; profileId: string }>();
+    (rt as any).chatSessions.create = (rec: { id: string; profileId: string }) => { sessions.set(rec.id, rec); };
+    (rt as any).chatSessions.get = (id: string) => sessions.get(id) ?? null;
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:promptSession')!(null, null, '你好', undefined, undefined, { profileId: 'knowledge-qa' });
+    const read = (rt as any).__onConnectorRead;
+    const hit = await read?.({ requestId: 'r1', toolName: 'knowledge.search', args: { query: 'q1' } });
+    expect(hit?.ok).toBe(true);
+    emit?.({ type: 'message_end', message: { role: 'assistant', content: '根据办法' } });
+    await Promise.resolve();
+    expect(sent.some((c) => c.type === 'append_workflow_entry' && c.customType === 'knowledge_turn')).toBe(false);
+    emit?.({ type: 'agent_end' });
+    await waitUntil(() => sent.some((c) => c.type === 'append_workflow_entry' && c.customType === 'knowledge_turn' && c.data?.refused === false));
+    const hitTurn = sent.find((c) => c.type === 'append_workflow_entry' && c.customType === 'knowledge_turn' && c.data?.refused === false);
+    expect(hitTurn?.data?.citations?.[0]).toMatchObject({ index: 1, documentId: 'd', documentName: 'f', datasetId: 'law' });
+    const miss = await read?.({ requestId: 'r2', toolName: 'knowledge.search', args: { query: 'q2' } });
+    expect(miss?.ok).toBe(true);
+    await waitUntil(() => sent.some((c) => c.type === 'abort'));
+    const refused = sent.filter((c) => c.type === 'append_workflow_entry' && c.customType === 'knowledge_turn');
+    expect(refused.at(-1)?.data).toMatchObject({ refused: true, documents: [] });
+  });
+
+  it('setSessionKnowledge rejects invalid payload', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+    });
+    const handlers = await registeredHandlers();
+    const result = await handlers.get('sparkii:setSessionKnowledge')!(null, 's1', { mode: 'nope' });
+    expect(result).toMatchObject({ ok: false });
   });
 
   it('getRuntimePool returns the pool snapshot', async () => {

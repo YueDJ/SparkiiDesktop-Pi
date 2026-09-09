@@ -5,6 +5,11 @@ export interface AgentDescriptor {
   id: string;
   name: string;
   surfaceType: string;
+  knowledge?: {
+    enabled: boolean;
+    picker: 'hidden' | 'session';
+    backend: 'bm25' | 'sparkiirag';
+  };
 }
 
 export interface CustomSessionEntry {

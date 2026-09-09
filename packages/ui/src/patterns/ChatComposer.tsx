@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { TextArea } from '../primitives/TextArea.js';
 import { ModelEffortControl, type ModelEffortProps } from './ModelEffortControl.js';
 import { PlusIcon, FolderIcon, ClipIcon, ArrowUpIcon, StopIcon } from '../icons/index.js';
@@ -33,6 +33,8 @@ export interface ChatComposerProps {
   contextUsage?: ContextUsage | null;
   isCompacting?: boolean;
   skills?: ComposerSkill[] | null;
+  toolbarExtra?: ReactNode;
+  hideWorkspace?: boolean;
   onSend(text: string, attachments: ComposerAttachment[]): void;
   onStop(): void;
 }
@@ -125,7 +127,7 @@ export function ContextUsageBar({
   );
 }
 
-export function ChatComposer({ busy, stopping = false, workspacePath, onChooseWorkspace, getLocalPath, modelProps, contextUsage = null, isCompacting = false, skills, onSend, onStop }: ChatComposerProps) {
+export function ChatComposer({ busy, stopping = false, workspacePath, onChooseWorkspace, getLocalPath, modelProps, contextUsage = null, isCompacting = false, skills, toolbarExtra, hideWorkspace = false, onSend, onStop }: ChatComposerProps) {
   const [draft, setDraft] = useState('');
   const [files, setFiles] = useState<ComposerAttachment[]>([]);
   const [highlight, setHighlight] = useState(0);
@@ -362,11 +364,14 @@ export function ChatComposer({ busy, stopping = false, workspacePath, onChooseWo
 
         <div className="ui-composer-toolbar">
           <div className="ui-composer-toolbar-left">
+            {toolbarExtra}
             <button type="button" className="ui-icon-btn ui-composer-plus" aria-label="上传文件" title="上传本地文件" onClick={pickFiles}><PlusIcon /></button>
-            <button type="button" className="ui-composer-ws-btn" data-testid="composer-workspace" onClick={onChooseWorkspace} title={workspacePath ?? ''}>
-              <FolderIcon />
-              <span className="ui-composer-ws-name" data-testid="workspace-path">{name}</span>
-            </button>
+            {!hideWorkspace && (
+              <button type="button" className="ui-composer-ws-btn" data-testid="composer-workspace" onClick={onChooseWorkspace} title={workspacePath ?? ''}>
+                <FolderIcon />
+                <span className="ui-composer-ws-name" data-testid="workspace-path">{name}</span>
+              </button>
+            )}
           </div>
           <ContextUsageBar contextUsage={contextUsage} isCompacting={isCompacting} />
           <div className="ui-composer-toolbar-right">
