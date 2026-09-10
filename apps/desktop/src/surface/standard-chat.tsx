@@ -15,7 +15,9 @@ import {
   THINKING_LEVELS,
   DEFAULT_CHAT_DETAIL_LEVEL,
   isChatDetailLevel,
+  isDocumentReadTool,
   shouldShowEntry,
+  unwrapToolResult,
   parseLeadingSkillSlash,
   type ChatEntry,
   type ChatDetailLevel,
@@ -689,14 +691,16 @@ export function StandardChatSurface(props: StandardChatProps) {
     }
     const completed = entry.result !== undefined && !entry.awaitingApproval;
     if (hideCompletedTools.has(entry.toolName) && completed && detailLevel !== 'debug') continue;
-    if (entry.toolName === 'document.read') {
-      const rec = entry.result as { data?: { engine?: string; meta?: { quality?: RecognitionQualityValue; fileName?: string } } } | undefined;
-      const engine = rec?.data?.engine === 'native' || rec?.data?.engine === 'structure' ? rec.data.engine : undefined;
+    if (isDocumentReadTool(entry.toolName)) {
+      const data = unwrapToolResult(entry.result)?.data as
+        | { engine?: string; meta?: { quality?: RecognitionQualityValue; fileName?: string } }
+        | undefined;
+      const engine = data?.engine === 'native' || data?.engine === 'structure' ? data.engine : undefined;
       const qualityBar = (
         <RecognitionQuality
-          quality={rec?.data?.meta?.quality}
+          quality={data?.meta?.quality}
           engine={engine}
-          fileName={rec?.data?.meta?.fileName}
+          fileName={data?.meta?.fileName}
           compact={detailLevel === 'minimal'}
         />
       );
