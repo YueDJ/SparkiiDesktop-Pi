@@ -11,6 +11,7 @@ import { listUserSkills } from '../electron/main/skill-library.js';
 import { resetGrantedDocumentPaths } from '../electron/main/document-bytes.js';
 import { selectModel } from '../electron/main/workflow.js';
 import type { Runtime } from '../electron/main/runtime.js';
+import { downloadDocumentParseModule } from '../electron/main/document-parse-modules.js';
 
 vi.mock('@sparkii/agent-host', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sparkii/agent-host')>();
@@ -51,6 +52,9 @@ const { supervisorMocks, executeDocumentReadMock } = vi.hoisted(() => ({
     stopCurrent: vi.fn(async () => {}),
     release: vi.fn(async () => {}),
     beginQuit: vi.fn(async () => {}),
+    setIdleMinutes: vi.fn(),
+    setKeepResident: vi.fn(),
+    clearCircuit: vi.fn(),
   },
   executeDocumentReadMock: vi.fn(async () => ({ ok: true, data: { text: 'x', engine: 'native' } })),
 }));
@@ -63,6 +67,9 @@ vi.mock('../electron/main/document-parse-supervisor.js', () => ({
     stopCurrent: supervisorMocks.stopCurrent,
     release: supervisorMocks.release,
     beginQuit: supervisorMocks.beginQuit,
+    setIdleMinutes: supervisorMocks.setIdleMinutes,
+    setKeepResident: supervisorMocks.setKeepResident,
+    clearCircuit: supervisorMocks.clearCircuit,
   }),
 }));
 
@@ -99,6 +106,9 @@ afterEach(async () => {
   resetGrantedDocumentPaths();
   supervisorMocks.failSession.mockReset();
   supervisorMocks.failSession.mockResolvedValue(undefined);
+  supervisorMocks.setIdleMinutes.mockReset();
+  supervisorMocks.setKeepResident.mockReset();
+  supervisorMocks.clearCircuit.mockReset();
   executeDocumentReadMock.mockReset();
   executeDocumentReadMock.mockResolvedValue({ ok: true, data: { text: 'x', engine: 'native' } });
   for (const dir of dirs) await rm(dir, { recursive: true, force: true });
@@ -389,6 +399,49 @@ describe('ipc provider handlers', () => {
     await handlers.get('sparkii:saveSettings')!(null, { activeProviderId: 'deepseek', apiKey: 'sk-ds' });
     const s = await handlers.get('sparkii:getSettings')!(null) as { rag: { baseUrl: string } };
     expect(s.rag.baseUrl).toBe('http://rag.example');
+  });
+
+  it('saveSettings does not wipe documentParse', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const keys = new Map<string, string>();
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      keyFor: async (id) => keys.get(id) ?? null,
+      setKey: async (id, key) => { keys.set(id, key); },
+    });
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:saveDocumentParseSettings')!(null, { idleMinutes: 12, keepResident: true });
+    await handlers.get('sparkii:saveSettings')!(null, {
+      activeProviderId: 'deepseek',
+      apiKey: 'sk-ds',
+      documentParse: { idleMinutes: 1, keepResident: false },
+    });
+    const s = await handlers.get('sparkii:getSettings')!(null) as {
+      documentParse: { idleMinutes: number; keepResident: boolean };
+    };
+    expect(s.documentParse.idleMinutes).toBe(12);
+    expect(s.documentParse.keepResident).toBe(true);
+    expect(supervisorMocks.setIdleMinutes).toHaveBeenCalledWith(12);
+    expect(supervisorMocks.setKeepResident).toHaveBeenCalledWith(true);
+    expect(supervisorMocks.clearCircuit).toHaveBeenCalled();
+  });
+
+  it('download huggingface URL is rejected', async () => {
+    await expect(downloadDocumentParseModule('seal', {
+      catalog: [{
+        id: 'seal',
+        label: '印章',
+        url: 'https://huggingface.co/PaddlePaddle/foo/resolve/main/x.tar',
+        sha256: 'ab'.repeat(32),
+        minBytes: 1,
+        target: 'optional/seal',
+      }],
+    })).rejects.toThrow('网络不可达，请改用导入离线包。');
   });
 
   it('promptSession refuses sparkiirag profiles when RAG is unconfigured', async () => {
@@ -2151,6 +2204,25 @@ describe('ipc provider handlers', () => {
     const getDocumentParse = handlers.get('sparkii:getDocumentParse');
     expect(getDocumentParse).toBeTypeOf('function');
     expect(await getDocumentParse!(null)).toEqual({ status: 'stopped', waiting: [] });
+  });
+
+  it('downloadDocumentParseModule without production hashes fails with offline import hint', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }), onEvent: () => () => {} },
+    });
+    const handlers = await registeredHandlers();
+    const download = handlers.get('sparkii:downloadDocumentParseModule');
+    expect(download).toBeTypeOf('function');
+    expect(await download!(null, 'seal')).toEqual({
+      ok: false,
+      error: '网络不可达，请改用导入离线包。',
+    });
   });
 
   it('queueMutate rebuilds both queues from the current Pi snapshot', async () => {

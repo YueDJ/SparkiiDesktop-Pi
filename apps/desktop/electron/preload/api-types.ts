@@ -149,6 +149,17 @@ export interface SparkiiApi {
     bindings?: Array<{ agentId: string; defaultDatasetId: string }>;
     apiKey?: string;
   }): Promise<{ ok: true }>;
+  saveDocumentParseSettings(partial: { idleMinutes: number; keepResident: boolean }): Promise<{ ok: true }>;
+  listDocumentParseModules(): Promise<Array<{
+    id: string;
+    label: string;
+    bundled?: boolean;
+    installed: boolean;
+    canDownload: boolean;
+  }>>;
+  retryDocumentParse(): Promise<{ ok: true }>;
+  importDocumentParseModule(path?: string): Promise<{ ok: boolean; error?: string }>;
+  downloadDocumentParseModule(id: string): Promise<{ ok: boolean; error?: string }>;
   testRagConnection(apiKey?: string | null): Promise<{ ok: boolean; datasets?: Array<{ id: string; name: string }>; error?: string }>;
   listRagDatasets(apiKey?: string | null): Promise<{ ok: boolean; datasets?: Array<{ id: string; name: string }>; error?: string }>;
   setSessionKnowledge(sessionId: string, selection: KnowledgeSelection): Promise<{ ok: boolean; error?: string }>;

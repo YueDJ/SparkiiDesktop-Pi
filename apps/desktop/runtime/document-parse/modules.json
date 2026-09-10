@@ -1,0 +1,8 @@
+{
+  "modules": [
+    { "id": "baseline", "label": "基础解析", "bundled": true },
+    { "id": "seal", "label": "印章", "minBytes": 1, "target": "optional/seal" },
+    { "id": "formula", "label": "公式", "minBytes": 1, "target": "optional/formula" },
+    { "id": "chart", "label": "图表", "minBytes": 1, "target": "optional/chart" }
+  ]
+}

@@ -11,7 +11,10 @@ out/
 .superpowers/
 *.key
 *.sig
-apps/desktop/runtime/
+apps/desktop/runtime/*
+!apps/desktop/runtime/document-parse/
+apps/desktop/runtime/document-parse/*
+!apps/desktop/runtime/document-parse/modules.json
 apps/desktop/src/types/*.js
 apps/desktop/src/types/*.js.map
 /start-packaged.cmd

@@ -10,6 +10,7 @@ import {
 import { AuditView } from '../audit/AuditView.js';
 import { SettingsSkillsPane, type SkillsPaneApi } from './SettingsSkillsPane.js';
 import { SettingsKnowledgePane } from './SettingsKnowledgePane.js';
+import { SettingsDocumentParsePane } from './SettingsDocumentParsePane.js';
 
 export interface ProviderEntry {
   id: string;
@@ -53,14 +54,29 @@ export interface SettingsApi {
   importUserSkill?: SkillsPaneApi['importUserSkill'];
   uninstallUserSkill?: SkillsPaneApi['uninstallUserSkill'];
   openUserSkillsDir?: SkillsPaneApi['openUserSkillsDir'];
+  saveDocumentParseSettings?(partial: { idleMinutes: number; keepResident: boolean }): Promise<{ ok: true }>;
+  listDocumentParseModules?(): Promise<Array<{
+    id: string;
+    label: string;
+    bundled?: boolean;
+    installed: boolean;
+    canDownload: boolean;
+  }>>;
+  retryDocumentParse?(): Promise<{ ok: true }>;
+  importDocumentParseModule?(path?: string): Promise<{ ok: boolean; error?: string }>;
+  downloadDocumentParseModule?(id: string): Promise<{ ok: boolean; error?: string }>;
+  getDocumentParse?(): Promise<{
+    status: 'stopped' | 'starting' | 'parsing' | 'idle' | 'resident';
+    waiting: unknown[];
+  }>;
 }
 
 export interface SettingsViewProps { api?: SettingsApi; onExportAudit?(jsonl: string): void; }
 
-const PANES = ['llm', 'knowledge', 'data', 'runtime', 'skills', 'approval', 'appearance', 'audit'] as const;
+const PANES = ['llm', 'knowledge', 'documentParse', 'data', 'runtime', 'skills', 'approval', 'appearance', 'audit'] as const;
 type Pane = (typeof PANES)[number];
 const PANE_LABELS: Record<Pane, string> = {
-  llm: '大模型连接', knowledge: '知识库', data: '数据与隐私', runtime: '智能体与运行', skills: '技能', approval: '审批与安全', appearance: '外观与语言', audit: '审计',
+  llm: '大模型连接', knowledge: '知识库', documentParse: '文档解析', data: '数据与隐私', runtime: '智能体与运行', skills: '技能', approval: '审批与安全', appearance: '外观与语言', audit: '审计',
 };
 
 const ROUTE_TASKS = [
@@ -298,6 +314,7 @@ export function SettingsView(props: SettingsViewProps) {
         </>
       )}
       {pane === 'knowledge' && <SettingsKnowledgePane api={api} />}
+      {pane === 'documentParse' && <SettingsDocumentParsePane api={api} />}
       {pane === 'data' && (
         <>
           <h3 className="settings-section-title">数据与隐私</h3>
@@ -309,6 +326,7 @@ export function SettingsView(props: SettingsViewProps) {
       {pane === 'runtime' && (
         <>
           <h3 className="settings-section-title">智能体与运行</h3>
+          <div className="ui-muted settings-hint">并行上限只约束智能体，不约束文档解析。</div>
           <SettingsRow label="并行智能体上限">
             <Select value={String(maxAgents)} onChange={(e) => setMaxAgents(Number(e.target.value))}>
               {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => <option key={n} value={n}>{n}</option>)}

@@ -15,6 +15,12 @@ function makeApi(over: Record<string, unknown> = {}) {
     listModels: vi.fn().mockResolvedValue({ ok: true, models: ['qwen2.5', 'llama3.1'] }),
     testConnection: vi.fn().mockResolvedValue({ ok: true, latencyMs: 86 }),
     diagnostics: vi.fn().mockResolvedValue({ logs: '' }),
+    saveDocumentParseSettings: vi.fn().mockResolvedValue({ ok: true }),
+    listDocumentParseModules: vi.fn().mockResolvedValue([]),
+    retryDocumentParse: vi.fn().mockResolvedValue({ ok: true }),
+    importDocumentParseModule: vi.fn().mockResolvedValue({ ok: true }),
+    downloadDocumentParseModule: vi.fn().mockResolvedValue({ ok: true }),
+    getDocumentParse: vi.fn().mockResolvedValue({ status: 'stopped', waiting: [] }),
     ...over,
   } as any;
 }

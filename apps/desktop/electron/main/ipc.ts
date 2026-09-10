@@ -13,6 +13,13 @@ import { sortAgents } from './agent-catalog.js';
 import { resolveExportPath } from './export-path.js';
 import { loadSettings, saveSettings } from './settings.js';
 import { knowledgeFromManifest, patchRagSettings, ragFromSettings, type KnowledgeSelection } from './rag-settings.js';
+import { documentParseFromSettings, saveDocumentParseSettings } from './document-parse-settings.js';
+import {
+  DOWNLOAD_UNREACHABLE,
+  downloadDocumentParseModule,
+  importDocumentParseModule,
+  listDocumentParseModules,
+} from './document-parse-modules.js';
 import { runMainKnowledgeSearch, searchAuditSummary, SESSION_DATASET_GONE } from './rag-search.js';
 import { fetchAndCacheDocument } from './rag-open.js';
 import {
@@ -154,9 +161,15 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   rt.pool.subscribe?.((snapshot) => {
     getWindow()?.webContents.send('sparkii:event:runtime-pool', snapshot);
   });
-  getDocumentParseSupervisor().subscribe((snap) => {
+  const documentParseSupervisor = getDocumentParseSupervisor();
+  documentParseSupervisor.subscribe((snap) => {
     getWindow()?.webContents.send('sparkii:event:document-parse', snap);
   });
+  void loadSettings(rt.dataDir).then((prev) => {
+    const dp = documentParseFromSettings(prev);
+    documentParseSupervisor.setIdleMinutes(dp.idleMinutes);
+    documentParseSupervisor.setKeepResident(dp.keepResident);
+  }).catch(() => {});
   const openSessions = new Map<
     string,
     { slot: Awaited<ReturnType<typeof rt.pool.acquire>>; profileId: string }
@@ -1121,6 +1134,47 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   ipcMain.handle('sparkii:stopDocumentParse', () => getDocumentParseSupervisor().stopCurrent());
   ipcMain.handle('sparkii:releaseDocumentParse', () => getDocumentParseSupervisor().release());
   ipcMain.handle('sparkii:cancelDocumentParseLoad', () => getDocumentParseSupervisor().stopCurrent());
+  ipcMain.handle('sparkii:saveDocumentParseSettings', async (_e, partial: { idleMinutes?: number; keepResident?: boolean } = {}) => {
+    const next = await saveDocumentParseSettings(rt.dataDir, {
+      idleMinutes: partial.idleMinutes,
+      keepResident: partial.keepResident,
+    });
+    const supervisor = getDocumentParseSupervisor();
+    supervisor.setIdleMinutes(next.idleMinutes);
+    supervisor.setKeepResident(next.keepResident);
+    supervisor.clearCircuit();
+    return { ok: true };
+  });
+  ipcMain.handle('sparkii:retryDocumentParse', async () => {
+    getDocumentParseSupervisor().clearCircuit();
+    return { ok: true };
+  });
+  ipcMain.handle('sparkii:listDocumentParseModules', () => listDocumentParseModules());
+  ipcMain.handle('sparkii:importDocumentParseModule', async (_e, path?: string) => {
+    let filePath = typeof path === 'string' && path.trim() ? path : '';
+    if (!filePath) {
+      const win = getWindow();
+      const result = win
+        ? await dialog.showOpenDialog(win, { properties: ['openFile', 'openDirectory'] })
+        : { canceled: true, filePaths: [] as string[] };
+      if (result.canceled || !result.filePaths[0]) return { ok: false };
+      filePath = result.filePaths[0];
+    }
+    try {
+      await importDocumentParseModule(filePath);
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+  ipcMain.handle('sparkii:downloadDocumentParseModule', async (_e, id: string) => {
+    try {
+      await downloadDocumentParseModule(String(id ?? ''));
+      return { ok: true };
+    } catch {
+      return { ok: false, error: DOWNLOAD_UNREACHABLE };
+    }
+  });
 
   ipcMain.handle('sparkii:cancelQueuedSession', (_e, queueId: string) => {
     if (!rt.pool.cancelPending(queueId)) throw new Error('queue item not found');
@@ -1219,13 +1273,14 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   ipcMain.handle('sparkii:queryAudit', (_e, filter: object) => rt.audit.query(filter));
   ipcMain.handle('sparkii:getSettings', async () => {
     const settings = await loadSettings(rt.dataDir);
-    const { rag: _storedRag, ...rest } = settings;
+    const { rag: _storedRag, documentParse: _storedDp, ...rest } = settings;
     const apiKey = settings.activeProviderId ? await rt.keyFor(settings.activeProviderId) : null;
     const ragKey = await rt.keyFor('sparkiirag');
     return {
       ...rest,
       ...(apiKey ? { apiKey } : {}),
       rag: { ...ragFromSettings(settings), hasApiKey: Boolean(ragKey) },
+      documentParse: documentParseFromSettings(settings),
     };
   });
   ipcMain.handle('sparkii:getApiKey', (_e, providerId: string) => {
@@ -1242,10 +1297,10 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     return buildProviderList(runtimeProviders, settings.providers ?? []);
   });
   ipcMain.handle('sparkii:saveSettings', async (_e, settings: unknown) => {
-    const s = settings as Parameters<typeof saveSettings>[1] & { apiKey?: string; rag?: unknown };
-    const { apiKey, rag: _dropRag, ...rest } = s;
+    const s = settings as Parameters<typeof saveSettings>[1] & { apiKey?: string; rag?: unknown; documentParse?: unknown };
+    const { apiKey, rag: _dropRag, documentParse: _dropDp, ...rest } = s;
     const prev = await loadSettings(rt.dataDir);
-    await saveSettings(rt.dataDir, { ...prev, ...rest, rag: prev.rag });
+    await saveSettings(rt.dataDir, { ...prev, ...rest, rag: prev.rag, documentParse: prev.documentParse });
     if (rest.logLevel) logger.level = rest.logLevel;
     if (s.activeProviderId) {
       await rt.setKey(s.activeProviderId, apiKey ?? '');
