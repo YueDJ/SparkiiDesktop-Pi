@@ -13,6 +13,9 @@ export function averageQuality(
     (p): p is { page: number; score: number } =>
       typeof p.score === 'number' && Number.isFinite(p.score),
   );
+  if (scored.length === 0) {
+    return { score: 0, level: 'low', pages: [] };
+  }
   const score = scored.reduce((sum, p) => sum + p.score, 0) / scored.length;
   return {
     score,
