@@ -9,6 +9,8 @@ import {
   ToolCard,
   LifecycleCard,
   Markdown,
+  RecognitionQuality,
+  type RecognitionQualityValue,
   useErrors,
   THINKING_LEVELS,
   DEFAULT_CHAT_DETAIL_LEVEL,
@@ -687,6 +689,32 @@ export function StandardChatSurface(props: StandardChatProps) {
     }
     const completed = entry.result !== undefined && !entry.awaitingApproval;
     if (hideCompletedTools.has(entry.toolName) && completed && detailLevel !== 'debug') continue;
+    if (entry.toolName === 'document.read') {
+      const rec = entry.result as { data?: { engine?: string; meta?: { quality?: RecognitionQualityValue; fileName?: string } } } | undefined;
+      const engine = rec?.data?.engine === 'native' || rec?.data?.engine === 'structure' ? rec.data.engine : undefined;
+      const qualityBar = (
+        <RecognitionQuality
+          quality={rec?.data?.meta?.quality}
+          engine={engine}
+          fileName={rec?.data?.meta?.fileName}
+          compact={detailLevel === 'minimal'}
+        />
+      );
+      if (detailLevel === 'minimal' && engine === 'structure') {
+        timeline.push(<Fragment key={entry.id}>{qualityBar}</Fragment>);
+        visibleCount += 1;
+        continue;
+      }
+      timeline.push(
+        <Fragment key={entry.id}>
+          <ToolCard toolName={entry.toolName} input={entry.input} result={entry.result} awaitingApproval={entry.awaitingApproval} defaultOpen={detailLevel === 'debug'} />
+          {qualityBar}
+          {entry.awaitingApproval && renderApprovalCard ? renderApprovalCard(entry) : null}
+        </Fragment>,
+      );
+      visibleCount += 1;
+      continue;
+    }
     timeline.push(
       <Fragment key={entry.id}>
         <ToolCard toolName={entry.toolName} input={entry.input} result={entry.result} awaitingApproval={entry.awaitingApproval} defaultOpen={detailLevel === 'debug'} />

@@ -42,3 +42,4 @@ export * from './patterns/SettingsRow.js';
 export * from './patterns/pi-timeline.js';
 export * from './patterns/thinking-levels.js';
 export * from './patterns/chat-detail-level.js';
+export * from './patterns/RecognitionQuality.js';

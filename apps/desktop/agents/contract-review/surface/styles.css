@@ -3,6 +3,7 @@
 .contract-header-subtitle { color: var(--color-textMuted); font-size: 12px; }
 
 .contract-split.left-collapsed .contract-panel--doc .contract-panel-head b,
+.contract-split.left-collapsed .contract-panel--doc .contract-panel-head .ui-recognition-quality,
 .contract-split.left-collapsed .contract-panel--doc .contract-panel-hint,
 .contract-split.left-collapsed .contract-panel--doc .contract-missing,
 .contract-split.left-collapsed .contract-panel--doc .contract-panel-body { display: none; }

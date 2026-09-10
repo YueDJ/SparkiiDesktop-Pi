@@ -550,4 +550,40 @@ describe('StandardChatSurface skill menu and timeline chips', () => {
       expect(screen.getByText('还没有安装技能')).toBeTruthy();
     });
   });
+
+  it('shows only the compact recognition quality bar for structure document.read in minimal detail', async () => {
+    const { api } = makeApi({ getSettings: vi.fn().mockResolvedValue({ chatDetailLevel: 'minimal' }) });
+    const session = {
+      entries: [
+        { kind: 'message', id: 'u1', role: 'user', text: '请读这个文件', streaming: false },
+        {
+          kind: 'tool',
+          id: 't1',
+          toolName: 'document.read',
+          input: { documents: ['C:/tmp/scan.pdf'] },
+          result: {
+            ok: true,
+            data: {
+              engine: 'structure',
+              meta: {
+                fileName: 'scan.pdf',
+                quality: { score: 0.78, level: 'mid', pages: [] },
+              },
+            },
+          },
+        },
+      ],
+      streaming: false,
+      meta: {},
+    };
+    render(<StandardChatSurface {...baseProps('s1', { api, session })} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('recognition-quality')).toBeTruthy();
+      expect(screen.queryByTestId('tool-card')).toBeNull();
+    });
+    expect(screen.getByTestId('recognition-quality').textContent).toContain('识别质量');
+    expect(screen.getByTestId('recognition-quality').textContent).toContain('中');
+    expect(screen.getByTestId('recognition-quality').textContent).toContain('78%');
+    expect(screen.getByTestId('recognition-quality').textContent).toContain('scan.pdf');
+  });
 });

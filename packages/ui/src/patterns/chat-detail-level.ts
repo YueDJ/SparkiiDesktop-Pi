@@ -61,12 +61,18 @@ function toolResultIsImportant(result: unknown): boolean {
   return rec.ok === false || rec.success === false || rec.error !== undefined;
 }
 
+function structureDocumentRead(result: unknown): boolean {
+  const rec = result as { data?: { engine?: string } } | undefined;
+  return rec?.data?.engine === 'structure';
+}
+
 export function shouldShowEntry(entry: ChatEntry, level: ChatDetailLevel): boolean {
   if (entry.kind === 'message') return true;
 
   if (entry.kind === 'tool') {
     if (level === 'minimal') {
-      return Boolean(entry.awaitingApproval) || entry.isError === true || toolResultIsImportant(entry.result);
+      return Boolean(entry.awaitingApproval) || entry.isError === true || toolResultIsImportant(entry.result)
+        || (entry.toolName === 'document.read' && structureDocumentRead(entry.result));
     }
     return true;
   }

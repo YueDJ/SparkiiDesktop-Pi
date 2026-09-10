@@ -73,4 +73,16 @@ describe('chat detail level helpers', () => {
     expect(shouldShowEntry(tool(), 'standard')).toBe(true);
     expect(shouldShowEntry(tool(), 'debug')).toBe(true);
   });
+
+  it('shows structure document.read in minimal', () => {
+    expect(shouldShowEntry(tool({
+      toolName: 'document.read',
+      result: { ok: true, data: { engine: 'structure' } },
+    }), 'minimal')).toBe(true);
+  });
+
+  it('still hides ordinary successful bash in minimal', () => {
+    expect(shouldShowEntry(tool({ result: { ok: true } }), 'minimal')).toBe(false);
+  });
 });
+
