@@ -1,5 +1,8 @@
 node_modules/
 .pnpm-store/
+__pycache__/
+*.py[cod]
+.Python
 dist/
 dist-electron/
 test-results/

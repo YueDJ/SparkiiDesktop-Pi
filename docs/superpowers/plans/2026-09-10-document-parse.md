@@ -640,11 +640,11 @@ await saveSettings(rt.dataDir, { ...prev, ...rest, rag: prev.rag, documentParse:
 
 `SPARKII_DOCUMENT_PARSE_FAKE=1` 与 `SPARKII_DOCUMENT_PARSE_BIN=python` **只用于测试和开发**。正式安装包不设 FAKE。`ocr_version` 不得传 v6。`PADDLE_PDX_MODEL_SOURCE=bos`。`SPARKII_DOCUMENT_PARSE_MODELS` 指向 `runtime/document-parse/models`。
 
-- [ ] **Step 1: Failing python test** — FAKE 模式 stdout 只有 JSON 行。
-- [ ] **Step 2: Run fail**
-- [ ] **Step 3: Implement loop**
-- [ ] **Step 4: Supervisor 对 FAKE 入口 skipIf 无 python**
-- [ ] **Step 5: Commit**（仅当用户要求提交）
+- [x] **Step 1: Failing python test** — FAKE 模式 stdout 只有 JSON 行。
+- [x] **Step 2: Run fail**
+- [x] **Step 3: Implement loop**
+- [x] **Step 4: Supervisor 对 FAKE 入口 skipIf 无 python**
+- [x] **Step 5: Commit**（仅当用户要求提交）
 
 **发布门（本任务之后、改安装包之前）：** 构建机按 README 打出 `sparkii-document-parse.7z.exe`，把 archive sha256 写入 `checksums.json`，文件放进 `apps/desktop/runtime/document-parse/`。**只有这时**才允许改 `electron-builder.yml` extraResources 和 NSIS `customInstall` 的 `ExecWait`。在此之前 `pnpm dist` 必须保持绿色。FAKE 入口不得打进 extraResources。
 
