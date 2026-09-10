@@ -4,6 +4,7 @@ import { basename, dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { assemble, type Runtime } from './runtime.js';
 import { registerIpc } from './ipc.js';
+import { installDocumentParseQuitHook } from './document-parse-quit.js';
 import { Logger } from './logger.js';
 import { attachRecovery } from './recovery.js';
 import { defaultDataDir } from './paths.js';
@@ -71,6 +72,7 @@ app.whenReady().then(async () => {
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, preload: join(__dirname, '../preload/index.cjs') },
   });
   registerIpc(rt, () => win, logger);
+  installDocumentParseQuitHook(app);
 
   // 导航守卫：Sparkii 是本地页面应用，任何外链（聊天里点链接等）都必须交给系统浏览器打开，
   // 绝不允许主窗口离开应用页面——否则窗口会去加载外网并可能白屏/丢失整个 UI。

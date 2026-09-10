@@ -116,6 +116,19 @@ export interface SparkiiApi {
   listThinkingLevels(providerId: string, modelId: string): Promise<string[]>;
   deleteChatSession(sessionId: string): Promise<{ ok: boolean }>;
   getRuntimePool(): Promise<RuntimePoolSnapshot>;
+  getDocumentParse(): Promise<{
+    status: 'stopped' | 'starting' | 'parsing' | 'idle' | 'resident';
+    fileName?: string;
+    agentDisplayName?: string;
+    page?: number;
+    total?: number;
+    idleRemainingSec?: number;
+    waiting: Array<{ sessionId: string; agentDisplayName: string; fileName: string }>;
+    circuitOpen?: boolean;
+  }>;
+  stopDocumentParse(): Promise<void>;
+  releaseDocumentParse(): Promise<void>;
+  cancelDocumentParseLoad(): Promise<void>;
   cancelQueuedSession(queueId: string): Promise<{ ok: boolean }>;
   releaseSessionSlot(sessionId: string): Promise<{ ok: boolean }>;
   listAgents(): Promise<Array<{

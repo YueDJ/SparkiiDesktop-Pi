@@ -12,6 +12,7 @@ export type {
 } from './types.js';
 export { averageQuality, recognitionLevel } from './quality.js';
 export { shouldUseStructure } from './route.js';
+export { pdfPagesToMarkdown, probePdf, xlsxToMarkdown } from './native-markdown.js';
 
 export async function parseDocument(path: string): Promise<ParsedDocument> {
   const ext = extname(path).toLowerCase();
@@ -61,17 +62,10 @@ async function parseXlsx(path: string, buf: Buffer, fileName: string): Promise<P
   return { text, kind: 'xlsx', engine: 'native', meta: { fileName } };
 }
 
-const handler: ToolHandler = async (args) => {
-  try {
-    const docs = args.documents as string[] | undefined;
-    if (!docs || docs.length === 0) return { ok: false, error: { code: 'CONNECTOR_IO', message: 'no document provided' } };
-    const doc = await parseDocument(docs[0]);
-    return { ok: true, data: doc };
-  } catch (e) {
-    const err = e as ConnectorError;
-    return { ok: false, error: { code: err.code ?? 'CONNECTOR_IO', message: err.message } };
-  }
-};
+const handler: ToolHandler = async () => ({
+  ok: false,
+  error: { code: 'CONNECTOR_DENIED', message: 'document.read must run on main' },
+});
 
 export const documentConnector: Connector = {
   id: 'document',
@@ -80,6 +74,7 @@ export const documentConnector: Connector = {
     description: '读取并解析本地文档（PDF/Word/Excel/文本/图片）为纯文本。',
     params: { type: 'object', properties: { documents: { type: 'array', items: { type: 'string' } } }, required: ['documents'] },
     sideEffect: 'read',
+    host: 'main',
     handler,
   }],
   async init() {},

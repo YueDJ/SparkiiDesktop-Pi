@@ -14,7 +14,7 @@ describe('sparkii api shape', () => {
       'listErrors', 'appendError', 'clearError', 'clearErrors', 'markAllErrorsRead',
       'openChatSession', 'listChatSessions', 'getChatSession', 'promptSession', 'abortChat', 'getChatState', 'queueMutate', 'setChatTitle', 'completeText', 'setChatModel', 'setChatThinkingLevel', 'setChatWorkspace', 'updateWorkflowState', 'requestExportReport', 'chooseWorkspace', 'getModelOptions', 'listThinkingLevels', 'deleteChatSession', 'setSessionPinned', 'setSessionArchived', 'setSessionOrder', 'listAgents', 'setSessionKnowledge', 'openRagDocument',
       'listUserSkills', 'listAgentSkills', 'previewUserSkill', 'chooseSkillFolder', 'importUserSkill', 'uninstallUserSkill', 'openUserSkillsDir',
-      'getRuntimePool', 'cancelQueuedSession', 'releaseSessionSlot',
+      'getRuntimePool', 'getDocumentParse', 'stopDocumentParse', 'releaseDocumentParse', 'cancelDocumentParseLoad', 'cancelQueuedSession', 'releaseSessionSlot',
       'getPathForFile',
       'windowMinimize', 'windowToggleMaximize', 'windowClose', 'windowIsMaximized',
     ];

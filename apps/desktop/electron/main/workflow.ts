@@ -15,6 +15,7 @@ import { isReadOnlyBashCommand, riskOfCommand } from './general-executor.js';
 import { loadSettings, type AppSettings } from './settings.js';
 import { knowledgeFromManifest, patchRagSettings, ragFromSettings } from './rag-settings.js';
 import { runMainKnowledgeSearch } from './rag-search.js';
+import { executeDocumentRead } from './document-read.js';
 
 const allTools = new Map<string, ToolDef>(
   [documentConnector, knowledgeConnector, reportConnector].flatMap((c) => c.tools.map((t) => [t.name, t] as const)),
@@ -238,7 +239,7 @@ async function sendPrompt(rt: Runtime, text: string, task: ModelTask, sessionId:
   return acc;
 }
 
-async function runTool(
+export async function runTool(
   rt: Runtime,
   broker: ReturnType<typeof createBroker>,
   toolName: string,
@@ -249,6 +250,15 @@ async function runTool(
   const tool = allTools.get(toolName);
   if (!tool) return { ok: false, error: { code: 'UNKNOWN_TOOL', message: toolName } };
   if (tool.sideEffect === 'read') {
+    if (toolName === 'document.read') {
+      const displayName = rt.profileOf(profileId)?.profile?.manifest?.displayName ?? profileId;
+      return executeDocumentRead(args as Record<string, unknown>, {
+        profileId,
+        sessionId,
+        actor: rt.subject?.userId ?? 'agent',
+        agentDisplayName: displayName,
+      });
+    }
     if (toolName === 'knowledge.search') {
       const knowledge = knowledgeFromManifest(rt.profileOf(profileId).profile.manifest);
       if (knowledge.backend === 'sparkiirag') {

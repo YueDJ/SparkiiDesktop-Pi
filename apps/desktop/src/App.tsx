@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Shell, type ScreenId, type ShellAgent, type ShellSession } from './shell/Shell.js';
-import { ErrorProvider, useErrors, type ErrorStoreAdapter, type RuntimePoolSummary } from '@sparkii/ui';
+import { ErrorProvider, useErrors, type ErrorStoreAdapter, type RuntimePoolSummary, type DocumentParseSnapshot } from '@sparkii/ui';
 import type { SparkiiApi } from './types/sparkii-api.js';
 import { SettingsView } from './shell/SettingsView.js';
 import { ApprovalCenter } from './trust/ApprovalCenter.js';
@@ -158,6 +158,7 @@ function AppShell() {
     sessions: [],
     queue: [],
   });
+  const [documentParse, setDocumentParse] = useState<DocumentParseSnapshot>({ status: 'stopped', waiting: [] });
   // 本地尚未被后端确认的会话状态（名称 / 最近活动时间 / 所属智能体）。
   // 新会话、重命名、正在运行的会话在刷新时用这份覆盖值穿透滞后的后端快照，
   // 一旦后端确认(名称与时间一致/会话出现)即清除，避免多个各自为政的缓存。
@@ -244,6 +245,18 @@ function AppShell() {
     api.getRuntimePool?.().then((p: any) => setRuntimePool(mapRuntimePool(p, pendingList))).catch(() => {});
     return off;
   }, [api, pendingList]);
+  useEffect(() => {
+    const off = api.on?.('document-parse', (p: any) => {
+      if (p && typeof p === 'object') setDocumentParse(p as DocumentParseSnapshot);
+    });
+    const pending = api.getDocumentParse?.();
+    if (pending) {
+      pending.then((p: any) => {
+        if (p && typeof p === 'object') setDocumentParse(p as DocumentParseSnapshot);
+      }).catch(() => {});
+    }
+    return () => { off?.(); };
+  }, [api]);
 
   useEffect(() => {
     let cancelled = false;
@@ -573,10 +586,10 @@ function AppShell() {
         onStopSession={stopRuntimeSession}
         onReleaseSession={releaseRuntimeSession}
         onCancelQueuedSession={cancelQueuedSession}
-        documentParse={{ status: 'stopped', waiting: [] }}
-        onStopParse={() => {}}
-        onReleaseParse={() => {}}
-        onCancelLoad={() => {}}
+        documentParse={documentParse}
+        onStopParse={() => { void api.stopDocumentParse?.(); }}
+        onReleaseParse={() => { void api.releaseDocumentParse?.(); }}
+        onCancelLoad={() => { void api.cancelDocumentParseLoad?.(); }}
       >
         {surfaceNode}
         {agentFrames}

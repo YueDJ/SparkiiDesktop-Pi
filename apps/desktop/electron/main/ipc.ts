@@ -6,6 +6,8 @@ import { join } from 'node:path';
 import { listPiSessions, readPiSessionEntries, connectorWriteProposal, type PiProviderInfo, type SessionSaddle, type ConnectorReadRequest, type ConnectorReadResult } from '@sparkii/agent-host';
 import { knowledgeConnector, SparkiiRagClient } from '@sparkii/connectors';
 import { applyThinkingLevel, createBroker, modelTargetKey, resolveModelTarget, resolveSessionModel, resolveThinkingLevel, runWorkflow, selectModel } from './workflow.js';
+import { executeDocumentRead } from './document-read.js';
+import { getDocumentParseSupervisor } from './document-parse-supervisor.js';
 import { findCompatibleModels, type ModelCapability } from '@sparkii/model-router';
 import { sortAgents } from './agent-catalog.js';
 import { resolveExportPath } from './export-path.js';
@@ -151,6 +153,9 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   }
   rt.pool.subscribe?.((snapshot) => {
     getWindow()?.webContents.send('sparkii:event:runtime-pool', snapshot);
+  });
+  getDocumentParseSupervisor().subscribe((snap) => {
+    getWindow()?.webContents.send('sparkii:event:document-parse', snap);
   });
   const openSessions = new Map<
     string,
@@ -375,6 +380,16 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       const cached = await cacheRagFile({ datasetId, documentId, fileName });
       if (!cached.ok) return { ok: false, error: cached.error };
       return { ok: true, data: { path: cached.path } };
+    }
+    if (req.toolName === 'document.read') {
+      const displayName = rt.profileOf(profileId)?.profile?.manifest?.displayName ?? profileId;
+      return executeDocumentRead(req.args, {
+        profileId,
+        sessionId,
+        actor: rt.subject.userId,
+        requestId: req.requestId,
+        agentDisplayName: displayName,
+      });
     }
     if (req.toolName !== 'knowledge.search') {
       return { ok: false, error: { code: 'CONNECTOR_DENIED', message: 'unhandled' } };
@@ -740,6 +755,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   });
 
   ipcMain.handle('sparkii:abortChat', async (_e, sessionId: string) => {
+    await getDocumentParseSupervisor().failSession(sessionId);
     const open = await ensureOpenSession(sessionId);
     ensureProcessPipe(open.slot);
     const cleared = await readQueues(open);
@@ -1101,12 +1117,18 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
 
   ipcMain.handle('sparkii:getRuntimePool', () => rt.pool.snapshot());
 
+  ipcMain.handle('sparkii:getDocumentParse', () => getDocumentParseSupervisor().snapshot());
+  ipcMain.handle('sparkii:stopDocumentParse', () => getDocumentParseSupervisor().stopCurrent());
+  ipcMain.handle('sparkii:releaseDocumentParse', () => getDocumentParseSupervisor().release());
+  ipcMain.handle('sparkii:cancelDocumentParseLoad', () => getDocumentParseSupervisor().stopCurrent());
+
   ipcMain.handle('sparkii:cancelQueuedSession', (_e, queueId: string) => {
     if (!rt.pool.cancelPending(queueId)) throw new Error('queue item not found');
     return { ok: true };
   });
 
   async function releaseSessionSlotInternal(sessionId: string): Promise<void> {
+    await getDocumentParseSupervisor().failSession(sessionId);
     if (!rt.pool.get(sessionId)) throw new Error('session is not occupying a runtime slot');
     cancelIdleRelease(sessionId);
     const open = openSessions.get(sessionId);

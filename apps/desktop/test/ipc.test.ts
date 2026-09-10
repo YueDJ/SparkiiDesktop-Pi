@@ -29,7 +29,7 @@ vi.mock('electron', () => {
         handlers.set(channel, fn);
       },
     },
-    app: { getPath: () => '' },
+    app: { getPath: () => '', on: () => {}, quit: () => {} },
     dialog: {
       showOpenDialog: vi.fn(),
       showSaveDialog: vi.fn(),
@@ -42,6 +42,33 @@ vi.mock('electron', () => {
     },
   };
 });
+
+const { supervisorMocks, executeDocumentReadMock } = vi.hoisted(() => ({
+  supervisorMocks: {
+    failSession: vi.fn(async () => {}),
+    subscribe: vi.fn(() => () => {}),
+    snapshot: vi.fn(() => ({ status: 'stopped' as const, waiting: [] })),
+    stopCurrent: vi.fn(async () => {}),
+    release: vi.fn(async () => {}),
+    beginQuit: vi.fn(async () => {}),
+  },
+  executeDocumentReadMock: vi.fn(async () => ({ ok: true, data: { text: 'x', engine: 'native' } })),
+}));
+
+vi.mock('../electron/main/document-parse-supervisor.js', () => ({
+  getDocumentParseSupervisor: () => ({
+    failSession: supervisorMocks.failSession,
+    subscribe: supervisorMocks.subscribe,
+    snapshot: supervisorMocks.snapshot,
+    stopCurrent: supervisorMocks.stopCurrent,
+    release: supervisorMocks.release,
+    beginQuit: supervisorMocks.beginQuit,
+  }),
+}));
+
+vi.mock('../electron/main/document-read.js', () => ({
+  executeDocumentRead: executeDocumentReadMock,
+}));
 
 async function registeredHandlers(): Promise<Map<string, (...args: unknown[]) => unknown>> {
   const electron = (await import('electron')) as unknown as {
@@ -70,6 +97,10 @@ let dirs: string[] = [];
 afterEach(async () => {
   vi.useRealTimers();
   resetGrantedDocumentPaths();
+  supervisorMocks.failSession.mockReset();
+  supervisorMocks.failSession.mockResolvedValue(undefined);
+  executeDocumentReadMock.mockReset();
+  executeDocumentReadMock.mockResolvedValue({ ok: true, data: { text: 'x', engine: 'native' } });
   for (const dir of dirs) await rm(dir, { recursive: true, force: true });
   dirs = [];
   vi.unstubAllGlobals();
@@ -1984,6 +2015,142 @@ describe('ipc provider handlers', () => {
       ok: true,
       cleared: { steering: ['先做这个'], followUp: ['做完后整理'] },
     });
+  });
+
+  it('connector_read document.read is handled by executeDocumentRead', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(
+      join(dataDir, 'settings.json'),
+      JSON.stringify({ activeProviderId: 'deepseek', defaultModel: 'deepseek-v4-pro' }),
+      'utf8',
+    );
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's1', sessionFile: null, isStreaming: false } };
+        }
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'contract-review', model: 'deepseek-v4-pro' },
+      profile: {
+        dir: join(dataDir, 'profiles', 'contract-review'),
+        profile: {
+          manifest: { name: 'contract-review', displayName: '合同审核' },
+          agent: { tools: ['document.read'], prompts: { system: 'test' } },
+        },
+        router: { resolve: () => undefined },
+      },
+    });
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:promptSession')!(null, 's1', '开始');
+    const read = (rt as any).__onConnectorRead;
+    const out = await read?.({ requestId: 'r1', toolName: 'document.read', args: { documents: ['/tmp/a.docx'] } });
+    expect(out).toEqual({ ok: true, data: { text: 'x', engine: 'native' } });
+    expect(out?.error?.message).not.toBe('unhandled');
+    expect(executeDocumentReadMock).toHaveBeenCalled();
+  });
+
+  it('abortChat calls failSession before Pi abort', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(
+      join(dataDir, 'settings.json'),
+      JSON.stringify({ activeProviderId: 'deepseek', defaultModel: 'deepseek-v4-pro' }),
+      'utf8',
+    );
+    const order: string[] = [];
+    supervisorMocks.failSession.mockImplementation(async () => { order.push('fail'); });
+    const client = {
+      onEvent: (cb: (event: any) => void) => {
+        queueMicrotask(() => cb({ type: 'agent_end' }));
+        return () => {};
+      },
+      send: async (command: any) => {
+        if (command.type === 'abort') order.push('abort');
+        if (command.type === 'clear_queue') order.push('clear');
+        if (command.type === 'get_state') {
+          return { success: true, data: { isStreaming: false, sessionFile: null, steering: [], followUp: [] } };
+        }
+        return { success: true };
+      },
+    };
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'contract-review', model: 'deepseek-v4-pro' },
+    });
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:promptSession')!(null, 's1', '开始');
+    order.length = 0;
+    await handlers.get('sparkii:abortChat')!(null, 's1');
+    expect(order[0]).toBe('fail');
+    expect(order.indexOf('fail')).toBeLessThan(order.indexOf('abort'));
+    expect(order.indexOf('fail')).toBeLessThan(order.indexOf('clear'));
+  });
+
+  it('releaseSessionSlot calls failSession before unbind', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const order: string[] = [];
+    supervisorMocks.failSession.mockImplementation(async () => { order.push('fail'); });
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 'A', sessionFile: '/tmp/a.jsonl', isStreaming: false } };
+        }
+        order.push(`send:${command.type}`);
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'general', model: null },
+      getWindow: () => ({
+        on: () => {},
+        isDestroyed: () => false,
+        webContents: { send: () => {} },
+      }) as any,
+    });
+    (rt.pool as any).release = vi.fn(async () => { order.push('release'); });
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:updateWorkflowState')!(null, 'A', { action: 'risk_confirmed' });
+    order.length = 0;
+    await handlers.get('sparkii:releaseSessionSlot')!(null, 'A');
+    expect(order[0]).toBe('fail');
+    expect(order.indexOf('fail')).toBeLessThan(order.indexOf('release'));
+  });
+
+  it('getDocumentParse handler exists', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }), onEvent: () => () => {} },
+    });
+    const handlers = await registeredHandlers();
+    const getDocumentParse = handlers.get('sparkii:getDocumentParse');
+    expect(getDocumentParse).toBeTypeOf('function');
+    expect(await getDocumentParse!(null)).toEqual({ status: 'stopped', waiting: [] });
   });
 
   it('queueMutate rebuilds both queues from the current Pi snapshot', async () => {
