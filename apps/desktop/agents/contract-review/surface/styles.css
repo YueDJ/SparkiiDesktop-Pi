@@ -3,6 +3,7 @@
 .contract-header-subtitle { color: var(--color-textMuted); font-size: 12px; }
 
 .contract-split.left-collapsed .contract-panel--doc .contract-panel-head b,
+.contract-split.left-collapsed .contract-panel--doc .contract-panel-head .ui-recognition-quality,
 .contract-split.left-collapsed .contract-panel--doc .contract-panel-hint,
 .contract-split.left-collapsed .contract-panel--doc .contract-missing,
 .contract-split.left-collapsed .contract-panel--doc .contract-panel-body { display: none; }
@@ -32,6 +33,11 @@
 }
 .contract-doc-preview--pdf,
 .contract-doc-preview--docx { display: flex; flex-direction: column; gap: 12px; }
+.contract-doc-preview--image img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
 .contract-doc-page {
   width: 100%;
   height: auto;

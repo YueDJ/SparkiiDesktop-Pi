@@ -2,13 +2,13 @@ import { readFile, stat } from 'node:fs/promises';
 import { basename, extname } from 'node:path';
 import { isPathInside } from './workspace.js';
 
-export type DocumentKind = 'pdf' | 'docx' | 'txt';
+export type DocumentKind = 'pdf' | 'docx' | 'txt' | 'image';
 
 export type ReadDocumentBytesResult =
   | { kind: DocumentKind; fileName: string; fileSize: number; bytes: ArrayBuffer }
   | { error: 'missing' | 'unsupported' | 'too_large' | 'denied' };
 
-export const PREVIEW_EXTENSIONS = ['.pdf', '.docx', '.txt'] as const;
+export const PREVIEW_EXTENSIONS = ['.pdf', '.docx', '.txt', '.jpg', '.jpeg', '.png'] as const;
 export const DEFAULT_CHOOSE_EXTENSIONS = ['pdf', 'docx', 'xlsx', 'txt', 'md'] as const;
 export const MAX_DOCUMENT_BYTES = 40 * 1024 * 1024;
 
@@ -29,10 +29,15 @@ export function resetGrantedDocumentPaths(): void {
 }
 
 export function documentKindOf(path: string): DocumentKind | null {
-  const ext = extname(path).toLowerCase();
+  let ext = extname(path).toLowerCase();
+  if (!ext) {
+    const base = basename(path).toLowerCase();
+    if (base.startsWith('.')) ext = base;
+  }
   if (ext === '.pdf') return 'pdf';
   if (ext === '.docx') return 'docx';
   if (ext === '.txt') return 'txt';
+  if (ext === '.jpg' || ext === '.jpeg' || ext === '.png') return 'image';
   return null;
 }
 

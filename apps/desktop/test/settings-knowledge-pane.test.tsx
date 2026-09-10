@@ -28,6 +28,12 @@ function makeApi(over: Record<string, unknown> = {}) {
       { id: 'general', name: '通用智能体', knowledge: { enabled: false } },
     ]),
     getApiKey: vi.fn().mockResolvedValue('sk-should-not-be-used'),
+    saveDocumentParseSettings: vi.fn().mockResolvedValue({ ok: true }),
+    listDocumentParseModules: vi.fn().mockResolvedValue([]),
+    retryDocumentParse: vi.fn().mockResolvedValue({ ok: true }),
+    importDocumentParseModule: vi.fn().mockResolvedValue({ ok: true }),
+    downloadDocumentParseModule: vi.fn().mockResolvedValue({ ok: true }),
+    getDocumentParse: vi.fn().mockResolvedValue({ status: 'stopped', waiting: [] }),
     ...over,
   } as any;
 }

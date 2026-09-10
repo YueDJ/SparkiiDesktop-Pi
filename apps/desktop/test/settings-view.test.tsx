@@ -15,6 +15,15 @@ function makeApi(over: Record<string, unknown> = {}) {
     ]),
     listModels: vi.fn().mockResolvedValue({ ok: true, models: ['qwen2.5', 'llama3.1'] }),
     testConnection: vi.fn().mockResolvedValue({ ok: true, latencyMs: 86 }),
+    saveDocumentParseSettings: vi.fn().mockResolvedValue({ ok: true }),
+    listDocumentParseModules: vi.fn().mockResolvedValue([
+      { id: 'baseline', label: '基础解析', bundled: true, installed: true, canDownload: false },
+      { id: 'seal', label: '印章', bundled: false, installed: false, canDownload: false },
+    ]),
+    retryDocumentParse: vi.fn().mockResolvedValue({ ok: true }),
+    importDocumentParseModule: vi.fn().mockResolvedValue({ ok: true }),
+    downloadDocumentParseModule: vi.fn().mockResolvedValue({ ok: true }),
+    getDocumentParse: vi.fn().mockResolvedValue({ status: 'stopped', waiting: [] }),
     ...over,
   } as any;
 }
@@ -79,6 +88,13 @@ describe('SettingsView provider rendering', () => {
     await waitFor(() => expect(saveSettings).toHaveBeenCalled());
     const arg = saveSettings.mock.calls[0][0] as Record<string, unknown>;
     expect(arg.chatDetailLevel).toBe('debug');
+  });
+
+  it('runtime pane notes that max agents does not constrain document parse', async () => {
+    render(<SettingsView api={makeApi()} />);
+    await screen.findByText('已加载本机配置');
+    fireEvent.click(screen.getByText('智能体与运行'));
+    expect(screen.getByText('并行上限只约束智能体，不约束文档解析。')).toBeTruthy();
   });
 });
 

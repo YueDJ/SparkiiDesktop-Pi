@@ -60,7 +60,7 @@ describe('ContractSurface', () => {
       />,
     );
     fireEvent.click(screen.getByTestId('upload'));
-    expect(chooseDocument).toHaveBeenCalledWith({ extensions: ['pdf', 'docx', 'txt'] });
+    expect(chooseDocument).toHaveBeenCalledWith({ extensions: ['pdf', 'docx', 'txt', 'jpg', 'jpeg', 'png'] });
     expect(await screen.findByTestId('remove-document')).toBeTruthy();
     expect(screen.queryByTestId('upload')).toBeNull();
     expect(screen.queryByText('更换文件')).toBeNull();
@@ -912,5 +912,62 @@ describe('ContractAgentSurface', () => {
       />,
     );
     expect(await screen.findByText('暂不支持预览该文件类型')).toBeTruthy();
+  });
+
+  it('shows recognition quality on the original document side after load completes', () => {
+    const entries = normalizeSessionEntries([
+      {
+        type: 'custom',
+        id: 'c-load',
+        customType: 'workflow_step_end',
+        data: {
+          stepId: 'load',
+          status: 'completed',
+          output: {
+            text: '...',
+            engine: 'structure',
+            meta: {
+              fileName: 'scan.pdf',
+              quality: { score: 0.78, level: 'mid', pages: [{ page: 1, score: 0.78, level: 'mid' }] },
+            },
+          },
+        },
+      },
+      {
+        type: 'custom',
+        id: 'c-review',
+        customType: 'workflow_step_end',
+        data: {
+          stepId: 'review',
+          status: 'completed',
+          output: { riskFindings: [{ id: 'r1', title: '付款周期过长', level: 'high' }] },
+        },
+      },
+    ]);
+    const readDocumentBytes = vi.fn().mockResolvedValue({
+      kind: 'pdf',
+      fileName: 'scan.pdf',
+      fileSize: 12,
+      bytes: new Uint8Array([1, 2, 3]).buffer,
+    });
+    render(
+      <ContractAgentSurface
+        agent={agent}
+        sessionId="s1"
+        mode="history"
+        session={{
+          entries,
+          streaming: false,
+          status: 'done',
+          meta: { currentStep: 'review', inputs: [{ path: 'C:/tmp/scan.pdf', name: 'scan.pdf' }] },
+        }}
+        actions={{ ...makeActions(), readDocumentBytes }}
+      />,
+    );
+    const bar = screen.getByTestId('recognition-quality');
+    expect(bar.textContent).toContain('识别质量');
+    expect(bar.textContent).toContain('中');
+    expect(bar.textContent).toContain('78%');
+    expect(bar.closest('.contract-panel--doc')).toBeTruthy();
   });
 });

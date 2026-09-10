@@ -4,6 +4,7 @@ import {
   isChatDetailLevel,
   chatDetailLevelLabel,
   shouldShowEntry,
+  unwrapToolResult,
 } from '../src/workbench/chat-detail-level.js';
 
 const message = {
@@ -73,4 +74,59 @@ describe('chat detail level helpers', () => {
     expect(shouldShowEntry(tool(), 'standard')).toBe(true);
     expect(shouldShowEntry(tool(), 'debug')).toBe(true);
   });
+
+  it('shows structure document.read in minimal', () => {
+    expect(shouldShowEntry(tool({
+      toolName: 'document.read',
+      result: { ok: true, data: { engine: 'structure' } },
+    }), 'minimal')).toBe(true);
+  });
+
+  it('shows structure document_read with Pi-wrapped content JSON in minimal', () => {
+    const payload = { ok: true, data: { engine: 'structure', meta: { fileName: 'scan.pdf' } } };
+    expect(shouldShowEntry(tool({
+      toolName: 'document_read',
+      result: { content: [{ type: 'text', text: JSON.stringify(payload) }] },
+    }), 'minimal')).toBe(true);
+  });
+
+  it('still hides ordinary successful bash in minimal', () => {
+    expect(shouldShowEntry(tool({ result: { ok: true } }), 'minimal')).toBe(false);
+  });
 });
+
+const structurePayload = {
+  ok: true,
+  data: {
+    engine: 'structure',
+    meta: { fileName: 'scan.pdf', quality: { score: 0.78, level: 'mid', pages: [] } },
+  },
+};
+
+describe('unwrapToolResult', () => {
+  it('passes through a logical { ok, data } ToolResult', () => {
+    expect(unwrapToolResult(structurePayload)).toEqual(structurePayload);
+  });
+
+  it('unwraps Pi execute { content: [{ type, text }] }', () => {
+    expect(unwrapToolResult({
+      content: [{ type: 'text', text: JSON.stringify(structurePayload) }],
+      details: {},
+    })).toEqual(structurePayload);
+  });
+
+  it('unwraps history toolResult messages', () => {
+    expect(unwrapToolResult({
+      role: 'toolResult',
+      toolName: 'document_read',
+      content: [{ type: 'text', text: JSON.stringify(structurePayload) }],
+    })).toEqual(structurePayload);
+  });
+
+  it('uses data.engine already present at the top level after parse', () => {
+    expect(unwrapToolResult({
+      data: { engine: 'structure', meta: { fileName: 'scan.pdf' } },
+    })?.data).toMatchObject({ engine: 'structure' });
+  });
+});
+

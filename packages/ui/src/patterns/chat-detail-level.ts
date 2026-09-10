@@ -61,12 +61,64 @@ function toolResultIsImportant(result: unknown): boolean {
   return rec.ok === false || rec.success === false || rec.error !== undefined;
 }
 
+export function isDocumentReadTool(name: string | undefined): boolean {
+  return name === 'document.read' || name === 'document_read';
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
+}
+
+function contentText(rec: Record<string, unknown>): string | undefined {
+  const content = rec.content;
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return undefined;
+  const parts: string[] = [];
+  for (const block of content) {
+    const blockRec = asRecord(block);
+    if (typeof blockRec?.text === 'string') parts.push(blockRec.text);
+  }
+  return parts.length ? parts.join('') : undefined;
+}
+
+function hasDataEngine(rec: Record<string, unknown>): boolean {
+  const data = asRecord(rec.data);
+  return typeof data?.engine === 'string';
+}
+
+/** Unwrap Pi/history wraps to the logical ToolResult `{ ok, data?, error? }`. */
+export function unwrapToolResult(result: unknown): Record<string, unknown> | undefined {
+  let current: unknown = result;
+  for (let i = 0; i < 3; i++) {
+    const rec = asRecord(current);
+    if (!rec) return undefined;
+    if (hasDataEngine(rec) || typeof rec.ok === 'boolean' || rec.error !== undefined) return rec;
+    const text = contentText(rec);
+    if (typeof text !== 'string') return undefined;
+    try {
+      current = JSON.parse(text) as unknown;
+    } catch {
+      return undefined;
+    }
+  }
+  const rec = asRecord(current);
+  if (!rec) return undefined;
+  if (hasDataEngine(rec) || typeof rec.ok === 'boolean' || rec.error !== undefined) return rec;
+  return undefined;
+}
+
+function structureDocumentRead(result: unknown): boolean {
+  const data = unwrapToolResult(result)?.data;
+  return Boolean(data && typeof data === 'object' && (data as { engine?: string }).engine === 'structure');
+}
+
 export function shouldShowEntry(entry: ChatEntry, level: ChatDetailLevel): boolean {
   if (entry.kind === 'message') return true;
 
   if (entry.kind === 'tool') {
     if (level === 'minimal') {
-      return Boolean(entry.awaitingApproval) || entry.isError === true || toolResultIsImportant(entry.result);
+      return Boolean(entry.awaitingApproval) || entry.isError === true || toolResultIsImportant(entry.result)
+        || (isDocumentReadTool(entry.toolName) && structureDocumentRead(entry.result));
     }
     return true;
   }

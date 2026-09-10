@@ -41,6 +41,7 @@ describe('ensureRuntime', () => {
 
     await ensureRuntime({ archivePath: archive, env: { SPARKII_RUNTIME_ROOT: root } });
 
+    expect(childProcessMock.spawn).toHaveBeenCalledTimes(1);
     expect(childProcessMock.spawn).toHaveBeenCalledWith(
       archive,
       [`-o${join(root, 'portable-git')}`, '-y'],
@@ -71,6 +72,18 @@ describe('ensureRuntime', () => {
 
     expect(existsSync(join(root, 'tools', 'fd.exe'))).toBe(true);
     expect(existsSync(join(root, 'tools', 'rg.exe'))).toBe(true);
+    expect(childProcessMock.spawn).not.toHaveBeenCalled();
+  });
+
+  it('does not spawn a document-parse extract when that archive is missing', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'sparkii-rt-'));
+    provision(root);
+
+    await ensureRuntime({
+      env: { SPARKII_RUNTIME_ROOT: root, SPARKII_DOCUMENT_PARSE_ARCHIVE: join(root, 'missing.7z.exe') },
+    });
+
+    expect(childProcessMock.spawn).not.toHaveBeenCalled();
   });
 
   it('throws when toolsDir is present but missing a search tool', async () => {

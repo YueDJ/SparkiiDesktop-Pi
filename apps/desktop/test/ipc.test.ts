@@ -11,6 +11,7 @@ import { listUserSkills } from '../electron/main/skill-library.js';
 import { resetGrantedDocumentPaths } from '../electron/main/document-bytes.js';
 import { selectModel } from '../electron/main/workflow.js';
 import type { Runtime } from '../electron/main/runtime.js';
+import { downloadDocumentParseModule } from '../electron/main/document-parse-modules.js';
 
 vi.mock('@sparkii/agent-host', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sparkii/agent-host')>();
@@ -29,7 +30,7 @@ vi.mock('electron', () => {
         handlers.set(channel, fn);
       },
     },
-    app: { getPath: () => '' },
+    app: { getPath: () => '', on: () => {}, quit: () => {} },
     dialog: {
       showOpenDialog: vi.fn(),
       showSaveDialog: vi.fn(),
@@ -40,6 +41,45 @@ vi.mock('electron', () => {
     nativeImage: {
       createFromPath: vi.fn(),
     },
+  };
+});
+
+const { supervisorMocks, executeDocumentReadMock } = vi.hoisted(() => ({
+  supervisorMocks: {
+    failSession: vi.fn(async () => {}),
+    subscribe: vi.fn(() => () => {}),
+    snapshot: vi.fn(() => ({ status: 'stopped' as const, waiting: [] })),
+    stopCurrent: vi.fn(async () => {}),
+    release: vi.fn(async () => {}),
+    beginQuit: vi.fn(async () => {}),
+    setIdleMinutes: vi.fn(),
+    setKeepResident: vi.fn(),
+    clearCircuit: vi.fn(),
+    setErrorReporter: vi.fn(),
+  },
+  executeDocumentReadMock: vi.fn(async () => ({ ok: true, data: { text: 'x', engine: 'native' } })),
+}));
+
+vi.mock('../electron/main/document-parse-supervisor.js', () => ({
+  getDocumentParseSupervisor: () => ({
+    failSession: supervisorMocks.failSession,
+    subscribe: supervisorMocks.subscribe,
+    snapshot: supervisorMocks.snapshot,
+    stopCurrent: supervisorMocks.stopCurrent,
+    release: supervisorMocks.release,
+    beginQuit: supervisorMocks.beginQuit,
+    setIdleMinutes: supervisorMocks.setIdleMinutes,
+    setKeepResident: supervisorMocks.setKeepResident,
+    clearCircuit: supervisorMocks.clearCircuit,
+    setErrorReporter: supervisorMocks.setErrorReporter,
+  }),
+}));
+
+vi.mock('../electron/main/document-read.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../electron/main/document-read.js')>();
+  return {
+    ...actual,
+    executeDocumentRead: executeDocumentReadMock,
   };
 });
 
@@ -70,6 +110,14 @@ let dirs: string[] = [];
 afterEach(async () => {
   vi.useRealTimers();
   resetGrantedDocumentPaths();
+  supervisorMocks.failSession.mockReset();
+  supervisorMocks.failSession.mockResolvedValue(undefined);
+  supervisorMocks.setIdleMinutes.mockReset();
+  supervisorMocks.setKeepResident.mockReset();
+  supervisorMocks.clearCircuit.mockReset();
+  supervisorMocks.setErrorReporter.mockReset();
+  executeDocumentReadMock.mockReset();
+  executeDocumentReadMock.mockResolvedValue({ ok: true, data: { text: 'x', engine: 'native' } });
   for (const dir of dirs) await rm(dir, { recursive: true, force: true });
   dirs = [];
   vi.unstubAllGlobals();
@@ -86,6 +134,7 @@ async function makeRuntime(opts: {
   agentOf?: (id: string) => unknown;
   agents?: Map<string, unknown>;
   audit?: { append: (ev: unknown) => Promise<unknown>; query?: (filter: object) => Promise<unknown[]> };
+  errors?: { append: (rec: unknown) => unknown };
   getWindow?: () => { webContents: { send: (...args: unknown[]) => void } } | null;
   /** 测试用：收集 ipc 订上的 `supervisor.onExit` 回调，用来模拟子进程退出。 */
   exitCbs?: Array<(code: number | null) => void>;
@@ -116,6 +165,7 @@ async function makeRuntime(opts: {
     executor: {},
     agents: opts.agents ?? new Map(),
     audit: opts.audit ?? { append: vi.fn(async (ev) => ev), query: vi.fn(async () => []) },
+    errors: opts.errors ?? { append: vi.fn() },
     pool: {
       acquire: vi.fn(async (sessionId: string, acquireOpts?: { meta?: { internal?: boolean } }) => {
         // 内部探测在真实池子里占的是另一个槽位，不动这条会话的牌子。
@@ -358,6 +408,49 @@ describe('ipc provider handlers', () => {
     await handlers.get('sparkii:saveSettings')!(null, { activeProviderId: 'deepseek', apiKey: 'sk-ds' });
     const s = await handlers.get('sparkii:getSettings')!(null) as { rag: { baseUrl: string } };
     expect(s.rag.baseUrl).toBe('http://rag.example');
+  });
+
+  it('saveSettings does not wipe documentParse', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const keys = new Map<string, string>();
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      keyFor: async (id) => keys.get(id) ?? null,
+      setKey: async (id, key) => { keys.set(id, key); },
+    });
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:saveDocumentParseSettings')!(null, { idleMinutes: 12, keepResident: true });
+    await handlers.get('sparkii:saveSettings')!(null, {
+      activeProviderId: 'deepseek',
+      apiKey: 'sk-ds',
+      documentParse: { idleMinutes: 1, keepResident: false },
+    });
+    const s = await handlers.get('sparkii:getSettings')!(null) as {
+      documentParse: { idleMinutes: number; keepResident: boolean };
+    };
+    expect(s.documentParse.idleMinutes).toBe(12);
+    expect(s.documentParse.keepResident).toBe(true);
+    expect(supervisorMocks.setIdleMinutes).toHaveBeenCalledWith(12);
+    expect(supervisorMocks.setKeepResident).toHaveBeenCalledWith(true);
+    expect(supervisorMocks.clearCircuit).toHaveBeenCalled();
+  });
+
+  it('download huggingface URL is rejected', async () => {
+    await expect(downloadDocumentParseModule('seal', {
+      catalog: [{
+        id: 'seal',
+        label: '印章',
+        url: 'https://huggingface.co/PaddlePaddle/foo/resolve/main/x.tar',
+        sha256: 'ab'.repeat(32),
+        minBytes: 1,
+        target: 'optional/seal',
+      }],
+    })).rejects.toThrow('网络不可达，请改用导入离线包。');
   });
 
   it('promptSession refuses sparkiirag profiles when RAG is unconfigured', async () => {
@@ -1983,6 +2076,219 @@ describe('ipc provider handlers', () => {
     expect(result).toEqual({
       ok: true,
       cleared: { steering: ['先做这个'], followUp: ['做完后整理'] },
+    });
+  });
+
+  it('connector_read document.read is handled by executeDocumentRead', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(
+      join(dataDir, 'settings.json'),
+      JSON.stringify({ activeProviderId: 'deepseek', defaultModel: 'deepseek-v4-pro' }),
+      'utf8',
+    );
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's1', sessionFile: null, isStreaming: false } };
+        }
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'contract-review', model: 'deepseek-v4-pro' },
+      profile: {
+        dir: join(dataDir, 'profiles', 'contract-review'),
+        profile: {
+          manifest: { name: 'contract-review', displayName: '合同审核' },
+          agent: { tools: ['document.read'], prompts: { system: 'test' } },
+        },
+        router: { resolve: () => undefined },
+      },
+    });
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:promptSession')!(null, 's1', '开始');
+    const read = (rt as any).__onConnectorRead;
+    const fullText = '# 合同全文不得写入审计';
+    executeDocumentReadMock.mockResolvedValue({
+      ok: true,
+      data: {
+        text: fullText,
+        engine: 'structure',
+        meta: { fileName: 'a.docx', pageCount: 2, quality: { score: 0.91 } },
+      },
+    });
+    const out = await read?.({ requestId: 'r1', toolName: 'document.read', args: { documents: ['/tmp/a.docx'] } });
+    expect(out?.ok).toBe(true);
+    expect(out?.error?.message).not.toBe('unhandled');
+    expect(executeDocumentReadMock).toHaveBeenCalled();
+    expect(rt.audit.append).toHaveBeenCalledWith(expect.objectContaining({
+      actor: 'tester',
+      action: 'tool.read',
+      resource: 'document.read',
+      sessionId: 's1',
+    }));
+    const auditCall = (rt.audit.append as ReturnType<typeof vi.fn>).mock.calls.find(
+      (call: unknown[]) => (call[0] as { resource?: string })?.resource === 'document.read',
+    );
+    const summary = String((auditCall?.[0] as { payloadSummary?: string })?.payloadSummary ?? '');
+    expect(summary).toContain('a.docx');
+    expect(summary).toContain('structure');
+    expect(summary).toContain('0.91');
+    expect(summary).not.toContain(fullText);
+  });
+
+  it('reports document-parse spawn failures to the error center as 文档解析', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const append = vi.fn();
+    const send = vi.fn();
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      errors: { append },
+      getWindow: () => ({
+        on: () => {},
+        isDestroyed: () => false,
+        webContents: { send },
+      }),
+    });
+    const reporter = supervisorMocks.setErrorReporter.mock.calls.at(-1)?.[0] as ((message: string) => void) | undefined;
+    expect(typeof reporter).toBe('function');
+    reporter!('内存不足或文档解析无法启动，请到设置 → 文档解析查看。');
+    expect(append).toHaveBeenCalledWith(expect.objectContaining({
+      message: '内存不足或文档解析无法启动，请到设置 → 文档解析查看。',
+      source: '文档解析',
+    }));
+    expect(send).toHaveBeenCalledWith(
+      'sparkii:event:chat-event',
+      expect.objectContaining({
+        type: 'runtime_error',
+        message: '内存不足或文档解析无法启动，请到设置 → 文档解析查看。',
+        source: '文档解析',
+      }),
+    );
+  });
+
+  it('abortChat calls failSession before Pi abort', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(
+      join(dataDir, 'settings.json'),
+      JSON.stringify({ activeProviderId: 'deepseek', defaultModel: 'deepseek-v4-pro' }),
+      'utf8',
+    );
+    const order: string[] = [];
+    supervisorMocks.failSession.mockImplementation(async () => { order.push('fail'); });
+    const client = {
+      onEvent: (cb: (event: any) => void) => {
+        queueMicrotask(() => cb({ type: 'agent_end' }));
+        return () => {};
+      },
+      send: async (command: any) => {
+        if (command.type === 'abort') order.push('abort');
+        if (command.type === 'clear_queue') order.push('clear');
+        if (command.type === 'get_state') {
+          return { success: true, data: { isStreaming: false, sessionFile: null, steering: [], followUp: [] } };
+        }
+        return { success: true };
+      },
+    };
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'contract-review', model: 'deepseek-v4-pro' },
+    });
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:promptSession')!(null, 's1', '开始');
+    order.length = 0;
+    await handlers.get('sparkii:abortChat')!(null, 's1');
+    expect(order[0]).toBe('fail');
+    expect(order.indexOf('fail')).toBeLessThan(order.indexOf('abort'));
+    expect(order.indexOf('fail')).toBeLessThan(order.indexOf('clear'));
+  });
+
+  it('releaseSessionSlot calls failSession before unbind', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const order: string[] = [];
+    supervisorMocks.failSession.mockImplementation(async () => { order.push('fail'); });
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 'A', sessionFile: '/tmp/a.jsonl', isStreaming: false } };
+        }
+        order.push(`send:${command.type}`);
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'general', model: null },
+      getWindow: () => ({
+        on: () => {},
+        isDestroyed: () => false,
+        webContents: { send: () => {} },
+      }) as any,
+    });
+    (rt.pool as any).release = vi.fn(async () => { order.push('release'); });
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:updateWorkflowState')!(null, 'A', { action: 'risk_confirmed' });
+    order.length = 0;
+    await handlers.get('sparkii:releaseSessionSlot')!(null, 'A');
+    expect(order[0]).toBe('fail');
+    expect(order.indexOf('fail')).toBeLessThan(order.indexOf('release'));
+  });
+
+  it('getDocumentParse handler exists', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }), onEvent: () => () => {} },
+    });
+    const handlers = await registeredHandlers();
+    const getDocumentParse = handlers.get('sparkii:getDocumentParse');
+    expect(getDocumentParse).toBeTypeOf('function');
+    expect(await getDocumentParse!(null)).toEqual({ status: 'stopped', waiting: [] });
+  });
+
+  it('downloadDocumentParseModule without production hashes fails with offline import hint', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }), onEvent: () => () => {} },
+    });
+    const handlers = await registeredHandlers();
+    const download = handlers.get('sparkii:downloadDocumentParseModule');
+    expect(download).toBeTypeOf('function');
+    expect(await download!(null, 'seal')).toEqual({
+      ok: false,
+      error: '网络不可达，请改用导入离线包。',
     });
   });
 

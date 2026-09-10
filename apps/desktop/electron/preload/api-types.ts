@@ -35,7 +35,7 @@ export interface DraftPromptContext {
 
 export type ChooseDocumentOptions = { extensions?: string[] };
 
-export type DocumentKind = 'pdf' | 'docx' | 'txt';
+export type DocumentKind = 'pdf' | 'docx' | 'txt' | 'image';
 
 export type ReadDocumentBytesResult =
   | { kind: DocumentKind; fileName: string; fileSize: number; bytes: ArrayBuffer }
@@ -116,6 +116,19 @@ export interface SparkiiApi {
   listThinkingLevels(providerId: string, modelId: string): Promise<string[]>;
   deleteChatSession(sessionId: string): Promise<{ ok: boolean }>;
   getRuntimePool(): Promise<RuntimePoolSnapshot>;
+  getDocumentParse(): Promise<{
+    status: 'stopped' | 'starting' | 'parsing' | 'idle' | 'resident';
+    fileName?: string;
+    agentDisplayName?: string;
+    page?: number;
+    total?: number;
+    idleRemainingSec?: number;
+    waiting: Array<{ sessionId: string; agentDisplayName: string; fileName: string }>;
+    circuitOpen?: boolean;
+  }>;
+  stopDocumentParse(): Promise<void>;
+  releaseDocumentParse(): Promise<void>;
+  cancelDocumentParseLoad(): Promise<void>;
   cancelQueuedSession(queueId: string): Promise<{ ok: boolean }>;
   releaseSessionSlot(sessionId: string): Promise<{ ok: boolean }>;
   listAgents(): Promise<Array<{
@@ -136,6 +149,17 @@ export interface SparkiiApi {
     bindings?: Array<{ agentId: string; defaultDatasetId: string }>;
     apiKey?: string;
   }): Promise<{ ok: true }>;
+  saveDocumentParseSettings(partial: { idleMinutes: number; keepResident: boolean }): Promise<{ ok: true }>;
+  listDocumentParseModules(): Promise<Array<{
+    id: string;
+    label: string;
+    bundled?: boolean;
+    installed: boolean;
+    canDownload: boolean;
+  }>>;
+  retryDocumentParse(): Promise<{ ok: true }>;
+  importDocumentParseModule(path?: string): Promise<{ ok: boolean; error?: string }>;
+  downloadDocumentParseModule(id: string): Promise<{ ok: boolean; error?: string }>;
   testRagConnection(apiKey?: string | null): Promise<{ ok: boolean; datasets?: Array<{ id: string; name: string }>; error?: string }>;
   listRagDatasets(apiKey?: string | null): Promise<{ ok: boolean; datasets?: Array<{ id: string; name: string }>; error?: string }>;
   setSessionKnowledge(sessionId: string, selection: KnowledgeSelection): Promise<{ ok: boolean; error?: string }>;

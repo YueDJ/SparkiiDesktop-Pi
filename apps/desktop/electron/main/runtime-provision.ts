@@ -9,11 +9,13 @@ import {
   resolveSearchToolPaths,
   SEARCH_TOOL_FILENAMES,
 } from './runtime-layout.js';
+import { ensureDocumentParse } from './document-parse-layout.js';
 
 export interface EnsureRuntimeOptions {
   archivePath?: string | null;
   env?: NodeJS.ProcessEnv;
   toolsDir?: string | null;
+  resourcesPath?: string;
 }
 
 export function runtimeArchivePath(
@@ -53,6 +55,11 @@ export async function ensureRuntime(opts: EnsureRuntimeOptions = {}): Promise<vo
     }
   }
   ensureSearchTools(env, opts.toolsDir);
+  try {
+    await ensureDocumentParse(env, { resourcesPath: opts.resourcesPath });
+  } catch {
+    // Missing or failed document-parse must never block Portable Git.
+  }
 }
 
 function ensureSearchTools(

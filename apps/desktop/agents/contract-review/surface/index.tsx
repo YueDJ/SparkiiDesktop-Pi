@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ContextUsageBar, Markdown, ModelEffortControl, RiskBadge, THINKING_LEVELS } from '@sparkii/ui';
+import { ContextUsageBar, Markdown, ModelEffortControl, RecognitionQuality, RiskBadge, THINKING_LEVELS, type RecognitionQualityValue } from '@sparkii/ui';
 import type { AgentSession, AgentSurfaceActions, AgentSurfaceProps, CustomSessionEntry } from '../../../src/surface/contract.js';
 import { deriveWorkflowTimeline, extractWorkflowResult } from '../../../src/surface/normalize.js';
 import { isWorkflowDraftBind, sessionIdChange } from '../../../src/surface/session-id.js';
@@ -9,7 +9,7 @@ import { bytesToBase64, documentFromHtml } from './report-docx.js';
 import { DocumentPreview, formatFileSize, kindLabel, type PreviewKind } from './DocumentPreview.js';
 import './styles.css';
 
-const PREVIEW_EXTENSIONS = ['pdf', 'docx', 'txt'];
+const PREVIEW_EXTENSIONS = ['pdf', 'docx', 'txt', 'jpg', 'jpeg', 'png'];
 
 type PreviewResult = { kind: PreviewKind; fileName: string; fileSize: number; bytes: ArrayBuffer };
 type PreviewError = 'missing' | 'unsupported' | 'too_large' | 'denied';
@@ -26,6 +26,7 @@ function kindFromName(name: string): PreviewKind | null {
   if (lower.endsWith('.pdf')) return 'pdf';
   if (lower.endsWith('.docx')) return 'docx';
   if (lower.endsWith('.txt')) return 'txt';
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png')) return 'image';
   return null;
 }
 
@@ -285,6 +286,7 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
     extractWorkflowResult(session.entries),
     extractContractOutputsFromEntries(session.entries),
   );
+  const load = result?.['load'] as { engine?: string; meta?: { quality?: RecognitionQualityValue } } | undefined;
   const reviewPayload = (result?.['review'] ?? result?.['compare']) as unknown;
   const findings = parseRiskFindings(reviewPayload);
   const report = formatReport(result?.['report']);
@@ -566,6 +568,10 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
         <section className="contract-panel contract-panel--doc">
           <header className="contract-panel-head">
             <b>合同原文</b>
+            <RecognitionQuality
+              quality={load?.meta?.quality}
+              engine={load?.engine === 'native' || load?.engine === 'structure' ? load.engine : undefined}
+            />
             {firstInput?.missing && <span className="contract-missing">无法找到原文件</span>}
             <button
               type="button"
