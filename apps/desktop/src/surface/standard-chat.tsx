@@ -686,7 +686,7 @@ export function StandardChatSurface(props: StandardChatProps) {
       continue;
     }
     const completed = entry.result !== undefined && !entry.awaitingApproval;
-    if (hideCompletedTools.has(entry.toolName) && completed) continue;
+    if (hideCompletedTools.has(entry.toolName) && completed && detailLevel !== 'debug') continue;
     timeline.push(
       <Fragment key={entry.id}>
         <ToolCard toolName={entry.toolName} input={entry.input} result={entry.result} awaitingApproval={entry.awaitingApproval} defaultOpen={detailLevel === 'debug'} />
