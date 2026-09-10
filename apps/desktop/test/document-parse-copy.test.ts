@@ -1,3 +1,4 @@
+import { createElement, Fragment } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { RuntimeCenter, StatusBar } from '@sparkii/ui';
@@ -71,26 +72,24 @@ describe('document-parse copy rules', () => {
   });
 
   it('renders RuntimeCenter and StatusBar parsing copy without internal names', () => {
-    const { container } = render(
-      <>
-        <RuntimeCenter
-          snapshot={{ active: 1, queued: 0, maxAgents: 4, sessions: [], queue: [] }}
-          documentParse={parsingSnap}
-          onStop={vi.fn()}
-          onRelease={vi.fn()}
-          onCancelQueue={vi.fn()}
-          onStopParse={vi.fn()}
-          onReleaseParse={vi.fn()}
-          onCancelLoad={vi.fn()}
-        />
-        <StatusBar
-          statusText="就绪"
-          runtimePool={{ active: 1, queued: 0, maxAgents: 4, sessions: [], queue: [] }}
-          documentParse={parsingSnap}
-          onOpenQueue={vi.fn()}
-        />
-      </>,
-    );
+    const { container } = render(createElement(Fragment, null,
+      createElement(RuntimeCenter, {
+        snapshot: { active: 1, queued: 0, maxAgents: 4, sessions: [], queue: [] },
+        documentParse: parsingSnap,
+        onStop: vi.fn(),
+        onRelease: vi.fn(),
+        onCancelQueue: vi.fn(),
+        onStopParse: vi.fn(),
+        onReleaseParse: vi.fn(),
+        onCancelLoad: vi.fn(),
+      }),
+      createElement(StatusBar, {
+        statusText: '就绪',
+        runtimePool: { active: 1, queued: 0, maxAgents: 4, sessions: [], queue: [] },
+        documentParse: parsingSnap,
+        onOpenQueue: vi.fn(),
+      }),
+    ));
     expect(screen.getByText(/正在解析/)).toBeTruthy();
     expect(screen.getByText(/文档解析进行中/)).toBeTruthy();
     expect(container.textContent).not.toMatch(FORBIDDEN);
@@ -100,7 +99,7 @@ describe('document-parse copy rules', () => {
   });
 
   it('renders Settings 文档解析 without internal names', async () => {
-    render(<SettingsView api={makeSettingsApi()} />);
+    render(createElement(SettingsView, { api: makeSettingsApi() }));
     fireEvent.click(screen.getByRole('button', { name: '文档解析' }));
     await screen.findByRole('heading', { name: '文档解析' });
     expect(document.body.textContent).not.toMatch(FORBIDDEN);

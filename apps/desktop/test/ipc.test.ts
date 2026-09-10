@@ -2156,7 +2156,11 @@ describe('ipc provider handlers', () => {
       piAgentDir,
       client: { send: async () => ({ success: true }) },
       errors: { append },
-      getWindow: () => ({ webContents: { send } }),
+      getWindow: () => ({
+        on: () => {},
+        isDestroyed: () => false,
+        webContents: { send },
+      }),
     });
     const reporter = supervisorMocks.setErrorReporter.mock.calls.at(-1)?.[0] as ((message: string) => void) | undefined;
     expect(typeof reporter).toBe('function');
