@@ -36,8 +36,15 @@ export interface DocumentParseJob {
 type SpawnFn = (
   command: string,
   args: string[],
-  options: { stdio: ['pipe', 'pipe', 'pipe'] },
+  options: { stdio: ['pipe', 'pipe', 'pipe']; windowsHide: true },
 ) => ChildProcess;
+
+const PARSE_FAILED_GENERIC = '文档解析失败。';
+
+function userFacingErrorMessage(err: unknown): string {
+  if (err instanceof Error && err.message.trim().length > 0) return err.message;
+  return PARSE_FAILED_GENERIC;
+}
 
 type KillTreeFn = (
   child: { pid?: number; kill?: (sig?: NodeJS.Signals) => boolean },
@@ -318,6 +325,9 @@ export class DocumentParseSupervisor {
     } finally {
       this.pumping = false;
     }
+    if (!this.quitting && !this.current && this.queue.length > 0) {
+      void this.pump();
+    }
   }
 
   private async runJob(job: InternalJob): Promise<void> {
@@ -352,10 +362,9 @@ export class DocumentParseSupervisor {
       if (job.aborted) return;
       job.settled = true;
       job.resolve(result);
-    } catch {
+    } catch (err) {
       if (job.aborted) return;
-      this.failJob(job, DOCUMENT_PARSE_SPAWN_FAILED);
-      await this.destroyChild();
+      this.failJob(job, userFacingErrorMessage(err));
     }
   }
 
@@ -366,7 +375,7 @@ export class DocumentParseSupervisor {
     const bin = this.resolveBin();
     let child: ChildProcess;
     try {
-      child = this.spawnFn(bin, [], { stdio: ['pipe', 'pipe', 'pipe'] });
+      child = this.spawnFn(bin, [], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
     } catch {
       this.noteSpawnFailure();
       this.failJob(job, DOCUMENT_PARSE_SPAWN_FAILED);
@@ -382,13 +391,10 @@ export class DocumentParseSupervisor {
         }),
       ]);
     } catch {
-      if (job.aborted) {
-        return;
-      }
+      if (job.aborted) return;
       this.noteSpawnFailure();
-      if (this.child === child) this.child = null;
-      this.client = null;
       this.failJob(job, DOCUMENT_PARSE_SPAWN_FAILED);
+      await this.destroyCreatedChild(child);
       throw new Error(DOCUMENT_PARSE_SPAWN_FAILED);
     }
 
@@ -396,6 +402,7 @@ export class DocumentParseSupervisor {
     if (!child.stdin || !child.stdout) {
       this.noteSpawnFailure();
       this.failJob(job, DOCUMENT_PARSE_SPAWN_FAILED);
+      await this.destroyCreatedChild(child);
       throw new Error(DOCUMENT_PARSE_SPAWN_FAILED);
     }
 
@@ -429,6 +436,14 @@ export class DocumentParseSupervisor {
     }
     this.status = 'stopped';
     this.notify();
+  }
+
+  private async destroyCreatedChild(child: ChildProcess): Promise<void> {
+    if (this.child === child) {
+      this.child = null;
+      this.client = null;
+    }
+    await this.killTreeFn(child);
   }
 
   private async destroyChild(): Promise<void> {
@@ -479,10 +494,15 @@ export class DocumentParseSupervisor {
   }
 
   private async onIdleTimeout(): Promise<void> {
+    const gen = this.idleGen;
     if (this.current || this.queue.length > 0) return;
     if (this.keepResident) return;
     if (this.status !== 'idle') return;
     await this.destroyChild();
+    if (this.idleGen !== gen) return;
+    if (this.current || this.queue.length > 0) return;
+    if (this.keepResident) return;
+    if (this.status === 'starting' || this.status === 'parsing' || this.status === 'resident') return;
     this.status = 'stopped';
     this.notify();
   }

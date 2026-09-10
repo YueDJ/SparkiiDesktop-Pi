@@ -76,6 +76,12 @@ class FakeParseChild extends EventEmitter {
     this.stdout.emit('data', encodeLine({ id: req.id, result }));
   }
 
+  replyError(code: string, message: string): void {
+    const req = this.parked.shift();
+    if (!req) throw new Error('FakeParseChild.replyError: no parked parse request');
+    this.stdout.emit('data', encodeLine({ id: req.id, error: { code, message } }));
+  }
+
   kill(_sig?: NodeJS.Signals): boolean {
     this.killed = true;
     this.emit('exit', 1);
@@ -173,7 +179,7 @@ describe('DocumentParseSupervisor', () => {
     expect(spawn).toHaveBeenCalledWith(
       '/fake/sparkii-document-parse.exe',
       [],
-      { stdio: ['pipe', 'pipe', 'pipe'] },
+      { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true },
     );
     expect(children[0]?.pid).toBe(1000);
 
@@ -384,6 +390,93 @@ describe('DocumentParseSupervisor', () => {
     expect(snap.agentDisplayName).toBe('合同审核智能体');
     children[0]!.reply();
     await pending;
+  });
+
+  it('does not mark stopped if a new job starts while idle kill is in flight', async () => {
+    const { supervisor, children, killTree } = setup();
+    const { pending } = await startParse(supervisor, children, job());
+    children[0]!.reply();
+    await pending;
+    await flush();
+    expect(supervisor.snapshot().status).toBe('idle');
+
+    let releaseKill!: () => void;
+    const hung = new Promise<void>((resolve) => {
+      releaseKill = resolve;
+    });
+    killTree.mockImplementation(async (child: { emit?: (event: string, ...args: unknown[]) => boolean }) => {
+      await hung;
+      child.emit?.('exit', 0);
+    });
+
+    vi.advanceTimersByTime(IDLE_MS);
+    expect(killTree).toHaveBeenCalledTimes(1);
+
+    const second = supervisor.enqueueParse(job({ fileName: 'during-kill.pdf', path: 'C:/during-kill.pdf' }));
+    await waitUntil(() => children.some((c) => c.parked.length > 0), 'job during hanging idle kill');
+    expect(supervisor.snapshot().status).toBe('parsing');
+
+    releaseKill();
+    await flush();
+    expect(supervisor.snapshot().status).toBe('parsing');
+    expect(supervisor.snapshot().status).not.toBe('stopped');
+    const active = children.find((c) => c.parked.length > 0)!;
+    active.reply({ markdown: '# late', pages: [{ page: 1, score: 0.5 }] });
+    await expect(second).resolves.toMatchObject({ markdown: '# late' });
+  });
+
+  it('pumps a job enqueued from an idle snapshot subscriber', async () => {
+    const { supervisor, children } = setup();
+    const { pending: first } = await startParse(supervisor, children, job({ fileName: 'one.pdf' }));
+    let second: Promise<{ markdown: string; pages: Array<{ page: number; score: number }> }> | undefined;
+    let startedSecond = false;
+    const unsub = supervisor.subscribe((snap) => {
+      if (snap.status !== 'idle' || startedSecond) return;
+      startedSecond = true;
+      second = supervisor.enqueueParse(job({ fileName: 'two.pdf', path: 'C:/two.pdf' }));
+    });
+    children[0]!.reply({ markdown: '# one', pages: [{ page: 1, score: 0.9 }] });
+    await first;
+    await waitUntil(
+      () => second != null && children.some((c) => c.parked.length > 0),
+      'subscribe-enqueued job',
+    );
+    const active = children.find((c) => c.parked.length > 0)!;
+    active.reply({ markdown: '# two', pages: [{ page: 1, score: 0.8 }] });
+    await expect(second).resolves.toMatchObject({ markdown: '# two' });
+    unsub();
+  });
+
+  it('rejects PARSE_FAILED with the rpc message, not spawn failure', async () => {
+    const { supervisor, children } = setup();
+    const { pending } = await startParse(supervisor, children, job());
+    children[0]!.replyError('PARSE_FAILED', 'x');
+    await expect(pending).rejects.toMatchObject({ message: 'x' });
+    expect(supervisor.snapshot().circuitOpen).toBeUndefined();
+  });
+
+  it('does not count PARSE_FAILED toward the spawn circuit', async () => {
+    const { supervisor, spawn, children } = setup();
+    const { pending: parseFail } = await startParse(supervisor, children, job({ fileName: 'bad.pdf' }));
+    children[0]!.replyError('PARSE_FAILED', 'corrupt');
+    await expect(parseFail).rejects.toThrow('corrupt');
+    expect(supervisor.snapshot().circuitOpen).toBeUndefined();
+
+    await supervisor.release();
+    await flush();
+
+    spawn.mockImplementation(() => {
+      const child = new FakeParseChild({ pid: 1000 + children.length, autoSpawn: false });
+      children.push(child);
+      queueMicrotask(() => child.failSpawn(new Error('ENOENT')));
+      return child;
+    });
+
+    await expect(supervisor.enqueueParse(job({ fileName: '1.pdf' }))).rejects.toThrow(SPAWN_FAILED);
+    await expect(supervisor.enqueueParse(job({ fileName: '2.pdf' }))).rejects.toThrow(SPAWN_FAILED);
+    expect(supervisor.snapshot().circuitOpen).toBeUndefined();
+    await expect(supervisor.enqueueParse(job({ fileName: '3.pdf' }))).rejects.toThrow(SPAWN_FAILED);
+    expect(supervisor.snapshot().circuitOpen).toBe(true);
   });
 });
 
