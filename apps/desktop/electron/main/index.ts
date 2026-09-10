@@ -43,6 +43,8 @@ app.whenReady().then(async () => {
   await ensureRuntime({
     archivePath: runtimeArchivePath(process.env, process.resourcesPath),
     toolsDir: runtimeToolsPath(process.env, process.resourcesPath),
+    resourcesPath: process.resourcesPath,
+    env: process.env,
   }).catch((e) => {
     void logger.log({ level: 'error', msg: 'runtime ensure failed', ctx: { error: e instanceof Error ? e.message : String(e) } });
   });

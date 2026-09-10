@@ -176,6 +176,21 @@ describe('executeDocumentRead', () => {
     expect(enqueueParse).not.toHaveBeenCalled();
   });
 
+  it('fails with 尚未就绪 when ensure skips and needs remains true', async () => {
+    const dir = await tempDir();
+    const path = join(dir, 'scan.jpg');
+    await writeFile(path, 'x');
+    const enqueueParse = vi.fn();
+    const out = await executeDocumentRead({ documents: [path] }, ctx, {
+      enqueueParse,
+      needsDocumentParse: () => true,
+      ensureDocumentParse: async () => {},
+      diskFreeBytes: async () => 10 * 1024 ** 3,
+    });
+    expect(out).toEqual({ ok: false, error: { code: 'CONNECTOR_IO', message: DOCUMENT_PARSE_NOT_READY } });
+    expect(enqueueParse).not.toHaveBeenCalled();
+  });
+
   it('fails with 磁盘空间不足 when diskFreeBytes is under 2GB', async () => {
     const dir = await tempDir();
     const path = join(dir, 'scan.jpg');

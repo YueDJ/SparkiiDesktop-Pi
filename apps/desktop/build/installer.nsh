@@ -13,6 +13,7 @@
 
 !macro customUnInstall
   RMDir /r "$LOCALAPPDATA\SparkiiDesktop\runtime\portable-git"
+  RMDir /r "$LOCALAPPDATA\SparkiiDesktop\runtime\document-parse"
   Delete "$LOCALAPPDATA\SparkiiDesktop\runtime\tools\fd.exe"
   Delete "$LOCALAPPDATA\SparkiiDesktop\runtime\tools\rg.exe"
   RMDir "$LOCALAPPDATA\SparkiiDesktop\runtime\tools"
