@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { RecognitionQuality } from '@sparkii/ui';
@@ -68,7 +69,7 @@ describe('RecognitionQuality', () => {
       />,
     );
     expect(document.body.textContent).not.toMatch(/worker|sidecar|OCR|Paddle/i);
-    const src = readFileSync(new URL('../../../packages/ui/src/patterns/RecognitionQuality.tsx', import.meta.url), 'utf8');
+    const src = readFileSync(resolve('packages/ui/src/patterns/RecognitionQuality.tsx'), 'utf8');
     expect(src).not.toMatch(/worker|sidecar|OCR|Paddle|JSON-RPC|Python/i);
   });
 });

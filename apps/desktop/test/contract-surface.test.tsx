@@ -968,7 +968,6 @@ describe('ContractAgentSurface', () => {
     expect(bar.textContent).toContain('识别质量');
     expect(bar.textContent).toContain('中');
     expect(bar.textContent).toContain('78%');
-    const originalPanel = screen.getByText('合同原文').closest('.contract-panel');
-    expect(originalPanel?.contains(bar)).toBe(true);
+    expect(bar.closest('.contract-panel--doc')).toBeTruthy();
   });
 });
