@@ -573,6 +573,10 @@ function AppShell() {
         onStopSession={stopRuntimeSession}
         onReleaseSession={releaseRuntimeSession}
         onCancelQueuedSession={cancelQueuedSession}
+        documentParse={{ status: 'stopped', waiting: [] }}
+        onStopParse={() => {}}
+        onReleaseParse={() => {}}
+        onCancelLoad={() => {}}
       >
         {surfaceNode}
         {agentFrames}

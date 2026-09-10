@@ -294,3 +294,11 @@ button { font: inherit; color: inherit; }
 .ui-settings-layout { display: grid; grid-template-columns: 176px 1fr; gap: var(--spacing-md); }
 .ui-settings-nav { display: flex; flex-direction: column; gap: 2px; }
 .ui-settings-content { min-width: 0; }
+
+.ui-runtime-center { display: flex; flex-direction: column; gap: var(--spacing-xs); }
+.ui-runtime-summary { font-size: var(--font-size-sm); color: var(--color-textSecondary); margin-bottom: var(--spacing-xs); }
+.ui-runtime-section { display: flex; flex-direction: column; gap: var(--spacing-xs); margin-top: var(--spacing-sm); }
+.ui-runtime-section > .ui-rail-label:first-child { font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--color-text); }
+.ui-runtime-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--spacing-sm); padding: var(--spacing-xs) 0; }
+.ui-runtime-main { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-xs); min-width: 0; }
+.ui-runtime-actions { display: flex; gap: var(--spacing-xs); flex: none; }

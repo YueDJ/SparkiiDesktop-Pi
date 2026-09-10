@@ -6,7 +6,7 @@ import { Drawer } from '../primitives/Drawer.js';
 import { AgentNav } from './AgentNav.js';
 import { SessionList, type SessionGroup, type SessionListItem } from './SessionList.js';
 import { StatusBar } from './StatusBar.js';
-import { RuntimeCenter, type RuntimePoolSummary } from './RuntimeCenter.js';
+import { EMPTY_DOCUMENT_PARSE, RuntimeCenter, type DocumentParseSnapshot, type RuntimePoolSummary } from './RuntimeCenter.js';
 import { ErrorCenterPanel, useErrors } from './ErrorCenter.js';
 import { TextField } from '../primitives/TextField.js';
 import { GearIcon, MoonIcon, SunIcon, UserIcon, ShieldIcon, SearchIcon, CloseIcon, MinimizeIcon, MaximizeIcon, WindowRestoreIcon, BellIcon, SparkiiMark } from '../icons/index.js';
@@ -47,6 +47,7 @@ export interface ShellProps {
   pendingApprovals: number;
   statusText: string;
   runtimePool?: RuntimePoolSummary;
+  documentParse?: DocumentParseSnapshot;
   userName?: string;
   userRole?: string;
   onNavigate(screen: ScreenId): void;
@@ -60,6 +61,9 @@ export interface ShellProps {
   onStopSession?(sessionId: string): Promise<void> | void;
   onReleaseSession?(sessionId: string): Promise<void> | void;
   onCancelQueuedSession?(queueId: string): Promise<void> | void;
+  onStopParse?(): Promise<void> | void;
+  onReleaseParse?(): Promise<void> | void;
+  onCancelLoad?(): Promise<void> | void;
   children?: ReactNode;
 }
 
@@ -87,7 +91,7 @@ function isRunningStatus(status: string | undefined): boolean {
 }
 
 export function Shell(props: ShellProps) {
-  const { active, agents, sessions, pendingApprovals, statusText, runtimePool, userName = 'admin', userRole = '审核员', onNavigate, onNewSession, onOpenSession, children } = props;
+  const { active, agents, sessions, pendingApprovals, statusText, runtimePool, documentParse = EMPTY_DOCUMENT_PARSE, userName = 'admin', userRole = '审核员', onNavigate, onNewSession, onOpenSession, children } = props;
   const { unreadCount, toast, dismissToast } = useErrors();
   const [drawer, setDrawer] = useState<DrawerKind>(null);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
@@ -274,14 +278,18 @@ export function Shell(props: ShellProps) {
         </main>
       </div>
 
-      <StatusBar statusText={statusText} runtimePool={fallbackRuntimePool} onOpenQueue={() => openDrawer('queue')} />
+      <StatusBar statusText={statusText} runtimePool={fallbackRuntimePool} documentParse={documentParse} onOpenQueue={() => openDrawer('queue')} />
 
       <Drawer open={drawer === 'queue'} title="运行中心" onClose={closeDrawer}>
         <RuntimeCenter
           snapshot={fallbackRuntimePool}
+          documentParse={documentParse}
           onStop={(id) => props.onStopSession?.(id) ?? Promise.resolve()}
           onRelease={(id) => props.onReleaseSession?.(id) ?? Promise.resolve()}
           onCancelQueue={(id) => props.onCancelQueuedSession?.(id) ?? Promise.resolve()}
+          onStopParse={() => props.onStopParse?.() ?? Promise.resolve()}
+          onReleaseParse={() => props.onReleaseParse?.() ?? Promise.resolve()}
+          onCancelLoad={() => props.onCancelLoad?.() ?? Promise.resolve()}
         />
       </Drawer>
 
