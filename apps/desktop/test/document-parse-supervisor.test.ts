@@ -6,6 +6,8 @@ import {
   createDocumentParseSupervisor,
   getDocumentParseSupervisor,
   resetDocumentParseSupervisorForTests,
+  DOCUMENT_PARSE_STOPPED,
+  DOCUMENT_PARSE_SPAWN_FAILED,
   type DocumentParseSupervisor,
   type DocumentParseSupervisorDeps,
 } from '../electron/main/document-parse-supervisor.js';
@@ -158,6 +160,15 @@ describe('getDocumentParseSupervisor', () => {
 
   it('returns the same module singleton', () => {
     expect(getDocumentParseSupervisor()).toBe(getDocumentParseSupervisor());
+  });
+});
+
+describe('document parse locked error copy', () => {
+  it('exports the exact user-facing spawn and stop messages', () => {
+    expect(DOCUMENT_PARSE_STOPPED).toBe(STOPPED);
+    expect(DOCUMENT_PARSE_SPAWN_FAILED).toBe(SPAWN_FAILED);
+    expect(DOCUMENT_PARSE_STOPPED).toBe('文档解析已停止。');
+    expect(DOCUMENT_PARSE_SPAWN_FAILED).toBe('内存不足或文档解析无法启动，请到设置 → 文档解析查看。');
   });
 });
 
@@ -352,6 +363,35 @@ describe('DocumentParseSupervisor', () => {
 
     await expect(supervisor.enqueueParse(job({ fileName: '4.pdf' }))).rejects.toThrow(SPAWN_FAILED);
     expect(spawn).toHaveBeenCalledTimes(3);
+  });
+
+  it('reports DOCUMENT_PARSE_SPAWN_FAILED to the error reporter after three spawn failures', async () => {
+    const reporter = vi.fn();
+    const { supervisor, spawn, children } = setup({ autoSpawn: false });
+    supervisor.setErrorReporter(reporter);
+    spawn.mockImplementation(() => {
+      const child = new FakeParseChild({ pid: 1000 + children.length, autoSpawn: false });
+      children.push(child);
+      queueMicrotask(() => child.failSpawn(new Error('ENOENT')));
+      return child;
+    });
+
+    await expect(supervisor.enqueueParse(job({ fileName: '1.pdf' }))).rejects.toThrow(DOCUMENT_PARSE_SPAWN_FAILED);
+    await expect(supervisor.enqueueParse(job({ fileName: '2.pdf' }))).rejects.toThrow(DOCUMENT_PARSE_SPAWN_FAILED);
+    await expect(supervisor.enqueueParse(job({ fileName: '3.pdf' }))).rejects.toThrow(DOCUMENT_PARSE_SPAWN_FAILED);
+    expect(reporter).toHaveBeenCalledWith(DOCUMENT_PARSE_SPAWN_FAILED);
+    expect(reporter).toHaveBeenCalledWith(SPAWN_FAILED);
+    expect(reporter.mock.calls.every((call) => call[0] === SPAWN_FAILED)).toBe(true);
+  });
+
+  it('reports DOCUMENT_PARSE_SPAWN_FAILED when the child dies during parsing', async () => {
+    const reporter = vi.fn();
+    const { supervisor, children } = setup();
+    supervisor.setErrorReporter(reporter);
+    const { pending } = await startParse(supervisor, children, job());
+    children[0]!.emit('exit', 1);
+    await expect(pending).rejects.toThrow(DOCUMENT_PARSE_SPAWN_FAILED);
+    expect(reporter).toHaveBeenCalledWith(DOCUMENT_PARSE_SPAWN_FAILED);
   });
 
   it('beginQuit rejects all waiters and killTree once; a second beginQuit does not kill again', async () => {

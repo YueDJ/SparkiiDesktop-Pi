@@ -3,11 +3,15 @@ import { copyFile, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { executeDocumentRead } from '../electron/main/document-read.js';
+import { executeDocumentRead, documentReadAuditSummary } from '../electron/main/document-read.js';
 import {
   DOCUMENT_PARSE_DISK_FULL,
   DOCUMENT_PARSE_NOT_READY,
 } from '../electron/main/document-parse-layout.js';
+import {
+  DOCUMENT_PARSE_SPAWN_FAILED,
+  DOCUMENT_PARSE_STOPPED,
+} from '../electron/main/document-parse-supervisor.js';
 
 const fixtureDir = dirname(fileURLToPath(import.meta.url));
 const nativeDocxFixture = join(fixtureDir, 'fixtures', 'native.docx');
@@ -147,7 +151,7 @@ describe('executeDocumentRead', () => {
     await writeFile(path, 'x');
     const out = await executeDocumentRead({ documents: [path] }, ctx, {
       enqueueParse: async () => {
-        throw new Error('内存不足或文档解析无法启动，请到设置 → 文档解析查看。');
+        throw new Error(DOCUMENT_PARSE_SPAWN_FAILED);
       },
       needsDocumentParse: () => false,
       ensureDocumentParse: async () => {},
@@ -156,6 +160,7 @@ describe('executeDocumentRead', () => {
     expect(out.ok).toBe(false);
     expect(out.data).toBeUndefined();
     expect((out.data as { text?: string } | undefined)?.text).toBeUndefined();
+    expect(out.error?.message).toBe(DOCUMENT_PARSE_SPAWN_FAILED);
     expect(out.error?.message).toBe('内存不足或文档解析无法启动，请到设置 → 文档解析查看。');
   });
 
@@ -173,6 +178,7 @@ describe('executeDocumentRead', () => {
       diskFreeBytes: async () => 10 * 1024 ** 3,
     });
     expect(out).toEqual({ ok: false, error: { code: 'CONNECTOR_IO', message: DOCUMENT_PARSE_NOT_READY } });
+    expect(out.error?.message).toBe('文档解析尚未就绪，请到设置 → 文档解析查看。');
     expect(enqueueParse).not.toHaveBeenCalled();
   });
 
@@ -188,6 +194,7 @@ describe('executeDocumentRead', () => {
       diskFreeBytes: async () => 10 * 1024 ** 3,
     });
     expect(out).toEqual({ ok: false, error: { code: 'CONNECTOR_IO', message: DOCUMENT_PARSE_NOT_READY } });
+    expect(out.error?.message).toBe('文档解析尚未就绪，请到设置 → 文档解析查看。');
     expect(enqueueParse).not.toHaveBeenCalled();
   });
 
@@ -203,11 +210,69 @@ describe('executeDocumentRead', () => {
       diskFreeBytes: async () => 1024 ** 3,
     });
     expect(out).toEqual({ ok: false, error: { code: 'CONNECTOR_IO', message: DOCUMENT_PARSE_DISK_FULL } });
+    expect(out.error?.message).toBe('磁盘空间不足，无法准备文档解析。');
     expect(enqueueParse).not.toHaveBeenCalled();
+  });
+
+  it('fails with locked 已停止 copy when enqueue rejects as stopped', async () => {
+    const dir = await tempDir();
+    const path = join(dir, 'scan.jpg');
+    await writeFile(path, 'x');
+    const out = await executeDocumentRead({ documents: [path] }, ctx, {
+      enqueueParse: async () => {
+        throw new Error(DOCUMENT_PARSE_STOPPED);
+      },
+      needsDocumentParse: () => false,
+      ensureDocumentParse: async () => {},
+      diskFreeBytes: async () => 10 * 1024 ** 3,
+    });
+    expect(out).toEqual({ ok: false, error: { code: 'CONNECTOR_IO', message: DOCUMENT_PARSE_STOPPED } });
+    expect(out.error?.message).toBe('文档解析已停止。');
   });
 
   it('rejects an empty documents list', async () => {
     const out = await executeDocumentRead({ documents: [] }, ctx, { enqueueParse: vi.fn() });
     expect(out).toEqual({ ok: false, error: { code: 'CONNECTOR_IO', message: 'no document provided' } });
+  });
+});
+
+describe('documentReadAuditSummary', () => {
+  it('includes fileName, engine, and score without the full text', () => {
+    const fullText = '# 合同正文\n\n甲方应当按照约定履行付款义务。'.repeat(30);
+    const summary = documentReadAuditSummary(
+      { documents: ['/docs/contracts/scan.pdf'] },
+      {
+        ok: true,
+        data: {
+          text: fullText,
+          kind: 'pdf',
+          engine: 'structure',
+          meta: {
+            fileName: 'scan.pdf',
+            pageCount: 3,
+            quality: { score: 0.78, level: 'mid', pages: [{ page: 1, score: 0.78, level: 'mid' }] },
+            skippedModules: ['seal'],
+          },
+        },
+      },
+    );
+    expect(summary).toContain('scan.pdf');
+    expect(summary).toContain('structure');
+    expect(summary).toContain('0.78');
+    expect(summary).toContain('seal');
+    expect(summary).not.toContain(fullText);
+    expect(summary).not.toContain('甲方应当按照约定履行付款义务');
+  });
+
+  it('includes the error message on fail and never file contents', () => {
+    const fullText = '# leaked markdown from the scan';
+    const summary = documentReadAuditSummary(
+      { documents: ['C:/secret/invoice.jpg'] },
+      { ok: false, error: { code: 'CONNECTOR_IO', message: DOCUMENT_PARSE_SPAWN_FAILED } },
+    );
+    expect(summary).toContain('invoice.jpg');
+    expect(summary).toContain(DOCUMENT_PARSE_SPAWN_FAILED);
+    expect(summary).not.toContain(fullText);
+    expect(summary).not.toContain('C:/secret/invoice.jpg');
   });
 });

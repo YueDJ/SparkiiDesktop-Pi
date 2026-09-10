@@ -52,6 +52,53 @@ function fail(code: string, message: string): ToolResult {
   return { ok: false, error: { code, message } };
 }
 
+/** Audit payload for `tool.read` / `document.read`. Never includes markdown or file contents. */
+export function documentReadAuditSummary(
+  args: Record<string, unknown>,
+  result: ToolResult,
+): string {
+  const first = Array.isArray(args.documents) ? args.documents[0] : undefined;
+  const fileName = typeof first === 'string' && first.length > 0 ? basename(first) : undefined;
+  const summary: {
+    fileName?: string;
+    engine?: string;
+    pageCount?: number;
+    score?: number;
+    skippedModules?: string[];
+    error?: string;
+  } = {};
+  if (fileName) summary.fileName = fileName;
+
+  if (!result.ok) {
+    const message = result.error?.message;
+    if (typeof message === 'string' && message.length > 0) summary.error = message;
+    return JSON.stringify(summary);
+  }
+
+  const data = result.data;
+  if (data && typeof data === 'object') {
+    const rec = data as {
+      engine?: unknown;
+      meta?: {
+        pageCount?: unknown;
+        quality?: { score?: unknown };
+        skippedModules?: unknown;
+      };
+    };
+    if (typeof rec.engine === 'string') summary.engine = rec.engine;
+    const meta = rec.meta;
+    if (meta && typeof meta === 'object') {
+      if (typeof meta.pageCount === 'number') summary.pageCount = meta.pageCount;
+      const score = meta.quality?.score;
+      if (typeof score === 'number') summary.score = score;
+      if (Array.isArray(meta.skippedModules)) {
+        summary.skippedModules = meta.skippedModules.filter((item): item is string => typeof item === 'string');
+      }
+    }
+  }
+  return JSON.stringify(summary);
+}
+
 function withIgnored(
   meta: ParsedDocument['meta'],
   documents: unknown[],

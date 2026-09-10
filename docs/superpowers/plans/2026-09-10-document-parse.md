@@ -667,8 +667,8 @@ await saveSettings(rt.dataDir, { ...prev, ...rest, rag: prev.rag, documentParse:
 | spawn/OOM | 内存不足或文档解析无法启动，请到设置 → 文档解析查看。 |
 | 停止/退出 | 文档解析已停止。 |
 
-- [ ] **Step 1–4:** 测试文案 + 审计含 fileName/engine/score、不含全文。
-- [ ] **Step 5: Commit**（仅当用户要求提交）
+- [x] **Step 1–4:** 测试文案 + 审计含 fileName/engine/score、不含全文。
+- [x] **Step 5: Commit**（仅当用户要求提交）
 
 ---
 

@@ -55,6 +55,7 @@ const { supervisorMocks, executeDocumentReadMock } = vi.hoisted(() => ({
     setIdleMinutes: vi.fn(),
     setKeepResident: vi.fn(),
     clearCircuit: vi.fn(),
+    setErrorReporter: vi.fn(),
   },
   executeDocumentReadMock: vi.fn(async () => ({ ok: true, data: { text: 'x', engine: 'native' } })),
 }));
@@ -70,12 +71,17 @@ vi.mock('../electron/main/document-parse-supervisor.js', () => ({
     setIdleMinutes: supervisorMocks.setIdleMinutes,
     setKeepResident: supervisorMocks.setKeepResident,
     clearCircuit: supervisorMocks.clearCircuit,
+    setErrorReporter: supervisorMocks.setErrorReporter,
   }),
 }));
 
-vi.mock('../electron/main/document-read.js', () => ({
-  executeDocumentRead: executeDocumentReadMock,
-}));
+vi.mock('../electron/main/document-read.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../electron/main/document-read.js')>();
+  return {
+    ...actual,
+    executeDocumentRead: executeDocumentReadMock,
+  };
+});
 
 async function registeredHandlers(): Promise<Map<string, (...args: unknown[]) => unknown>> {
   const electron = (await import('electron')) as unknown as {
@@ -109,6 +115,7 @@ afterEach(async () => {
   supervisorMocks.setIdleMinutes.mockReset();
   supervisorMocks.setKeepResident.mockReset();
   supervisorMocks.clearCircuit.mockReset();
+  supervisorMocks.setErrorReporter.mockReset();
   executeDocumentReadMock.mockReset();
   executeDocumentReadMock.mockResolvedValue({ ok: true, data: { text: 'x', engine: 'native' } });
   for (const dir of dirs) await rm(dir, { recursive: true, force: true });
@@ -127,6 +134,7 @@ async function makeRuntime(opts: {
   agentOf?: (id: string) => unknown;
   agents?: Map<string, unknown>;
   audit?: { append: (ev: unknown) => Promise<unknown>; query?: (filter: object) => Promise<unknown[]> };
+  errors?: { append: (rec: unknown) => unknown };
   getWindow?: () => { webContents: { send: (...args: unknown[]) => void } } | null;
   /** 测试用：收集 ipc 订上的 `supervisor.onExit` 回调，用来模拟子进程退出。 */
   exitCbs?: Array<(code: number | null) => void>;
@@ -157,6 +165,7 @@ async function makeRuntime(opts: {
     executor: {},
     agents: opts.agents ?? new Map(),
     audit: opts.audit ?? { append: vi.fn(async (ev) => ev), query: vi.fn(async () => []) },
+    errors: opts.errors ?? { append: vi.fn() },
     pool: {
       acquire: vi.fn(async (sessionId: string, acquireOpts?: { meta?: { internal?: boolean } }) => {
         // 内部探测在真实池子里占的是另一个槽位，不动这条会话的牌子。
@@ -2106,10 +2115,64 @@ describe('ipc provider handlers', () => {
     const handlers = await registeredHandlers();
     await handlers.get('sparkii:promptSession')!(null, 's1', '开始');
     const read = (rt as any).__onConnectorRead;
+    const fullText = '# 合同全文不得写入审计';
+    executeDocumentReadMock.mockResolvedValue({
+      ok: true,
+      data: {
+        text: fullText,
+        engine: 'structure',
+        meta: { fileName: 'a.docx', pageCount: 2, quality: { score: 0.91 } },
+      },
+    });
     const out = await read?.({ requestId: 'r1', toolName: 'document.read', args: { documents: ['/tmp/a.docx'] } });
-    expect(out).toEqual({ ok: true, data: { text: 'x', engine: 'native' } });
+    expect(out?.ok).toBe(true);
     expect(out?.error?.message).not.toBe('unhandled');
     expect(executeDocumentReadMock).toHaveBeenCalled();
+    expect(rt.audit.append).toHaveBeenCalledWith(expect.objectContaining({
+      actor: 'tester',
+      action: 'tool.read',
+      resource: 'document.read',
+      sessionId: 's1',
+    }));
+    const auditCall = (rt.audit.append as ReturnType<typeof vi.fn>).mock.calls.find(
+      (call: unknown[]) => (call[0] as { resource?: string })?.resource === 'document.read',
+    );
+    const summary = String((auditCall?.[0] as { payloadSummary?: string })?.payloadSummary ?? '');
+    expect(summary).toContain('a.docx');
+    expect(summary).toContain('structure');
+    expect(summary).toContain('0.91');
+    expect(summary).not.toContain(fullText);
+  });
+
+  it('reports document-parse spawn failures to the error center as 文档解析', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const append = vi.fn();
+    const send = vi.fn();
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      errors: { append },
+      getWindow: () => ({ webContents: { send } }),
+    });
+    const reporter = supervisorMocks.setErrorReporter.mock.calls.at(-1)?.[0] as ((message: string) => void) | undefined;
+    expect(typeof reporter).toBe('function');
+    reporter!('内存不足或文档解析无法启动，请到设置 → 文档解析查看。');
+    expect(append).toHaveBeenCalledWith(expect.objectContaining({
+      message: '内存不足或文档解析无法启动，请到设置 → 文档解析查看。',
+      source: '文档解析',
+    }));
+    expect(send).toHaveBeenCalledWith(
+      'sparkii:event:chat-event',
+      expect.objectContaining({
+        type: 'runtime_error',
+        message: '内存不足或文档解析无法启动，请到设置 → 文档解析查看。',
+        source: '文档解析',
+      }),
+    );
   });
 
   it('abortChat calls failSession before Pi abort', async () => {

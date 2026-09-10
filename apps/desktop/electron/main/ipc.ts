@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { listPiSessions, readPiSessionEntries, connectorWriteProposal, type PiProviderInfo, type SessionSaddle, type ConnectorReadRequest, type ConnectorReadResult } from '@sparkii/agent-host';
 import { knowledgeConnector, SparkiiRagClient } from '@sparkii/connectors';
 import { applyThinkingLevel, createBroker, modelTargetKey, resolveModelTarget, resolveSessionModel, resolveThinkingLevel, runWorkflow, selectModel } from './workflow.js';
-import { executeDocumentRead } from './document-read.js';
+import { documentReadAuditSummary, executeDocumentRead } from './document-read.js';
 import { getDocumentParseSupervisor } from './document-parse-supervisor.js';
 import { findCompatibleModels, type ModelCapability } from '@sparkii/model-router';
 import { sortAgents } from './agent-catalog.js';
@@ -164,6 +164,13 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   const documentParseSupervisor = getDocumentParseSupervisor();
   documentParseSupervisor.subscribe((snap) => {
     getWindow()?.webContents.send('sparkii:event:document-parse', snap);
+  });
+  documentParseSupervisor.setErrorReporter((message) => {
+    const id = randomUUID();
+    rt.errors?.append?.({ id, message, source: '文档解析', createdAt: Date.now() });
+    getWindow()?.webContents.send('sparkii:event:chat-event', {
+      type: 'runtime_error', message, errorId: id, source: '文档解析',
+    });
   });
   void loadSettings(rt.dataDir).then((prev) => {
     const dp = documentParseFromSettings(prev);
@@ -396,13 +403,21 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     }
     if (req.toolName === 'document.read') {
       const displayName = rt.profileOf(profileId)?.profile?.manifest?.displayName ?? profileId;
-      return executeDocumentRead(req.args, {
+      const result = await executeDocumentRead(req.args, {
         profileId,
         sessionId,
         actor: rt.subject.userId,
         requestId: req.requestId,
         agentDisplayName: displayName,
       });
+      await rt.audit.append({
+        actor: rt.subject.userId,
+        action: 'tool.read',
+        resource: 'document.read',
+        sessionId,
+        payloadSummary: documentReadAuditSummary(req.args, result),
+      });
+      return result;
     }
     if (req.toolName !== 'knowledge.search') {
       return { ok: false, error: { code: 'CONNECTOR_DENIED', message: 'unhandled' } };

@@ -55,7 +55,10 @@ export type DocumentParseSupervisorDeps = {
   killTree?: KillTreeFn;
   appendLog?: (chunk: string) => void;
   env?: NodeJS.ProcessEnv;
+  onError?: (message: string) => void;
 };
+
+export type DocumentParseErrorReporter = (message: string) => void;
 
 type InternalJob = DocumentParseJob & {
   resolve: (result: ParseResult) => void;
@@ -104,6 +107,7 @@ export class DocumentParseSupervisor {
   private readonly killTreeFn: KillTreeFn;
   private readonly appendLog: (chunk: string) => void;
   private readonly env: NodeJS.ProcessEnv;
+  private errorReporter: DocumentParseErrorReporter | null;
 
   private status: DocumentParseStatus = 'stopped';
   private child: ChildProcess | null = null;
@@ -128,6 +132,11 @@ export class DocumentParseSupervisor {
     this.killTreeFn = deps.killTree ?? ((child) => killProcessTree(child));
     this.appendLog = deps.appendLog ?? (() => {});
     this.env = deps.env ?? process.env;
+    this.errorReporter = deps.onError ?? null;
+  }
+
+  setErrorReporter(fn: DocumentParseErrorReporter): void {
+    this.errorReporter = fn;
   }
 
   enqueueParse(job: DocumentParseJob): Promise<ParseResult> {
@@ -422,6 +431,7 @@ export class DocumentParseSupervisor {
     if (this.current && !this.current.aborted && this.status === 'parsing') {
       this.failJob(this.current, DOCUMENT_PARSE_SPAWN_FAILED);
       this.current = null;
+      this.reportUserError(DOCUMENT_PARSE_SPAWN_FAILED);
     }
     if (this.status !== 'starting') {
       this.status = 'stopped';
@@ -436,6 +446,15 @@ export class DocumentParseSupervisor {
     }
     this.status = 'stopped';
     this.notify();
+    this.reportUserError(DOCUMENT_PARSE_SPAWN_FAILED);
+  }
+
+  private reportUserError(message: string): void {
+    try {
+      this.errorReporter?.(message);
+    } catch {
+      // Error-center wiring must not break parse supervision.
+    }
   }
 
   private async destroyCreatedChild(child: ChildProcess): Promise<void> {
