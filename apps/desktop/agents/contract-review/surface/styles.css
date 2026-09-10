@@ -33,6 +33,11 @@
 }
 .contract-doc-preview--pdf,
 .contract-doc-preview--docx { display: flex; flex-direction: column; gap: 12px; }
+.contract-doc-preview--image img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
 .contract-doc-page {
   width: 100%;
   height: auto;

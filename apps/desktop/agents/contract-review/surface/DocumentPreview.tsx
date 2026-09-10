@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
-export type PreviewKind = 'pdf' | 'docx' | 'txt';
+export type PreviewKind = 'pdf' | 'docx' | 'txt' | 'image';
 
 export function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -14,6 +14,7 @@ export function formatFileSize(bytes: number): string {
 export function kindLabel(kind: PreviewKind): string {
   if (kind === 'pdf') return 'PDF';
   if (kind === 'docx') return 'Word';
+  if (kind === 'image') return '图片';
   return 'TXT';
 }
 
@@ -97,6 +98,16 @@ function DocxPreview({ bytes }: { bytes: ArrayBuffer }) {
   return <div ref={ref} className="contract-doc-preview contract-doc-preview--docx" data-testid="document-preview" data-kind="docx" />;
 }
 
+function ImagePreview({ bytes }: { bytes: ArrayBuffer }) {
+  const url = useMemo(() => URL.createObjectURL(new Blob([bytes])), [bytes]);
+  useEffect(() => () => URL.revokeObjectURL(url), [url]);
+  return (
+    <div className="contract-doc-preview contract-doc-preview--image" data-testid="document-preview" data-kind="image">
+      <img src={url} alt="" />
+    </div>
+  );
+}
+
 export function DocumentPreview(props: { kind: PreviewKind; bytes: ArrayBuffer }) {
   if (props.kind === 'txt') {
     return (
@@ -106,5 +117,6 @@ export function DocumentPreview(props: { kind: PreviewKind; bytes: ArrayBuffer }
     );
   }
   if (props.kind === 'pdf') return <PdfPreview bytes={props.bytes} />;
+  if (props.kind === 'image') return <ImagePreview bytes={props.bytes} />;
   return <DocxPreview bytes={props.bytes} />;
 }

@@ -48,7 +48,7 @@ export interface AgentSurfaceActions {
   chooseDocument(opts?: { extensions?: string[] }): Promise<{ path?: string }>;
   /** 读取用户已选/会话输入/工作区内的文档字节，供 Agent 预览。 */
   readDocumentBytes(path: string): Promise<
-    | { kind: 'pdf' | 'docx' | 'txt'; fileName: string; fileSize: number; bytes: ArrayBuffer }
+    | { kind: 'pdf' | 'docx' | 'txt' | 'image'; fileName: string; fileSize: number; bytes: ArrayBuffer }
     | { error: 'missing' | 'unsupported' | 'too_large' | 'denied' }
   >;
 }

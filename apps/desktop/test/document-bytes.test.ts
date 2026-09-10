@@ -6,6 +6,7 @@ import {
   documentKindOf,
   grantDocumentPath,
   isDocumentPathAllowed,
+  MAX_DOCUMENT_BYTES,
   normalizeDocPath,
   readGrantedDocumentBytes,
   resetGrantedDocumentPaths,
@@ -20,9 +21,18 @@ describe('documentKindOf', () => {
     expect(documentKindOf('a.pdf')).toBe('pdf');
     expect(documentKindOf('a.DOCX')).toBe('docx');
     expect(documentKindOf('a.txt')).toBe('txt');
+    expect(documentKindOf('.png')).toBe('image');
+    expect(documentKindOf('.jpg')).toBe('image');
+    expect(documentKindOf('.jpeg')).toBe('image');
+    expect(documentKindOf('a.jpg')).toBe('image');
+    expect(documentKindOf('photo.JPEG')).toBe('image');
     expect(documentKindOf('a.xlsx')).toBeNull();
     expect(documentKindOf('a.md')).toBeNull();
     expect(documentKindOf('a.doc')).toBeNull();
+  });
+
+  it('keeps the preview byte cap at 40MB', () => {
+    expect(MAX_DOCUMENT_BYTES).toBe(40 * 1024 * 1024);
   });
 });
 
@@ -32,6 +42,17 @@ describe('readGrantedDocumentBytes', () => {
     const path = join(dir, 'secret.txt');
     await writeFile(path, 'nope');
     await expect(readGrantedDocumentBytes(path, {})).resolves.toEqual({ error: 'denied' });
+  });
+
+  it('reads a granted png as image', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'doc-bytes-'));
+    const path = join(dir, 'photo.png');
+    await writeFile(path, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+    grantDocumentPath(path);
+    const result = await readGrantedDocumentBytes(path, {});
+    expect(result).toMatchObject({ kind: 'image', fileName: 'photo.png', fileSize: 4 });
+    if ('error' in result) throw new Error('expected bytes');
+    expect(result.bytes.byteLength).toBe(4);
   });
 
   it('reads a granted txt file', async () => {

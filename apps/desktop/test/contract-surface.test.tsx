@@ -60,7 +60,7 @@ describe('ContractSurface', () => {
       />,
     );
     fireEvent.click(screen.getByTestId('upload'));
-    expect(chooseDocument).toHaveBeenCalledWith({ extensions: ['pdf', 'docx', 'txt'] });
+    expect(chooseDocument).toHaveBeenCalledWith({ extensions: ['pdf', 'docx', 'txt', 'jpg', 'jpeg', 'png'] });
     expect(await screen.findByTestId('remove-document')).toBeTruthy();
     expect(screen.queryByTestId('upload')).toBeNull();
     expect(screen.queryByText('更换文件')).toBeNull();

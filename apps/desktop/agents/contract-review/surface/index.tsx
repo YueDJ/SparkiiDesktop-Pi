@@ -9,7 +9,7 @@ import { bytesToBase64, documentFromHtml } from './report-docx.js';
 import { DocumentPreview, formatFileSize, kindLabel, type PreviewKind } from './DocumentPreview.js';
 import './styles.css';
 
-const PREVIEW_EXTENSIONS = ['pdf', 'docx', 'txt'];
+const PREVIEW_EXTENSIONS = ['pdf', 'docx', 'txt', 'jpg', 'jpeg', 'png'];
 
 type PreviewResult = { kind: PreviewKind; fileName: string; fileSize: number; bytes: ArrayBuffer };
 type PreviewError = 'missing' | 'unsupported' | 'too_large' | 'denied';
@@ -26,6 +26,7 @@ function kindFromName(name: string): PreviewKind | null {
   if (lower.endsWith('.pdf')) return 'pdf';
   if (lower.endsWith('.docx')) return 'docx';
   if (lower.endsWith('.txt')) return 'txt';
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png')) return 'image';
   return null;
 }
 

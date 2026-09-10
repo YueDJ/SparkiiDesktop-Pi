@@ -35,7 +35,7 @@ export interface DraftPromptContext {
 
 export type ChooseDocumentOptions = { extensions?: string[] };
 
-export type DocumentKind = 'pdf' | 'docx' | 'txt';
+export type DocumentKind = 'pdf' | 'docx' | 'txt' | 'image';
 
 export type ReadDocumentBytesResult =
   | { kind: DocumentKind; fileName: string; fileSize: number; bytes: ArrayBuffer }
