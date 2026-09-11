@@ -3,6 +3,7 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { statfs } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { verifyArchiveChecksum } from '../../scripts/document-parse-checksum.mjs';
 import { resolveRuntimeRoot } from './runtime-layout.js';
 
 export const DOCUMENT_PARSE_ARCHIVE_NAME = 'sparkii-document-parse.7z.exe';
@@ -39,23 +40,31 @@ export function needsDocumentParse(env: NodeJS.ProcessEnv = process.env): boolea
   return !existsSync(paths.exe) || !existsSync(paths.ready);
 }
 
+function runtimeDocumentParseDir(): string[] {
+  return [
+    join(dirname(fileURLToPath(import.meta.url)), '../../runtime/document-parse'),
+    join(process.cwd(), 'apps/desktop/runtime/document-parse'),
+    join(process.cwd(), 'runtime/document-parse'),
+  ];
+}
+
 function repoArchiveCandidates(): string[] {
-  const fromModule = join(
-    dirname(fileURLToPath(import.meta.url)),
-    '../../runtime/document-parse',
-    DOCUMENT_PARSE_ARCHIVE_NAME,
-  );
-  const fromCwdDesktop = join(process.cwd(), 'apps/desktop/runtime/document-parse', DOCUMENT_PARSE_ARCHIVE_NAME);
-  const fromCwdRuntime = join(process.cwd(), 'runtime/document-parse', DOCUMENT_PARSE_ARCHIVE_NAME);
-  return [fromModule, fromCwdDesktop, fromCwdRuntime];
+  return runtimeDocumentParseDir().map((dir) => join(dir, DOCUMENT_PARSE_ARCHIVE_NAME));
+}
+
+function repoChecksumsCandidates(): string[] {
+  return runtimeDocumentParseDir().map((dir) => join(dir, 'checksums.json'));
 }
 
 export function documentParseArchivePath(
   env: NodeJS.ProcessEnv = process.env,
   resourcesPath?: string,
 ): string | null {
+  const override = env.SPARKII_DOCUMENT_PARSE_ARCHIVE;
+  if (override) {
+    return existsSync(override) ? override : null;
+  }
   const candidates = [
-    env.SPARKII_DOCUMENT_PARSE_ARCHIVE,
     resourcesPath ? join(resourcesPath, 'runtime', 'document-parse', DOCUMENT_PARSE_ARCHIVE_NAME) : undefined,
     ...repoArchiveCandidates(),
   ];
@@ -63,6 +72,24 @@ export function documentParseArchivePath(
     if (candidate && existsSync(candidate)) return candidate;
   }
   return null;
+}
+
+export function documentParseChecksumsPath(
+  env: NodeJS.ProcessEnv = process.env,
+  resourcesPath?: string,
+): string {
+  if (env.SPARKII_DOCUMENT_PARSE_CHECKSUMS) {
+    return env.SPARKII_DOCUMENT_PARSE_CHECKSUMS;
+  }
+  const candidates = [
+    resourcesPath ? join(resourcesPath, 'runtime', 'document-parse', 'checksums.json') : undefined,
+    ...repoChecksumsCandidates(),
+  ];
+  for (const candidate of candidates) {
+    if (candidate && existsSync(candidate)) return candidate;
+  }
+  return candidates.find((candidate): candidate is string => Boolean(candidate))
+    ?? join(process.cwd(), 'apps/desktop/runtime/document-parse', 'checksums.json');
 }
 
 /**
@@ -80,6 +107,7 @@ export async function ensureDocumentParse(
   if (!archivePath || !existsSync(archivePath)) {
     return;
   }
+  await verifyArchiveChecksum(archivePath, documentParseChecksumsPath(env, opts.resourcesPath));
   const dest = resolveDocumentParsePaths(env).root;
   mkdirSync(dest, { recursive: true });
   await extractArchive(archivePath, dest);

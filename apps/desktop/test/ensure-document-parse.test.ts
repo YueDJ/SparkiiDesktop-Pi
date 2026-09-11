@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdtempSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,7 +10,6 @@ import { DOCUMENT_PARSE_ARCHIVE_NAME } from '../electron/main/document-parse-lay
 const desktopRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = join(desktopRoot, '../..');
 const ensureScript = join(desktopRoot, 'scripts/ensure-document-parse.mjs');
-const checksumsPath = join(desktopRoot, 'runtime/document-parse/checksums.json');
 
 function tempRoot(): string {
   return mkdtempSync(join(tmpdir(), 'sparkii-dp-ensure-'));
@@ -24,19 +23,10 @@ function runEnsure(env: NodeJS.ProcessEnv) {
   });
 }
 
-function withTempChecksums(archive: string, run: () => void): void {
-  const existed = existsSync(checksumsPath);
-  const previous = existed ? readFileSync(checksumsPath, 'utf8') : null;
+function withTempChecksums(archive: string, run: (checksumsPath: string) => void): void {
+  const checksumsPath = join(tempRoot(), 'checksums.json');
   writeFileSync(checksumsPath, JSON.stringify({ archive }));
-  try {
-    run();
-  } finally {
-    if (previous === null) {
-      unlinkSync(checksumsPath);
-    } else {
-      writeFileSync(checksumsPath, previous);
-    }
-  }
+  run(checksumsPath);
 }
 
 describe('ensure-document-parse.mjs', () => {
@@ -56,9 +46,10 @@ describe('ensure-document-parse.mjs', () => {
     const badHash = createHash('sha256').update(payload).digest('hex');
     const expected = 'a'.repeat(64);
 
-    withTempChecksums(expected, () => {
+    withTempChecksums(expected, (checksumsPath) => {
       const result = runEnsure({
         SPARKII_DOCUMENT_PARSE_ARCHIVE: badArchive,
+        SPARKII_DOCUMENT_PARSE_CHECKSUMS: checksumsPath,
         SPARKII_RUNTIME_ROOT: join(root, 'runtime'),
       });
 
@@ -67,5 +58,42 @@ describe('ensure-document-parse.mjs', () => {
       expect(combined).toMatch(/checksum mismatch/i);
       expect(combined.toLowerCase()).toContain(badHash);
     });
+  });
+
+  it('validates SPARKII_DOCUMENT_PARSE_ARCHIVE before the ready short-circuit', () => {
+    const root = tempRoot();
+    mkdirSync(join(root, 'document-parse', 'bin'), { recursive: true });
+    mkdirSync(join(root, 'document-parse', 'models', 'baseline'), { recursive: true });
+    writeFileSync(join(root, 'document-parse', 'bin', 'sparkii-document-parse.exe'), 'exe');
+    writeFileSync(join(root, 'document-parse', 'models', 'baseline', 'READY'), 'ok');
+    const badArchive = join(root, DOCUMENT_PARSE_ARCHIVE_NAME);
+    writeFileSync(badArchive, 'already-ready-but-wrong-hash');
+
+    withTempChecksums('b'.repeat(64), (checksumsPath) => {
+      const result = runEnsure({
+        SPARKII_DOCUMENT_PARSE_ARCHIVE: badArchive,
+        SPARKII_DOCUMENT_PARSE_CHECKSUMS: checksumsPath,
+        SPARKII_RUNTIME_ROOT: root,
+      });
+
+      expect(result.status).not.toBe(0);
+      expect(`${result.stdout ?? ''}\n${result.stderr ?? ''}`).toMatch(/checksum mismatch/i);
+    });
+  });
+
+  it('fails clearly when checksums.json is missing for a selected archive', () => {
+    const root = tempRoot();
+    const archive = join(root, DOCUMENT_PARSE_ARCHIVE_NAME);
+    writeFileSync(archive, 'sfx');
+    const result = runEnsure({
+      SPARKII_DOCUMENT_PARSE_ARCHIVE: archive,
+      SPARKII_DOCUMENT_PARSE_CHECKSUMS: join(root, 'missing-checksums.json'),
+      SPARKII_RUNTIME_ROOT: join(root, 'runtime'),
+    });
+
+    expect(result.status).not.toBe(0);
+    const combined = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
+    expect(combined).toMatch(/checksums\.json missing/i);
+    expect(combined).not.toMatch(/ENOENT: no such file or directory, open/);
   });
 });

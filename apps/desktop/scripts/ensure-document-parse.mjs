@@ -3,17 +3,18 @@
 // apps/desktop/runtime/document-parse/sparkii-document-parse.7z.exe (sha256 match).
 // If neither archive is on disk yet, skip with exit 0 so `pnpm start` stays usable.
 import { spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
-import { createReadStream, existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { verifyArchiveChecksum } from './document-parse-checksum.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const desktopRoot = join(__dirname, '..');
 const ARCHIVE_NAME = 'sparkii-document-parse.7z.exe';
 const runtimeArchive = join(desktopRoot, 'runtime', 'document-parse', ARCHIVE_NAME);
-const checksumsPath = join(desktopRoot, 'runtime', 'document-parse', 'checksums.json');
+const defaultChecksumsPath = join(desktopRoot, 'runtime', 'document-parse', 'checksums.json');
+const checksumsPath = process.env.SPARKII_DOCUMENT_PARSE_CHECKSUMS ?? defaultChecksumsPath;
 
 const localAppData = process.env.LOCALAPPDATA ?? join(homedir(), 'AppData', 'Local');
 const runtimeRoot = process.env.SPARKII_RUNTIME_ROOT ?? join(localAppData, 'SparkiiDesktop', 'runtime');
@@ -21,38 +22,36 @@ const dest = join(runtimeRoot, 'document-parse');
 const exe = join(dest, 'bin', 'sparkii-document-parse.exe');
 const ready = join(dest, 'models', 'baseline', 'READY');
 
+const override = process.env.SPARKII_DOCUMENT_PARSE_ARCHIVE;
+let verifiedOverride = false;
+
+if (override) {
+  if (!existsSync(override)) {
+    throw new Error(`document-parse archive missing: ${override}`);
+  }
+  if (existsSync(checksumsPath)) {
+    const actual = await verifyArchiveChecksum(override, checksumsPath);
+    console.log(`document-parse checksum ok: ${actual}`);
+    verifiedOverride = true;
+  }
+}
+
 if (existsSync(exe) && existsSync(ready)) {
   console.log(`document-parse already ready: ${dest}`);
   process.exit(0);
 }
 
-const override = process.env.SPARKII_DOCUMENT_PARSE_ARCHIVE;
-const archiveCandidates = [
-  override,
-  override ? undefined : runtimeArchive,
-].filter(Boolean);
-
-const archivePath = archiveCandidates.find((p) => existsSync(p));
-
-if (override && !existsSync(override)) {
-  throw new Error(`document-parse archive missing: ${override}`);
-}
+const archivePath = override || (existsSync(runtimeArchive) ? runtimeArchive : null);
 
 if (!archivePath) {
   console.log('document-parse archive missing; skip');
   process.exit(0);
 }
 
-const expected = JSON.parse(readFileSync(checksumsPath, 'utf8')).archive;
-if (typeof expected !== 'string' || !/^[0-9a-fA-F]{64}$/.test(expected)) {
-  throw new Error('document-parse checksums.json archive must be a 64-hex sha256');
+if (!verifiedOverride) {
+  const actual = await verifyArchiveChecksum(archivePath, checksumsPath);
+  console.log(`document-parse checksum ok: ${actual}`);
 }
-
-const actual = await sha256File(archivePath);
-if (actual.toLowerCase() !== expected.toLowerCase()) {
-  throw new Error(`document-parse checksum mismatch: ${actual}`);
-}
-console.log(`document-parse checksum ok: ${actual}`);
 
 console.log(`extracting document-parse to ${dest}`);
 mkdirSync(dest, { recursive: true });
@@ -61,13 +60,3 @@ if (result.status !== 0) {
   throw new Error(`document-parse extraction failed with exit code ${result.status}`);
 }
 console.log(`document-parse ready: ${dest}`);
-
-function sha256File(path) {
-  return new Promise((resolve, reject) => {
-    const hash = createHash('sha256');
-    createReadStream(path)
-      .on('data', (chunk) => hash.update(chunk))
-      .on('end', () => resolve(hash.digest('hex')))
-      .on('error', reject);
-  });
-}

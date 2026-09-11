@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -32,6 +33,13 @@ function placeReady(root: string): void {
   mkdirSync(join(paths.root, 'models', 'baseline'), { recursive: true });
   writeFileSync(paths.exe, 'exe');
   writeFileSync(paths.ready, 'ok');
+}
+
+function writeChecksumsFor(archivePath: string, dir: string): string {
+  const hash = createHash('sha256').update(readFileSync(archivePath)).digest('hex');
+  const checksums = join(dir, 'checksums.json');
+  writeFileSync(checksums, JSON.stringify({ archive: hash }));
+  return checksums;
 }
 
 function stubSpawnExtract(): void {
@@ -141,6 +149,7 @@ describe('ensureDocumentParse', () => {
     const env = {
       SPARKII_RUNTIME_ROOT: root,
       SPARKII_DOCUMENT_PARSE_ARCHIVE: archive,
+      SPARKII_DOCUMENT_PARSE_CHECKSUMS: writeChecksumsFor(archive, root),
     };
     await ensureDocumentParse(env);
 
@@ -166,6 +175,34 @@ describe('ensureDocumentParse', () => {
       SPARKII_DOCUMENT_PARSE_ARCHIVE: archive,
     });
 
+    expect(childProcessMock.spawn).not.toHaveBeenCalled();
+  });
+
+  it('does not extract when checksums.json is missing', async () => {
+    const root = tempRoot();
+    const archive = join(root, DOCUMENT_PARSE_ARCHIVE_NAME);
+    writeFileSync(archive, 'sfx');
+
+    await expect(ensureDocumentParse({
+      SPARKII_RUNTIME_ROOT: root,
+      SPARKII_DOCUMENT_PARSE_ARCHIVE: archive,
+      SPARKII_DOCUMENT_PARSE_CHECKSUMS: join(root, 'missing-checksums.json'),
+    })).rejects.toThrow(/checksums\.json missing/);
+    expect(childProcessMock.spawn).not.toHaveBeenCalled();
+  });
+
+  it('does not extract when the archive hash mismatches', async () => {
+    const root = tempRoot();
+    const archive = join(root, DOCUMENT_PARSE_ARCHIVE_NAME);
+    writeFileSync(archive, 'sfx');
+    const checksums = join(root, 'checksums.json');
+    writeFileSync(checksums, JSON.stringify({ archive: 'c'.repeat(64) }));
+
+    await expect(ensureDocumentParse({
+      SPARKII_RUNTIME_ROOT: root,
+      SPARKII_DOCUMENT_PARSE_ARCHIVE: archive,
+      SPARKII_DOCUMENT_PARSE_CHECKSUMS: checksums,
+    })).rejects.toThrow(/checksum mismatch/);
     expect(childProcessMock.spawn).not.toHaveBeenCalled();
   });
 });

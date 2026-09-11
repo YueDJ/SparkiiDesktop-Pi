@@ -1,4 +1,5 @@
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { EventEmitter } from 'node:events';
@@ -97,10 +98,18 @@ describe('ensureRuntime', () => {
     provision(root);
     const archive = join(root, 'sparkii-document-parse.7z.exe');
     writeFileSync(archive, 'sfx');
+    const checksums = join(root, 'checksums.json');
+    writeFileSync(checksums, JSON.stringify({
+      archive: createHash('sha256').update(readFileSync(archive)).digest('hex'),
+    }));
     stubSpawnExit(0);
 
     await ensureRuntime({
-      env: { SPARKII_RUNTIME_ROOT: root, SPARKII_DOCUMENT_PARSE_ARCHIVE: archive },
+      env: {
+        SPARKII_RUNTIME_ROOT: root,
+        SPARKII_DOCUMENT_PARSE_ARCHIVE: archive,
+        SPARKII_DOCUMENT_PARSE_CHECKSUMS: checksums,
+      },
     });
 
     expect(childProcessMock.spawn).toHaveBeenCalledTimes(1);

@@ -151,7 +151,11 @@ async function runStructure(
         return fail('CONNECTOR_IO', DOCUMENT_PARSE_DISK_FULL);
       }
     }
-    await deps.ensureDocumentParse();
+    try {
+      await deps.ensureDocumentParse();
+    } catch {
+      return fail('CONNECTOR_IO', DOCUMENT_PARSE_NOT_READY);
+    }
     if (deps.needsDocumentParse()) {
       return fail('CONNECTOR_IO', DOCUMENT_PARSE_NOT_READY);
     }

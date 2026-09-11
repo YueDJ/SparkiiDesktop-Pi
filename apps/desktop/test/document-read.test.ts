@@ -215,6 +215,24 @@ describe('executeDocumentRead', () => {
     expect(enqueueParse).not.toHaveBeenCalled();
   });
 
+  it('fails with 尚未就绪 when ensure throws an internal checksum error', async () => {
+    const dir = await tempDir();
+    const path = join(dir, 'scan.jpg');
+    await writeFile(path, 'x');
+    const enqueueParse = vi.fn();
+    const out = await executeDocumentRead({ documents: [path] }, ctx, {
+      enqueueParse,
+      needsDocumentParse: () => true,
+      ensureDocumentParse: async () => {
+        throw new Error('document-parse checksum mismatch: deadbeef');
+      },
+      diskFreeBytes: async () => 10 * 1024 ** 3,
+    });
+    expect(out).toEqual({ ok: false, error: { code: 'CONNECTOR_IO', message: DOCUMENT_PARSE_NOT_READY } });
+    expect(out.error?.message).toBe('文档解析尚未就绪，请到设置 → 文档解析查看。');
+    expect(enqueueParse).not.toHaveBeenCalled();
+  });
+
   it('fails with 尚未就绪 when ensure skips and needs remains true', async () => {
     const dir = await tempDir();
     const path = join(dir, 'scan.jpg');
