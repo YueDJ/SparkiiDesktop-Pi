@@ -12,6 +12,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import {
   applySaddleSystemPrompt,
+  promptWorkingDirectory,
 } from "./skill-prompt.js";
 import { join } from "node:path";
 import type { ToolDef } from "@sparkii/connectors";
@@ -126,10 +127,20 @@ export function appendCustomEntryAndEmit(
   if (entry) session._emit?.({ type: "entry_appended", entry });
 }
 
-function systemPromptExtensionFactory(getSystemPrompt: () => string | undefined) {
+function systemPromptExtensionFactory(
+  getSystemPrompt: () => string | undefined,
+  getSaddle: () => SessionSaddle | null,
+) {
   return (pi: ExtensionAPI) => {
     pi.on("before_agent_start", (event: BeforeAgentStartEvent) =>
-      applySaddleSystemPrompt(getSystemPrompt(), event),
+      applySaddleSystemPrompt(getSystemPrompt(), {
+        ...event,
+        systemPromptOptions: {
+          ...event.systemPromptOptions,
+          cwd: promptWorkingDirectory(getSaddle(), event.systemPromptOptions?.cwd),
+          workspaceRoot: getSaddle()?.workspaceRoot,
+        },
+      }),
     );
   };
 }
@@ -192,7 +203,7 @@ export async function createPiSdkSessionHost(
       modelRuntime,
       resourceLoaderOptions: {
         additionalSkillPaths: saddle?.skillsDir ? [saddle.skillsDir] : options.skillsDir ? [options.skillsDir] : [],
-        extensionFactories: [systemPromptExtensionFactory(() => pendingSaddle?.systemPrompt)],
+        extensionFactories: [systemPromptExtensionFactory(() => pendingSaddle?.systemPrompt, () => pendingSaddle)],
       },
     });
     let initialModel;

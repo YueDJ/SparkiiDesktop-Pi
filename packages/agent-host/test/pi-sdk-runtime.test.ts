@@ -55,6 +55,8 @@ describe("pi-sdk-runtime skill loader options", () => {
     expect(src).toMatch(/pendingConnectorReads/);
     expect(src).toMatch(/connectorRead:/);
     expect(src).toMatch(/connectorReadEnvelope/);
+    expect(src).toMatch(/promptWorkingDirectory/);
+    expect(src).toMatch(/systemPromptExtensionFactory\(\(\) => pendingSaddle\?\.systemPrompt, \(\) => pendingSaddle\)/);
   });
 });
 

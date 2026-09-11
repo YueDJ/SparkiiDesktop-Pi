@@ -8,9 +8,22 @@ export type SkillPromptMergeInput = {
   systemPromptOptions?: {
     skills?: Skill[];
     cwd?: string;
+    workspaceRoot?: string;
     selectedTools?: string[];
   };
 };
+
+/** User-visible workspace wins over the Pi process/anchor cwd. */
+export function promptWorkingDirectory(
+  saddle: { workspaceRoot?: string; cwd?: string } | null | undefined,
+  fallback?: string,
+): string | undefined {
+  const root = saddle?.workspaceRoot?.trim();
+  if (root) return root;
+  const cwd = saddle?.cwd?.trim();
+  if (cwd) return cwd;
+  return fallback?.trim() || undefined;
+}
 
 function canReadSkills(selectedTools?: string[]): boolean {
   return !selectedTools || selectedTools.includes("read");
@@ -21,8 +34,12 @@ function extractTag(source: string, tag: string): string {
   return match?.[0] ?? "";
 }
 
-function formatCwdLine(cwd?: string, basePrompt?: string): string {
-  if (cwd) return `Current working directory: ${cwd.replace(/\\/g, "/")}`;
+function formatCwdLine(
+  options?: { cwd?: string; workspaceRoot?: string },
+  basePrompt?: string,
+): string {
+  const shown = promptWorkingDirectory(options);
+  if (shown) return `Current working directory: ${shown.replace(/\\/g, "/")}`;
   return basePrompt?.match(/Current working directory: [^\n]+/)?.[0] ?? "";
 }
 
@@ -46,7 +63,7 @@ export function mergeSaddleSystemPrompt(
     if (catalog) parts.push(catalog);
   }
 
-  const cwdLine = formatCwdLine(options?.cwd, basePrompt);
+  const cwdLine = formatCwdLine(options, basePrompt);
   if (cwdLine) parts.push(cwdLine);
 
   return parts.join("\n\n");

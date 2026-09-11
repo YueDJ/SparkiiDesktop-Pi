@@ -6,6 +6,7 @@ import { createSyntheticSourceInfo, type Skill } from "@earendil-works/pi-coding
 import {
   applySaddleSystemPrompt,
   mergeSaddleSystemPrompt,
+  promptWorkingDirectory,
 } from "../src/skill-prompt.js";
 import * as skillPrompt from "../src/skill-prompt.js";
 
@@ -39,6 +40,18 @@ describe("mergeSaddleSystemPrompt", () => {
     expect(merged).toContain("/data/agents/general/skills/using-superpowers/SKILL.md");
     expect(merged).toContain("Current working directory: C:/ws/session");
     expect(merged).not.toContain("You are an expert coding assistant");
+  });
+
+  it("prefers workspaceRoot over the Pi process cwd", () => {
+    const merged = mergeSaddleSystemPrompt("你是通用智能体。", {
+      systemPromptOptions: {
+        cwd: "C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop",
+        workspaceRoot: "C:/Users/YDJ/Documents/Sparkii/workspaces/general/glow-fox-k7m",
+      },
+      systemPrompt: "Current working directory: C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop",
+    });
+    expect(merged).toContain("Current working directory: C:/Users/YDJ/Documents/Sparkii/workspaces/general/glow-fox-k7m");
+    expect(merged).not.toContain("SparkiiDesktop-Pi/apps/desktop");
   });
 
   it("falls back to an <available_skills> block already in the base prompt", () => {
@@ -75,6 +88,17 @@ describe("mergeSaddleSystemPrompt", () => {
     expect(applySaddleSystemPrompt(undefined, {
       systemPromptOptions: { skills: [skill("x")] },
     })).toBeUndefined();
+  });
+});
+
+describe("promptWorkingDirectory", () => {
+  it("uses the user workspace, not the process or anchor cwd", () => {
+    expect(promptWorkingDirectory({
+      cwd: "C:/repo/apps/desktop",
+      workspaceRoot: "C:/docs/Sparkii/workspaces/general/glow-fox-k7m",
+    }, "C:/fallback")).toBe("C:/docs/Sparkii/workspaces/general/glow-fox-k7m");
+    expect(promptWorkingDirectory({ cwd: "C:/data/sessions/s1" })).toBe("C:/data/sessions/s1");
+    expect(promptWorkingDirectory(null, "C:/repo")).toBe("C:/repo");
   });
 });
 
