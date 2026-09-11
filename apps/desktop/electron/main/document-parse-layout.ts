@@ -54,11 +54,8 @@ export function documentParseArchivePath(
   env: NodeJS.ProcessEnv = process.env,
   resourcesPath?: string,
 ): string | null {
-  const override = env.SPARKII_DOCUMENT_PARSE_ARCHIVE;
-  if (override) {
-    return existsSync(override) ? override : null;
-  }
   const candidates = [
+    env.SPARKII_DOCUMENT_PARSE_ARCHIVE,
     resourcesPath ? join(resourcesPath, 'runtime', 'document-parse', DOCUMENT_PARSE_ARCHIVE_NAME) : undefined,
     ...repoArchiveCandidates(),
   ];
