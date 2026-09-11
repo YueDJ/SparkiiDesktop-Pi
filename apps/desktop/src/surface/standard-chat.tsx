@@ -268,14 +268,17 @@ export function StandardChatSurface(props: StandardChatProps) {
   const [thinkingLevels, setThinkingLevels] = useState<string[]>([...THINKING_LEVELS]);
   const [thinkingLevel, setThinkingLevel] = useState<string | null>(null);
   const [workspacePath, setWorkspacePath] = useState<string | null>(null);
+  const [workspaceKind, setWorkspaceKind] = useState<'auto' | 'user'>('auto');
   const [contextUsage, setContextUsage] = useState<{ tokens?: number | null; contextWindow?: number; percent?: number | null } | null>(null);
   const [isCompacting, setIsCompacting] = useState(false);
   const [detailLevel, setDetailLevel] = useState<ChatDetailLevel>(DEFAULT_CHAT_DETAIL_LEVEL);
   const [skills, setSkills] = useState<Array<{ name: string; description: string }> | null>(null);
   const modelRef = useRef(model);
+  const sessionIdRef = useRef(sessionId);
   const isBusy = busy || session.streaming;
 
   useEffect(() => { modelRef.current = model; }, [model]);
+  useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
   useEffect(() => {
     if (composerSkills !== undefined) return;
     if (!sessionId && !draft) return;
@@ -412,8 +415,11 @@ export function StandardChatSurface(props: StandardChatProps) {
 
   const refreshMeta = (availableModels: string[], activeProvider: string, defaultModelId: string | null) => {
     if (!sessionId) return;
-    api.getChatSession(sessionId).then((rec: any) => {
+    const requested = sessionId;
+    api.getChatSession(requested).then((rec: any) => {
+      if (sessionIdRef.current !== requested) return;
       if (rec?.workspacePath) setWorkspacePath(rec.workspacePath);
+      if (rec?.workspaceKind === 'user' || rec?.workspaceKind === 'auto') setWorkspaceKind(rec.workspaceKind);
       if (rec?.thinkingLevel !== undefined) setThinkingLevel(rec.thinkingLevel ?? null);
       const storedModel = typeof rec?.model === 'string' ? rec.model : null;
       const slash = storedModel?.indexOf('/');
@@ -463,6 +469,7 @@ export function StandardChatSurface(props: StandardChatProps) {
     setThinkingLevel(null);
     setThinkingLevels([...THINKING_LEVELS]);
     setWorkspacePath(null);
+    setWorkspaceKind('auto');
     setProvider('deepseek');
     setContextUsage(null);
     setIsCompacting(false);
@@ -499,6 +506,18 @@ export function StandardChatSurface(props: StandardChatProps) {
     });
     return () => { off1(); };
   }, [api, sessionId, agent.name]);
+
+  useEffect(() => {
+    if (sessionId) return;
+    let cancelled = false;
+    void Promise.resolve(api.allocateAutoWorkspace?.(agent.id)).then((r) => {
+      if (!cancelled && r?.workspacePath) {
+        setWorkspacePath(r.workspacePath);
+        setWorkspaceKind('auto');
+      }
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [api, agent.id, sessionId]);
 
   useEffect(() => {
     if (!active) return;
@@ -545,7 +564,7 @@ export function StandardChatSurface(props: StandardChatProps) {
       display,
       undefined,
       chatAttachments.length ? chatAttachments : undefined,
-      sessionId ? undefined : { profileId: agent.id, workspacePath, model, thinkingLevel },
+      sessionId ? undefined : { profileId: agent.id, workspacePath, workspaceKind, model, thinkingLevel },
     ).then((res: any) => {
       if (!res?.ok && res?.ok !== undefined) {
         reportError(String(res.error ?? '发送失败'), { source: agent.name });
@@ -624,9 +643,10 @@ export function StandardChatSurface(props: StandardChatProps) {
   };
 
   const chooseWorkspace = () => {
-    api.chooseWorkspace().then(({ path }: any) => {
+    api.chooseWorkspace({ defaultPath: workspacePath ?? undefined }).then(({ path }: any) => {
       if (path) {
         setWorkspacePath(path);
+        setWorkspaceKind('user');
         if (sessionId) api.setChatWorkspace(sessionId, path).then(() => refreshMeta(models, provider, defaultModel));
       }
     });

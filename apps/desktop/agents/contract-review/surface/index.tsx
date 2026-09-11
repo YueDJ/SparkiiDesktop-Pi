@@ -43,7 +43,8 @@ interface SparkiiWindowApi {
   setChatModel?(sessionId: string, model: string | null): Promise<unknown>;
   setChatThinkingLevel?(sessionId: string, level: string | null): Promise<unknown>;
   listThinkingLevels?(providerId: string, modelId: string): Promise<string[]>;
-  chooseWorkspace?(): Promise<{ path?: string }>;
+  allocateAutoWorkspace?(agentId: string): Promise<{ workspacePath: string }>;
+  chooseWorkspace?(opts?: { defaultPath?: string }): Promise<{ path?: string }>;
   setChatWorkspace?(sessionId: string, path: string | null): Promise<unknown>;
   setChatTitle?(sessionId: string, title: string, source?: 'user' | 'agent'): Promise<{ ok: boolean; reason?: 'locked' }>;
   on?(event: string, cb: (payload: unknown) => void): () => void;
@@ -134,7 +135,7 @@ function ModelEffortBar({
   agentId: string;
   sessionId: string | null;
   session: AgentSession;
-  onPrefs?: (prefs: { workspacePath: string | null; model: string | null; thinkingLevel: string | null }) => void;
+  onPrefs?: (prefs: { workspacePath: string | null; workspaceKind: 'auto' | 'user'; model: string | null; thinkingLevel: string | null }) => void;
 }) {
   const api = sparkiiApi();
   const [models, setModels] = useState<string[]>([]);
@@ -143,18 +144,19 @@ function ModelEffortBar({
   const [model, setModel] = useState<string | null>(session.meta.model ?? null);
   const [thinkingLevel, setThinkingLevel] = useState<string | null>(null);
   const [thinkingLevels, setThinkingLevels] = useState<string[]>([...THINKING_LEVELS]);
-  const [workspacePath, setWorkspacePath] = useState<string | null>(session.meta.workspacePath ?? null);
+  const [workspacePath, setWorkspacePath] = useState<string | null>(sessionId ? session.meta.workspacePath ?? null : null);
+  const [workspaceKind, setWorkspaceKind] = useState<'auto' | 'user'>('auto');
   const [contextUsage, setContextUsage] = useState<{ tokens?: number | null; contextWindow?: number; percent?: number | null } | null>(session.meta.contextUsage ?? null);
 
   useEffect(() => {
     setModel(session.meta.model ?? null);
-    setWorkspacePath(session.meta.workspacePath ?? null);
+    if (sessionId) setWorkspacePath(session.meta.workspacePath ?? null);
     if (session.meta.contextUsage) setContextUsage(session.meta.contextUsage);
-  }, [session.meta.model, session.meta.workspacePath, session.meta.contextUsage]);
+  }, [sessionId, session.meta.model, session.meta.workspacePath, session.meta.contextUsage]);
 
   useEffect(() => {
-    onPrefs?.({ workspacePath, model, thinkingLevel });
-  }, [onPrefs, workspacePath, model, thinkingLevel]);
+    onPrefs?.({ workspacePath, workspaceKind, model, thinkingLevel });
+  }, [onPrefs, workspacePath, workspaceKind, model, thinkingLevel]);
 
   useEffect(() => {
     void api.getModelOptions?.(agentId).then((r) => {
@@ -168,7 +170,16 @@ function ModelEffortBar({
   useEffect(() => {
     if (!sessionId) {
       setContextUsage(null);
-      return;
+      setWorkspacePath(null);
+      setWorkspaceKind('auto');
+      let cancelled = false;
+      void Promise.resolve(api.allocateAutoWorkspace?.(agentId)).then((r) => {
+        if (!cancelled && r?.workspacePath) {
+          setWorkspacePath(r.workspacePath);
+          setWorkspaceKind('auto');
+        }
+      }).catch(() => {});
+      return () => { cancelled = true; };
     }
     const refresh = () => {
       void api.getChatSession?.(sessionId).then((rec) => {
@@ -204,9 +215,10 @@ function ModelEffortBar({
     }).catch(() => setThinkingLevels([...THINKING_LEVELS]));
   };
 
-  const publishPrefs = (next: { workspacePath?: string | null; model?: string | null; thinkingLevel?: string | null }) => {
+  const publishPrefs = (next: { workspacePath?: string | null; workspaceKind?: 'auto' | 'user'; model?: string | null; thinkingLevel?: string | null }) => {
     const prefs = {
       workspacePath: next.workspacePath !== undefined ? next.workspacePath : workspacePath,
+      workspaceKind: next.workspaceKind !== undefined ? next.workspaceKind : workspaceKind,
       model: next.model !== undefined ? next.model : model,
       thinkingLevel: next.thinkingLevel !== undefined ? next.thinkingLevel : thinkingLevel,
     };
@@ -238,10 +250,11 @@ function ModelEffortBar({
         data-testid="workspace"
         title={workspacePath ?? ''}
         onClick={() => {
-          void api.chooseWorkspace?.().then(({ path } = {}) => {
+          void api.chooseWorkspace?.({ defaultPath: workspacePath ?? undefined }).then(({ path } = {}) => {
             if (!path) return;
             setWorkspacePath(path);
-            publishPrefs({ workspacePath: path });
+            setWorkspaceKind('user');
+            publishPrefs({ workspacePath: path, workspaceKind: 'user' });
             if (sessionId) void api.setChatWorkspace?.(sessionId, path);
           });
         }}
@@ -319,8 +332,8 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
   const [rightCollapsed, setRightCollapsed] = useState(false);
   const [filter, setFilter] = useState<'all' | 'high' | 'mid' | 'low' | 'unprocessed'>('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [runPrefs, setRunPrefs] = useState<{ workspacePath: string | null; model: string | null; thinkingLevel: string | null }>({
-    workspacePath: null, model: null, thinkingLevel: null,
+  const [runPrefs, setRunPrefs] = useState<{ workspacePath: string | null; workspaceKind: 'auto' | 'user'; model: string | null; thinkingLevel: string | null }>({
+    workspacePath: null, workspaceKind: 'auto', model: null, thinkingLevel: null,
   });
   const previewRef = useRef<HTMLDivElement>(null);
   const titledSessions = useRef(new Set<string>());
@@ -374,6 +387,7 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
       setDiscardSession(true);
       setDocuments([]);
       lastInputsKey.current = '';
+      setRunPrefs({ workspacePath: null, workspaceKind: 'auto', model: null, thinkingLevel: null });
       return;
     }
     setDiscardSession(false);
@@ -490,6 +504,7 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
 
   const startNewSession = () => {
     resetDraft();
+    setRunPrefs({ workspacePath: null, workspaceKind: 'auto', model: null, thinkingLevel: null });
     setDiscardSession(true);
     actions.newSession();
   };
@@ -531,6 +546,7 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
                   void Promise.resolve(actions.startWorkflow({
                     documents,
                     workspacePath: runPrefs.workspacePath,
+                    workspaceKind: runPrefs.workspaceKind,
                     model: runPrefs.model,
                     thinkingLevel: runPrefs.thinkingLevel,
                   })).then((res) => {

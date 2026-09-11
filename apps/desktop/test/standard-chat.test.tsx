@@ -32,6 +32,7 @@ function makeApi(over: Record<string, unknown> = {}) {
     listThinkingLevels: vi.fn().mockResolvedValue(['off', 'medium', 'high']),
     setChatWorkspace: vi.fn().mockResolvedValue({ ok: true }),
     chooseWorkspace: vi.fn().mockResolvedValue({ path: 'C:/user-ws' }),
+    allocateAutoWorkspace: vi.fn().mockResolvedValue({ workspacePath: 'C:/docs/Sparkii/workspaces/general/ws-auto' }),
     getModelOptions: vi.fn().mockResolvedValue({ defaultModel: 'deepseek-v4-flash', models: ['deepseek-v4-pro', 'deepseek-v4-flash'], provider: 'deepseek' }),
     getSettings: vi.fn().mockResolvedValue({ chatDetailLevel: 'standard' }),
     getPathForFile: vi.fn((file: File) => `C:/downloads/${file.name}`),
@@ -78,6 +79,35 @@ describe('StandardChatSurface (contract)', () => {
   it('shows the draft composer when sessionId is null and draft is set', () => {
     render(<StandardChatSurface {...baseProps(null, { draft: true })} />);
     expect(screen.getByTestId('composer-input')).toBeTruthy();
+  });
+
+  it('allocates a workspace path for a new draft and chooses from that folder', async () => {
+    const allocateAutoWorkspace = vi.fn().mockResolvedValue({
+      workspacePath: 'C:/Users/x/Documents/Sparkii/workspaces/general/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+    });
+    const chooseWorkspace = vi.fn().mockResolvedValue({});
+    const { api } = makeApi({ allocateAutoWorkspace, chooseWorkspace });
+    render(<StandardChatSurface {...baseProps(null, { draft: true, api })} />);
+    await waitFor(() => expect(screen.getByTestId('workspace-path').textContent).toContain('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'));
+    fireEvent.click(screen.getByTestId('composer-workspace'));
+    await waitFor(() => expect(chooseWorkspace).toHaveBeenCalledWith({
+      defaultPath: 'C:/Users/x/Documents/Sparkii/workspaces/general/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+    }));
+  });
+
+  it('allocates a new path when sessionId becomes null', async () => {
+    const allocateAutoWorkspace = vi.fn()
+      .mockResolvedValue({ workspacePath: 'C:/docs/Sparkii/workspaces/general/id-new' });
+    const { api } = makeApi({
+      allocateAutoWorkspace,
+      getChatSession: vi.fn().mockResolvedValue({ workspacePath: 'C:/docs/Sparkii/workspaces/general/old' }),
+    });
+    const { rerender } = render(<StandardChatSurface {...baseProps('old', { api })} />);
+    expect(allocateAutoWorkspace).not.toHaveBeenCalled();
+    rerender(<StandardChatSurface {...baseProps(null, { draft: true, api })} />);
+    await waitFor(() => expect(screen.getByTestId('workspace-path').textContent).toContain('id-new'));
+    expect(allocateAutoWorkspace).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('workspace-path').textContent).not.toContain('old');
   });
 
   it('renders the empty state when no session and not a draft and calls newSession', () => {

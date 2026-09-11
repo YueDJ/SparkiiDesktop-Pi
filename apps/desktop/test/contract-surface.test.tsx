@@ -838,6 +838,57 @@ describe('ContractAgentSurface', () => {
     delete (window as any).sparkii;
   });
 
+  it('does not reuse a stale session.meta workspace after newSession', async () => {
+    const allocateAutoWorkspace = vi.fn()
+      .mockResolvedValue({ workspacePath: 'C:/docs/Sparkii/workspaces/contract-review/ws-new' });
+    (window as any).sparkii = {
+      getModelOptions: async () => ({ models: [], defaultModel: null, provider: 'deepseek' }),
+      allocateAutoWorkspace,
+      chooseWorkspace: async () => ({}),
+      on: () => () => {},
+    };
+    const startWorkflow = vi.fn();
+    const stale = {
+      entries: [], streaming: false, status: 'idle' as const,
+      meta: { currentStep: null, workspacePath: 'C:/docs/Sparkii/workspaces/contract-review/ws-old' },
+    };
+    const actions = { ...makeActions(), startWorkflow, chooseDocument: vi.fn().mockResolvedValue({ path: 'C:/tmp/a.pdf' }) };
+    const { rerender } = render(
+      <ContractAgentSurface agent={agent} sessionId="s-old" mode="live" session={stale} actions={actions} />,
+    );
+    expect(allocateAutoWorkspace).not.toHaveBeenCalled();
+    rerender(
+      <ContractAgentSurface agent={agent} sessionId={null} mode="live" session={stale} actions={actions} />,
+    );
+    await waitFor(() => expect(screen.getByTestId('workspace').textContent).toContain('ws-new'));
+    expect(allocateAutoWorkspace).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByTestId('upload'));
+    await screen.findByTestId('remove-document');
+    fireEvent.click(screen.getByTestId('review'));
+    await waitFor(() => expect(startWorkflow).toHaveBeenCalledWith(expect.objectContaining({
+      workspacePath: 'C:/docs/Sparkii/workspaces/contract-review/ws-new',
+      workspaceKind: 'auto',
+    })));
+    delete (window as any).sparkii;
+  });
+
+  it('opens the folder picker at the displayed workspace', async () => {
+    const chooseWorkspace = vi.fn().mockResolvedValue({});
+    (window as any).sparkii = {
+      getModelOptions: async () => ({ models: [], defaultModel: null, provider: 'deepseek' }),
+      allocateAutoWorkspace: async () => ({ workspacePath: 'C:/docs/Sparkii/workspaces/contract-review/ws-1' }),
+      chooseWorkspace,
+      on: () => () => {},
+    };
+    render(<ContractAgentSurface agent={agent} sessionId={null} mode="live" session={{ entries: [], streaming: false, status: 'idle', meta: { currentStep: null } }} actions={makeActions()} />);
+    await screen.findByText('ws-1');
+    fireEvent.click(screen.getByTestId('workspace'));
+    await waitFor(() => expect(chooseWorkspace).toHaveBeenCalledWith({
+      defaultPath: 'C:/docs/Sparkii/workspaces/contract-review/ws-1',
+    }));
+    delete (window as any).sparkii;
+  });
+
   it('lists report risks by level with clause and position', () => {
     const entries = normalizeSessionEntries([
       { type: 'custom', id: 'c1', customType: 'workflow_step_end', data: { stepId: 'review', status: 'completed', output: { riskFindings: [
