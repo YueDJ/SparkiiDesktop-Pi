@@ -40,7 +40,7 @@
 1. **自动工作区根固定为用户文档下的 Sparkii 主文件夹。**  
    `join(app.getPath('documents'), 'Sparkii', 'workspaces', agentId, workspaceKey)`  
    Windows 即 `Documents\Sparkii\workspaces\<agentId>\<workspaceKey>\`。
-2. **`workspaceKey` 在「新 session」诞生时分配，之后不再改名。** 用 `randomUUID()`。不等于、也不重命名为 Pi `sessionId`（草稿阶段还没有 Pi id；改名会丢用户已放进去的文件）。
+2. **`workspaceKey` 在「新 session」诞生时分配，之后不再改名。** 用短的星火物名 `形容词-名词-3位`（如 `glow-fox-k7m`），不用 UUID。不等于、也不重命名为 Pi `sessionId`（草稿阶段还没有 Pi id；改名会丢用户已放进去的文件）。
 3. **每个新 session 必须分配一条新的自动路径。** 禁止复用上一条 session、禁止应用级单例工作区。历史 session 打开时只读自己入库的 `workspacePath`。
 4. **路径先显示、后落盘。** 分配路径不 `mkdir`。创建只发生在「第一次碰到」：点工作区按钮、导出报告、附件物化、已批准的写工具。
 5. **「开始审核」不是第一次碰到。** `runWorkflow` 禁止 `ensureWorkspaceDir`。审核过程写在 Pi JSONL，不预建用户工作区。
@@ -66,7 +66,7 @@
 | --- | --- |
 | `workspaceKind` | `auto` 默认；用户选目录后为 `user` |
 | `workspacePath` | 绝对路径；草稿阶段就有；写入 `chat_sessions` 后不可因 Pi id 变更而改 |
-| `workspaceKey` | UUID；只用于拼自动路径最后一段 |
+| `workspaceKey` | 星火物名 `adj-noun-tag`（如 `glow-fox-k7m`）；只用于拼自动路径最后一段 |
 
 `defaultWorkspacePath(documents, agentId, workspaceKey)` 是唯一拼装函数。新增 `allocateAutoWorkspace(documents, agentId)`：生成 key + 调用前者。两者都不 `mkdir`。
 
@@ -187,7 +187,7 @@ Renderer 不得自己 `join` 文档路径。一律问 Main：`sparkii:allocateAu
 
 ### 单元
 
-- `defaultWorkspacePath` / `allocateAutoWorkspace`：`Documents/Sparkii/workspaces/<agent>/<uuid>`；两次分配 key 不同；不创建目录。
+- `defaultWorkspacePath` / `allocateAutoWorkspace`：`Documents/Sparkii/workspaces/<agent>/<adj-noun-tag>`；两次分配 key 不同；不创建目录。
 - `autoWorkspacePath` 不再被 `ipc.ts` / `workflow.ts` import。
 
 ### IPC

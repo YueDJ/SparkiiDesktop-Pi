@@ -311,7 +311,7 @@ describe('runWorkflow broker sharing', () => {
     expect(cwd.startsWith(join(rt.dataDir, 'sessions'))).toBe(true);
     expect(cwd).not.toBe(join(rt.dataDir, 'sessions'));
     expect(String(acquiredSaddles[0]?.workspaceRoot).replace(/\\/g, '/')).toMatch(
-      /Sparkii\/workspaces\/contract-review\/[0-9a-f-]+$/i,
+      /Sparkii\/workspaces\/contract-review\/[a-z]+-[a-z]+-[a-z2-9]{3}$/i,
     );
 
     expect(send).toHaveBeenCalledWith('sparkii:event:approval', expect.objectContaining({ id: 'p1' }));

@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
-import { defaultWorkspacePath, ensureWorkspaceDir, allocateAutoWorkspace, assertAgentId } from '../electron/main/workspace.js';
+import { defaultWorkspacePath, ensureWorkspaceDir, allocateAutoWorkspace, allocateWorkspaceKey, assertAgentId, WORKSPACE_KEY_PATTERN } from '../electron/main/workspace.js';
 
 describe('workspace naming', () => {
   it('default path is documents-scoped per agent and session', () => {
@@ -16,11 +16,17 @@ describe('workspace naming', () => {
     const { statSync } = await import('node:fs');
     expect(statSync(dir).isDirectory()).toBe(true);
   });
-  it('allocateAutoWorkspace is Documents/Sparkii/workspaces/<agent>/<uuid> and does not mkdir', () => {
+  it('allocateWorkspaceKey is a short speakable spark name', () => {
+    const key = allocateWorkspaceKey();
+    expect(key).toMatch(WORKSPACE_KEY_PATTERN);
+    expect(key.length).toBeLessThan(24);
+    expect(key.split('-')[2]).not.toMatch(/[0O1lI]/);
+  });
+  it('allocateAutoWorkspace is Documents/Sparkii/workspaces/<agent>/<spark-name> and does not mkdir', () => {
     const docs = join(tmpdir(), 'docs-home');
     const a = allocateAutoWorkspace(docs, 'contract-review');
     const b = allocateAutoWorkspace(docs, 'contract-review');
-    expect(a.workspaceKey).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(a.workspaceKey).toMatch(WORKSPACE_KEY_PATTERN);
     expect(a.workspacePath).toBe(join(docs, 'Sparkii', 'workspaces', 'contract-review', a.workspaceKey));
     expect(b.workspaceKey).not.toBe(a.workspaceKey);
     expect(existsSync(a.workspacePath)).toBe(false);
