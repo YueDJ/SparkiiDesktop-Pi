@@ -1,4 +1,8 @@
 node_modules/
+.venv-docparse/
+.venv-docparse-light/
+packages/document-parse/build/
+packages/document-parse/*.spec
 .pnpm-store/
 __pycache__/
 *.py[cod]
@@ -18,6 +22,8 @@ apps/desktop/runtime/*
 !apps/desktop/runtime/document-parse/
 apps/desktop/runtime/document-parse/*
 !apps/desktop/runtime/document-parse/modules.json
+!apps/desktop/runtime/document-parse/checksums.json
+!apps/desktop/runtime/document-parse/README.md
 !apps/desktop/runtime/document-parse/licenses/
 !apps/desktop/runtime/document-parse/licenses/README.md
 apps/desktop/src/types/*.js

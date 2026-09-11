@@ -71,7 +71,8 @@ function documentParseStatusLabel(parse: DocumentParseSnapshot): string {
       const parts = ['正在解析'];
       if (parse.agentDisplayName) parts.push(parse.agentDisplayName);
       if (parse.fileName) parts.push(parse.fileName);
-      if (parse.page != null && parse.total != null) parts.push(`第 ${parse.page}/${parse.total} 页`);
+      if (parse.page != null && parse.total != null && parse.total > 0) parts.push(`第 ${parse.page}/${parse.total} 页`);
+      else if (parse.page != null && parse.page > 0) parts.push(`第 ${parse.page} 页`);
       return parts.join(' · ');
     }
     case 'idle':

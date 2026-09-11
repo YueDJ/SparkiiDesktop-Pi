@@ -1,6 +1,8 @@
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { EventEmitter } from 'node:events';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -19,6 +21,8 @@ import {
   resolveDocumentParsePaths,
 } from '../electron/main/document-parse-layout.js';
 
+const desktopRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
+
 function tempRoot(): string {
   return mkdtempSync(join(tmpdir(), 'sparkii-dp-'));
 }
@@ -29,6 +33,13 @@ function placeReady(root: string): void {
   mkdirSync(join(paths.root, 'models', 'baseline'), { recursive: true });
   writeFileSync(paths.exe, 'exe');
   writeFileSync(paths.ready, 'ok');
+}
+
+function writeChecksumsFor(archivePath: string, dir: string): string {
+  const hash = createHash('sha256').update(readFileSync(archivePath)).digest('hex');
+  const checksums = join(dir, 'checksums.json');
+  writeFileSync(checksums, JSON.stringify({ archive: hash }));
+  return checksums;
 }
 
 function stubSpawnExtract(): void {
@@ -100,8 +111,17 @@ describe('documentParseArchivePath', () => {
     expect(documentParseArchivePath({}, resources)).toBe(archive);
   });
 
-  it('returns null when no archive exists', () => {
+  it('returns null when SPARKII_DOCUMENT_PARSE_ARCHIVE is set but missing', () => {
     expect(documentParseArchivePath({ SPARKII_DOCUMENT_PARSE_ARCHIVE: join(tempRoot(), 'missing.7z.exe') })).toBeNull();
+  });
+
+  it('falls back to the repo runtime archive when env is unset', () => {
+    const found = documentParseArchivePath({});
+    if (!existsSync(join(desktopRoot, 'runtime/document-parse', DOCUMENT_PARSE_ARCHIVE_NAME))) {
+      expect(found).toBeNull();
+      return;
+    }
+    expect(found).toMatch(/sparkii-document-parse\.7z\.exe$/);
   });
 });
 
@@ -129,6 +149,7 @@ describe('ensureDocumentParse', () => {
     const env = {
       SPARKII_RUNTIME_ROOT: root,
       SPARKII_DOCUMENT_PARSE_ARCHIVE: archive,
+      SPARKII_DOCUMENT_PARSE_CHECKSUMS: writeChecksumsFor(archive, root),
     };
     await ensureDocumentParse(env);
 
@@ -155,5 +176,54 @@ describe('ensureDocumentParse', () => {
     });
 
     expect(childProcessMock.spawn).not.toHaveBeenCalled();
+  });
+
+  it('does not extract when checksums.json is missing', async () => {
+    const root = tempRoot();
+    const archive = join(root, DOCUMENT_PARSE_ARCHIVE_NAME);
+    writeFileSync(archive, 'sfx');
+
+    await expect(ensureDocumentParse({
+      SPARKII_RUNTIME_ROOT: root,
+      SPARKII_DOCUMENT_PARSE_ARCHIVE: archive,
+      SPARKII_DOCUMENT_PARSE_CHECKSUMS: join(root, 'missing-checksums.json'),
+    })).rejects.toThrow(/checksums\.json missing/);
+    expect(childProcessMock.spawn).not.toHaveBeenCalled();
+  });
+
+  it('does not extract when the archive hash mismatches', async () => {
+    const root = tempRoot();
+    const archive = join(root, DOCUMENT_PARSE_ARCHIVE_NAME);
+    writeFileSync(archive, 'sfx');
+    const checksums = join(root, 'checksums.json');
+    writeFileSync(checksums, JSON.stringify({ archive: 'c'.repeat(64) }));
+
+    await expect(ensureDocumentParse({
+      SPARKII_RUNTIME_ROOT: root,
+      SPARKII_DOCUMENT_PARSE_ARCHIVE: archive,
+      SPARKII_DOCUMENT_PARSE_CHECKSUMS: checksums,
+    })).rejects.toThrow(/checksum mismatch/);
+    expect(childProcessMock.spawn).not.toHaveBeenCalled();
+  });
+});
+
+describe('document-parse release archive', () => {
+  it('keeps the default archive under 100 MiB when present', () => {
+    const archive = join(desktopRoot, 'runtime/document-parse', DOCUMENT_PARSE_ARCHIVE_NAME);
+    if (!existsSync(archive)) return;
+    expect(statSync(archive).size).toBeLessThanOrEqual(100 * 1024 * 1024);
+  });
+
+  it('pins a real 64-hex archive sha256 when checksums.json exists', async () => {
+    const archive = join(desktopRoot, 'runtime/document-parse', DOCUMENT_PARSE_ARCHIVE_NAME);
+    const checksums = join(desktopRoot, 'runtime/document-parse/checksums.json');
+    if (!existsSync(checksums)) return;
+    const raw = readFileSync(checksums, 'utf8');
+    const parsed = JSON.parse(raw) as { archive?: string };
+    expect(parsed.archive).toMatch(/^[0-9a-fA-F]{64}$/);
+    expect(parsed.archive).not.toMatch(/REPLACE/i);
+    if (!existsSync(archive)) return;
+    const { verifyArchiveChecksum } = await import('../scripts/document-parse-checksum.mjs');
+    await expect(verifyArchiveChecksum(archive, checksums)).resolves.toBe(parsed.archive.toLowerCase());
   });
 });

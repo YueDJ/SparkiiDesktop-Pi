@@ -9,6 +9,11 @@
   Delete "$LOCALAPPDATA\SparkiiDesktop\data\pi-agent\bin\fd.exe"
   Delete "$LOCALAPPDATA\SparkiiDesktop\data\pi-agent\bin\rg.exe"
   RMDir "$LOCALAPPDATA\SparkiiDesktop\data\pi-agent\bin"
+  IfFileExists "$INSTDIR\resources\runtime\document-parse\sparkii-document-parse.7z.exe" 0 skip_docparse
+    DetailPrint "Preparing document parse..."
+    ExecWait '"$INSTDIR\resources\runtime\document-parse\sparkii-document-parse.7z.exe" -o"$LOCALAPPDATA\SparkiiDesktop\runtime\document-parse" -y' $0
+    DetailPrint "Document parse extraction exit code: $0"
+  skip_docparse:
 !macroend
 
 !macro customUnInstall
