@@ -69,4 +69,4 @@ On a Windows x64 CPU build machine (no CUDA, no HuggingFace):
 
 ### extraResources / NSIS
 
-Hash the SFX on the Windows build machine and write that real sha256 to `apps/desktop/runtime/document-parse/checksums.json` before any installer wiring. `electron-builder.yml` extraResources and NSIS `customInstall` are **not** wired until that hash exists. Until then, AppX and first-run `ensureDocumentParse` are the runtime path. FAKE must not be packaged.
+`checksums.json` holds the real sha256 of the light SFX. `electron-builder.yml` extraResources packs that SFX plus `checksums.json`. NSIS `customInstall` extracts it to `%LOCALAPPDATA%\SparkiiDesktop\runtime\document-parse`. AppX and `pnpm start` still go through `ensureDocumentParse` / `ensure-document-parse.mjs`, which refuse a hash mismatch. FAKE must not be packaged. The 7z remains gitignored.

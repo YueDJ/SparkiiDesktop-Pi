@@ -1,5 +1,6 @@
 node_modules/
 .venv-docparse/
+.venv-docparse-light/
 packages/document-parse/build/
 packages/document-parse/*.spec
 .pnpm-store/

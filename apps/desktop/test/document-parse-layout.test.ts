@@ -214,12 +214,16 @@ describe('document-parse release archive', () => {
     expect(statSync(archive).size).toBeLessThanOrEqual(100 * 1024 * 1024);
   });
 
-  it('pins a real 64-hex archive sha256 when checksums.json exists', () => {
+  it('pins a real 64-hex archive sha256 when checksums.json exists', async () => {
+    const archive = join(desktopRoot, 'runtime/document-parse', DOCUMENT_PARSE_ARCHIVE_NAME);
     const checksums = join(desktopRoot, 'runtime/document-parse/checksums.json');
     if (!existsSync(checksums)) return;
     const raw = readFileSync(checksums, 'utf8');
     const parsed = JSON.parse(raw) as { archive?: string };
     expect(parsed.archive).toMatch(/^[0-9a-fA-F]{64}$/);
     expect(parsed.archive).not.toMatch(/REPLACE/i);
+    if (!existsSync(archive)) return;
+    const { verifyArchiveChecksum } = await import('../scripts/document-parse-checksum.mjs');
+    await expect(verifyArchiveChecksum(archive, checksums)).resolves.toBe(parsed.archive.toLowerCase());
   });
 });

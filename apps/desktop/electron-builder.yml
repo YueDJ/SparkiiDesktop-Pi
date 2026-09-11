@@ -13,6 +13,10 @@ extraResources:
     to: agents
   - from: runtime/portable-git.7z.exe
     to: runtime/portable-git.7z.exe
+  - from: runtime/document-parse/sparkii-document-parse.7z.exe
+    to: runtime/document-parse/sparkii-document-parse.7z.exe
+  - from: runtime/document-parse/checksums.json
+    to: runtime/document-parse/checksums.json
   - from: runtime/tools/fd.exe
     to: runtime/tools/fd.exe
   - from: runtime/tools/rg.exe
