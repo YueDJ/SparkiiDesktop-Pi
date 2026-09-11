@@ -204,29 +204,136 @@ class LightOcrTests(unittest.TestCase):
         self.assertAlmostEqual(frames[-1]["result"]["pages"][0]["score"], 0.99)
 
     def test_create_ocr_locks_offline_v6_small_paths(self):
-        os.environ["SPARKII_DOCUMENT_PARSE_MODELS"] = r"C:\models"
+        import tempfile
+        from enum import Enum
+
+        from sparkii_document_parse import light_ocr
+
+        root = Path(tempfile.mkdtemp())
+        base = root / "baseline"
+        base.mkdir()
+        (base / light_ocr.DET_NAME).write_bytes(b"det")
+        (base / light_ocr.REC_NAME).write_bytes(b"rec")
+        (base / light_ocr.CLS_NAME).write_bytes(b"cls")
+        os.environ["SPARKII_DOCUMENT_PARSE_MODELS"] = str(root)
         captured = {}
 
         def fake_ctor(**kwargs):
             captured.update(kwargs.get("params") or {})
             return FakeOcr()
 
-        with (
-            mock.patch("sparkii_document_parse.light_ocr.RapidOCR", side_effect=fake_ctor),
-            mock.patch("pathlib.Path.is_file", return_value=True),
-        ):
-            from sparkii_document_parse import light_ocr
-
+        with mock.patch("sparkii_document_parse.light_ocr.RapidOCR", side_effect=fake_ctor):
             light_ocr.reset_ocr_for_tests()
             light_ocr.create_ocr()
-        self.assertEqual(captured["Det.ocr_version"], "PP-OCRv6")
-        self.assertEqual(captured["Det.model_type"], "small")
-        self.assertEqual(captured["Rec.ocr_version"], "PP-OCRv6")
-        self.assertEqual(captured["Rec.model_type"], "small")
-        self.assertEqual(captured["Det.engine_type"], "onnxruntime")
-        self.assertTrue(str(captured["Det.model_path"]).endswith("PP-OCRv6_det_small.onnx"))
-        self.assertTrue(str(captured["Rec.model_path"]).endswith("PP-OCRv6_rec_small.onnx"))
-        self.assertTrue(str(captured["Cls.model_path"]).endswith("ch_ppocr_mobile_v2.0_cls_mobile.onnx"))
+
+        self.assertIsInstance(captured["Det.engine_type"], Enum)
+        self.assertIsInstance(captured["Det.ocr_version"], Enum)
+        self.assertIsInstance(captured["Det.model_type"], Enum)
+        self.assertIsInstance(captured["Rec.engine_type"], Enum)
+        self.assertIsInstance(captured["Rec.ocr_version"], Enum)
+        self.assertIsInstance(captured["Rec.model_type"], Enum)
+        self.assertIsInstance(captured["Cls.engine_type"], Enum)
+        self.assertEqual(captured["Det.ocr_version"].value, "PP-OCRv6")
+        self.assertEqual(captured["Det.model_type"].value, "small")
+        self.assertEqual(captured["Rec.ocr_version"].value, "PP-OCRv6")
+        self.assertEqual(captured["Rec.model_type"].value, "small")
+        self.assertEqual(captured["Det.engine_type"].value, "onnxruntime")
+        self.assertEqual(captured["Rec.engine_type"].value, "onnxruntime")
+        self.assertEqual(captured["Cls.engine_type"].value, "onnxruntime")
+        self.assertEqual(captured["Det.model_path"], str(base / light_ocr.DET_NAME))
+        self.assertEqual(captured["Rec.model_path"], str(base / light_ocr.REC_NAME))
+        self.assertEqual(captured["Cls.model_path"], str(base / light_ocr.CLS_NAME))
+
+    def test_create_ocr_params_accepted_by_installed_rapidocr(self):
+        try:
+            from rapidocr import RapidOCR  # noqa: F401
+        except ImportError:
+            self.skipTest("rapidocr is not installed")
+
+        import tempfile
+
+        from sparkii_document_parse import light_ocr
+
+        root = Path(tempfile.mkdtemp())
+        base = root / "baseline"
+        base.mkdir()
+        (base / light_ocr.DET_NAME).write_bytes(b"not-onnx")
+        (base / light_ocr.REC_NAME).write_bytes(b"not-onnx")
+        (base / light_ocr.CLS_NAME).write_bytes(b"not-onnx")
+        saved = os.environ.get("SPARKII_DOCUMENT_PARSE_MODELS")
+        try:
+            os.environ["SPARKII_DOCUMENT_PARSE_MODELS"] = str(root)
+            light_ocr.reset_ocr_for_tests()
+            light_ocr.create_ocr()
+        except TypeError as exc:
+            self.fail(f"RapidOCR rejected enum params: {exc}")
+        except Exception:
+            pass
+        finally:
+            light_ocr.reset_ocr_for_tests()
+            if saved is None:
+                os.environ.pop("SPARKII_DOCUMENT_PARSE_MODELS", None)
+            else:
+                os.environ["SPARKII_DOCUMENT_PARSE_MODELS"] = saved
+
+    def test_multipage_pdf_progress_uses_real_page_count(self):
+        reset_pipeline_cache_for_tests()
+        rendered: list[int] = []
+
+        class FakeRendered:
+            def to_pil(self):
+                return object()
+
+        class FakePage:
+            def render(self, scale=1):
+                rendered.append(scale)
+                return FakeRendered()
+
+            def close(self):
+                return None
+
+        class FakeDoc:
+            def __init__(self, path):
+                self.path = path
+                self.pages = [FakePage(), FakePage(), FakePage()]
+
+            def __len__(self):
+                return len(self.pages)
+
+            def __getitem__(self, index):
+                return self.pages[index]
+
+            def close(self):
+                return None
+
+        fake_pdfium = mock.MagicMock()
+        fake_pdfium.PdfDocument = FakeDoc
+        stdin = io.StringIO(
+            '{"id":"1","method":"parse","params":{"path":"/tmp/multi.pdf","modules":["baseline"]}}\n'
+        )
+        stdout = io.StringIO()
+        saved_fake = os.environ.pop("SPARKII_DOCUMENT_PARSE_FAKE", None)
+        try:
+            with (
+                mock.patch.dict(sys.modules, {"pypdfium2": fake_pdfium}),
+                mock.patch("sparkii_document_parse.light_ocr.create_ocr", return_value=FakeOcr()),
+            ):
+                run_loop(stdin, stdout, io.StringIO())
+        finally:
+            if saved_fake is not None:
+                os.environ["SPARKII_DOCUMENT_PARSE_FAKE"] = saved_fake
+
+        self.assertEqual(rendered, [2, 2, 2])
+        frames = parse_stdout_lines(stdout.getvalue())
+        progress = [frame for frame in frames if frame.get("method") == "progress"]
+        self.assertEqual(
+            [frame["params"] for frame in progress],
+            [
+                {"page": 1, "total": 3},
+                {"page": 2, "total": 3},
+                {"page": 3, "total": 3},
+            ],
+        )
 
 
 if __name__ == "__main__":

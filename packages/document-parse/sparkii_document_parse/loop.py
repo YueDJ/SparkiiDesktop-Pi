@@ -61,20 +61,12 @@ def reset_pipeline_cache_for_tests() -> None:
     light_ocr.reset_ocr_for_tests()
 
 
-def get_pipeline(modules: Optional[list[str]] = None) -> Any:
-    from sparkii_document_parse import light_ocr
-
-    del modules
-    configure_runtime_env()
-    return light_ocr.create_ocr()
-
-
-def _load_images(path: str) -> list[Any]:
+def _iter_pages(path: str) -> tuple[int, Any]:
     from sparkii_document_parse import light_ocr
 
     if Path(path).suffix.lower() == ".pdf":
-        return list(light_ocr.pdf_to_images(path))
-    return [path]
+        return light_ocr.open_pdf_pages(path)
+    return 1, iter((path,))
 
 
 def _page_markdown(index: int, lines: list[tuple[str, float]]) -> str:
@@ -146,23 +138,29 @@ def handle_parse_real(
         configure_runtime_env()
         with redirect_stdout(err):
             ocr = light_ocr.create_ocr()
-            images = _load_images(path)
-        if not images:
-            write_error(frame_id, "document parse produced no pages", out)
-            return
-        total = len(images)
+            total, images = _iter_pages(path)
         pages: list[dict[str, Any]] = []
         markdown_parts: list[str] = []
-        for index, image in enumerate(images, start=1):
-            write_frame(
-                {"id": frame_id, "method": "progress", "params": {"page": index, "total": total}},
-                out,
-            )
-            with redirect_stdout(err):
-                result = ocr(image)
-            lines = light_ocr.lines_from_ocr(result)
-            markdown_parts.append(_page_markdown(index, lines))
-            pages.append({"page": index, "score": _page_score(lines)})
+        index = 0
+        try:
+            for image in images:
+                index += 1
+                write_frame(
+                    {"id": frame_id, "method": "progress", "params": {"page": index, "total": total}},
+                    out,
+                )
+                with redirect_stdout(err):
+                    result = ocr(image)
+                lines = light_ocr.lines_from_ocr(result)
+                markdown_parts.append(_page_markdown(index, lines))
+                pages.append({"page": index, "score": _page_score(lines)})
+        finally:
+            close = getattr(images, "close", None)
+            if callable(close):
+                close()
+        if index == 0:
+            write_error(frame_id, "document parse produced no pages", out)
+            return
     except Exception:
         log_err(traceback.format_exc(), err)
         write_error(frame_id, "document parse failed", out)

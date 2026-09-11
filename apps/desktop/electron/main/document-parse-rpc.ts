@@ -1,11 +1,11 @@
 export type RpcFrame =
-  | { id: string; method: 'parse'; params: { path: string; modules: string[] } }
+  | { id: string; method: 'parse'; params: { path: string; modules: string[]; total?: number } }
   | { id: string; method: 'shutdown' }
   | { id: string; method: 'progress'; params: { page: number; total: number } }
   | { id: string; result: { markdown: string; pages: Array<{ page: number; score: number }> } }
   | { id: string; error: { code: string; message: string } };
 
-export type ParseParams = { path: string; modules: string[] };
+export type ParseParams = { path: string; modules: string[]; total?: number };
 export type ParseResult = { markdown: string; pages: Array<{ page: number; score: number }> };
 export type ParseProgress = { page: number; total: number };
 

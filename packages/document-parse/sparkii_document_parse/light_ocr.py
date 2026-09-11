@@ -2,9 +2,12 @@ import os
 from pathlib import Path
 
 try:
-    from rapidocr import RapidOCR
+    from rapidocr import EngineType, ModelType, OCRVersion, RapidOCR
 except ImportError:  # pragma: no cover - real runtime installs RapidOCR
     RapidOCR = None  # type: ignore[misc, assignment]
+    EngineType = None  # type: ignore[misc, assignment]
+    OCRVersion = None  # type: ignore[misc, assignment]
+    ModelType = None  # type: ignore[misc, assignment]
 
 MODELS_ENV = "SPARKII_DOCUMENT_PARSE_MODELS"
 DET_NAME = "PP-OCRv6_det_small.onnx"
@@ -30,19 +33,19 @@ def _require(path: Path) -> str:
 def create_ocr():
     global _ocr
     if _ocr is None:
-        if RapidOCR is None:
+        if RapidOCR is None or EngineType is None or OCRVersion is None or ModelType is None:
             raise ImportError("rapidocr is required")
         base = _baseline_dir()
         _ocr = RapidOCR(params={
-            "Det.engine_type": "onnxruntime",
-            "Det.ocr_version": "PP-OCRv6",
-            "Det.model_type": "small",
+            "Det.engine_type": EngineType.ONNXRUNTIME,
+            "Det.ocr_version": OCRVersion.PPOCRV6,
+            "Det.model_type": ModelType.SMALL,
             "Det.model_path": _require(base / DET_NAME),
-            "Rec.engine_type": "onnxruntime",
-            "Rec.ocr_version": "PP-OCRv6",
-            "Rec.model_type": "small",
+            "Rec.engine_type": EngineType.ONNXRUNTIME,
+            "Rec.ocr_version": OCRVersion.PPOCRV6,
+            "Rec.model_type": ModelType.SMALL,
             "Rec.model_path": _require(base / REC_NAME),
-            "Cls.engine_type": "onnxruntime",
+            "Cls.engine_type": EngineType.ONNXRUNTIME,
             "Cls.model_path": _require(base / CLS_NAME),
         })
     return _ocr
@@ -59,17 +62,26 @@ def lines_from_ocr(out):
     return list(zip(txts, scores))
 
 
-def pdf_to_images(path: str):
+def open_pdf_pages(path: str):
     import pypdfium2 as pdfium
+
     doc = pdfium.PdfDocument(path)
-    images = []
-    try:
-        for i in range(len(doc)):
-            page = doc[i]
-            try:
-                images.append(page.render(scale=2).to_pil())
-            finally:
-                page.close()
-    finally:
-        doc.close()
-    return images
+    total = len(doc)
+
+    def pages():
+        try:
+            for i in range(total):
+                page = doc[i]
+                try:
+                    yield page.render(scale=2).to_pil()
+                finally:
+                    page.close()
+        finally:
+            doc.close()
+
+    return total, pages()
+
+
+def pdf_to_images(path: str):
+    _total, pages = open_pdf_pages(path)
+    yield from pages
