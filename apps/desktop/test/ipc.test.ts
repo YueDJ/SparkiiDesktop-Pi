@@ -3381,6 +3381,42 @@ describe('ipc user skill library', () => {
     );
   });
 
+  it('openWorkspace mkdirs an absolute path and opens it', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const ws = join(dataDir, 'open-ws');
+    const agents = new Map([['general', { id: 'general', tools: [], skillsDir: '', systemPrompt: '', manifest: { name: 'general' } }]]);
+    await makeRuntime({
+      dataDir, piAgentDir: join(dataDir, 'pi-agent'),
+      client: { send: async () => ({ success: true }) }, agents,
+    });
+    const electron = await import('electron');
+    vi.mocked(electron.shell.openPath).mockResolvedValueOnce('');
+    const handlers = await registeredHandlers();
+    const result = await handlers.get('sparkii:openWorkspace')!(null, ws) as { ok: boolean };
+    expect(result.ok).toBe(true);
+    expect(existsSync(ws)).toBe(true);
+    expect(electron.shell.openPath).toHaveBeenCalledWith(ws);
+  });
+
+  it('openWorkspace ignores a relative path without mkdir', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const agents = new Map([['general', { id: 'general', tools: [], skillsDir: '', systemPrompt: '', manifest: { name: 'general' } }]]);
+    await makeRuntime({
+      dataDir, piAgentDir: join(dataDir, 'pi-agent'),
+      client: { send: async () => ({ success: true }) }, agents,
+    });
+    const electron = await import('electron');
+    vi.mocked(electron.shell.openPath).mockClear();
+    const handlers = await registeredHandlers();
+    const rel = 'SparkiiRelOpenWs';
+    const result = await handlers.get('sparkii:openWorkspace')!(null, rel) as { ok: boolean };
+    expect(result.ok).toBe(false);
+    expect(existsSync(rel)).toBe(false);
+    expect(electron.shell.openPath).not.toHaveBeenCalled();
+  });
+
   it('runWorkflow without workspacePath allocates Documents path and does not mkdir', async () => {
     const created: Array<{ workspacePath?: string; workspaceKind?: string }> = [];
     const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));

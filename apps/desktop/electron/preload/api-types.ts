@@ -96,6 +96,7 @@ export interface SparkiiApi {
   requestExportReport(sessionId: string, summary: Record<string, unknown>): Promise<{ ok: boolean; approved: boolean }>;
   allocateAutoWorkspace(agentId: string): Promise<{ workspacePath: string }>;
   chooseWorkspace(opts?: { defaultPath?: string }): Promise<{ path?: string }>;
+  openWorkspace(path: string): Promise<{ ok: boolean; error?: string }>;
   listUserSkills(): Promise<{
     agent: { id: string; name: string } | null;
     skills: Array<{ name: string; description: string; hasScripts: boolean; warnings: string[]; kind?: 'skill' | 'pack'; skillCount?: number }>;

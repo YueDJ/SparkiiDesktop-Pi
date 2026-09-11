@@ -1007,6 +1007,14 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     return result.canceled ? {} : { path: result.filePaths[0] };
   });
 
+  ipcMain.handle('sparkii:openWorkspace', async (_e, path?: string) => {
+    const target = String(path ?? '').trim();
+    if (!target || !isAbsolute(target)) return { ok: false };
+    await ensureWorkspaceDir(target);
+    const error = await shell.openPath(target);
+    return error ? { ok: false, error } : { ok: true };
+  });
+
   ipcMain.handle('sparkii:listUserSkills', async () => {
     const agent = userLibraryAgent(rt);
     if (!agent) return { agent: null, skills: [] };

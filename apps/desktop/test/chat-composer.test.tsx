@@ -16,6 +16,7 @@ function makeProps(over: Partial<ComposerProps> = {}): ComposerProps {
     onThinkingLevelChange: vi.fn(),
     workspacePath: 'C:/ws/SparkiiXyZ9202608251710',
     onChooseWorkspace: vi.fn(),
+    onOpenWorkspace: vi.fn(),
     onSend: vi.fn(),
     onStop: vi.fn(),
     ...over,
@@ -70,11 +71,15 @@ describe('Composer', () => {
     expect(props.onThinkingLevelChange).toHaveBeenCalledWith('high');
   });
 
-  it('workspace chip shows the path and opens the chooser', () => {
+  it('workspace chip shows the path and can open or change the folder', () => {
     const props = makeProps();
     render(<Composer {...props} />);
     expect(screen.getByTestId('workspace-path').textContent).toContain('SparkiiXyZ9');
     fireEvent.click(screen.getByTestId('composer-workspace'));
+    fireEvent.click(screen.getByTestId('workspace-open'));
+    expect(props.onOpenWorkspace).toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('composer-workspace'));
+    fireEvent.click(screen.getByTestId('workspace-change'));
     expect(props.onChooseWorkspace).toHaveBeenCalled();
   });
 });

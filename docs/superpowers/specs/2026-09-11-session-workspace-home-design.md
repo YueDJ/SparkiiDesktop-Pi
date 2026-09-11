@@ -131,16 +131,17 @@ Renderer 不得自己 `join` 文档路径。一律问 Main：`sparkii:allocateAu
 
 ## Workspace Control (UI)
 
-合同审核顶栏与 `ChatComposer` **保持原来一个按钮**：
+合同审核顶栏与 `ChatComposer` **保持原来一个按钮**，单击展开两个动作（不是两颗键）：
 
 ```text
 [📁  <显示名> ]
-     ▲ 单击 = chooseWorkspace({ defaultPath: 当前路径 })
+     ├ 打开工作区  = ensureWorkspaceDir + shell.openPath（资源管理器里看文件）
+     └ 更换工作区  = chooseWorkspace({ defaultPath: 当前路径 })
 ```
 
 - 显示名 = 路径最后一段。`title` = 绝对路径。
-- `data-testid="workspace"` / `composer-workspace` 不变。`onChooseWorkspace` 不变，只是带上 `defaultPath`。
-- 不增加第二个按钮，不拆 `onOpenWorkspace` / `onChangeWorkspace`。
+- `data-testid="workspace"` / `composer-workspace` 仍是那一颗按钮。菜单项为 `workspace-open` / `workspace-change`。
+- 系统选文件夹对话框看不了工作区文件；资源管理器也不能把「另选的目录」回传给应用。所以打开和更换是两个动作，挂在同一颗按钮上。
 - `hideWorkspace === true`：这个按钮不渲染。
 
 合同审核「选择合同」仍是选文件，本期不改它的 `defaultPath`。
@@ -153,6 +154,7 @@ Renderer 不得自己 `join` 文档路径。一律问 Main：`sparkii:allocateAu
 | --- | --- |
 | `sparkii:allocateAutoWorkspace(agentId)` | `{ workspacePath }`。只算路径。`agentId` 必须是已安装 agent，否则抛错。 |
 | `sparkii:chooseWorkspace(opts?: { defaultPath?: string })` | `defaultPath` 为绝对路径时先 `ensureWorkspaceDir`，再 `showOpenDialog({ properties:['openDirectory'], defaultPath })`。非绝对则不 mkdir、对话框不带 defaultPath。 |
+| `sparkii:openWorkspace(path)` | 绝对路径先 `ensureWorkspaceDir`，再 `shell.openPath`。非绝对则不 mkdir、不打开。 |
 | `sparkii:setChatWorkspace(id, path\|null)` | `path` → user；`null` → 新 `allocateAutoWorkspace(rec.profileId)`，不 mkdir。 |
 | `sparkii:runWorkflow` | 使用 input 路径或 Documents 兜底。**删除 `ensureWorkspaceDir`。** 转发 `workspaceKind`：仅当 input 显式 `'user'` 才入库 `user`，有路径不等于 user。`workflow.ts` 的 Documents 根由 IPC 以 `documentsDir` 参数传入，禁止在该文件 `import { app }`。 |
 | `sparkii:promptSession` 新建 | 优先 context.workspacePath + context.workspaceKind，否则 Documents 分配且 `auto`。禁止桌面。 |
@@ -205,8 +207,8 @@ Renderer 不得自己 `join` 文档路径。一律问 Main：`sparkii:allocateAu
 - 新合同审核草稿：工作区按钮有非空显示名。
 - 从「已有 session + 脏的 `session.meta.workspacePath`」切到 `sessionId=null`（不 remount）：显示名与 `startWorkflow.workspacePath` 必须是**新** allocate 结果，不得是旧 meta / 旧 runPrefs。
 - 再开一条新会话，显示名与上一条不同。
-- 单击 `workspace` / `composer-workspace` 仍只调 `chooseWorkspace({ defaultPath: 当前路径 })`。选中新路径后 `startWorkflow` / `setChatWorkspace` 带用户路径。
-- `hideWorkspace` 时这个按钮不在。不存在 `workspace-change`。
+- 单击 `workspace` / `composer-workspace` 展开菜单：`workspace-open` 调 `openWorkspace(当前路径)`，`workspace-change` 调 `chooseWorkspace({ defaultPath: 当前路径 })`。选中新路径后 `startWorkflow` / `setChatWorkspace` 带用户路径。
+- `hideWorkspace` 时这个按钮不在。
 
 ### 回归
 

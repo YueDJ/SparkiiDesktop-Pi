@@ -35,6 +35,7 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
     requestExportReport: (sessionId, summary) => invoke('requestExportReport', sessionId, summary) as Promise<{ ok: boolean; approved: boolean }>,
     allocateAutoWorkspace: (agentId) => invoke('allocateAutoWorkspace', agentId) as Promise<{ workspacePath: string }>,
     chooseWorkspace: (opts) => invoke('chooseWorkspace', opts) as Promise<{ path?: string }>,
+    openWorkspace: (path) => invoke('openWorkspace', path) as Promise<{ ok: boolean; error?: string }>,
     listUserSkills: () => invoke('listUserSkills') as ReturnType<SparkiiApi['listUserSkills']>,
     listAgentSkills: (agentId) => invoke('listAgentSkills', agentId) as ReturnType<SparkiiApi['listAgentSkills']>,
     previewUserSkill: (sourceDir) => invoke('previewUserSkill', sourceDir) as ReturnType<SparkiiApi['previewUserSkill']>,

@@ -15,6 +15,7 @@ export interface ComposerProps {
   workspacePath: string | null;
   getLocalPath?(file: File): string;
   onChooseWorkspace(): void;
+  onOpenWorkspace(): void;
   onSend(text: string, attachments: ComposerAttachment[]): void;
   onStop(): void;
 }
@@ -27,6 +28,7 @@ export function Composer(props: ComposerProps) {
       workspacePath={props.workspacePath}
       getLocalPath={props.getLocalPath}
       onChooseWorkspace={props.onChooseWorkspace}
+      onOpenWorkspace={props.onOpenWorkspace}
       modelProps={{
         model: props.model,
         defaultModel: props.defaultModel,

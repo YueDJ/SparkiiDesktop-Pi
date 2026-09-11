@@ -36,9 +36,9 @@ export function Menu({ open, onClose, children, containerRef, placement = 'botto
   return <div ref={ref} className={`ui-menu ui-menu--${placement}`} role="menu" tabIndex={-1}>{children}</div>;
 }
 
-export function MenuItem({ label, hint, onSelect, trailing = '›' }: { label: string; hint?: string; onSelect(): void; trailing?: ReactNode }) {
+export function MenuItem({ label, hint, onSelect, trailing = '›', testId }: { label: string; hint?: string; onSelect(): void; trailing?: ReactNode; testId?: string }) {
   return (
-    <button type="button" role="menuitem" className="ui-menu-item" onClick={onSelect}>
+    <button type="button" role="menuitem" className="ui-menu-item" data-testid={testId} onClick={onSelect}>
       <span>{label}</span>
       {hint && <span className="ui-menu-item-hint">{hint}</span>}
       <span className="ui-menu-item-chevron">{trailing}</span>

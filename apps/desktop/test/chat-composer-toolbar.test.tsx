@@ -9,6 +9,7 @@ function composerProps(over: Partial<ChatComposerProps> = {}): ChatComposerProps
     busy: false,
     workspacePath: 'C:/ws',
     onChooseWorkspace: vi.fn(),
+    onOpenWorkspace: vi.fn(),
     modelProps: {
       model: null,
       defaultModel: null,

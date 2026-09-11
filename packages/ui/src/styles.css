@@ -123,6 +123,7 @@ button { font: inherit; color: inherit; }
 .ui-recognition-quality-pages { margin-top: 2px; }
 .ui-recognition-quality-page-list { margin: 4px 0 0; padding-left: 1.2em; color: var(--color-textMuted); }
 .ui-composer { padding: var(--spacing-xxs) var(--spacing-md) var(--spacing-xxs); display: flex; flex-direction: column; }
+.ui-workspace-btn-wrap { display: inline-flex; position: relative; min-width: 0; }
 .ui-composer-ws-btn { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border: none; background: none; color: var(--color-textSecondary); border-radius: var(--radius-control); font-size: var(--font-size-sm); min-width: 0; cursor: pointer; }
 .ui-composer-ws-btn svg { flex: none; }
 .ui-composer-ws-btn:hover { background: var(--color-controlBg); }

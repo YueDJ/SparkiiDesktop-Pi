@@ -651,6 +651,10 @@ export function StandardChatSurface(props: StandardChatProps) {
       }
     });
   };
+  const openWorkspace = () => {
+    if (!workspacePath) return;
+    void api.openWorkspace?.(workspacePath);
+  };
   // The authoritative timeline is props.session.entries, normalized once by useAgentSession from
   // Pi's JSONL (live event increments and history replay produce the same ordered entries). We
   // render it directly. There is no local/optimistic timeline, so the display stays 1:1 with the
@@ -794,6 +798,7 @@ export function StandardChatSurface(props: StandardChatProps) {
         workspacePath={workspacePath}
         getLocalPath={getLocalPath}
         onChooseWorkspace={chooseWorkspace}
+        onOpenWorkspace={openWorkspace}
         toolbarExtra={toolbarExtra}
         hideWorkspace={hideWorkspace}
         modelProps={{

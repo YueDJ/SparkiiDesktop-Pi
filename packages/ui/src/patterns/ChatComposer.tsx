@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { TextArea } from '../primitives/TextArea.js';
 import { ModelEffortControl, type ModelEffortProps } from './ModelEffortControl.js';
+import { WorkspaceButton } from './WorkspaceButton.js';
 import { PlusIcon, FolderIcon, ClipIcon, ArrowUpIcon, StopIcon } from '../icons/index.js';
 import { parseLeadingSkillSlash } from './skill-slash.js';
 
@@ -28,6 +29,7 @@ export interface ChatComposerProps {
   stopping?: boolean;
   workspacePath: string | null;
   onChooseWorkspace(): void;
+  onOpenWorkspace(): void;
   getLocalPath?(file: File): string;
   modelProps: ModelEffortProps;
   contextUsage?: ContextUsage | null;
@@ -127,7 +129,7 @@ export function ContextUsageBar({
   );
 }
 
-export function ChatComposer({ busy, stopping = false, workspacePath, onChooseWorkspace, getLocalPath, modelProps, contextUsage = null, isCompacting = false, skills, toolbarExtra, hideWorkspace = false, onSend, onStop }: ChatComposerProps) {
+export function ChatComposer({ busy, stopping = false, workspacePath, onChooseWorkspace, onOpenWorkspace, getLocalPath, modelProps, contextUsage = null, isCompacting = false, skills, toolbarExtra, hideWorkspace = false, onSend, onStop }: ChatComposerProps) {
   const [draft, setDraft] = useState('');
   const [files, setFiles] = useState<ComposerAttachment[]>([]);
   const [highlight, setHighlight] = useState(0);
@@ -367,10 +369,16 @@ export function ChatComposer({ busy, stopping = false, workspacePath, onChooseWo
             {toolbarExtra}
             <button type="button" className="ui-icon-btn ui-composer-plus" aria-label="上传文件" title="上传本地文件" onClick={pickFiles}><PlusIcon /></button>
             {!hideWorkspace && (
-              <button type="button" className="ui-composer-ws-btn" data-testid="composer-workspace" disabled={!workspacePath} onClick={onChooseWorkspace} title={workspacePath ?? ''}>
+              <WorkspaceButton
+                path={workspacePath}
+                testId="composer-workspace"
+                placement="top"
+                onOpen={onOpenWorkspace}
+                onChoose={onChooseWorkspace}
+              >
                 <FolderIcon />
                 <span className="ui-composer-ws-name" data-testid="workspace-path">{name}</span>
-              </button>
+              </WorkspaceButton>
             )}
           </div>
           <ContextUsageBar contextUsage={contextUsage} isCompacting={isCompacting} />
