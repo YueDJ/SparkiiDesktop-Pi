@@ -29,6 +29,7 @@ export interface ChatQueueState {
 export interface DraftPromptContext {
   profileId?: string;
   workspacePath?: string | null;
+  workspaceKind?: 'auto' | 'user';
   model?: string | null;
   thinkingLevel?: string | null;
 }
@@ -93,7 +94,8 @@ export interface SparkiiApi {
   setChatWorkspace(sessionId: string, path: string | null): Promise<{ ok: boolean }>;
   updateWorkflowState(sessionId: string, entry: Record<string, unknown>): Promise<{ ok: boolean }>;
   requestExportReport(sessionId: string, summary: Record<string, unknown>): Promise<{ ok: boolean; approved: boolean }>;
-  chooseWorkspace(): Promise<{ path?: string }>;
+  allocateAutoWorkspace(agentId: string): Promise<{ workspacePath: string }>;
+  chooseWorkspace(opts?: { defaultPath?: string }): Promise<{ path?: string }>;
   listUserSkills(): Promise<{
     agent: { id: string; name: string } | null;
     skills: Array<{ name: string; description: string; hasScripts: boolean; warnings: string[]; kind?: 'skill' | 'pack'; skillCount?: number }>;

@@ -31,6 +31,8 @@ function makeApi() {
     getChatState: vi.fn().mockResolvedValue({ streaming: false, steering: [], followUp: [] }),
     getSettings: vi.fn().mockResolvedValue({ chatDetailLevel: 'standard' }),
     getModelOptions: vi.fn().mockResolvedValue({ defaultModel: null, models: [] }),
+    allocateAutoWorkspace: vi.fn().mockResolvedValue({ workspacePath: 'C:/ws' }),
+    chooseWorkspace: vi.fn().mockResolvedValue({}),
     getRuntimePool: vi.fn().mockResolvedValue({ maxAgents: 4, active: 0, queued: 0, slots: [], queue: [] }),
     decideApproval: vi.fn().mockReturnValue(new Promise(() => {})),
     queryAudit: vi.fn().mockResolvedValue([]),

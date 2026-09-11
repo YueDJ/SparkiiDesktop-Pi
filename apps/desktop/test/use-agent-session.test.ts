@@ -28,6 +28,25 @@ describe('useAgentSession', () => {
     expect(result.current.entries).toEqual([]);
   });
 
+  it('populates workspace path and kind from the loaded session', async () => {
+    (globalThis as any).window = {
+      sparkii: {
+        openChatSession: vi.fn().mockResolvedValue({
+          entries: [],
+          workspacePath: 'C:/docs/Sparkii/workspaces/contract-review/ws-hist',
+          workspaceKind: 'user',
+        }),
+        on: vi.fn().mockReturnValue(() => {}),
+      },
+    };
+    const { result } = renderHook(() => useAgentSession('contract-review', 's1', 'history'));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(result.current.meta.workspacePath).toBe('C:/docs/Sparkii/workspaces/contract-review/ws-hist');
+    expect(result.current.meta.workspaceKind).toBe('user');
+  });
+
   it('populates meta.inputs from the loaded session', async () => {
     (globalThis as any).window = {
       sparkii: {

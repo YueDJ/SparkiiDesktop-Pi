@@ -126,6 +126,8 @@ button { font: inherit; color: inherit; }
 .ui-composer-ws-btn { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border: none; background: none; color: var(--color-textSecondary); border-radius: var(--radius-control); font-size: var(--font-size-sm); min-width: 0; cursor: pointer; }
 .ui-composer-ws-btn svg { flex: none; }
 .ui-composer-ws-btn:hover { background: var(--color-controlBg); }
+.ui-composer-ws-btn:disabled { opacity: 0.5; cursor: default; }
+.ui-composer-ws-btn:disabled:hover { background: none; }
 .ui-composer-ws-name { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-textSecondary); }
 .ui-composer-card { border: 1px solid var(--color-borderStrong); border-radius: var(--radius-overlay); background: var(--color-surface); display: flex; flex-direction: column; overflow: hidden; }
 .ui-composer-skill-chip-row { display: flex; flex-wrap: wrap; gap: var(--spacing-xs); padding: var(--spacing-xs) var(--spacing-md) 0; }

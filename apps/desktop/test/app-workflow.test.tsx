@@ -58,6 +58,8 @@ function makeApi() {
     getChatSession: vi.fn().mockResolvedValue({}),
     getSettings: vi.fn().mockResolvedValue({ chatDetailLevel: 'standard' }),
     getModelOptions: vi.fn().mockResolvedValue({ defaultModel: null, models: [] }),
+    allocateAutoWorkspace: vi.fn().mockResolvedValue({ workspacePath: 'C:/docs/Sparkii/workspaces/contract-review/ws-1' }),
+    chooseWorkspace: vi.fn().mockResolvedValue({}),
     promptSession: vi.fn().mockResolvedValue({ ok: true, sessionId: 'g1', behavior: 'prompt' }),
     exportReport: vi.fn(),
     requestExportReport: vi.fn().mockResolvedValue({ ok: true, approved: true }),

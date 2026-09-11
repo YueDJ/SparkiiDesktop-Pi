@@ -11,6 +11,7 @@ import type { ModelTask } from '@sparkii/model-router';
 import type { Runtime } from './runtime.js';
 import type { Logger } from './logger.js';
 import { buildAgentSaddle } from './saddle.js';
+import { allocateAutoWorkspace } from './workspace.js';
 import { isReadOnlyBashCommand, riskOfCommand } from './general-executor.js';
 import { loadSettings, type AppSettings } from './settings.js';
 import { knowledgeFromManifest, patchRagSettings, ragFromSettings } from './rag-settings.js';
@@ -325,15 +326,17 @@ export async function runWorkflow(
   input: Record<string, unknown>,
   broker: ReturnType<typeof createBroker>,
   profileId: string,
-  opts?: WorkflowRunHooks,
+  opts: WorkflowRunHooks | undefined,
+  documentsDir: string,
 ): Promise<string> {
   const pr = rt.profileOf(profileId);
   const agent = rt.agentOf(profileId);
   const rawDef = pr.profile.agent.workflow as unknown as WorkflowDef;
   const runtimeAgent = { ...agent, tools: workflowRuntimeTools(agent.tools, rawDef) };
-  const workspacePath = typeof input.workspacePath === 'string' && input.workspacePath.trim()
+  const requested = typeof input.workspacePath === 'string' && input.workspacePath.trim()
     ? input.workspacePath
     : undefined;
+  const workspacePath = requested ?? allocateAutoWorkspace(documentsDir, profileId).workspacePath;
   const sessionModel = typeof input.model === 'string' && input.model.trim() ? input.model : null;
   const sessionThinking = typeof input.thinkingLevel === 'string' && input.thinkingLevel.trim()
     ? input.thinkingLevel
@@ -370,8 +373,8 @@ export async function runWorkflow(
       profileId,
       kind: 'workflow',
       currentStep: null,
-      workspaceKind: input.workspaceKind === 'user' || (!input.workspaceKind && workspacePath) ? 'user' : 'auto',
-      workspacePath: workspacePath ?? join(rt.dataDir, 'sessions', sessionId),
+      workspaceKind: input.workspaceKind === 'user' ? 'user' : 'auto',
+      workspacePath,
       model: sessionModel ?? (target ? modelTargetKey(target) : null),
       thinkingLevel: sessionThinking ?? thinkingLevel,
       inputs: inputFiles,

@@ -367,7 +367,7 @@ export function ChatComposer({ busy, stopping = false, workspacePath, onChooseWo
             {toolbarExtra}
             <button type="button" className="ui-icon-btn ui-composer-plus" aria-label="上传文件" title="上传本地文件" onClick={pickFiles}><PlusIcon /></button>
             {!hideWorkspace && (
-              <button type="button" className="ui-composer-ws-btn" data-testid="composer-workspace" onClick={onChooseWorkspace} title={workspacePath ?? ''}>
+              <button type="button" className="ui-composer-ws-btn" data-testid="composer-workspace" disabled={!workspacePath} onClick={onChooseWorkspace} title={workspacePath ?? ''}>
                 <FolderIcon />
                 <span className="ui-composer-ws-name" data-testid="workspace-path">{name}</span>
               </button>

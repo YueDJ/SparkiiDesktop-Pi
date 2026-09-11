@@ -19,6 +19,7 @@ function makeApi(over: Record<string, unknown> = {}) {
     listThinkingLevels: vi.fn().mockResolvedValue(['off']),
     setChatWorkspace: vi.fn().mockResolvedValue({ ok: true }),
     chooseWorkspace: vi.fn().mockResolvedValue({}),
+    allocateAutoWorkspace: vi.fn().mockResolvedValue({ workspacePath: 'C:/ws' }),
     getModelOptions: vi.fn().mockResolvedValue({ defaultModel: 'deepseek-v4-flash', models: ['deepseek-v4-flash'], provider: 'deepseek' }),
     getSettings: vi.fn().mockResolvedValue({
       chatDetailLevel: 'standard',
