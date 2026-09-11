@@ -10,6 +10,14 @@ describe('report', () => {
     expect(buf.length).toBeGreaterThan(100);
     expect(buf.subarray(0, 2).toString()).toBe('PK');
   });
+  it('creates missing parent directories before write', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'report-'));
+    const out = join(dir, 'missing', 'ws', 'out.docx');
+    const tool = reportConnector.tools.find((t) => t.name === 'report.export')!;
+    const r = await tool.handler({ title: 'x', sections: [], format: 'docx', path: out }, { profileId: 'p', sessionId: 's', actor: 'u', requestId: 'r' });
+    expect(r.ok).toBe(true);
+    expect(existsSync(out)).toBe(true);
+  });
   it('write handler saves to the frozen path', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'report-'));
     const out = join(dir, 'out.docx');

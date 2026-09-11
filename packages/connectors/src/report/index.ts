@@ -1,4 +1,5 @@
-import { writeFile } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname } from 'node:path';
 import type { Connector, ToolHandler } from '../types.js';
 
 export interface ReportTable {
@@ -48,6 +49,7 @@ const handler: ToolHandler = async (args) => {
   try {
     const payload = args as { path?: string; content?: string };
     const outPath = String(payload.path);
+    await mkdir(dirname(outPath), { recursive: true });
     if (typeof payload.content === 'string' && payload.content.trim()) {
       const buf = Buffer.from(payload.content, 'base64');
       await writeFile(outPath, buf);
