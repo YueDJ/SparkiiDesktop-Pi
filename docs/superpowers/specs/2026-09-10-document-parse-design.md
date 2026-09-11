@@ -1,7 +1,8 @@
 # 平台文档解析 — Design Spec
 
-**Status:** Draft v3（吸收联合审核：退出协议、`host` 与白名单同提交、无应用内注销、打包与假进程分开）  
+**Status:** Draft v3 — **引擎 / 模型 / 默认安装包已作废**  
 **Date:** 2026-09-10  
+**引擎与随包以这份为准：** `docs/superpowers/specs/2026-09-11-document-parse-fast-path-design.md`。本文「禁止 v6」「锁定 PP-OCRv5_server」「默认 PP-StructureV3」「随包约 1.8 GB 完整产线」等条款不要再遵守。NDJSON、运行中心、copy rules 仍有效。  
 **Depends on:**
 - `docs/2026-08-22-design.md`（A 类连接器：文档）
 - `docs/superpowers/specs/2026-08-23-pi-embedded-runtime-design.md`（Renderer / Main / Pi）

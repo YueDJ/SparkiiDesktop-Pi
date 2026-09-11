@@ -69,4 +69,4 @@ On a Windows x64 CPU build machine (no CUDA, no HuggingFace):
 
 ### extraResources / NSIS
 
-The archive sha256 is in `apps/desktop/runtime/document-parse/checksums.json`. Place `sparkii-document-parse.7z.exe` next to it on the Windows build machine (the 7z is gitignored). `electron-builder.yml` extraResources and NSIS `customInstall` then pack and extract it. AppX still relies on `ensureDocumentParse`. FAKE must not be packaged.
+Hash the SFX on the Windows build machine and write that real sha256 to `apps/desktop/runtime/document-parse/checksums.json` before any installer wiring. `electron-builder.yml` extraResources and NSIS `customInstall` are **not** wired until that hash exists. Until then, AppX and first-run `ensureDocumentParse` are the runtime path. FAKE must not be packaged.
