@@ -5,6 +5,19 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createBroker, resolveWorkflowTemplates, runWorkflow, workflowRuntimeTools } from '../electron/main/workflow.js';
 
+const TEST_DOCUMENTS = mkdtempSync(join(tmpdir(), 'wf-docs-'));
+
+function runWf(
+  rt: Parameters<typeof runWorkflow>[0],
+  getWindow: Parameters<typeof runWorkflow>[1],
+  input: Record<string, unknown>,
+  broker: ReturnType<typeof createBroker>,
+  profileId: string,
+  opts?: Parameters<typeof runWorkflow>[5],
+) {
+  return runWorkflow(rt, getWindow, input, broker, profileId, opts, TEST_DOCUMENTS);
+}
+
 async function waitUntil(predicate: () => boolean, timeoutMs = 2000): Promise<void> {
   const start = Date.now();
   while (!predicate()) {
@@ -130,7 +143,7 @@ it('uses the runtime session id for the workflow session record', async () => {
   } as any;
 
   const broker = createBroker(rt, getWindow);
-  const id = await runWorkflow(rt, getWindow, { documents: [] }, broker, 'contract-review');
+  const id = await runWf(rt, getWindow, { documents: [] }, broker, 'contract-review');
 
   expect(id).toBe('pi-workflow-1');
   expect(rt.pool.renameSession).toHaveBeenCalledWith(expect.stringContaining('new:'), 'pi-workflow-1');
@@ -165,7 +178,7 @@ it('persists the caller workspace and model on the workflow session', async () =
     return acquire(key, opts);
   };
   const broker = createBroker(rt, getWindow);
-  await runWorkflow(rt, getWindow, {
+  await runWf(rt, getWindow, {
     documents: [],
     workspacePath: 'C:/ws/contract',
     model: 'deepseek/deepseek-v4-pro',
@@ -173,7 +186,7 @@ it('persists the caller workspace and model on the workflow session', async () =
   expect(rt.chatSessions.create).toHaveBeenCalledWith(expect.objectContaining({
     id: sessionId,
     workspacePath: 'C:/ws/contract',
-    workspaceKind: 'user',
+    workspaceKind: 'auto',
     model: 'deepseek/deepseek-v4-pro',
   }));
   expect(saddles[0]).toMatchObject({
@@ -285,7 +298,7 @@ describe('runWorkflow broker sharing', () => {
     } as any;
 
     const broker = createBroker(rt, getWindow);
-    const running = runWorkflow(rt, getWindow, { documents: [] }, broker, 'contract-review');
+    const running = runWf(rt, getWindow, { documents: [] }, broker, 'contract-review');
     await waitUntil(() => send.mock.calls.some((c) => c[0] === 'sparkii:event:approval'));
 
     expect(acquiredSaddles).toHaveLength(1);
@@ -297,7 +310,9 @@ describe('runWorkflow broker sharing', () => {
     const cwd: string = acquiredSaddles[0]?.cwd;
     expect(cwd.startsWith(join(rt.dataDir, 'sessions'))).toBe(true);
     expect(cwd).not.toBe(join(rt.dataDir, 'sessions'));
-    expect(acquiredSaddles[0]?.workspaceRoot).toBeUndefined();
+    expect(String(acquiredSaddles[0]?.workspaceRoot).replace(/\\/g, '/')).toMatch(
+      /Sparkii\/workspaces\/contract-review\/[0-9a-f-]+$/i,
+    );
 
     expect(send).toHaveBeenCalledWith('sparkii:event:approval', expect.objectContaining({ id: 'p1' }));
     broker.decide('p1', { approved: true, status: 'approved', result: undefined });
@@ -370,7 +385,7 @@ describe('runWorkflow broker sharing', () => {
     } as any;
 
     const broker = createBroker(rt, getWindow);
-    await runWorkflow(rt, getWindow, {}, broker, 'general');
+    await runWf(rt, getWindow, {}, broker, 'general');
 
     expect(profileOf).toHaveBeenCalledWith('general');
   });
@@ -384,7 +399,7 @@ describe('runWorkflow session id and JSONL', () => {
       timeoutMs: 60_000,
     });
     const broker = createBroker(rt, getWindow);
-    const started = runWorkflow(rt, getWindow, { documents: [] }, broker, 'contract-review');
+    const started = runWf(rt, getWindow, { documents: [] }, broker, 'contract-review');
     const id = await Promise.race([
       started,
       new Promise<never>((_, reject) => {
@@ -404,7 +419,7 @@ describe('runWorkflow session id and JSONL', () => {
       steps: [{ id: 'review', type: 'human', inputs: { from: 'x' } }],
     });
     const broker = createBroker(rt, getWindow);
-    const running = runWorkflow(rt, getWindow, { documents: [] }, broker, 'contract-review');
+    const running = runWf(rt, getWindow, { documents: [] }, broker, 'contract-review');
     await waitUntil(() => send.mock.calls.some((c) => c[0] === 'sparkii:event:approval'));
     broker.decide('p1', { approved: true, status: 'approved', result: undefined });
     await waitUntil(() => appends.some((a) => a.customType === 'workflow_step_end'));
@@ -427,7 +442,7 @@ describe('runWorkflow session id and JSONL', () => {
       steps: [{ id: 'load', type: 'tool', ref: 'not.a.tool' }],
     });
     const broker = createBroker(rt, getWindow);
-    const running = runWorkflow(rt, getWindow, { documents: [] }, broker, 'contract-review');
+    const running = runWf(rt, getWindow, { documents: [] }, broker, 'contract-review');
     await waitUntil(() => appends.some((a) => a.customType === 'workflow_step_end'));
     await running;
 
@@ -474,7 +489,7 @@ describe('runWorkflow session id and JSONL', () => {
     });
 
     const broker = createBroker(rt, getWindow);
-    await runWorkflow(rt, getWindow, { documents: [] }, broker, 'contract-review', { logger });
+    await runWf(rt, getWindow, { documents: [] }, broker, 'contract-review', { logger });
     await waitUntil(() => send.mock.calls.some((c) => c[0] === 'sparkii:event:approval'));
     broker.decide('p1', { approved: true, status: 'approved', result: { findings: ['第3条存在期限不对齐'] } });
     await waitUntil(() => release.mock.calls.length > 0);
@@ -537,7 +552,7 @@ describe('runWorkflow session id and JSONL', () => {
     });
 
     const broker = createBroker(rt, getWindow);
-    await runWorkflow(rt, getWindow, { documents: [] }, broker, 'contract-review');
+    await runWf(rt, getWindow, { documents: [] }, broker, 'contract-review');
     await waitUntil(() => send.mock.calls.some((c) => c[0] === 'sparkii:event:approval'));
     broker.decide('p1', { approved: true, status: 'approved', result: undefined });
     await waitUntil(() => release.mock.calls.length > 0);
@@ -587,7 +602,7 @@ describe('runWorkflow session id and JSONL', () => {
     rt.pool.acquire = async () => ({ client, supervisor: { onProposal: () => {} } });
     rt.keyFor = async () => null;
     const broker = createBroker(rt, getWindow);
-    const running = runWorkflow(rt, getWindow, { documents: [] }, broker, 'contract-review');
+    const running = runWf(rt, getWindow, { documents: [] }, broker, 'contract-review');
     await waitUntil(() => appends.some((a) => a.customType === 'workflow_step_end' && a.data.stepId === 'review'));
     await running;
     const end = appends.find((a) => a.customType === 'workflow_step_end' && a.data.stepId === 'review');

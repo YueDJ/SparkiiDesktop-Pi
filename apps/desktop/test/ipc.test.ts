@@ -22,6 +22,8 @@ vi.mock('@sparkii/agent-host', async (importOriginal) => {
 });
 
 vi.mock('electron', () => {
+  const { join } = require('node:path') as typeof import('node:path');
+  const { tmpdir } = require('node:os') as typeof import('node:os');
   const handlers = new Map<string, (...args: unknown[]) => unknown>();
   return {
     getHandlers: () => handlers,
@@ -30,7 +32,11 @@ vi.mock('electron', () => {
         handlers.set(channel, fn);
       },
     },
-    app: { getPath: () => '', on: () => {}, quit: () => {} },
+    app: {
+      getPath: (name: string) => (name === 'documents' ? join(tmpdir(), 'sparkii-test-documents') : ''),
+      on: () => {},
+      quit: () => {},
+    },
     dialog: {
       showOpenDialog: vi.fn(),
       showSaveDialog: vi.fn(),
@@ -120,6 +126,7 @@ afterEach(async () => {
   executeDocumentReadMock.mockResolvedValue({ ok: true, data: { text: 'x', engine: 'native' } });
   for (const dir of dirs) await rm(dir, { recursive: true, force: true });
   dirs = [];
+  await rm(join(tmpdir(), 'sparkii-test-documents'), { recursive: true, force: true });
   vi.unstubAllGlobals();
 });
 
@@ -3270,6 +3277,134 @@ describe('ipc user skill library', () => {
     expect(packageListed.map((s) => s.name)).toContain('contract_risk_review');
 
     expect(await listAgentSkills(null, 'unknown-agent')).toEqual({ skills: [] });
+  });
+
+  it('allocateAutoWorkspace returns a Documents path and does not create it', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const agents = new Map([['general', { id: 'general', tools: [], skillsDir: '', systemPrompt: '', manifest: { name: 'general' } }]]);
+    await makeRuntime({ dataDir, piAgentDir: join(dataDir, 'pi-agent'), client: { send: async () => ({ success: true }) }, agents });
+    const handlers = await registeredHandlers();
+    const { workspacePath } = await handlers.get('sparkii:allocateAutoWorkspace')!(null, 'general') as { workspacePath: string };
+    expect(workspacePath.replace(/\\/g, '/')).toMatch(/Sparkii\/workspaces\/general\/[0-9a-f-]+$/i);
+    expect(existsSync(workspacePath)).toBe(false);
+  });
+
+  it('allocateAutoWorkspace rejects unknown agent', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const agents = new Map([['general', { id: 'general', tools: [], skillsDir: '', systemPrompt: '', manifest: { name: 'general' } }]]);
+    await makeRuntime({ dataDir, piAgentDir: join(dataDir, 'pi-agent'), client: { send: async () => ({ success: true }) }, agents });
+    const handlers = await registeredHandlers();
+    expect(() => handlers.get('sparkii:allocateAutoWorkspace')!(null, 'nope')).toThrow(/unknown agent/);
+  });
+
+  it('chooseWorkspace mkdirs an absolute defaultPath and forwards it', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const ws = join(dataDir, 'abs-ws');
+    const agents = new Map([['general', { id: 'general', tools: [], skillsDir: '', systemPrompt: '', manifest: { name: 'general' } }]]);
+    await makeRuntime({
+      dataDir, piAgentDir: join(dataDir, 'pi-agent'),
+      client: { send: async () => ({ success: true }) }, agents,
+      getWindow: () => ({ on: () => {}, isDestroyed: () => false, webContents: { send: () => {} } }) as any,
+    });
+    const electron = await import('electron');
+    vi.mocked(electron.dialog.showOpenDialog).mockResolvedValueOnce({ canceled: true, filePaths: [] } as any);
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:chooseWorkspace')!(null, { defaultPath: ws });
+    expect(existsSync(ws)).toBe(true);
+    expect(electron.dialog.showOpenDialog).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ properties: ['openDirectory'], defaultPath: ws }),
+    );
+  });
+
+  it('chooseWorkspace ignores a relative defaultPath without mkdir', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const agents = new Map([['general', { id: 'general', tools: [], skillsDir: '', systemPrompt: '', manifest: { name: 'general' } }]]);
+    await makeRuntime({
+      dataDir, piAgentDir: join(dataDir, 'pi-agent'),
+      client: { send: async () => ({ success: true }) }, agents,
+      getWindow: () => ({ on: () => {}, isDestroyed: () => false, webContents: { send: () => {} } }) as any,
+    });
+    const electron = await import('electron');
+    vi.mocked(electron.dialog.showOpenDialog).mockResolvedValueOnce({ canceled: true, filePaths: [] } as any);
+    const handlers = await registeredHandlers();
+    const rel = 'SparkiiRelChooseWs';
+    await handlers.get('sparkii:chooseWorkspace')!(null, { defaultPath: rel });
+    expect(existsSync(rel)).toBe(false);
+    expect(electron.dialog.showOpenDialog).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.not.objectContaining({ defaultPath: rel }),
+    );
+  });
+
+  it('runWorkflow without workspacePath allocates Documents path and does not mkdir', async () => {
+    const created: Array<{ workspacePath?: string; workspaceKind?: string }> = [];
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const contractAgents = new Map([['contract-review', { id: 'contract-review', tools: [], skillsDir: '', systemPrompt: '', manifest: { name: 'contract-review' } }]]);
+    const rt = await makeRuntime({
+      dataDir, piAgentDir: join(dataDir, 'pi-agent'),
+      client: {
+        send: async (command: any) => {
+          if (command.type === 'new_session') return { success: true };
+          if (command.type === 'get_state') return { success: true, data: { sessionId: 's1', sessionFile: '/tmp/w.jsonl' } };
+          return { success: true };
+        },
+        onEvent: () => () => {},
+      },
+      agents: contractAgents,
+      profile: {
+        dir: join(dataDir, 'profiles', 'contract-review'),
+        profile: {
+          manifest: { name: 'contract-review' },
+          agent: { tools: ['read'], prompts: { system: 'sys' }, workflow: { version: 1, engine: 'linear', steps: [] } },
+        },
+        router: { resolve: () => undefined },
+      } as any,
+    });
+    (rt as any).chatSessions.create = (rec: { workspacePath?: string; workspaceKind?: string }) => { created.push(rec); return { id: 's1' }; };
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:runWorkflow')!(null, 'contract-review', { documents: [] });
+    expect(created[0].workspacePath?.replace(/\\/g, '/')).toMatch(/Sparkii\/workspaces\/contract-review\//);
+    expect(created[0].workspaceKind).toBe('auto');
+    expect(existsSync(created[0].workspacePath!)).toBe(false);
+  });
+
+  it('runWorkflow with an allocated path keeps workspaceKind auto', async () => {
+    const created: Array<{ workspaceKind?: string; workspacePath?: string }> = [];
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const contractAgents = new Map([['contract-review', { id: 'contract-review', tools: [], skillsDir: '', systemPrompt: '', manifest: { name: 'contract-review' } }]]);
+    const rt = await makeRuntime({
+      dataDir, piAgentDir: join(dataDir, 'pi-agent'),
+      client: {
+        send: async (command: any) => {
+          if (command.type === 'new_session') return { success: true };
+          if (command.type === 'get_state') return { success: true, data: { sessionId: 's1', sessionFile: '/tmp/w.jsonl' } };
+          return { success: true };
+        },
+        onEvent: () => () => {},
+      },
+      agents: contractAgents,
+      profile: {
+        dir: join(dataDir, 'profiles', 'contract-review'),
+        profile: {
+          manifest: { name: 'contract-review' },
+          agent: { tools: ['read'], prompts: { system: 'sys' }, workflow: { version: 1, engine: 'linear', steps: [] } },
+        },
+        router: { resolve: () => undefined },
+      } as any,
+    });
+    (rt as any).chatSessions.create = (rec: { workspaceKind?: string; workspacePath?: string }) => { created.push(rec); return { id: 's1' }; };
+    const handlers = await registeredHandlers();
+    const allocated = join(dataDir, 'Sparkii', 'workspaces', 'contract-review', 'ws-auto');
+    await handlers.get('sparkii:runWorkflow')!(null, 'contract-review', { documents: [], workspacePath: allocated });
+    expect(created[0].workspacePath).toBe(allocated);
+    expect(created[0].workspaceKind).toBe('auto');
   });
 });
 

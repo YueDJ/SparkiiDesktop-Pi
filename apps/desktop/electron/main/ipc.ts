@@ -2,7 +2,7 @@ import { ipcMain, dialog, app, shell, type BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm } from 'node:fs/promises';
-import { join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 import { listPiSessions, readPiSessionEntries, connectorWriteProposal, type PiProviderInfo, type SessionSaddle, type ConnectorReadRequest, type ConnectorReadResult } from '@sparkii/agent-host';
 import { knowledgeConnector, SparkiiRagClient } from '@sparkii/connectors';
 import { applyThinkingLevel, createBroker, modelTargetKey, resolveModelTarget, resolveSessionModel, resolveThinkingLevel, runWorkflow, selectModel } from './workflow.js';
@@ -32,7 +32,7 @@ import {
   type GroundingTurn,
 } from './rag-grounding.js';
 import { buildProviderList } from './provider-catalog.js';
-import { autoWorkspacePath, ensureWorkspaceDir } from './workspace.js';
+import { allocateAutoWorkspace, assertAgentId, ensureWorkspaceDir } from './workspace.js';
 import { buildAgentSaddle } from './saddle.js';
 import { buildAttachmentPrompt, stageAttachments } from './attachments.js';
 import { resizeImageForAttachment } from './image-resize.js';
@@ -539,7 +539,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
 
   async function openOrCreateSession(
     sessionId: string | null,
-    context: { profileId?: string; workspacePath?: string | null; model?: string | null; thinkingLevel?: string | null },
+    context: { profileId?: string; workspacePath?: string | null; workspaceKind?: 'auto' | 'user'; model?: string | null; thinkingLevel?: string | null },
   ): Promise<{ open: Awaited<ReturnType<typeof ensureOpenSession>>; sessionId: string; workspacePath: string | undefined }> {
     if (sessionId) {
       cancelIdleRelease(sessionId);
@@ -565,8 +565,12 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
 
     const profileId = context.profileId;
     if (!profileId) throw new Error('profileId is required');
-    const now = new Date();
-    const workspacePath = context.workspacePath ?? autoWorkspacePath(app.getPath('desktop'), now);
+    const requestedPath = context.workspacePath?.trim();
+    const workspacePath = requestedPath
+      || allocateAutoWorkspace(app.getPath('documents'), profileId).workspacePath;
+    const workspaceKind = requestedPath
+      ? (context.workspaceKind === 'user' ? 'user' : 'auto')
+      : 'auto';
     const settings = await loadSettings(rt.dataDir);
     const rawMaxAgents = Number(settings.maxAgents ?? process.env.SPARKII_MAX_AGENTS ?? 4);
     const maxAgents = Number.isFinite(rawMaxAgents) && rawMaxAgents > 0 ? Math.floor(rawMaxAgents) : 4;
@@ -608,7 +612,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       rt.chatSessions.create({
         id: createdSessionId,
         profileId,
-        workspaceKind: 'auto',
+        workspaceKind,
         workspacePath,
         model: target ? modelTargetKey(target) : null,
         thinkingLevel: context.thinkingLevel ?? null,
@@ -702,7 +706,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     text: string,
     options?: { behavior?: 'steer' | 'followUp' },
     attachments: ChatAttachment[] = [],
-    context: { profileId?: string; workspacePath?: string | null; model?: string | null; thinkingLevel?: string | null } = {},
+    context: { profileId?: string; workspacePath?: string | null; workspaceKind?: 'auto' | 'user'; model?: string | null; thinkingLevel?: string | null } = {},
   ) => {
     const profileIdForGate = sessionId
       ? rt.chatSessions.get(sessionId)?.profileId
@@ -938,8 +942,8 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     if (path) {
       rt.chatSessions.update(sessionId, { workspaceKind: 'user', workspacePath: path });
     } else {
-      const now = new Date();
-      rt.chatSessions.update(sessionId, { workspaceKind: 'auto', workspacePath: autoWorkspacePath(app.getPath('desktop'), now) });
+      const next = allocateAutoWorkspace(app.getPath('documents'), rec.profileId).workspacePath;
+      rt.chatSessions.update(sessionId, { workspaceKind: 'auto', workspacePath: next });
     }
     const open = openSessions.get(sessionId);
     if (open) {
@@ -980,11 +984,22 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     return { ok: true, approved: d.approved };
   });
 
-  ipcMain.handle('sparkii:chooseWorkspace', async () => {
+  ipcMain.handle('sparkii:allocateAutoWorkspace', (_e, agentId: string) => {
+    assertAgentId(agentId);
+    if (!rt.agents.has(agentId) && !rt.profiles.has(agentId)) throw new Error('unknown agent');
+    return { workspacePath: allocateAutoWorkspace(app.getPath('documents'), agentId).workspacePath };
+  });
+
+  ipcMain.handle('sparkii:chooseWorkspace', async (_e, opts?: { defaultPath?: string }) => {
+    const defaultPath = String(opts?.defaultPath ?? '').trim();
+    const dialogOpts: { properties: ['openDirectory']; defaultPath?: string } = { properties: ['openDirectory'] };
     const win = getWindow();
-    const result = win
-      ? await dialog.showOpenDialog(win, { properties: ['openDirectory'] })
-      : { canceled: true, filePaths: [] as string[] };
+    if (!win) return {};
+    if (defaultPath && isAbsolute(defaultPath)) {
+      await ensureWorkspaceDir(defaultPath);
+      dialogOpts.defaultPath = defaultPath;
+    }
+    const result = await dialog.showOpenDialog(win, dialogOpts);
     return result.canceled ? {} : { path: result.filePaths[0] };
   });
 
@@ -1445,12 +1460,12 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     const requestedWorkspace = typeof input.workspacePath === 'string' && input.workspacePath.trim()
       ? input.workspacePath
       : undefined;
-    const workspacePath = requestedWorkspace ?? autoWorkspacePath(app.getPath('desktop'), new Date());
-    await ensureWorkspaceDir(workspacePath);
+    const workspacePath = requestedWorkspace
+      ?? allocateAutoWorkspace(app.getPath('documents'), profileId).workspacePath;
     const sessionId = await runWorkflow(rt, getWindow, {
       ...input,
       workspacePath,
-      workspaceKind: requestedWorkspace ? 'user' : 'auto',
+      workspaceKind: input.workspaceKind === 'user' ? 'user' : 'auto',
     }, broker, profileId, {
       onReady(id, slot) {
         inFlightWorkflowRuns.add(id);
@@ -1466,7 +1481,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         getWindow()?.webContents.send('sparkii:event:chat-event', { type: 'session_unbound', sessionId: id });
         openSessions.delete(id);
       },
-    });
+    }, app.getPath('documents'));
     return { ok: true, sessionId };
   });
   ipcMain.handle('sparkii:diagnostics', async () => ({
