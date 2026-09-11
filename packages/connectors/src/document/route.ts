@@ -2,7 +2,7 @@ const OFFICE_EXTENSIONS = new Set(['.txt', '.md', '.csv', '.docx', '.xlsx']);
 const PHOTO_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png']);
 
 const GARBLED_RATIO_THRESHOLD = 0.30;
-const MIN_CHARS_PER_PAGE = 50;
+const MIN_CHARS_PER_PAGE = 20;
 
 function isControlChar(ch: string): boolean {
   const code = ch.charCodeAt(0);
@@ -29,6 +29,7 @@ export function shouldUseStructure(input: {
   if (ext !== '.pdf') return false;
 
   if (input.textLayer === null) return true;
+  if (input.pageCount <= 0) return true;
 
   const stripped = input.textLayer.replace(/\s/g, '');
   if (stripped.length < MIN_CHARS_PER_PAGE * input.pageCount) return true;
