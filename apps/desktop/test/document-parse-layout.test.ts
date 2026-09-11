@@ -1,6 +1,7 @@
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { EventEmitter } from 'node:events';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -18,6 +19,8 @@ import {
   needsDocumentParse,
   resolveDocumentParsePaths,
 } from '../electron/main/document-parse-layout.js';
+
+const desktopRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 function tempRoot(): string {
   return mkdtempSync(join(tmpdir(), 'sparkii-dp-'));
@@ -100,8 +103,17 @@ describe('documentParseArchivePath', () => {
     expect(documentParseArchivePath({}, resources)).toBe(archive);
   });
 
-  it('returns null when no archive exists', () => {
+  it('returns null when SPARKII_DOCUMENT_PARSE_ARCHIVE is set but missing', () => {
     expect(documentParseArchivePath({ SPARKII_DOCUMENT_PARSE_ARCHIVE: join(tempRoot(), 'missing.7z.exe') })).toBeNull();
+  });
+
+  it('falls back to the repo runtime archive when env is unset', () => {
+    const found = documentParseArchivePath({});
+    if (!existsSync(join(desktopRoot, 'runtime/document-parse', DOCUMENT_PARSE_ARCHIVE_NAME))) {
+      expect(found).toBeNull();
+      return;
+    }
+    expect(found).toMatch(/sparkii-document-parse\.7z\.exe$/);
   });
 });
 
@@ -155,5 +167,22 @@ describe('ensureDocumentParse', () => {
     });
 
     expect(childProcessMock.spawn).not.toHaveBeenCalled();
+  });
+});
+
+describe('document-parse release archive', () => {
+  it('keeps the default archive under 100 MiB when present', () => {
+    const archive = join(desktopRoot, 'runtime/document-parse', DOCUMENT_PARSE_ARCHIVE_NAME);
+    if (!existsSync(archive)) return;
+    expect(statSync(archive).size).toBeLessThanOrEqual(100 * 1024 * 1024);
+  });
+
+  it('pins a real 64-hex archive sha256 when checksums.json exists', () => {
+    const checksums = join(desktopRoot, 'runtime/document-parse/checksums.json');
+    if (!existsSync(checksums)) return;
+    const raw = readFileSync(checksums, 'utf8');
+    const parsed = JSON.parse(raw) as { archive?: string };
+    expect(parsed.archive).toMatch(/^[0-9a-fA-F]{64}$/);
+    expect(parsed.archive).not.toMatch(/REPLACE/i);
   });
 });

@@ -39,7 +39,10 @@ describe('ensureRuntime', () => {
     writeFileSync(archive, 'sfx');
     stubSpawnExit(0);
 
-    await ensureRuntime({ archivePath: archive, env: { SPARKII_RUNTIME_ROOT: root } });
+    await ensureRuntime({
+      archivePath: archive,
+      env: { SPARKII_RUNTIME_ROOT: root, SPARKII_DOCUMENT_PARSE_ARCHIVE: join(root, 'missing.7z.exe') },
+    });
 
     expect(childProcessMock.spawn).toHaveBeenCalledTimes(1);
     expect(childProcessMock.spawn).toHaveBeenCalledWith(
@@ -53,7 +56,10 @@ describe('ensureRuntime', () => {
     const root = mkdtempSync(join(tmpdir(), 'sparkii-rt-'));
     provision(root);
 
-    await ensureRuntime({ archivePath: join(root, 'PortableGit.7z.exe'), env: { SPARKII_RUNTIME_ROOT: root } });
+    await ensureRuntime({
+      archivePath: join(root, 'PortableGit.7z.exe'),
+      env: { SPARKII_RUNTIME_ROOT: root, SPARKII_DOCUMENT_PARSE_ARCHIVE: join(root, 'missing.7z.exe') },
+    });
 
     expect(childProcessMock.spawn).not.toHaveBeenCalled();
   });
@@ -66,7 +72,7 @@ describe('ensureRuntime', () => {
     writeFileSync(join(sourceToolsDir, 'rg.exe'), 'rg');
 
     await ensureRuntime({
-      env: { SPARKII_RUNTIME_ROOT: root },
+      env: { SPARKII_RUNTIME_ROOT: root, SPARKII_DOCUMENT_PARSE_ARCHIVE: join(root, 'missing.7z.exe') },
       toolsDir: sourceToolsDir,
     });
 
@@ -86,6 +92,25 @@ describe('ensureRuntime', () => {
     expect(childProcessMock.spawn).not.toHaveBeenCalled();
   });
 
+  it('extracts document-parse when that archive exists and the dest is missing', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'sparkii-rt-'));
+    provision(root);
+    const archive = join(root, 'sparkii-document-parse.7z.exe');
+    writeFileSync(archive, 'sfx');
+    stubSpawnExit(0);
+
+    await ensureRuntime({
+      env: { SPARKII_RUNTIME_ROOT: root, SPARKII_DOCUMENT_PARSE_ARCHIVE: archive },
+    });
+
+    expect(childProcessMock.spawn).toHaveBeenCalledTimes(1);
+    expect(childProcessMock.spawn).toHaveBeenCalledWith(
+      archive,
+      [`-o${join(root, 'document-parse')}`, '-y'],
+      expect.objectContaining({ windowsHide: true }),
+    );
+  });
+
   it('throws when toolsDir is present but missing a search tool', async () => {
     const root = mkdtempSync(join(tmpdir(), 'sparkii-rt-'));
     const sourceToolsDir = join(root, 'source-tools');
@@ -93,7 +118,7 @@ describe('ensureRuntime', () => {
     writeFileSync(join(sourceToolsDir, 'fd.exe'), 'fd');
 
     await expect(ensureRuntime({
-      env: { SPARKII_RUNTIME_ROOT: root },
+      env: { SPARKII_RUNTIME_ROOT: root, SPARKII_DOCUMENT_PARSE_ARCHIVE: join(root, 'missing.7z.exe') },
       toolsDir: sourceToolsDir,
     })).rejects.toThrow('search tools missing');
   });
