@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- 自动路径公式唯一：`join(documents, 'Sparkii', 'workspaces', agentId, workspaceKey)`。`workspaceKey = randomUUID()`。
+- 自动路径公式唯一：`join(documents, 'Sparkii', 'workspaces', agentId, workspaceKey)`。`workspaceKey` 是星火物名 `adj-noun-tag`（如 `glow-fox-k7m`）。
 - 生产代码不以 `'general'` / `'contract-review'` / `'knowledge-qa'` 决定路径。
 - 生产禁止 `autoWorkspacePath` / `app.getPath('desktop')` 作为工作区父目录。
 - `runWorkflow` 禁止 `ensureWorkspaceDir`。

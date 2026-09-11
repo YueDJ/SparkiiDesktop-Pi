@@ -1037,12 +1037,12 @@ describe('ipc provider handlers', () => {
     expect(rt.pool.acquire).toHaveBeenCalled();
     expect((rt as any).chatSessions.create).toHaveBeenCalledWith(expect.objectContaining({
       workspaceKind: 'auto',
-      workspacePath: expect.stringMatching(/Sparkii[\\/]+workspaces[\\/]+general[\\/]+[0-9a-f-]+/i),
+      workspacePath: expect.stringMatching(/Sparkii[\\/]+workspaces[\\/]+general[\\/]+[a-z]+-[a-z]+-[a-z2-9]{3}/i),
     }));
     const created = (rt as any).chatSessions.create.mock.calls[0][0] as { workspacePath: string };
     const documentsDir = join(tmpdir(), 'sparkii-test-documents');
     expect(created.workspacePath.startsWith(documentsDir)).toBe(true);
-    expect(created.workspacePath.replace(/\\/g, '/')).toContain('sparkii-test-documents/Sparkii/workspaces/general/');
+    expect(created.workspacePath.replace(/\\/g, '/')).toMatch(/sparkii-test-documents\/Sparkii\/workspaces\/general\/[a-z]+-[a-z]+-[a-z2-9]{3}$/);
     expect(existsSync(created.workspacePath)).toBe(false);
   });
 
@@ -1072,7 +1072,7 @@ describe('ipc provider handlers', () => {
     expect(updates[0]?.workspaceKind).toBe('auto');
     const documentsDir = join(tmpdir(), 'sparkii-test-documents');
     expect(updates[0]?.workspacePath?.startsWith(documentsDir)).toBe(true);
-    expect(updates[0]?.workspacePath?.replace(/\\/g, '/')).toContain('sparkii-test-documents/Sparkii/workspaces/general/');
+    expect(updates[0]?.workspacePath?.replace(/\\/g, '/')).toMatch(/sparkii-test-documents\/Sparkii\/workspaces\/general\/[a-z]+-[a-z]+-[a-z2-9]{3}$/);
     expect(existsSync(updates[0]!.workspacePath!)).toBe(false);
   });
 
@@ -3326,7 +3326,7 @@ describe('ipc user skill library', () => {
     await makeRuntime({ dataDir, piAgentDir: join(dataDir, 'pi-agent'), client: { send: async () => ({ success: true }) }, agents });
     const handlers = await registeredHandlers();
     const { workspacePath } = await handlers.get('sparkii:allocateAutoWorkspace')!(null, 'general') as { workspacePath: string };
-    expect(workspacePath.replace(/\\/g, '/')).toMatch(/Sparkii\/workspaces\/general\/[0-9a-f-]+$/i);
+    expect(workspacePath.replace(/\\/g, '/')).toMatch(/Sparkii\/workspaces\/general\/[a-z]+-[a-z]+-[a-z2-9]{3}$/i);
     expect(existsSync(workspacePath)).toBe(false);
   });
 
