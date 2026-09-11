@@ -231,7 +231,7 @@ describe('executeDocumentRead', () => {
     expect(enqueueParse).not.toHaveBeenCalled();
   });
 
-  it('fails with 磁盘空间不足 when diskFreeBytes is under 2GB', async () => {
+  it('fails with 磁盘空间不足 when diskFreeBytes is under 512MB', async () => {
     const dir = await tempDir();
     const path = join(dir, 'scan.jpg');
     await writeFile(path, 'x');
@@ -240,10 +240,26 @@ describe('executeDocumentRead', () => {
       enqueueParse,
       needsDocumentParse: () => true,
       ensureDocumentParse: async () => {},
-      diskFreeBytes: async () => 1024 ** 3,
+      diskFreeBytes: async () => 400 * 1024 ** 2,
     });
     expect(out).toEqual({ ok: false, error: { code: 'CONNECTOR_IO', message: DOCUMENT_PARSE_DISK_FULL } });
     expect(out.error?.message).toBe('磁盘空间不足，无法准备文档解析。');
+    expect(enqueueParse).not.toHaveBeenCalled();
+  });
+
+  it('does not fail for disk on native path when needsDocumentParse is false', async () => {
+    const dir = await tempDir();
+    const path = join(dir, 'a.txt');
+    await writeFile(path, 'hello contract');
+    const enqueueParse = vi.fn();
+    const out = await executeDocumentRead({ documents: [path] }, ctx, {
+      enqueueParse,
+      needsDocumentParse: () => false,
+      ensureDocumentParse: async () => {},
+      diskFreeBytes: async () => 600 * 1024 ** 2,
+    });
+    expect(out.ok).toBe(true);
+    expect(out.error?.message).not.toBe('磁盘空间不足，无法准备文档解析。');
     expect(enqueueParse).not.toHaveBeenCalled();
   });
 

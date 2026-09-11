@@ -31,7 +31,7 @@ export function resolveDocumentParsePaths(env: NodeJS.ProcessEnv = process.env):
 
 export const DOCUMENT_PARSE_NOT_READY = '文档解析尚未就绪，请到设置 → 文档解析查看。';
 export const DOCUMENT_PARSE_DISK_FULL = '磁盘空间不足，无法准备文档解析。';
-export const MIN_DOCUMENT_PARSE_DISK_BYTES = 2 * 1024 ** 3;
+export const MIN_DOCUMENT_PARSE_DISK_BYTES = 512 * 1024 ** 2;
 
 /** True when the exe or baseline READY sentinel is missing. */
 export function needsDocumentParse(env: NodeJS.ProcessEnv = process.env): boolean {
@@ -54,8 +54,11 @@ export function documentParseArchivePath(
   env: NodeJS.ProcessEnv = process.env,
   resourcesPath?: string,
 ): string | null {
+  const override = env.SPARKII_DOCUMENT_PARSE_ARCHIVE;
+  if (override) {
+    return existsSync(override) ? override : null;
+  }
   const candidates = [
-    env.SPARKII_DOCUMENT_PARSE_ARCHIVE,
     resourcesPath ? join(resourcesPath, 'runtime', 'document-parse', DOCUMENT_PARSE_ARCHIVE_NAME) : undefined,
     ...repoArchiveCandidates(),
   ];
