@@ -137,7 +137,10 @@ function setup(opts?: { autoSpawn?: boolean }) {
     spawn: spawn as unknown as DocumentParseSupervisorDeps['spawn'],
     killTree: killTree as unknown as DocumentParseSupervisorDeps['killTree'],
     appendLog,
-    env: { SPARKII_DOCUMENT_PARSE_BIN: '/fake/sparkii-document-parse.exe' },
+    env: {
+      SPARKII_DOCUMENT_PARSE_BIN: '/fake/sparkii-document-parse.exe',
+      SPARKII_DOCUMENT_PARSE_FAKE: '1',
+    },
   });
   return { supervisor, spawn, killTree, appendLog, children };
 }
@@ -190,8 +193,17 @@ describe('DocumentParseSupervisor', () => {
     expect(spawn).toHaveBeenCalledWith(
       '/fake/sparkii-document-parse.exe',
       [],
-      { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true },
+      expect.objectContaining({
+        stdio: ['pipe', 'pipe', 'pipe'],
+        windowsHide: true,
+        env: expect.objectContaining({
+          SPARKII_DOCUMENT_PARSE_MODELS: expect.any(String),
+        }),
+      }),
     );
+    const spawnEnv = spawn.mock.calls[0]?.[2]?.env as NodeJS.ProcessEnv;
+    expect(spawnEnv.SPARKII_DOCUMENT_PARSE_FAKE).toBeUndefined();
+    expect(spawnEnv.PADDLE_PDX_MODEL_SOURCE).toBeUndefined();
     expect(children[0]?.pid).toBe(1000);
 
     const queued = supervisor.enqueueParse(job({ sessionId: 's2', fileName: 'b.pdf', path: 'C:/b.pdf' }));

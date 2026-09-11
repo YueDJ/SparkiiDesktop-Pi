@@ -15,12 +15,10 @@ if str(_PKG_ROOT) not in sys.path:
     sys.path.insert(0, str(_PKG_ROOT))
 
 from sparkii_document_parse.loop import (  # noqa: E402
-    extract_markdown,
-    extract_score,
+    configure_runtime_env,
     is_fake_mode,
-    load_structure_class,
+    reset_pipeline_cache_for_tests,
     run_loop,
-    structure_kwargs,
 )
 
 
@@ -40,6 +38,15 @@ def parse_stdout_lines(stdout: str) -> list[Any]:
             continue
         frames.append(json.loads(line))
     return frames
+
+
+class FakeOcr:
+    def __call__(self, img):
+        class Out:
+            txts = ("合同编号",)
+            scores = (0.99,)
+
+        return Out()
 
 
 class FakeLoopTests(unittest.TestCase):
@@ -66,20 +73,21 @@ class FakeLoopTests(unittest.TestCase):
         frames = parse_stdout_lines(raw)
         self.assertGreaterEqual(len(frames), 2)
         self.assertEqual(frames[0], {"id": "1", "method": "progress", "params": {"page": 1, "total": 1}})
+        self.assertNotIn("current", frames[0]["params"])
         self.assertEqual(frames[1]["id"], "1")
         self.assertEqual(frames[1]["result"]["pages"], [{"page": 1, "score": 0.91}])
         self.assertIn("scan.pdf", frames[1]["result"]["markdown"])
         self.assertNotIn("paddleocr", sys.modules)
         self.assertNotIn("paddlex", sys.modules)
 
-    def test_fake_does_not_import_paddle(self) -> None:
+    def test_fake_does_not_call_create_ocr(self) -> None:
         stdin = io.StringIO(
             '{"id":"1","method":"parse","params":{"path":"/tmp/a.pdf","modules":["baseline"]}}\n'
         )
         stdout = io.StringIO()
-        with mock.patch("sparkii_document_parse.loop.load_structure_class") as loader:
+        with mock.patch("sparkii_document_parse.loop.handle_parse_real") as real:
             run_loop(stdin, stdout, io.StringIO())
-            loader.assert_not_called()
+            real.assert_not_called()
         self.assertTrue(is_fake_mode())
 
     def test_fake_shutdown_exits_0(self) -> None:
@@ -111,6 +119,8 @@ class FakeLoopTests(unittest.TestCase):
         run_loop(stdin, stdout, stderr)
         frames = parse_stdout_lines(stdout.getvalue())
         self.assertEqual(frames[0]["method"], "progress")
+        self.assertEqual(frames[0]["params"], {"page": 1, "total": 1})
+        self.assertNotIn("current", frames[0]["params"])
         self.assertEqual(frames[1]["result"]["pages"][0]["score"], 0.91)
         self.assertIn("next.pdf", frames[1]["result"]["markdown"])
         self.assertIn("malformed", stderr.getvalue())
@@ -125,68 +135,98 @@ class FakeLoopTests(unittest.TestCase):
         frames = parse_stdout_lines(stdout.getvalue())
         self.assertEqual(len(frames), 2)
         self.assertEqual(frames[0]["method"], "progress")
+        self.assertEqual(frames[0]["params"], {"page": 1, "total": 1})
         self.assertIn("chunked.pdf", frames[1]["result"]["markdown"])
 
 
-class StructureKwargsTests(unittest.TestCase):
-    def test_never_passes_ocr_version_v6(self) -> None:
-        kwargs = structure_kwargs(["baseline", "seal"])
-        dumped = json.dumps(kwargs).lower()
-        self.assertNotIn("v6", dumped)
-        self.assertEqual(kwargs["ocr_version"], "v5")
-        self.assertEqual(kwargs["text_detection_model_name"], "PP-OCRv5_server_det")
-        self.assertEqual(kwargs["text_recognition_model_name"], "PP-OCRv5_server_rec")
-        self.assertTrue(kwargs["use_seal_recognition"])
-        self.assertFalse(kwargs["use_formula_recognition"])
+class RuntimeEnvTests(unittest.TestCase):
+    def test_caps_cpu_thread_env_when_unset(self) -> None:
+        saved = {k: os.environ.get(k) for k in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS")}
+        try:
+            for key in saved:
+                os.environ.pop(key, None)
+            configure_runtime_env()
+            for key in saved:
+                n = int(os.environ[key])
+                self.assertGreaterEqual(n, 2)
+                self.assertLessEqual(n, 8)
+        finally:
+            for key, value in saved.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
 
-    def test_extract_markdown_and_score(self) -> None:
-        class Res:
-            markdown = {"markdown_texts": "# hi"}
-            json = {
-                "overall_ocr_res": {"rec_scores": [0.9, 0.7]},
-            }
+    def test_does_not_set_paddle_model_source(self) -> None:
+        saved_source = os.environ.get("PADDLE_PDX_MODEL_SOURCE")
+        saved_cache = os.environ.get("PADDLE_PDX_CACHE_HOME")
+        try:
+            os.environ.pop("PADDLE_PDX_MODEL_SOURCE", None)
+            os.environ.pop("PADDLE_PDX_CACHE_HOME", None)
+            configure_runtime_env()
+            self.assertNotIn("PADDLE_PDX_MODEL_SOURCE", os.environ)
+            self.assertNotIn("PADDLE_PDX_CACHE_HOME", os.environ)
+        finally:
+            if saved_source is None:
+                os.environ.pop("PADDLE_PDX_MODEL_SOURCE", None)
+            else:
+                os.environ["PADDLE_PDX_MODEL_SOURCE"] = saved_source
+            if saved_cache is None:
+                os.environ.pop("PADDLE_PDX_CACHE_HOME", None)
+            else:
+                os.environ["PADDLE_PDX_CACHE_HOME"] = saved_cache
 
-        self.assertEqual(extract_markdown(Res()), "# hi")
-        self.assertEqual(extract_score(Res()), 0.8)
+    def test_lines_from_ocr_reads_txts_and_scores(self) -> None:
+        from sparkii_document_parse.light_ocr import lines_from_ocr
+
+        class Out:
+            txts = ("合同编号",)
+            scores = (0.99,)
+
+        self.assertEqual(lines_from_ocr(Out()), [("合同编号", 0.99)])
 
 
-class MissingPaddleTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self._fake = os.environ.get("SPARKII_DOCUMENT_PARSE_FAKE")
-        os.environ.pop("SPARKII_DOCUMENT_PARSE_FAKE", None)
-
-    def tearDown(self) -> None:
-        if self._fake is None:
-            os.environ.pop("SPARKII_DOCUMENT_PARSE_FAKE", None)
-        else:
-            os.environ["SPARKII_DOCUMENT_PARSE_FAKE"] = self._fake
-
-    def test_missing_paddle_replies_parse_failed_without_traceback_on_stdout(self) -> None:
+class LightOcrTests(unittest.TestCase):
+    def test_light_ocr_emits_page_progress_then_markdown(self):
+        reset_pipeline_cache_for_tests()
         stdin = io.StringIO(
-            '{"id":"1","method":"parse","params":{"path":"/tmp/a.pdf","modules":["baseline"]}}\n'
+            '{"id":"1","method":"parse","params":{"path":"/tmp/a.png","modules":["baseline"],"total":1}}\n'
         )
         stdout = io.StringIO()
-        stderr = io.StringIO()
-        with mock.patch("sparkii_document_parse.loop.load_structure_class", return_value=None):
-            run_loop(stdin, stdout, stderr)
-        raw = stdout.getvalue()
-        frames = parse_stdout_lines(raw)
-        self.assertEqual(len(frames), 1)
-        self.assertEqual(frames[0]["error"]["code"], "PARSE_FAILED")
-        self.assertNotIn("Traceback", raw)
-        self.assertNotIn("Traceback", stdout.getvalue())
+        with mock.patch("sparkii_document_parse.light_ocr.create_ocr", return_value=FakeOcr()):
+            os.environ.pop("SPARKII_DOCUMENT_PARSE_FAKE", None)
+            run_loop(stdin, stdout, io.StringIO())
+        frames = parse_stdout_lines(stdout.getvalue())
+        self.assertEqual(frames[0]["method"], "progress")
+        self.assertEqual(frames[0]["params"], {"page": 1, "total": 1})
+        self.assertNotIn("current", frames[0]["params"])
+        self.assertIn("合同编号", frames[-1]["result"]["markdown"])
+        self.assertAlmostEqual(frames[-1]["result"]["pages"][0]["score"], 0.99)
 
+    def test_create_ocr_locks_offline_v6_small_paths(self):
+        os.environ["SPARKII_DOCUMENT_PARSE_MODELS"] = r"C:\models"
+        captured = {}
 
-@unittest.skipUnless(os.environ.get("SPARKII_DOCUMENT_PARSE_E2E"), "SPARKII_DOCUMENT_PARSE_E2E not set")
-class RealPaddleTests(unittest.TestCase):
-    def test_real_paddle_import_and_v5_kwargs(self) -> None:
-        os.environ.pop("SPARKII_DOCUMENT_PARSE_FAKE", None)
-        cls = load_structure_class()
-        self.assertIsNotNone(cls, "paddleocr is required when SPARKII_DOCUMENT_PARSE_E2E is set")
-        kwargs = structure_kwargs(["baseline"])
-        dumped = json.dumps(kwargs).lower()
-        self.assertNotIn("v6", dumped)
-        self.assertEqual(kwargs["ocr_version"], "v5")
+        def fake_ctor(**kwargs):
+            captured.update(kwargs.get("params") or {})
+            return FakeOcr()
+
+        with (
+            mock.patch("sparkii_document_parse.light_ocr.RapidOCR", side_effect=fake_ctor),
+            mock.patch("pathlib.Path.is_file", return_value=True),
+        ):
+            from sparkii_document_parse import light_ocr
+
+            light_ocr.reset_ocr_for_tests()
+            light_ocr.create_ocr()
+        self.assertEqual(captured["Det.ocr_version"], "PP-OCRv6")
+        self.assertEqual(captured["Det.model_type"], "small")
+        self.assertEqual(captured["Rec.ocr_version"], "PP-OCRv6")
+        self.assertEqual(captured["Rec.model_type"], "small")
+        self.assertEqual(captured["Det.engine_type"], "onnxruntime")
+        self.assertTrue(str(captured["Det.model_path"]).endswith("PP-OCRv6_det_small.onnx"))
+        self.assertTrue(str(captured["Rec.model_path"]).endswith("PP-OCRv6_rec_small.onnx"))
+        self.assertTrue(str(captured["Cls.model_path"]).endswith("ch_ppocr_mobile_v2.0_cls_mobile.onnx"))
 
 
 if __name__ == "__main__":

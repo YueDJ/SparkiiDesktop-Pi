@@ -1,29 +1,22 @@
 """stdin/stdout NDJSON loop for the document-parse process.
 
-stdout is JSON lines only. Logs, tracebacks, and Paddle banners go to stderr.
-`SPARKII_DOCUMENT_PARSE_FAKE=1` never imports paddleocr/paddlex.
+stdout is JSON lines only. Logs, tracebacks, and library banners go to stderr.
+`SPARKII_DOCUMENT_PARSE_FAKE=1` never imports RapidOCR.
 """
 
 from __future__ import annotations
 
-import inspect
 import json
 import os
 import sys
 import traceback
 from contextlib import redirect_stdout
+from pathlib import Path
 from typing import Any, Iterator, Optional, TextIO
 
 FAKE_ENV = "SPARKII_DOCUMENT_PARSE_FAKE"
-MODELS_ENV = "SPARKII_DOCUMENT_PARSE_MODELS"
-MODEL_SOURCE_ENV = "PADDLE_PDX_MODEL_SOURCE"
-
-# Structure ocr_version must stay on v5. Never pass v6 / PP-OCRv6.
-OCR_VERSION = "v5"
-DET_MODEL = "PP-OCRv5_server_det"
-REC_MODEL = "PP-OCRv5_server_rec"
-
-FORBIDDEN_OCR_VERSIONS = frozenset({"v6", "pp-ocrv6", "ppocrv6", "pp-ocrv6_server"})
+CPU_THREAD_CAP = 8
+CPU_THREAD_FLOOR = 2
 
 
 def is_fake_mode() -> bool:
@@ -50,146 +43,53 @@ def write_error(frame_id: str, message: str, out: TextIO, code: str = "PARSE_FAI
     write_frame({"id": frame_id, "error": {"code": code, "message": message}}, out)
 
 
+def _cpu_thread_count() -> int:
+    n = os.cpu_count() or CPU_THREAD_FLOOR
+    return max(CPU_THREAD_FLOOR, min(CPU_THREAD_CAP, n))
+
+
 def configure_runtime_env() -> None:
-    if not os.environ.get(MODEL_SOURCE_ENV):
-        os.environ[MODEL_SOURCE_ENV] = "bos"
-    models = os.environ.get(MODELS_ENV)
-    if models:
-        os.environ.setdefault("PADDLE_PDX_CACHE_HOME", models)
+    threads = str(_cpu_thread_count())
+    for key in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
+        if not os.environ.get(key):
+            os.environ[key] = threads
 
 
-def structure_kwargs(modules: Optional[list[str]] = None) -> dict[str, Any]:
-    mods = {m for m in (modules or []) if isinstance(m, str)}
-    kwargs: dict[str, Any] = {
-        "ocr_version": OCR_VERSION,
-        "text_detection_model_name": DET_MODEL,
-        "text_recognition_model_name": REC_MODEL,
-        "device": "cpu",
-        "use_seal_recognition": "seal" in mods,
-        "use_formula_recognition": "formula" in mods,
-        "use_chart_recognition": "chart" in mods,
-    }
-    _assert_ocr_version_not_v6(kwargs)
-    return kwargs
+def reset_pipeline_cache_for_tests() -> None:
+    from sparkii_document_parse import light_ocr
+
+    light_ocr.reset_ocr_for_tests()
 
 
-def _assert_ocr_version_not_v6(kwargs: dict[str, Any]) -> None:
-    raw = str(kwargs.get("ocr_version", "")).strip().lower()
-    compact = raw.replace("_", "").replace("-", "")
-    if raw in FORBIDDEN_OCR_VERSIONS or compact in FORBIDDEN_OCR_VERSIONS or "v6" in compact:
-        raise RuntimeError("ocr_version v6 is not supported")
+def get_pipeline(modules: Optional[list[str]] = None) -> Any:
+    from sparkii_document_parse import light_ocr
 
-
-def _filter_kwargs(cls: Any, kwargs: dict[str, Any]) -> dict[str, Any]:
-    try:
-        sig = inspect.signature(cls.__init__)
-    except (TypeError, ValueError):
-        return dict(kwargs)
-    if any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()):
-        return dict(kwargs)
-    return {k: v for k, v in kwargs.items() if k in sig.parameters}
-
-
-def load_structure_class() -> Any:
-    """Import PPStructureV3 only on the real path. Returns None if unavailable."""
+    del modules
     configure_runtime_env()
-    try:
-        from paddleocr import PPStructureV3  # type: ignore
-    except Exception as exc:
-        log_err(f"document parse runtime import failed: {exc}", sys.stderr)
-        return None
-    return PPStructureV3
+    return light_ocr.create_ocr()
 
 
-def instantiate_structure(cls: Any, modules: Optional[list[str]] = None) -> Any:
-    kwargs = structure_kwargs(modules)
-    filtered = _filter_kwargs(cls, kwargs)
-    _assert_ocr_version_not_v6(filtered)
-    try:
-        return cls(**filtered)
-    except TypeError:
-        if "ocr_version" in filtered and filtered.get("ocr_version") == "v5":
-            alt = dict(filtered)
-            alt["ocr_version"] = "PP-OCRv5"
-            _assert_ocr_version_not_v6(alt)
-            try:
-                return cls(**_filter_kwargs(cls, alt))
-            except TypeError:
-                pass
-        dropped = {k: v for k, v in filtered.items() if k != "ocr_version"}
-        return cls(**dropped)
+def _load_images(path: str) -> list[Any]:
+    from sparkii_document_parse import light_ocr
+
+    if Path(path).suffix.lower() == ".pdf":
+        return list(light_ocr.pdf_to_images(path))
+    return [path]
 
 
-def _as_mapping(value: Any) -> dict[str, Any]:
-    if isinstance(value, dict):
-        return value
-    json_attr = getattr(value, "json", None)
-    if callable(json_attr):
-        try:
-            dumped = json_attr()
-            if isinstance(dumped, dict):
-                return dumped
-        except Exception:
-            pass
-    elif isinstance(json_attr, dict):
-        return json_attr
-    res = getattr(value, "res", None)
-    if isinstance(res, dict):
-        return res
-    return {}
+def _page_markdown(index: int, lines: list[tuple[str, float]]) -> str:
+    texts = [text for text, _score in lines if text]
+    heading = f"# 第 {index} 页"
+    if not texts:
+        return heading
+    return heading + "\n" + "\n".join(texts)
 
 
-def extract_markdown(res: Any) -> str:
-    md = getattr(res, "markdown", None)
-    if isinstance(md, str) and md.strip():
-        return md
-    if isinstance(md, dict):
-        for key in ("markdown_texts", "markdown_text", "markdown"):
-            text = md.get(key)
-            if isinstance(text, str) and text.strip():
-                return text
-            if isinstance(text, list):
-                joined = "\n\n".join(str(item) for item in text if item)
-                if joined.strip():
-                    return joined
-    data = _as_mapping(res)
-    for key in ("markdown", "markdown_texts", "markdown_text"):
-        text = data.get(key)
-        if isinstance(text, str) and text.strip():
-            return text
-    return ""
-
-
-def _collect_scores(value: Any, into: list[float]) -> None:
-    if isinstance(value, (int, float)):
-        into.append(float(value))
-        return
-    if isinstance(value, (list, tuple, set)):
-        for item in value:
-            _collect_scores(item, into)
-        return
-    if isinstance(value, dict):
-        for key, item in value.items():
-            key_l = str(key).lower()
-            if "score" in key_l:
-                _collect_scores(item, into)
-
-
-def extract_score(res: Any) -> float:
-    scores: list[float] = []
-    data = _as_mapping(res)
-    rec = data.get("overall_ocr_res")
-    if isinstance(rec, dict):
-        _collect_scores(rec.get("rec_score"), scores)
-        _collect_scores(rec.get("rec_scores"), scores)
-        _collect_scores(rec.get("rec_score_list"), scores)
-    if not scores:
-        layout = data.get("layout_det_res")
-        if isinstance(layout, dict):
-            _collect_scores(layout.get("boxes"), scores)
+def _page_score(lines: list[tuple[str, float]]) -> float:
+    scores = [float(score) for _text, score in lines]
     if not scores:
         return 0.0
-    return round(sum(scores) / len(scores), 4)
+    return sum(scores) / len(scores)
 
 
 def iter_chunks(stdin: TextIO) -> Iterator[str]:
@@ -239,38 +139,34 @@ def handle_parse_real(
     if not isinstance(path, str) or not path:
         write_error(frame_id, "document parse failed: missing path", out)
         return
-    modules = params.get("modules")
-    module_list = [m for m in modules if isinstance(m, str)] if isinstance(modules, list) else []
-
-    cls = load_structure_class()
-    if cls is None:
-        write_error(frame_id, "document parse runtime is not available", out)
-        return
 
     try:
+        from sparkii_document_parse import light_ocr
+
+        configure_runtime_env()
         with redirect_stdout(err):
-            pipeline = instantiate_structure(cls, module_list)
-            output = pipeline.predict(input=path)
-            results = list(output) if output is not None else []
+            ocr = light_ocr.create_ocr()
+            images = _load_images(path)
+        if not images:
+            write_error(frame_id, "document parse produced no pages", out)
+            return
+        total = len(images)
+        pages: list[dict[str, Any]] = []
+        markdown_parts: list[str] = []
+        for index, image in enumerate(images, start=1):
+            write_frame(
+                {"id": frame_id, "method": "progress", "params": {"page": index, "total": total}},
+                out,
+            )
+            with redirect_stdout(err):
+                result = ocr(image)
+            lines = light_ocr.lines_from_ocr(result)
+            markdown_parts.append(_page_markdown(index, lines))
+            pages.append({"page": index, "score": _page_score(lines)})
     except Exception:
         log_err(traceback.format_exc(), err)
         write_error(frame_id, "document parse failed", out)
         return
-
-    if not results:
-        write_error(frame_id, "document parse produced no pages", out)
-        return
-
-    total = len(results)
-    pages: list[dict[str, Any]] = []
-    markdown_parts: list[str] = []
-    for index, res in enumerate(results, start=1):
-        write_frame(
-            {"id": frame_id, "method": "progress", "params": {"page": index, "total": total}},
-            out,
-        )
-        markdown_parts.append(extract_markdown(res))
-        pages.append({"page": index, "score": extract_score(res)})
 
     write_frame(
         {

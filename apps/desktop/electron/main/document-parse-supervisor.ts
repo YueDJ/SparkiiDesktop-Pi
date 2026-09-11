@@ -31,12 +31,13 @@ export interface DocumentParseJob {
   fileName: string;
   path: string;
   modules: string[];
+  total?: number;
 }
 
 type SpawnFn = (
   command: string,
   args: string[],
-  options: { stdio: ['pipe', 'pipe', 'pipe']; windowsHide: true },
+  options: { stdio: ['pipe', 'pipe', 'pipe']; windowsHide: true; env: NodeJS.ProcessEnv },
 ) => ChildProcess;
 
 const PARSE_FAILED_GENERIC = '文档解析失败。';
@@ -313,6 +314,15 @@ export class DocumentParseSupervisor {
     return this.env.SPARKII_DOCUMENT_PARSE_BIN || resolveDocumentParsePaths(this.env).exe;
   }
 
+  private spawnEnv(): NodeJS.ProcessEnv {
+    const env = { ...this.env };
+    delete env.SPARKII_DOCUMENT_PARSE_FAKE;
+    if (!env.SPARKII_DOCUMENT_PARSE_MODELS) {
+      env.SPARKII_DOCUMENT_PARSE_MODELS = resolveDocumentParsePaths(this.env).models;
+    }
+    return env;
+  }
+
   private async pump(): Promise<void> {
     if (this.pumping) return;
     this.pumping = true;
@@ -358,7 +368,13 @@ export class DocumentParseSupervisor {
         return;
       }
       const result = await Promise.race([
-        client.parse({ path: job.path, modules: job.modules }, (progress) => {
+        client.parse(
+          {
+            path: job.path,
+            modules: job.modules,
+            ...(typeof job.total === 'number' && job.total > 0 ? { total: job.total } : {}),
+          },
+          (progress) => {
           if (this.current !== job) return;
           this.page = progress.page;
           this.total = progress.total;
@@ -384,7 +400,7 @@ export class DocumentParseSupervisor {
     const bin = this.resolveBin();
     let child: ChildProcess;
     try {
-      child = this.spawnFn(bin, [], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
+      child = this.spawnFn(bin, [], { stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, env: this.spawnEnv() });
     } catch {
       this.noteSpawnFailure();
       this.failJob(job, DOCUMENT_PARSE_SPAWN_FAILED);
