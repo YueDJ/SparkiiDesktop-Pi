@@ -50,7 +50,7 @@ describe('ui chat patterns', () => {
   it('chat composer sends and stops', () => {
     const onSend = vi.fn();
     const onStop = vi.fn();
-    render(<ChatComposer busy={false} workspacePath="C:/ws" onChooseWorkspace={vi.fn()} modelProps={{ model: null, defaultModel: null, models: [], thinkingLevel: null, thinkingLevels: [], onModelChange: vi.fn(), onThinkingLevelChange: vi.fn() }} onSend={onSend} onStop={onStop} />);
+    render(<ChatComposer busy={false} workspacePath="C:/ws" onChooseWorkspace={vi.fn()} onOpenWorkspace={vi.fn()} modelProps={{ model: null, defaultModel: null, models: [], thinkingLevel: null, thinkingLevels: [], onModelChange: vi.fn(), onThinkingLevelChange: vi.fn() }} onSend={onSend} onStop={onStop} />);
     fireEvent.change(screen.getByTestId('composer-input'), { target: { value: 'hi' } });
     fireEvent.keyDown(screen.getByTestId('composer-input'), { key: 'Enter' });
     expect(onSend).toHaveBeenCalledWith('hi', []);
@@ -68,6 +68,7 @@ function composerProps(over: Partial<ChatComposerProps> = {}): ChatComposerProps
     busy: false,
     workspacePath: 'C:/ws',
     onChooseWorkspace: vi.fn(),
+    onOpenWorkspace: vi.fn(),
     modelProps: {
       model: null,
       defaultModel: null,

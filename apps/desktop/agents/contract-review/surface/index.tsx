@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ContextUsageBar, Markdown, ModelEffortControl, RecognitionQuality, RiskBadge, THINKING_LEVELS, type RecognitionQualityValue } from '@sparkii/ui';
+import { ContextUsageBar, Markdown, ModelEffortControl, RecognitionQuality, RiskBadge, THINKING_LEVELS, WorkspaceButton, type RecognitionQualityValue } from '@sparkii/ui';
 import type { AgentSession, AgentSurfaceActions, AgentSurfaceProps, CustomSessionEntry } from '../../../src/surface/contract.js';
 import { deriveWorkflowTimeline, extractWorkflowResult } from '../../../src/surface/normalize.js';
 import { isWorkflowDraftBind, isWorkflowOpenFromDraft, sessionIdChange } from '../../../src/surface/session-id.js';
@@ -45,6 +45,7 @@ interface SparkiiWindowApi {
   listThinkingLevels?(providerId: string, modelId: string): Promise<string[]>;
   allocateAutoWorkspace?(agentId: string): Promise<{ workspacePath: string }>;
   chooseWorkspace?(opts?: { defaultPath?: string }): Promise<{ path?: string }>;
+  openWorkspace?(path: string): Promise<{ ok: boolean; error?: string }>;
   setChatWorkspace?(sessionId: string, path: string | null): Promise<unknown>;
   setChatTitle?(sessionId: string, title: string, source?: 'user' | 'agent'): Promise<{ ok: boolean; reason?: 'locked' }>;
   on?(event: string, cb: (payload: unknown) => void): () => void;
@@ -250,13 +251,15 @@ function ModelEffortBar({
 
   return (
     <div className="contract-model-bar">
-      <button
-        type="button"
-        className="ui-composer-ws-btn"
-        data-testid="workspace"
-        title={workspacePath ?? ''}
-        disabled={!workspacePath}
-        onClick={() => {
+      <WorkspaceButton
+        path={workspacePath}
+        testId="workspace"
+        placement="bottom"
+        onOpen={() => {
+          if (!workspacePath) return;
+          void api.openWorkspace?.(workspacePath);
+        }}
+        onChoose={() => {
           void api.chooseWorkspace?.({ defaultPath: workspacePath ?? undefined }).then(({ path } = {}) => {
             if (!path) return;
             setWorkspacePath(path);
@@ -267,7 +270,7 @@ function ModelEffortBar({
         }}
       >
         <span className="contract-model-ws-name">{workspaceName}</span>
-      </button>
+      </WorkspaceButton>
       <ContextUsageBar
         contextUsage={contextUsage && {
           ...contextUsage,

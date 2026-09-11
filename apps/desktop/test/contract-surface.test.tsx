@@ -831,6 +831,7 @@ describe('ContractAgentSurface', () => {
     expect(screen.queryByTestId('upload')).toBeNull();
     await waitFor(() => expect((screen.getByTestId('workspace') as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByTestId('workspace'));
+    fireEvent.click(screen.getByTestId('workspace-change'));
     await waitFor(() => expect(screen.getByTestId('workspace').textContent).toContain('contract'));
     fireEvent.click(screen.getByTestId('review'));
     await waitFor(() => expect(startWorkflow).toHaveBeenCalledWith(expect.objectContaining({
@@ -885,6 +886,7 @@ describe('ContractAgentSurface', () => {
     render(<ContractAgentSurface agent={agent} sessionId={null} mode="live" session={{ entries: [], streaming: false, status: 'idle', meta: { currentStep: null } }} actions={makeActions()} />);
     await screen.findByText('ws-1');
     fireEvent.click(screen.getByTestId('workspace'));
+    fireEvent.click(screen.getByTestId('workspace-change'));
     await waitFor(() => expect(chooseWorkspace).toHaveBeenCalledWith({
       defaultPath: 'C:/docs/Sparkii/workspaces/contract-review/ws-1',
     }));

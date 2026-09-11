@@ -32,6 +32,7 @@ function makeApi(over: Record<string, unknown> = {}) {
     listThinkingLevels: vi.fn().mockResolvedValue(['off', 'medium', 'high']),
     setChatWorkspace: vi.fn().mockResolvedValue({ ok: true }),
     chooseWorkspace: vi.fn().mockResolvedValue({ path: 'C:/user-ws' }),
+    openWorkspace: vi.fn().mockResolvedValue({ ok: true }),
     allocateAutoWorkspace: vi.fn().mockResolvedValue({ workspacePath: 'C:/docs/Sparkii/workspaces/general/ws-auto' }),
     getModelOptions: vi.fn().mockResolvedValue({ defaultModel: 'deepseek-v4-flash', models: ['deepseek-v4-pro', 'deepseek-v4-flash'], provider: 'deepseek' }),
     getSettings: vi.fn().mockResolvedValue({ chatDetailLevel: 'standard' }),
@@ -90,6 +91,7 @@ describe('StandardChatSurface (contract)', () => {
     render(<StandardChatSurface {...baseProps(null, { draft: true, api })} />);
     await waitFor(() => expect(screen.getByTestId('workspace-path').textContent).toContain('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'));
     fireEvent.click(screen.getByTestId('composer-workspace'));
+    fireEvent.click(screen.getByTestId('workspace-change'));
     await waitFor(() => expect(chooseWorkspace).toHaveBeenCalledWith({
       defaultPath: 'C:/Users/x/Documents/Sparkii/workspaces/general/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
     }));
@@ -242,9 +244,25 @@ describe('StandardChatSurface behaviors', () => {
     resolveAlloc({ workspacePath: 'C:/docs/Sparkii/workspaces/general/ready' });
     await waitFor(() => expect((screen.getByTestId('composer-workspace') as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(screen.getByTestId('composer-workspace'));
+    fireEvent.click(screen.getByTestId('workspace-change'));
     await waitFor(() => expect(chooseWorkspace).toHaveBeenCalledWith({
       defaultPath: 'C:/docs/Sparkii/workspaces/general/ready',
     }));
+  });
+
+  it('opens the allocated workspace in the system folder view', async () => {
+    const openWorkspace = vi.fn().mockResolvedValue({ ok: true });
+    const { api } = makeApi({
+      allocateAutoWorkspace: vi.fn().mockResolvedValue({
+        workspacePath: 'C:/docs/Sparkii/workspaces/general/glow-fox-k7m',
+      }),
+      openWorkspace,
+    });
+    render(<StandardChatSurface {...baseProps(null, { draft: true, api })} />);
+    await waitFor(() => expect(screen.getByTestId('workspace-path').textContent).toContain('glow-fox-k7m'));
+    fireEvent.click(screen.getByTestId('composer-workspace'));
+    fireEvent.click(screen.getByTestId('workspace-open'));
+    expect(openWorkspace).toHaveBeenCalledWith('C:/docs/Sparkii/workspaces/general/glow-fox-k7m');
   });
 
   it('warns when sending an image with a non-vision model', async () => {
