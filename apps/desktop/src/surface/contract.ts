@@ -32,6 +32,7 @@ export interface AgentSession {
     model?: string | null;
     contextUsage?: { tokens?: number | null; contextWindow?: number; percent?: number | null } | null;
     workspacePath?: string | null;
+    workspaceKind?: 'auto' | 'user';
     currentStep?: string | null;
     /** 会话输入文件（由平台从 workspace/DB 暴露），供自定义 surface 作为输入/原文使用。 */
     inputs?: { path: string; name?: string; missing?: boolean }[];

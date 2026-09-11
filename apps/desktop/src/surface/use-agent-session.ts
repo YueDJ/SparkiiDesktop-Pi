@@ -73,9 +73,20 @@ export function useAgentSession(agentId: string, sessionId: string | null, _mode
         buffer = null;
         const entries = applySnapshotThenBuffer(res ?? {}, pending);
         const inputs = normalizeInputs(res);
+        const snapshot = res as { workspacePath?: unknown; workspaceKind?: unknown };
+        const workspacePath = typeof snapshot.workspacePath === 'string' ? snapshot.workspacePath : undefined;
+        const workspaceKind = snapshot.workspaceKind === 'user' || snapshot.workspaceKind === 'auto'
+          ? snapshot.workspaceKind
+          : undefined;
         setSession((s) => withWorkflowFromEntries(s, entries, {
           streaming: Boolean(res?.streaming),
-          meta: { ...s.meta, currentStep: (res as any)?.currentStep ?? null, inputs: inputs ?? s.meta.inputs },
+          meta: {
+            ...s.meta,
+            currentStep: (res as any)?.currentStep ?? null,
+            inputs: inputs ?? s.meta.inputs,
+            ...(workspacePath !== undefined ? { workspacePath } : {}),
+            ...(workspaceKind !== undefined ? { workspaceKind } : {}),
+          },
         }));
       }).catch(() => {
         // 读取失败就是空会话，不打断 UI；放开闸门让后续事件照常画。

@@ -235,6 +235,19 @@ export function captureReportHtml(root: Element): string {
   return clone.outerHTML;
 }
 
+export function resolveExportWorkspace(input: {
+  sessionId: string | null;
+  metaPath?: string | null;
+  prefsPath?: string | null;
+  prefsKind?: 'auto' | 'user';
+}): string | undefined {
+  const prefs = input.prefsPath?.trim() || undefined;
+  const meta = input.metaPath?.trim() || undefined;
+  if (!input.sessionId) return prefs;
+  if (input.prefsKind === 'user' && prefs) return prefs;
+  return meta ?? prefs;
+}
+
 export function reportExportPath(workspacePath: string | null | undefined, title: string): string | undefined {
   const workspace = workspacePath?.trim();
   if (!workspace) return undefined;

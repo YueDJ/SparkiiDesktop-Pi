@@ -1,6 +1,6 @@
 import { inflateRawSync } from 'node:zlib';
 import { describe, it, expect } from 'vitest';
-import { parseRiskFindings, formatReport, stepStatus, parseClauseGroups, buildExportDocument, captureReportHtml, reportExportPath, extractContractOutputsFromEntries, resolveContractResult } from '../agents/contract-review/surface/contract.js';
+import { parseRiskFindings, formatReport, stepStatus, parseClauseGroups, buildExportDocument, captureReportHtml, reportExportPath, resolveExportWorkspace, extractContractOutputsFromEntries, resolveContractResult } from '../agents/contract-review/surface/contract.js';
 import { documentFromHtml, bytesToBase64 } from '../agents/contract-review/surface/report-docx.js';
 import { deriveSteps } from '../agents/contract-review/surface/manifest-steps.js';
 
@@ -227,6 +227,35 @@ describe('captureReportHtml', () => {
 describe('reportExportPath', () => {
   it('writes into the workspace', () => {
     expect(reportExportPath('C:/ws/contract', '合同审核报告')).toMatch(/合同审核报告\.docx$/);
+  });
+});
+
+describe('resolveExportWorkspace', () => {
+  it('uses draft prefs when there is no session', () => {
+    expect(resolveExportWorkspace({
+      sessionId: null,
+      metaPath: 'C:/docs/Sparkii/workspaces/contract-review/ws-old',
+      prefsPath: 'C:/docs/Sparkii/workspaces/contract-review/ws-draft',
+      prefsKind: 'auto',
+    })).toBe('C:/docs/Sparkii/workspaces/contract-review/ws-draft');
+  });
+
+  it('ignores leftover auto draft prefs once a session is open', () => {
+    expect(resolveExportWorkspace({
+      sessionId: 's-hist',
+      metaPath: 'C:/docs/Sparkii/workspaces/contract-review/ws-hist',
+      prefsPath: 'C:/docs/Sparkii/workspaces/contract-review/ws-draft',
+      prefsKind: 'auto',
+    })).toBe('C:/docs/Sparkii/workspaces/contract-review/ws-hist');
+  });
+
+  it('keeps a user-chosen path on the open session', () => {
+    expect(resolveExportWorkspace({
+      sessionId: 's1',
+      metaPath: 'C:/docs/Sparkii/workspaces/contract-review/ws-old',
+      prefsPath: 'C:/user-ws',
+      prefsKind: 'user',
+    })).toBe('C:/user-ws');
   });
 });
 

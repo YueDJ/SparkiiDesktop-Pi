@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ContextUsageBar, Markdown, ModelEffortControl, RecognitionQuality, RiskBadge, THINKING_LEVELS, type RecognitionQualityValue } from '@sparkii/ui';
 import type { AgentSession, AgentSurfaceActions, AgentSurfaceProps, CustomSessionEntry } from '../../../src/surface/contract.js';
 import { deriveWorkflowTimeline, extractWorkflowResult } from '../../../src/surface/normalize.js';
-import { isWorkflowDraftBind, sessionIdChange } from '../../../src/surface/session-id.js';
-import { captureReportHtml, extractContractOutputsFromEntries, formatReport, parseRiskFindings, reportExportPath, resolveContractResult } from './contract.js';
+import { isWorkflowDraftBind, isWorkflowOpenFromDraft, sessionIdChange } from '../../../src/surface/session-id.js';
+import { captureReportHtml, extractContractOutputsFromEntries, formatReport, parseRiskFindings, reportExportPath, resolveContractResult, resolveExportWorkspace } from './contract.js';
 import { contractSessionTitle } from './title.js';
 import { bytesToBase64, documentFromHtml } from './report-docx.js';
 import { DocumentPreview, formatFileSize, kindLabel, type PreviewKind } from './DocumentPreview.js';
@@ -38,7 +38,7 @@ interface SparkiiWindowApi {
     models?: string[];
     provider?: string;
   }>;
-  getChatSession?(sessionId: string): Promise<{ model?: string | null; thinkingLevel?: string | null; workspacePath?: string | null }>;
+  getChatSession?(sessionId: string): Promise<{ model?: string | null; thinkingLevel?: string | null; workspacePath?: string | null; workspaceKind?: 'auto' | 'user' }>;
   getChatState?(sessionId: string): Promise<{ contextUsage?: { tokens?: number | null; contextWindow?: number; percent?: number | null } | null }>;
   setChatModel?(sessionId: string, model: string | null): Promise<unknown>;
   setChatThinkingLevel?(sessionId: string, level: string | null): Promise<unknown>;
@@ -150,9 +150,14 @@ function ModelEffortBar({
 
   useEffect(() => {
     setModel(session.meta.model ?? null);
-    if (sessionId) setWorkspacePath(session.meta.workspacePath ?? null);
+    if (sessionId) {
+      setWorkspacePath(session.meta.workspacePath ?? null);
+      if (session.meta.workspaceKind === 'user' || session.meta.workspaceKind === 'auto') {
+        setWorkspaceKind(session.meta.workspaceKind);
+      }
+    }
     if (session.meta.contextUsage) setContextUsage(session.meta.contextUsage);
-  }, [sessionId, session.meta.model, session.meta.workspacePath, session.meta.contextUsage]);
+  }, [sessionId, session.meta.model, session.meta.workspacePath, session.meta.workspaceKind, session.meta.contextUsage]);
 
   useEffect(() => {
     onPrefs?.({ workspacePath, workspaceKind, model, thinkingLevel });
@@ -185,6 +190,7 @@ function ModelEffortBar({
       void api.getChatSession?.(sessionId).then((rec) => {
         if (!rec) return;
         if (rec.workspacePath) setWorkspacePath(rec.workspacePath);
+        if (rec.workspaceKind === 'user' || rec.workspaceKind === 'auto') setWorkspaceKind(rec.workspaceKind);
         if (rec.thinkingLevel !== undefined) setThinkingLevel(rec.thinkingLevel ?? null);
         if (rec.model) setModel(rec.model);
       }).catch(() => {});
@@ -249,6 +255,7 @@ function ModelEffortBar({
         className="ui-composer-ws-btn"
         data-testid="workspace"
         title={workspacePath ?? ''}
+        disabled={!workspacePath}
         onClick={() => {
           void api.chooseWorkspace?.({ defaultPath: workspacePath ?? undefined }).then(({ path } = {}) => {
             if (!path) return;
@@ -389,6 +396,9 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
       lastInputsKey.current = '';
       setRunPrefs({ workspacePath: null, workspaceKind: 'auto', model: null, thinkingLevel: null });
       return;
+    }
+    if (change === 'switch' || isWorkflowOpenFromDraft(change, props.mode)) {
+      setRunPrefs({ workspacePath: null, workspaceKind: 'auto', model: null, thinkingLevel: null });
     }
     setDiscardSession(false);
     setDocuments(inputs.map((i) => i.path));
@@ -788,7 +798,12 @@ export function ContractAgentSurface(props: AgentSurfaceProps) {
                           title: report.title,
                           format: 'docx',
                           content: bytesToBase64(bytes),
-                          path: reportExportPath(runPrefs.workspacePath ?? session.meta.workspacePath, report.title),
+                          path: reportExportPath(resolveExportWorkspace({
+                            sessionId,
+                            metaPath: session.meta.workspacePath,
+                            prefsPath: runPrefs.workspacePath,
+                            prefsKind: runPrefs.workspaceKind,
+                          }), report.title),
                         });
                       } catch (e) {
                         void sparkiiApi().appendError?.({

@@ -658,6 +658,8 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         streamingMessage: streamingMessage ?? null,
         streaming,
         inputs: parseSessionInputs(rec?.inputs),
+        workspacePath: rec?.workspacePath ?? null,
+        workspaceKind: rec?.workspaceKind ?? null,
       };
     }
     const rec = rt.chatSessions.get(sessionId) ?? (await listPiSessions(join(rt.piAgentDir, 'sessions'))).find((s) => s.id === sessionId);
@@ -669,6 +671,8 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       streamingMessage: null,
       streaming: false,
       inputs: parseSessionInputs((rec as { inputs?: string }).inputs),
+      workspacePath: (rec as { workspacePath?: string | null }).workspacePath ?? null,
+      workspaceKind: (rec as { workspaceKind?: 'auto' | 'user' | null }).workspaceKind ?? null,
     });
     if (!file) return dead([]);
     try {

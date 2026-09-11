@@ -194,6 +194,7 @@ describe('StandardChatSurface behaviors', () => {
   it('sends the attachment display text for the first draft message', async () => {
     const { api } = makeApi();
     const { container } = render(<StandardChatSurface {...baseProps(null, { draft: true, api })} />);
+    await waitFor(() => expect(screen.getByTestId('workspace-path').textContent).toContain('ws-auto'));
     const file = new File(['img'], 'photo.png', { type: 'image/png' });
     fireEvent.change(container.querySelector('input[type="file"]')!, { target: { files: [file] } });
     fireEvent.change(screen.getByTestId('composer-input'), { target: { value: '看这张图' } });
@@ -204,8 +205,46 @@ describe('StandardChatSurface behaviors', () => {
       '📎 photo.png\n看这张图',
       undefined,
       [{ path: 'C:/downloads/photo.png', name: 'photo.png', size: 3, type: 'image/png' }],
-      expect.any(Object),
+      expect.objectContaining({
+        profileId: 'general',
+        workspacePath: 'C:/docs/Sparkii/workspaces/general/ws-auto',
+        workspaceKind: 'auto',
+      }),
     );
+  });
+
+  it('allocates a different path for a second draft session', async () => {
+    const allocateAutoWorkspace = vi.fn()
+      .mockResolvedValueOnce({ workspacePath: 'C:/docs/Sparkii/workspaces/general/id-a' })
+      .mockResolvedValueOnce({ workspacePath: 'C:/docs/Sparkii/workspaces/general/id-b' });
+    const { api } = makeApi({ allocateAutoWorkspace });
+    const { rerender } = render(<StandardChatSurface {...baseProps(null, { draft: true, api })} />);
+    await waitFor(() => expect(screen.getByTestId('workspace-path').textContent).toContain('id-a'));
+    rerender(<StandardChatSurface {...baseProps('s1', { api })} />);
+    rerender(<StandardChatSurface {...baseProps(null, { draft: true, api })} />);
+    await waitFor(() => expect(screen.getByTestId('workspace-path').textContent).toContain('id-b'));
+    expect(screen.getByTestId('workspace-path').textContent).not.toContain('id-a');
+    expect(allocateAutoWorkspace).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the workspace button disabled until a path is allocated', async () => {
+    let resolveAlloc: (value: { workspacePath: string }) => void = () => {};
+    const allocateAutoWorkspace = vi.fn().mockImplementation(() => new Promise<{ workspacePath: string }>((resolve) => {
+      resolveAlloc = resolve;
+    }));
+    const chooseWorkspace = vi.fn().mockResolvedValue({});
+    const { api } = makeApi({ allocateAutoWorkspace, chooseWorkspace });
+    render(<StandardChatSurface {...baseProps(null, { draft: true, api })} />);
+    const button = screen.getByTestId('composer-workspace') as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    fireEvent.click(button);
+    expect(chooseWorkspace).not.toHaveBeenCalled();
+    resolveAlloc({ workspacePath: 'C:/docs/Sparkii/workspaces/general/ready' });
+    await waitFor(() => expect((screen.getByTestId('composer-workspace') as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(screen.getByTestId('composer-workspace'));
+    await waitFor(() => expect(chooseWorkspace).toHaveBeenCalledWith({
+      defaultPath: 'C:/docs/Sparkii/workspaces/general/ready',
+    }));
   });
 
   it('warns when sending an image with a non-vision model', async () => {

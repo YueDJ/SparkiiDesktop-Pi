@@ -1035,7 +1035,45 @@ describe('ipc provider handlers', () => {
     expect(result).toMatchObject({ ok: true, sessionId: 's-new' });
     expect(sent).toContainEqual({ type: 'prompt', message: 'hello' });
     expect(rt.pool.acquire).toHaveBeenCalled();
-    expect((rt as any).chatSessions.create).toHaveBeenCalled();
+    expect((rt as any).chatSessions.create).toHaveBeenCalledWith(expect.objectContaining({
+      workspaceKind: 'auto',
+      workspacePath: expect.stringMatching(/Sparkii[\\/]+workspaces[\\/]+general[\\/]+[0-9a-f-]+/i),
+    }));
+    const created = (rt as any).chatSessions.create.mock.calls[0][0] as { workspacePath: string };
+    const documentsDir = join(tmpdir(), 'sparkii-test-documents');
+    expect(created.workspacePath.startsWith(documentsDir)).toBe(true);
+    expect(created.workspacePath.replace(/\\/g, '/')).toContain('sparkii-test-documents/Sparkii/workspaces/general/');
+    expect(existsSync(created.workspacePath)).toBe(false);
+  });
+
+  it('setChatWorkspace(null) allocates a new Documents auto path', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const agents = new Map([['general', { id: 'general', tools: [], skillsDir: '', systemPrompt: '', manifest: { name: 'general' } }]]);
+    const store = {
+      profileId: 'general',
+      workspaceKind: 'user' as const,
+      workspacePath: 'C:/old/user-ws',
+    };
+    const updates: Array<{ workspaceKind?: string; workspacePath?: string }> = [];
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir: join(dataDir, 'pi-agent'),
+      client: { send: async () => ({ success: true }) },
+      agents,
+    });
+    (rt as any).chatSessions.get = () => store;
+    (rt as any).chatSessions.update = (_id: string, patch: { workspaceKind?: string; workspacePath?: string }) => {
+      Object.assign(store, patch);
+      updates.push(patch);
+    };
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:setChatWorkspace')!(null, 's1', null);
+    expect(updates[0]?.workspaceKind).toBe('auto');
+    const documentsDir = join(tmpdir(), 'sparkii-test-documents');
+    expect(updates[0]?.workspacePath?.startsWith(documentsDir)).toBe(true);
+    expect(updates[0]?.workspacePath?.replace(/\\/g, '/')).toContain('sparkii-test-documents/Sparkii/workspaces/general/');
+    expect(existsSync(updates[0]!.workspacePath!)).toBe(false);
   });
 
   it('promptSession does not duplicate model application when the model is already in the saddle', async () => {
@@ -2672,6 +2710,8 @@ describe('ipc provider handlers', () => {
       streamingMessage: null,
       streaming: false,
       inputs: [expect.objectContaining({ path: 'C:/tmp/a.pdf', name: 'a.pdf' })],
+      workspacePath: null,
+      workspaceKind: null,
     });
   });
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { ChatComposer, type ChatComposerProps } from '@sparkii/ui';
 
 afterEach(cleanup);
@@ -34,5 +34,14 @@ describe('ChatComposer toolbarExtra', () => {
   it('hides workspace when hideWorkspace is set', () => {
     render(<ChatComposer {...composerProps()} hideWorkspace />);
     expect(screen.queryByTestId('composer-workspace')).toBeNull();
+  });
+
+  it('disables the workspace button until a path is present', () => {
+    const onChooseWorkspace = vi.fn();
+    render(<ChatComposer {...composerProps({ workspacePath: null, onChooseWorkspace })} />);
+    const button = screen.getByTestId('composer-workspace') as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    fireEvent.click(button);
+    expect(onChooseWorkspace).not.toHaveBeenCalled();
   });
 });
