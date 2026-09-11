@@ -15,23 +15,30 @@ export async function xlsxToMarkdown(path: string): Promise<string> {
 }
 
 export async function probePdf(path: string): Promise<{
-  textLayer: string | null;
+  textLayer: string;
   pageCount: number;
   pages: string[];
 }> {
   try {
     const buf = await readFile(path);
     const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs');
-    const doc = await getDocument({ data: new Uint8Array(buf) }).promise;
+    const doc = await getDocument({
+      data: new Uint8Array(buf),
+      disableWorker: true,
+      isEvalSupported: false,
+      disableFontFace: true,
+      useSystemFonts: true,
+    }).promise;
     const pages: string[] = [];
     for (let i = 1; i <= doc.numPages; i++) {
       const page = await doc.getPage(i);
       const content = await page.getTextContent();
       pages.push(content.items.map((it: { str?: string }) => String(it.str ?? '')).join(' '));
     }
-    if (pages.length === 0) return { textLayer: null, pageCount: doc.numPages, pages: [] };
-    return { textLayer: pages.join('\n'), pageCount: doc.numPages, pages };
-  } catch {
-    return { textLayer: null, pageCount: 0, pages: [] };
+    const textLayer = pages.every((p) => p === '') ? '' : pages.join('\n');
+    return { textLayer, pageCount: doc.numPages, pages };
+  } catch (err) {
+    if (err instanceof ConnectorError) throw err;
+    throw new ConnectorError('CONNECTOR_IO', '无法读取该文件。');
   }
 }
