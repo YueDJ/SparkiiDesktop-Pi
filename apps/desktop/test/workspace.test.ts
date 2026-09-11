@@ -1,8 +1,8 @@
-import { mkdtempSync } from 'node:fs';
+import { existsSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
-import { workspaceName, autoWorkspacePath, defaultWorkspacePath, ensureWorkspaceDir, randomWorkspaceToken, formatWorkspaceTimestamp } from '../electron/main/workspace.js';
+import { workspaceName, autoWorkspacePath, defaultWorkspacePath, ensureWorkspaceDir, randomWorkspaceToken, formatWorkspaceTimestamp, allocateAutoWorkspace, assertAgentId } from '../electron/main/workspace.js';
 
 describe('workspace naming', () => {
   it('matches Sparkii + 4 token chars + minute timestamp', () => {
@@ -31,5 +31,19 @@ describe('workspace naming', () => {
     await ensureWorkspaceDir(dir);
     const { statSync } = await import('node:fs');
     expect(statSync(dir).isDirectory()).toBe(true);
+  });
+  it('allocateAutoWorkspace is Documents/Sparkii/workspaces/<agent>/<uuid> and does not mkdir', () => {
+    const docs = join(tmpdir(), 'docs-home');
+    const a = allocateAutoWorkspace(docs, 'contract-review');
+    const b = allocateAutoWorkspace(docs, 'contract-review');
+    expect(a.workspaceKey).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(a.workspacePath).toBe(join(docs, 'Sparkii', 'workspaces', 'contract-review', a.workspaceKey));
+    expect(b.workspaceKey).not.toBe(a.workspaceKey);
+    expect(existsSync(a.workspacePath)).toBe(false);
+  });
+  it('assertAgentId rejects traversal', () => {
+    expect(() => assertAgentId('../x')).toThrow();
+    expect(() => assertAgentId('a/b')).toThrow();
+    expect(assertAgentId('general')).toBe('general');
   });
 });
