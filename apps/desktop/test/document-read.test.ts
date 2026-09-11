@@ -82,6 +82,7 @@ describe('executeDocumentRead', () => {
       path,
       fileName: 'scan.jpg',
       modules: ['baseline'],
+      total: 1,
     }));
     expect(out.ok).toBe(true);
     const data = out.data as {
@@ -109,9 +110,41 @@ describe('executeDocumentRead', () => {
       needsDocumentParse: () => false,
       ensureDocumentParse: async () => {},
       diskFreeBytes: async () => 10 * 1024 ** 3,
-      probePdf: async () => ({ textLayer: 'a'.repeat(20), pageCount: 2, pages: ['a', 'a'] }),
+      probePdf: async () => ({ textLayer: 'a'.repeat(5), pageCount: 2, pages: ['aaaaa', ''] }),
     });
     expect(enqueueParse).toHaveBeenCalledTimes(1);
+    expect(enqueueParse).toHaveBeenCalledWith(expect.objectContaining({ total: 2 }));
+    expect(out.ok).toBe(true);
+    expect((out.data as { engine: string }).engine).toBe('structure');
+  });
+
+  it('uses native text for a six-page selectable contract without enqueueParse', async () => {
+    const page = '甲方应当在本合同生效后十个工作日内支付预付款。';
+    const enqueueParse = vi.fn();
+    const out = await executeDocumentRead({ documents: ['/tmp/contract.pdf'] }, ctx, {
+      enqueueParse,
+      probePdf: async () => ({
+        textLayer: Array.from({ length: 6 }, () => page).join('\n'),
+        pageCount: 6,
+        pages: Array.from({ length: 6 }, () => page),
+      }),
+    });
+    expect(enqueueParse).not.toHaveBeenCalled();
+    expect(out.ok).toBe(true);
+    expect((out.data as { engine: string }).engine).toBe('native');
+  });
+
+  it('falls back to parse without a stale total when probePdf throws', async () => {
+    const enqueueParse = vi.fn(async () => ({ markdown: '# scan', pages: [{ page: 1, score: 0.8 }] }));
+    const out = await executeDocumentRead({ documents: ['/tmp/x.pdf'] }, ctx, {
+      enqueueParse,
+      needsDocumentParse: () => false,
+      ensureDocumentParse: async () => {},
+      diskFreeBytes: async () => 10 * 1024 ** 3,
+      probePdf: async () => { throw new Error('无法读取该文件。'); },
+    });
+    expect(enqueueParse).toHaveBeenCalledTimes(1);
+    expect(enqueueParse.mock.calls[0][0].total).toBeUndefined();
     expect(out.ok).toBe(true);
     expect((out.data as { engine: string }).engine).toBe('structure');
   });

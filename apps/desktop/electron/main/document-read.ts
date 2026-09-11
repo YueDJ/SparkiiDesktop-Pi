@@ -23,7 +23,7 @@ import { getDocumentParseSupervisor, type DocumentParseJob } from './document-pa
 import type { ParseResult } from './document-parse-rpc.js';
 
 export type ProbePdfResult = {
-  textLayer: string | null;
+  textLayer: string;
   pageCount: number;
   pages: string[];
 };
@@ -141,6 +141,7 @@ async function runStructure(
   kind: DocumentKind,
   ctx: { profileId: string; sessionId: string; agentDisplayName?: string },
   documents: unknown[],
+  pageCount: number,
   deps: Required<Pick<ExecuteDocumentReadDeps, 'enqueueParse' | 'diskFreeBytes' | 'needsDocumentParse' | 'ensureDocumentParse'>>,
 ): Promise<ToolResult> {
   try {
@@ -161,6 +162,7 @@ async function runStructure(
       fileName,
       path,
       modules: ['baseline'],
+      ...(pageCount > 0 ? { total: pageCount } : {}),
     });
     const pages = Array.isArray(result.pages) ? result.pages : [];
     const data: ParsedDocument = {
@@ -210,9 +212,14 @@ export async function executeDocumentRead(
     let textLayer: string | null = '';
     let pageCount = 1;
     if (ext === '.pdf') {
-      probed = await probePdf(path);
-      textLayer = probed.textLayer;
-      pageCount = probed.pageCount || 1;
+      try {
+        probed = await probePdf(path);
+        textLayer = probed.textLayer;
+        pageCount = probed.pageCount || 0;
+      } catch {
+        textLayer = null;
+        pageCount = 0;
+      }
     } else if (OFFICE_EXTENSIONS.has(ext)) {
       textLayer = '';
       pageCount = 1;
@@ -222,7 +229,7 @@ export async function executeDocumentRead(
     }
 
     if (shouldUseStructure({ ext, textLayer: ext === '.pdf' ? textLayer : (PHOTO_EXTENSIONS.has(ext) ? '' : ''), pageCount })) {
-      return runStructure(path, kind, ctx, documents, {
+      return runStructure(path, kind, ctx, documents, pageCount, {
         enqueueParse,
         diskFreeBytes,
         needsDocumentParse: needs,
