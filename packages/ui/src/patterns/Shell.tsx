@@ -9,7 +9,7 @@ import { StatusBar } from './StatusBar.js';
 import { EMPTY_DOCUMENT_PARSE, RuntimeCenter, type DocumentParseSnapshot, type RuntimePoolSummary } from './RuntimeCenter.js';
 import { ErrorCenterPanel, useErrors } from './ErrorCenter.js';
 import { TextField } from '../primitives/TextField.js';
-import { GearIcon, MoonIcon, SunIcon, UserIcon, ShieldIcon, SearchIcon, CloseIcon, MinimizeIcon, MaximizeIcon, WindowRestoreIcon, BellIcon, SparkiiMark } from '../icons/index.js';
+import { GearIcon, MoonIcon, SunIcon, UserIcon, ShieldIcon, ChevronRightIcon, SearchIcon, CloseIcon, MinimizeIcon, MaximizeIcon, WindowRestoreIcon, BellIcon, SparkiiMark } from '../icons/index.js';
 
 export type PlatformScreen = 'home' | 'approvals' | 'audit' | 'settings';
 export type ScreenId = PlatformScreen | string;
@@ -293,13 +293,24 @@ export function Shell(props: ShellProps) {
         />
       </Drawer>
 
-      <Drawer open={drawer === 'account'} title="账号" onClose={closeDrawer}>
-        <div className="ui-kv">用户名:<b>{userName}</b></div>
-        <div className="ui-kv">角色:<b>{userRole}</b></div>
-        <div className="ui-kv">数据目录:<b>本机 · 已加密</b></div>
-        <div className="ui-session-list ui-mt-sm">
-          <div className="ui-item">修改密码</div>
-          <div className="ui-item">导出审计记录</div>
+      <Drawer open={drawer === 'account'} title="账号" size="sm" onClose={closeDrawer}>
+        <div className="ui-account">
+          <div className="ui-account-identity">
+            <div className="ui-account-avatar" aria-hidden="true">{userName.trim().slice(0, 1) || '?'}</div>
+            <div>
+              <div className="ui-account-name">{userName}</div>
+              <span className="ui-account-role">{userRole}</span>
+            </div>
+          </div>
+          <div className="ui-account-trust">
+            <ShieldIcon />
+            <div>
+              <div>数据目录</div>
+              <b>本机 · 已加密</b>
+            </div>
+          </div>
+          <button type="button" className="ui-account-action">修改密码<ChevronRightIcon /></button>
+          <button type="button" className="ui-account-action">导出审计记录<ChevronRightIcon /></button>
         </div>
       </Drawer>
 

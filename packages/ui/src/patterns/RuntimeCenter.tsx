@@ -61,25 +61,11 @@ function formatIdleRemaining(sec: number): string {
   return sec >= 60 ? `${Math.round(sec / 60)}分钟后释放` : `${sec}秒后释放`;
 }
 
-function documentParseStatusLabel(parse: DocumentParseSnapshot): string {
-  switch (parse.status) {
-    case 'stopped':
-      return '未启动';
-    case 'starting':
-      return '正在加载';
-    case 'parsing': {
-      const parts = ['正在解析'];
-      if (parse.agentDisplayName) parts.push(parse.agentDisplayName);
-      if (parse.fileName) parts.push(parse.fileName);
-      if (parse.page != null && parse.total != null && parse.total > 0) parts.push(`第 ${parse.page}/${parse.total} 页`);
-      else if (parse.page != null && parse.page > 0) parts.push(`第 ${parse.page} 页`);
-      return parts.join(' · ');
-    }
-    case 'idle':
-      return parse.idleRemainingSec == null ? '空闲' : `空闲 · ${formatIdleRemaining(parse.idleRemainingSec)}`;
-    case 'resident':
-      return '常驻';
-  }
+function parsePageLabel(parse: DocumentParseSnapshot): string | undefined {
+  if (parse.page == null) return undefined;
+  if (parse.total != null && parse.total > 0) return `第 ${parse.page}/${parse.total} 页`;
+  if (parse.page > 0) return `第 ${parse.page} 页`;
+  return undefined;
 }
 
 function confirmCopy(confirm: Exclude<ConfirmState, null>): { title: string; body: string; button: string; danger: boolean } {
@@ -105,6 +91,43 @@ function confirmCopy(confirm: Exclude<ConfirmState, null>): { title: string; bod
   }
 }
 
+function ParseCurrent({ parse }: { parse: DocumentParseSnapshot }) {
+  const page = parse.status === 'parsing' ? parsePageLabel(parse) : undefined;
+  let main = '';
+  let secondary: string | undefined;
+  switch (parse.status) {
+    case 'stopped':
+      main = '未启动';
+      break;
+    case 'starting':
+      main = '正在加载';
+      secondary = parse.fileName;
+      break;
+    case 'parsing':
+      main = parse.fileName || '正在解析';
+      break;
+    case 'idle':
+      main = '空闲';
+      secondary = parse.idleRemainingSec == null ? undefined : formatIdleRemaining(parse.idleRemainingSec);
+      break;
+    case 'resident':
+      main = '常驻';
+      break;
+  }
+
+  return (
+    <div className="ui-runtime-parse-current">
+      <div className="ui-runtime-parse-main">{main}</div>
+      {parse.status === 'parsing' && parse.fileName ? <div className="ui-runtime-parse-sub">正在解析</div> : null}
+      {secondary ? <div className="ui-runtime-parse-sub">{secondary}</div> : null}
+      {page ? <div className="ui-runtime-parse-sub">{page}</div> : null}
+      {parse.status === 'parsing' && parse.total != null && parse.total > 0 ? (
+        <progress className="ui-runtime-progress" aria-label="解析进度" max={parse.total} value={parse.page ?? 0} />
+      ) : null}
+    </div>
+  );
+}
+
 export function RuntimeCenter({
   snapshot,
   documentParse = EMPTY_DOCUMENT_PARSE,
@@ -128,6 +151,9 @@ export function RuntimeCenter({
   const [confirm, setConfirm] = useState<ConfirmState>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const parse = documentParse;
+  const idle = Math.max(0, snapshot.maxAgents - snapshot.active);
+  const waitCells = Math.min(snapshot.queued, idle);
+  const agentsEmpty = snapshot.sessions.length === 0 && snapshot.queue.length === 0;
 
   const run = async (key: string, action: () => Promise<void> | void, source = '运行中心') => {
     setBusy(key);
@@ -178,56 +204,65 @@ export function RuntimeCenter({
 
   return (
     <div className="ui-runtime-center">
-      <div className="ui-runtime-summary">
-        运行 {snapshot.active}/{snapshot.maxAgents} · 排队 {snapshot.queued} · 空闲 {Math.max(0, snapshot.maxAgents - snapshot.active)}
-      </div>
-      <div className="ui-runtime-section">
-        <div className="ui-rail-label">智能体</div>
-        <div className="ui-rail-label">运行中</div>
-        {snapshot.sessions.length === 0 ? <div className="ui-muted">暂无运行中的智能体</div> : snapshot.sessions.map((s) => (
-          <div key={s.sessionId} className="ui-runtime-row">
-            <div className="ui-runtime-main">
-              <b>{s.profileName}</b>
-              <span className="ui-muted">{s.label}</span>
-              <span className={`ui-status-badge ui-status-badge--${s.status === 'waiting-approval' ? 'approval' : s.status === 'running' ? 'running' : 'ok'}`}>{statusLabel(s.status)}</span>
-            </div>
-            <div className="ui-runtime-actions">
-              <Button size="sm" disabled={s.status === 'idle' || busy === `stop:${s.sessionId}`} onClick={() => setConfirm({ kind: 'stop', sessionId: s.sessionId })}>停止</Button>
-              <Button size="sm" variant="danger" disabled={busy === `release:${s.sessionId}`} onClick={() => setConfirm({ kind: 'release', sessionId: s.sessionId })}>释放线程</Button>
-            </div>
+      <section className="ui-runtime-section">
+        <div className="ui-runtime-section-head">
+          <h3>智能体</h3>
+          <div className="ui-runtime-meter" role="img" aria-label={`运行 ${snapshot.active}，排队 ${snapshot.queued}，空闲 ${idle}`}>
+            {Array.from({ length: snapshot.maxAgents }, (_, i) => {
+              const cls = i < snapshot.active ? 'is-run' : i < snapshot.active + waitCells ? 'is-wait' : '';
+              return <span key={i} className={cls} />;
+            })}
           </div>
-        ))}
-        <div className="ui-rail-label">排队中</div>
-        {snapshot.queue.length === 0 ? <div className="ui-muted">暂无排队任务</div> : snapshot.queue.map((q) => (
-          <div key={q.queueId} className="ui-runtime-row">
-            <div className="ui-runtime-main">
-              <b>{q.profileName}</b>
-              <span className="ui-muted">{q.label}</span>
-              <span className="ui-muted">第 {q.position} 位</span>
-            </div>
-            <Button size="sm" disabled={busy === `cancel:${q.queueId}`} onClick={() => void run(`cancel:${q.queueId}`, () => onCancelQueue(q.queueId))}>取消排队</Button>
-          </div>
-        ))}
-      </div>
-      <div className="ui-runtime-section">
-        <div className="ui-rail-label">文档解析</div>
-        <div className="ui-runtime-row">
-          <div className="ui-runtime-main">{documentParseStatusLabel(parse)}</div>
-          {parseAction ? <div className="ui-runtime-actions">{parseAction}</div> : null}
         </div>
-        {parse.waiting.length > 0 && (
+        {agentsEmpty ? (
+          <div className="ui-muted">暂无智能体占用</div>
+        ) : (
           <>
-            <div className="ui-rail-label">等待中的文件</div>
-            {parse.waiting.map((w, i) => (
-              <div key={`${w.sessionId}:${w.fileName}:${i}`} className="ui-runtime-row">
+            {snapshot.sessions.map((s) => (
+              <div key={s.sessionId} className="ui-runtime-row">
                 <div className="ui-runtime-main">
-                  <span className="ui-muted">{w.agentDisplayName} · {w.fileName}</span>
+                  <b>{s.profileName}</b>
+                  <span className="ui-muted">{s.label}</span>
+                  <span className={`ui-status-badge ui-status-badge--${s.status === 'waiting-approval' ? 'approval' : s.status === 'running' ? 'running' : 'ok'}`}>{statusLabel(s.status)}</span>
                 </div>
+                <div className="ui-runtime-actions">
+                  <Button size="sm" disabled={s.status === 'idle' || busy === `stop:${s.sessionId}`} onClick={() => setConfirm({ kind: 'stop', sessionId: s.sessionId })}>停止</Button>
+                  <Button size="sm" variant="danger" disabled={busy === `release:${s.sessionId}`} onClick={() => setConfirm({ kind: 'release', sessionId: s.sessionId })}>释放线程</Button>
+                </div>
+              </div>
+            ))}
+            {snapshot.queue.map((q) => (
+              <div key={q.queueId} className="ui-runtime-row">
+                <div className="ui-runtime-main">
+                  <span className="ui-runtime-pos" aria-label={`第 ${q.position} 位`}>{q.position}</span>
+                  <b>{q.profileName}</b>
+                  <span className="ui-muted">{q.label}</span>
+                </div>
+                <Button size="sm" disabled={busy === `cancel:${q.queueId}`} onClick={() => void run(`cancel:${q.queueId}`, () => onCancelQueue(q.queueId))}>取消排队</Button>
               </div>
             ))}
           </>
         )}
-      </div>
+      </section>
+      <section className="ui-runtime-section">
+        <div className="ui-runtime-section-head">
+          <h3>文档解析</h3>
+          {parseAction}
+        </div>
+        <div className="ui-runtime-row">
+          <div className="ui-runtime-main">
+            <ParseCurrent parse={parse} />
+          </div>
+        </div>
+        {parse.waiting.map((w, i) => (
+          <div key={`${w.sessionId}:${w.fileName}:${i}`} className="ui-runtime-row">
+            <div className="ui-runtime-parse-wait">
+              <div>{w.fileName}</div>
+              <div className="ui-muted">{w.agentDisplayName}</div>
+            </div>
+          </div>
+        ))}
+      </section>
       <Modal open={confirm !== null} title={copy?.title ?? ''} onClose={() => setConfirm(null)}>
         <p>{copy?.body}</p>
         <Button variant={copy?.danger ? 'danger' : 'primary'} onClick={confirmAction}>{copy?.button}</Button>

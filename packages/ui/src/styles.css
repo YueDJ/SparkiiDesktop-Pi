@@ -63,7 +63,7 @@ button { font: inherit; color: inherit; }
 .ui-error-toast-msg { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .ui-error-toast-close { border: none; background: none; color: inherit; cursor: pointer; padding: 0; flex: none; }
 .ui-error-center { display: flex; flex-direction: column; gap: var(--spacing-sm); }
-.ui-error-center-actions { display: flex; gap: var(--spacing-xs); }
+.ui-error-center-actions { position: sticky; top: 0; background: var(--color-surface); z-index: 1; display: flex; gap: var(--spacing-xs); }
 .ui-error-center-list { display: flex; flex-direction: column; }
 .ui-error-center-row { display: flex; align-items: flex-start; gap: var(--spacing-sm); padding: var(--spacing-xs) 0; border-bottom: 1px dashed var(--color-border); }
 .ui-error-center-row > svg { flex: none; margin-top: 2px; }
@@ -78,7 +78,8 @@ button { font: inherit; color: inherit; }
 
 .ui-drawer-backdrop { position: absolute; inset: 0; border: none; background: transparent; z-index: var(--z-drawer); cursor: default; }
 .ui-drawer-backdrop.fixed { position: fixed; }
-.ui-drawer { position: absolute; top: 0; bottom: 0; right: 0; width: 320px; max-width: 92%; background: var(--color-surface); border-left: 1px solid var(--color-borderStrong); box-shadow: var(--shadow-overlay); z-index: var(--z-drawer); display: flex; flex-direction: column; }
+.ui-drawer { position: absolute; top: 0; bottom: 0; right: 0; width: 420px; max-width: 92%; background: var(--color-surface); border-left: 1px solid var(--color-borderStrong); box-shadow: var(--shadow-overlay); z-index: var(--z-drawer); display: flex; flex-direction: column; }
+.ui-drawer--sm { width: 360px; }
 .ui-drawer.fixed { position: fixed; }
 .ui-drawer-head, .ui-modal-head { display: flex; justify-content: space-between; align-items: center; padding: var(--spacing-sm) var(--spacing-md); border-bottom: 1px solid var(--color-border); font-weight: var(--font-weight-semibold); }
 .ui-drawer-body, .ui-modal-body { padding: var(--spacing-sm) var(--spacing-md); overflow: auto; flex: 1; }
@@ -306,10 +307,60 @@ button { font: inherit; color: inherit; }
 .ui-settings-nav { display: flex; flex-direction: column; gap: 2px; }
 .ui-settings-content { min-width: 0; }
 
-.ui-runtime-center { display: flex; flex-direction: column; gap: var(--spacing-xs); }
-.ui-runtime-summary { font-size: var(--font-size-sm); color: var(--color-textSecondary); margin-bottom: var(--spacing-xs); }
-.ui-runtime-section { display: flex; flex-direction: column; gap: var(--spacing-xs); margin-top: var(--spacing-sm); }
-.ui-runtime-section > .ui-rail-label:first-child { font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--color-text); }
+.ui-runtime-center { display: flex; flex-direction: column; gap: var(--spacing-sm); }
+.ui-runtime-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+.ui-runtime-section-head { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-sm); }
+.ui-runtime-section h3 { margin: 0; font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--color-text); }
+.ui-runtime-meter { display: flex; gap: 3px; height: 8px; flex: none; }
+.ui-runtime-meter span { width: 14px; height: 8px; border-radius: 2px; background: var(--color-controlBg); }
+.ui-runtime-meter span.is-run { background: var(--color-primary); }
+.ui-runtime-meter span.is-wait { background: var(--color-warn); }
+.ui-runtime-pos {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 6px; border-radius: var(--radius-pill);
+  background: var(--color-warnBg); color: var(--color-warn); font-size: var(--font-size-xs);
+}
 .ui-runtime-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--spacing-sm); padding: var(--spacing-xs) 0; }
 .ui-runtime-main { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-xs); min-width: 0; }
 .ui-runtime-actions { display: flex; gap: var(--spacing-xs); flex: none; }
+.ui-runtime-parse-current { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ui-runtime-parse-main { font-weight: var(--font-weight-semibold); }
+.ui-runtime-parse-sub { color: var(--color-textSecondary); font-size: var(--font-size-sm); }
+.ui-runtime-parse-wait { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ui-runtime-progress { width: 100%; height: 6px; margin-top: 2px; }
+.ui-account { display: flex; flex-direction: column; gap: var(--spacing-md); }
+.ui-account-identity { display: flex; align-items: center; gap: var(--spacing-sm); }
+.ui-account-avatar {
+  display: flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--color-primaryBg); color: var(--color-primary);
+  font-size: var(--font-size-lg); font-weight: var(--font-weight-semibold); flex: none;
+}
+.ui-account-name { font-size: var(--font-size-md); font-weight: var(--font-weight-semibold); }
+.ui-account-role {
+  display: inline-flex; align-items: center; margin-top: 2px;
+  padding: 2px 8px; border-radius: var(--radius-pill);
+  background: var(--color-controlBg); color: var(--color-textSecondary); font-size: var(--font-size-xs);
+}
+.ui-account-trust {
+  display: flex; align-items: flex-start; gap: var(--spacing-sm);
+  padding: var(--spacing-sm); border-radius: var(--radius-card);
+  background: var(--color-controlBg); color: var(--color-textSecondary); font-size: var(--font-size-sm);
+}
+.ui-account-trust b { display: block; color: var(--color-text); font-weight: var(--font-weight-semibold); }
+.ui-account-action {
+  display: flex; align-items: center; justify-content: space-between; width: 100%;
+  padding: var(--spacing-sm); border: 1px solid var(--color-border); border-radius: var(--radius-card);
+  background: var(--color-surface); color: var(--color-text); font-size: var(--font-size-md);
+  cursor: pointer; text-align: left;
+}
+.ui-account-action:hover { background: var(--color-controlBg); }

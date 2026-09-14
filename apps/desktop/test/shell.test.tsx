@@ -104,11 +104,11 @@ describe('Shell', () => {
   it('queue panel opens from the status bar with running and queued agents', () => {
     render(<Shell {...makeProps()} />);
     fireEvent.click(screen.getByText('运行 1/4 · 1 排队'));
-    expect(screen.getByText('运行中心')).toBeTruthy();
+    expect(screen.getByRole('dialog', { name: '运行中心' })).toBeTruthy();
     expect(screen.getAllByText('合同审核').length).toBeGreaterThan(0);
     expect(screen.getAllByText('舆情监控').length).toBeGreaterThan(0);
-    expect(screen.getByText('第 1 位')).toBeTruthy();
-    expect(screen.queryByText('舆情监控 · 舆情监控 · 第 1 位')).toBeNull();
+    expect(screen.getByLabelText('第 1 位')).toBeTruthy();
+    expect(screen.queryByText('第 1 位')).toBeNull();
   });
 
   it('closes a drawer when clicking outside it', () => {
@@ -122,7 +122,15 @@ describe('Shell', () => {
   it('account drawer shows the current user', () => {
     render(<Shell {...makeProps()} />);
     fireEvent.click(screen.getByTitle('账号'));
+    const dialog = screen.getByRole('dialog', { name: '账号' });
+    expect(dialog.className).toContain('ui-drawer--sm');
     expect(screen.getByText('admin')).toBeTruthy();
+    expect(screen.getByText('审核员')).toBeTruthy();
+    expect(screen.getByText('本机 · 已加密')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '修改密码' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '导出审计记录' })).toBeTruthy();
+    expect(screen.queryByText('本机账号')).toBeNull();
+    expect(dialog.querySelector('.ui-kv')).toBeNull();
   });
 
   it('renames and deletes a session through the right-click menu', () => {

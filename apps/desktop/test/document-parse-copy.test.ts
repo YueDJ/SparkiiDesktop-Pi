@@ -91,6 +91,8 @@ describe('document-parse copy rules', () => {
       }),
     ));
     expect(screen.getByText(/正在解析/)).toBeTruthy();
+    expect(screen.getByText('scan.pdf')).toBeTruthy();
+    expect(screen.getByText('第 3/12 页')).toBeTruthy();
     expect(screen.getByText(/文档解析进行中/)).toBeTruthy();
     expect(container.textContent).not.toMatch(FORBIDDEN);
 

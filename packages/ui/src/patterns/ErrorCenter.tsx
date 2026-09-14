@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Button } from '../primitives/Button.js';
+import { EmptyState } from '../primitives/EmptyState.js';
 import { IconButton } from '../primitives/IconButton.js';
 import { CloseIcon, WarningIcon } from '../icons/index.js';
 
@@ -189,7 +190,7 @@ export function ErrorCenterPanel() {
         <Button size="sm" variant="danger" onClick={clearAll} disabled={records.length === 0}>全部清空</Button>
       </div>
       {records.length === 0 ? (
-        <div className="ui-muted">暂无报错记录</div>
+        <EmptyState title="暂无报错记录" />
       ) : (
         <div className="ui-error-center-list">
           {records.map((r) => (
