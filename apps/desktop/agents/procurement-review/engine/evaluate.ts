@@ -1,7 +1,8 @@
-import { joinLines, subtractMonths } from './join.js';
+import { joinLines, subtractDays, subtractMonths } from './join.js';
 import type {
   Conflict,
   EvaluationSnapshot,
+  FactTables,
   JoinedLine,
   PackInput,
   RuleHit,
@@ -21,10 +22,10 @@ function stockAsOf(facts: PackInput['facts'], code: string): string | null {
 }
 
 function lastDealDate(facts: PackInput['facts'], code: string, priceCutoff: string): string | null {
-  const dates = facts.deals
-    .filter((d) => d.code === code && d.at >= priceCutoff)
-    .map((d) => d.at)
-    .sort();
+  const windowDeals = facts.deals.filter((d) => d.code === code && d.at >= priceCutoff);
+  const uploadDeals = windowDeals.filter((d) => d.source === 'upload');
+  const usedDeals = uploadDeals.length > 0 ? uploadDeals : windowDeals.filter((d) => d.source === 'pull');
+  const dates = usedDeals.map((d) => d.at).sort();
   return dates.length > 0 ? dates[dates.length - 1]! : null;
 }
 
@@ -44,6 +45,50 @@ function buildStockCite(
   if (stockDate) parts.push(`截至 ${stockDate}`);
   if (stale) parts.push('库存可能不是当天');
   return parts.join(' · ');
+}
+
+function buildPriceCite(line: JoinedLine, conflicts: Conflict[]): string {
+  const parts: string[] = [];
+  const conflict = conflicts.find((c) => c.code === line.code && c.field === 'deal');
+  if (conflict) {
+    parts.push(`拉取中位价 ${conflict.pull} · 上传中位价 ${conflict.upload}`);
+  } else if (line.medianPrice !== null) {
+    parts.push(`中位价 ${line.medianPrice}`);
+  }
+  if (line.unitPrice !== null) parts.push(`本次 ${line.unitPrice}`);
+  parts.push(`${line.dealCount} 笔成交`);
+  return parts.join(' · ');
+}
+
+function buildTransitCite(
+  line: JoinedLine,
+  conflicts: Conflict[],
+  hasUnknownDate: boolean,
+): string {
+  const parts: string[] = [];
+  const conflict = conflicts.find((c) => c.code === line.code && c.field === 'transit');
+  if (conflict) {
+    parts.push(`拉取在途 ${conflict.pull} · 上传在途 ${conflict.upload}`);
+  } else if (line.transitQty !== null) {
+    parts.push(`在途 ${line.transitQty}`);
+  }
+  if (line.transitRef) parts.push(`单号 ${line.transitRef}`);
+  if (hasUnknownDate) parts.push('日期未知');
+  return parts.join(' · ');
+}
+
+function usedTransitEntries(
+  facts: PackInput['facts'],
+  code: string,
+  ranges: PackInput['ranges'],
+  asOf: string,
+): FactTables['transit'] {
+  const transitCutoff = subtractDays(asOf, ranges.transitDays);
+  const windowTransit = facts.transit.filter(
+    (t) => t.code === code && (!t.at || t.at >= transitCutoff),
+  );
+  const uploadEntries = windowTransit.filter((t) => t.source === 'upload');
+  return uploadEntries.length > 0 ? uploadEntries : windowTransit.filter((t) => t.source === 'pull');
 }
 
 function evaluateQtyRules(
@@ -92,6 +137,7 @@ function evaluateQtyRules(
 function evaluatePriceRules(
   line: JoinedLine,
   input: PackInput,
+  conflicts: Conflict[],
   hits: RuleHit[],
 ): void {
   if (!line.priceOpen || line.unitPrice === null || line.medianPrice === null) return;
@@ -108,7 +154,7 @@ function evaluatePriceRules(
   const dev = (line.unitPrice - line.medianPrice) / line.medianPrice;
   const absDev = Math.abs(dev);
   const baseMetrics = { dev, median: line.medianPrice, dealCount: line.dealCount };
-  const citeLabel = `中位价 ${line.medianPrice} · 本次 ${line.unitPrice} · ${line.dealCount} 笔成交`;
+  const citeLabel = buildPriceCite(line, conflicts);
 
   if (absDev > highPct && !stale) {
     hits.push({
@@ -136,23 +182,14 @@ function evaluatePriceRules(
 function evaluateTimeRules(
   line: JoinedLine,
   input: PackInput,
+  conflicts: Conflict[],
   hits: RuleHit[],
 ): void {
   if (!line.timeOpen || line.transitQty === null || line.transitQty <= 0) return;
   if (line.qty === null || line.qty <= 0) return;
 
-  const windowTransit = input.facts.transit.filter((t) => {
-    if (t.code !== line.code) return false;
-    const cutoff = new Date(input.asOf);
-    cutoff.setDate(cutoff.getDate() - input.ranges.transitDays);
-    const cutoffStr = cutoff.toISOString().slice(0, 10);
-    return !t.at || t.at >= cutoffStr;
-  });
-
-  const hasUnknownDate = windowTransit.some((t) => !t.at);
-  const citeParts = [`在途 ${line.transitQty}`];
-  if (line.transitRef) citeParts.push(`单号 ${line.transitRef}`);
-  if (hasUnknownDate) citeParts.push('日期未知');
+  const usedTransit = usedTransitEntries(input.facts, line.code!, input.ranges, input.asOf);
+  const hasUnknownDate = usedTransit.some((t) => !t.at);
 
   hits.push({
     id: `h-time-${line.code}-dup`,
@@ -161,7 +198,7 @@ function evaluateTimeRules(
     level: 'mid',
     ruleId: 'time.duplicate',
     metrics: { transitQty: line.transitQty },
-    cite: { label: citeParts.join(' · '), refs: [] },
+    cite: { label: buildTransitCite(line, conflicts, hasUnknownDate), refs: [] },
   });
 }
 
@@ -222,8 +259,8 @@ export function evaluatePack(input: PackInput): EvaluationSnapshot {
   for (const line of lines) {
     evaluateCompletenessRules(line, hits);
     evaluateQtyRules(line, input, joinConflicts, hits);
-    evaluatePriceRules(line, input, hits);
-    evaluateTimeRules(line, input, hits);
+    evaluatePriceRules(line, input, joinConflicts, hits);
+    evaluateTimeRules(line, input, joinConflicts, hits);
   }
 
   const closed = {

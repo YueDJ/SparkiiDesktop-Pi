@@ -39,6 +39,58 @@ function resolveQty(
   return { value, pull, upload };
 }
 
+function resolveDeals(
+  deals: FactTables['deals'],
+  code: string,
+  priceCutoff: string,
+  conflicts: Conflict[],
+): { medianPrice: number | null; dealCount: number } {
+  const windowDeals = deals.filter((d) => d.code === code && d.at >= priceCutoff);
+  const pullDeals = windowDeals.filter((d) => d.source === 'pull');
+  const uploadDeals = windowDeals.filter((d) => d.source === 'upload');
+
+  const pullMedian = median(pullDeals.map((d) => d.unitPrice));
+  const uploadMedian = median(uploadDeals.map((d) => d.unitPrice));
+
+  if (pullMedian !== null && uploadMedian !== null && pullMedian !== uploadMedian) {
+    conflicts.push({ code, field: 'deal', pull: pullMedian, upload: uploadMedian });
+  }
+
+  const usedDeals = uploadDeals.length > 0 ? uploadDeals : pullDeals;
+  const dealPrices = usedDeals.map((d) => d.unitPrice);
+
+  return {
+    medianPrice: median(dealPrices),
+    dealCount: usedDeals.length,
+  };
+}
+
+function resolveTransit(
+  transit: FactTables['transit'],
+  code: string,
+  transitCutoff: string,
+  conflicts: Conflict[],
+): { value: number | null; transitRef: string | null; entries: FactTables['transit'] } {
+  const windowTransit = transit.filter(
+    (t) => t.code === code && (!t.at || t.at >= transitCutoff),
+  );
+
+  const { pull, upload } = sumBySource(windowTransit, code, (t) => t.qty);
+  if (pull !== null && upload !== null && pull !== upload) {
+    conflicts.push({ code, field: 'transit', pull, upload });
+  }
+
+  const usedEntries = upload !== null
+    ? windowTransit.filter((t) => t.source === 'upload')
+    : windowTransit.filter((t) => t.source === 'pull');
+
+  return {
+    value: upload ?? pull,
+    transitRef: usedEntries.length > 0 ? usedEntries[0]!.ref : null,
+    entries: usedEntries,
+  };
+}
+
 function median(values: number[]): number | null {
   if (values.length === 0) return null;
   const sorted = [...values].sort((a, b) => a - b);
@@ -88,35 +140,25 @@ function joinLine(
   const usageResolved = resolveQty(facts.usage, code, 'usage', conflicts);
 
   const priceCutoff = subtractMonths(asOf, ranges.priceMonths);
-  const windowDeals = facts.deals.filter(
-    (d) => d.code === code && d.at >= priceCutoff,
-  );
-  const dealPrices = windowDeals.map((d) => d.unitPrice);
-  const medianPrice = median(dealPrices);
+  const dealResolved = resolveDeals(facts.deals, code, priceCutoff, conflicts);
 
   const transitCutoff = subtractDays(asOf, ranges.transitDays);
-  const windowTransit = facts.transit.filter(
-    (t) => t.code === code && (!t.at || t.at >= transitCutoff),
-  );
-  const transitQty = windowTransit.length > 0
-    ? windowTransit.reduce((sum, t) => sum + t.qty, 0)
-    : null;
-  const transitRef = windowTransit.length > 0 ? windowTransit[0]!.ref : null;
+  const transitResolved = resolveTransit(facts.transit, code, transitCutoff, conflicts);
 
   const hasStock = stockResolved.value !== null;
   const hasUsage = usageResolved.value !== null && usageResolved.value > 0;
   const qtyOpen = hasStock && hasUsage;
-  const priceOpen = row.unitPrice !== null && windowDeals.length >= 1;
-  const timeOpen = windowTransit.length > 0;
+  const priceOpen = row.unitPrice !== null && dealResolved.dealCount >= 1;
+  const timeOpen = transitResolved.entries.length > 0;
 
   return {
     ...row,
     stockQty: stockResolved.value,
     usageQty: usageResolved.value,
-    medianPrice,
-    dealCount: windowDeals.length,
-    transitQty,
-    transitRef,
+    medianPrice: dealResolved.medianPrice,
+    dealCount: dealResolved.dealCount,
+    transitQty: transitResolved.value,
+    transitRef: transitResolved.transitRef,
     qtyOpen,
     priceOpen,
     timeOpen,
@@ -131,4 +173,4 @@ export function joinLines(input: PackInput): { lines: JoinedLine[]; conflicts: C
   return { lines, conflicts };
 }
 
-export { subtractMonths, subtractDays, median, resolveQty, sumBySource };
+export { subtractMonths, subtractDays, median, resolveQty, resolveDeals, resolveTransit, sumBySource };

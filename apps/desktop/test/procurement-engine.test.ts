@@ -140,6 +140,50 @@ describe('evaluatePack', () => {
     expect(snap.hits.some((h) => h.ruleId === 'price.dev-high')).toBe(false);
   });
 
+  it('uses upload deal median and records pull/upload deal conflict', () => {
+    const facts = {
+      stock: [],
+      usage: [],
+      deals: [
+        ...Array.from({ length: 5 }, () => ({
+          code: 'RM-001', unitPrice: 780, at: '2026-06-01', source: 'upload' as const,
+        })),
+        ...Array.from({ length: 5 }, () => ({
+          code: 'RM-001', unitPrice: 900, at: '2026-06-01', source: 'pull' as const,
+        })),
+      ],
+      transit: [],
+    };
+    const snap = evaluatePack({
+      plan: [coal], facts, rules: DEFAULT_RULES, policyKb: null, ranges, asOf: '2026-09-14',
+    });
+    expect(snap.conflicts.some((c) => c.code === 'RM-001' && c.field === 'deal' && c.pull === 900 && c.upload === 780)).toBe(true);
+    expect(snap.lines[0].medianPrice).toBe(780);
+    const hit = snap.hits.find((h) => h.ruleId === 'price.dev-high');
+    expect(hit?.cite.label).toMatch(/900/);
+    expect(hit?.cite.label).toMatch(/780/);
+  });
+
+  it('uses upload transit qty and records pull/upload transit conflict', () => {
+    const facts = {
+      stock: [],
+      usage: [],
+      deals: [],
+      transit: [
+        { code: 'SP-203', qty: 36, ref: 'PO-883', at: '2026-09-02', source: 'upload' as const },
+        { code: 'SP-203', qty: 10, ref: 'PO-100', at: '2026-09-02', source: 'pull' as const },
+      ],
+    };
+    const snap = evaluatePack({
+      plan: [brick], facts, rules: DEFAULT_RULES, policyKb: null, ranges, asOf: '2026-09-14',
+    });
+    expect(snap.conflicts.some((c) => c.code === 'SP-203' && c.field === 'transit' && c.pull === 10 && c.upload === 36)).toBe(true);
+    expect(snap.lines[0].transitQty).toBe(36);
+    const hit = snap.hits.find((h) => h.ruleId === 'time.duplicate');
+    expect(hit?.cite.label).toMatch(/10/);
+    expect(hit?.cite.label).toMatch(/36/);
+  });
+
   it('prepareWorkflowInput blanks query when policyKb is null', () => {
     const pack = {
       plan: [coal], facts: baseFacts(), rules: DEFAULT_RULES,
