@@ -122,7 +122,15 @@ describe('Shell', () => {
   it('account drawer shows the current user', () => {
     render(<Shell {...makeProps()} />);
     fireEvent.click(screen.getByTitle('账号'));
+    const dialog = screen.getByRole('dialog', { name: '账号' });
+    expect(dialog.className).toContain('ui-drawer--sm');
     expect(screen.getByText('admin')).toBeTruthy();
+    expect(screen.getByText('审核员')).toBeTruthy();
+    expect(screen.getByText('本机 · 已加密')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '修改密码' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '导出审计记录' })).toBeTruthy();
+    expect(screen.queryByText('本机账号')).toBeNull();
+    expect(dialog.querySelector('.ui-kv')).toBeNull();
   });
 
   it('renames and deletes a session through the right-click menu', () => {
