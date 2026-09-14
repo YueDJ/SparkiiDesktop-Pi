@@ -1,6 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { Drawer, Modal, Menu, MenuItem } from '@sparkii/ui';
+
+afterEach(cleanup);
 
 describe('ui overlays and menu', () => {
   it('drawer closes on backdrop and close button', () => {
@@ -10,6 +12,16 @@ describe('ui overlays and menu', () => {
     fireEvent.click(screen.getByTestId('drawer-backdrop'));
     fireEvent.click(screen.getByLabelText('关闭'));
     expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it('drawer defaults to 420 and can be sm', () => {
+    const { rerender } = render(<Drawer open title="运行中心" onClose={() => {}}>内容</Drawer>);
+    const panel = screen.getByRole('dialog', { name: '运行中心' });
+    expect(panel.className).toContain('ui-drawer');
+    expect(panel.className).not.toContain('ui-drawer--sm');
+    expect(screen.getByLabelText('关闭').querySelector('svg')).toBeTruthy();
+    rerender(<Drawer open title="账号" size="sm" onClose={() => {}}>内容</Drawer>);
+    expect(screen.getByRole('dialog', { name: '账号' }).className).toContain('ui-drawer--sm');
   });
 
   it('menu item shows hint and calls select', () => {
