@@ -19,6 +19,15 @@ describe('parse tables', () => {
     expect(lines[0]).toMatchObject({ code: 'RM-001', name: '烟煤', qty: 2800, unitPrice: 920 });
   });
 
+  it('gives unique plan ids when two rows share a material code', () => {
+    const lines = parsePlanTable([
+      { 物资编码: 'RM-001', 物资名称: '烟煤', 申请数量: '1' },
+      { 物资编码: 'RM-001', 物资名称: '烟煤B', 申请数量: '2' },
+    ], 'upload');
+    expect(lines.map((l) => l.id)).toEqual(['plan-1', 'plan-2']);
+    expect(lines.map((l) => l.code)).toEqual(['RM-001', 'RM-001']);
+  });
+
   it('maps stock / usage / deals / transit aliases', () => {
     expect(parseFactTable('stock', [{ 物资编码: 'RM-001', 库存数量: '4200', 快照日期: '2026-09-13' }], 'pull')[0]).toMatchObject({
       code: 'RM-001', qty: 4200, asOf: '2026-09-13', source: 'pull',

@@ -29,20 +29,38 @@ function lastDealDate(facts: PackInput['facts'], code: string, priceCutoff: stri
   return dates.length > 0 ? dates[dates.length - 1]! : null;
 }
 
+function usedUsageRows(facts: PackInput['facts'], code: string): FactTables['usage'] {
+  const rows = facts.usage.filter((u) => u.code === code);
+  const upload = rows.filter((u) => u.source === 'upload');
+  return upload.length > 0 ? upload : rows.filter((u) => u.source === 'pull');
+}
+
+function coverBand(coverMonths: number, qty: PackInput['rules']['qty']): string {
+  if (coverMonths > qty.coverMonthsHigh) return `覆盖>${qty.coverMonthsHigh}个月`;
+  if (coverMonths < qty.coverMonthsLow) return `覆盖<${qty.coverMonthsLow}个月`;
+  return `覆盖约 ${Math.round(coverMonths)}个月`;
+}
+
 function buildStockCite(
   line: JoinedLine,
   conflicts: Conflict[],
   stockDate: string | null,
   stale: boolean,
+  usageCount: number,
+  coverMonths: number,
+  qtyRules: PackInput['rules']['qty'],
 ): string {
   const parts: string[] = [];
   const conflict = conflicts.find((c) => c.code === line.code && c.field === 'stock');
   if (conflict) {
     parts.push(`拉取库存 ${conflict.pull} · 上传库存 ${conflict.upload}`);
+  } else if (stockDate) {
+    parts.push(`库存 ${stockDate}`);
   } else if (line.stockQty !== null) {
     parts.push(`库存 ${line.stockQty}`);
   }
-  if (stockDate) parts.push(`截至 ${stockDate}`);
+  parts.push(`领用 ${usageCount} 笔`);
+  parts.push(coverBand(coverMonths, qtyRules));
   if (stale) parts.push('库存可能不是当天');
   return parts.join(' · ');
 }
@@ -110,26 +128,31 @@ function evaluateQtyRules(
   const stale = asOf !== null && daysBetween(asOf, refDate) > input.rules.stockStaleDays;
 
   const baseMetrics = { coverMonths, stockDays };
+  const usageCount = usedUsageRows(input.facts, line.code!).length;
+  const cite = {
+    label: buildStockCite(line, conflicts, asOf, stale, usageCount, coverMonths, input.rules.qty),
+    refs: [],
+  };
 
   if (coverMonths > coverMonthsHigh && stockDays > stockDaysMin) {
     hits.push({
-      id: `h-qty-${line.code}-over`,
+      id: `h-qty-${line.id}-over`,
       rowId: line.id,
       dim: 'qty',
       level: 'high',
       ruleId: 'qty.over-cover',
       metrics: baseMetrics,
-      cite: { label: buildStockCite(line, conflicts, asOf, stale), refs: [] },
+      cite,
     });
   } else if (coverMonths < coverMonthsLow) {
     hits.push({
-      id: `h-qty-${line.code}-under`,
+      id: `h-qty-${line.id}-under`,
       rowId: line.id,
       dim: 'qty',
       level: 'mid',
       ruleId: 'qty.under-cover',
       metrics: baseMetrics,
-      cite: { label: buildStockCite(line, conflicts, asOf, stale), refs: [] },
+      cite,
     });
   }
 }
@@ -156,7 +179,7 @@ function evaluatePriceRules(
 
   if (absDev > highPct && line.dealCount >= minSamples && !stale) {
     hits.push({
-      id: `h-price-${line.code}-high`,
+      id: `h-price-${line.id}-high`,
       rowId: line.id,
       dim: 'price',
       level: 'high',
@@ -164,9 +187,9 @@ function evaluatePriceRules(
       metrics: baseMetrics,
       cite: { label: citeLabel, refs: [] },
     });
-  } else if (absDev > midPct && absDev <= highPct) {
+  } else if (absDev > midPct) {
     hits.push({
-      id: `h-price-${line.code}-mid`,
+      id: `h-price-${line.id}-mid`,
       rowId: line.id,
       dim: 'price',
       level: 'mid',
@@ -190,7 +213,7 @@ function evaluateTimeRules(
   const hasUnknownDate = usedTransit.some((t) => !t.at);
 
   hits.push({
-    id: `h-time-${line.code}-dup`,
+    id: `h-time-${line.id}-dup`,
     rowId: line.id,
     dim: 'time',
     level: 'mid',

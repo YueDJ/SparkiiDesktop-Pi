@@ -102,9 +102,13 @@ function median(values: number[]): number | null {
 }
 
 function subtractMonths(dateStr: string, months: number): string {
-  const d = new Date(dateStr);
-  d.setMonth(d.getMonth() - months);
-  return d.toISOString().slice(0, 10);
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const total = y * 12 + (m - 1) - months;
+  const ny = Math.floor(total / 12);
+  const nm = ((total % 12) + 12) % 12;
+  const last = new Date(ny, nm + 1, 0).getDate();
+  const nd = Math.min(d, last);
+  return `${ny}-${String(nm + 1).padStart(2, '0')}-${String(nd).padStart(2, '0')}`;
 }
 
 function subtractDays(dateStr: string, days: number): string {

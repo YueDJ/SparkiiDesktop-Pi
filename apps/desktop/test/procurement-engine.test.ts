@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { evaluatePack, prepareWorkflowInput } from '../agents/procurement-review/engine/evaluate.js';
 import { DEFAULT_RULES } from '../agents/procurement-review/engine/default-rules.js';
+import { subtractMonths } from '../agents/procurement-review/engine/join.js';
 
 const coal = { id: 'M-煤', code: 'RM-001', name: '烟煤', qty: 2800, unit: '吨', unitPrice: 920 };
 const brick = { id: 'M-砖', code: 'SP-203', name: '镁铬砖', qty: 40, unit: '吨', unitPrice: 2680 };
@@ -156,6 +157,65 @@ describe('evaluatePack', () => {
       asOf: '2026-09-14',
     });
     expect(snap.hits.some((h) => h.ruleId === 'price.dev-high')).toBe(false);
+    expect(snap.hits.find((h) => h.ruleId === 'price.dev-mid')).toMatchObject({ level: 'mid' });
+  });
+
+  it('qty cite includes stock date, usage count, and cover band', () => {
+    const snap = evaluatePack({
+      plan: [coal], facts: baseFacts(), rules: DEFAULT_RULES,
+      policyKb: null, ranges, asOf: '2026-09-14',
+    });
+    const label = snap.hits.find((h) => h.ruleId === 'qty.over-cover')!.cite.label;
+    expect(label).toMatch(/库存 2026-09-13/);
+    expect(label).toMatch(/领用 1 笔/);
+    expect(label).toMatch(/覆盖>4个月/);
+  });
+
+  it('uses unique hit ids when two plan rows share a material code', () => {
+    const snap = evaluatePack({
+      plan: [
+        { ...coal, id: 'plan-1' },
+        { ...coal, id: 'plan-2', qty: 3000 },
+      ],
+      facts: baseFacts(), rules: DEFAULT_RULES, policyKb: null, ranges, asOf: '2026-09-14',
+    });
+    const hits = snap.hits.filter((h) => h.ruleId === 'qty.over-cover');
+    expect(hits.map((h) => h.id).sort()).toEqual(['h-qty-plan-1-over', 'h-qty-plan-2-over']);
+    expect(hits.map((h) => h.rowId).sort()).toEqual(['plan-1', 'plan-2']);
+  });
+
+  it('emits price.dev-mid when |dev| > highPct but samples are thin or stale', () => {
+    const thin = evaluatePack({
+      plan: [coal],
+      facts: {
+        stock: [], usage: [], transit: [],
+        deals: [{ code: 'RM-001', unitPrice: 780, at: '2026-06-01', source: 'upload' }],
+      },
+      rules: DEFAULT_RULES, policyKb: null, ranges, asOf: '2026-09-14',
+    });
+    expect(thin.hits.find((h) => h.ruleId === 'price.dev-mid')).toMatchObject({ rowId: 'M-煤', level: 'mid' });
+    expect(thin.hits.some((h) => h.ruleId === 'price.dev-high')).toBe(false);
+
+    const stale = evaluatePack({
+      plan: [coal],
+      facts: {
+        stock: [], usage: [], transit: [],
+        deals: Array.from({ length: 4 }, () => ({
+          code: 'RM-001', unitPrice: 780, at: '2025-01-01', source: 'upload' as const,
+        })),
+      },
+      rules: DEFAULT_RULES, policyKb: null,
+      ranges: { usageDays: 90, priceMonths: 24, transitDays: 30 },
+      asOf: '2026-09-14',
+    });
+    expect(stale.hits.find((h) => h.ruleId === 'price.dev-mid')).toMatchObject({ level: 'mid' });
+    expect(stale.hits.some((h) => h.ruleId === 'price.dev-high')).toBe(false);
+  });
+
+  it('subtractMonths clamps to the last day of the target month', () => {
+    expect(subtractMonths('2026-08-31', 6)).toBe('2026-02-28');
+    expect(subtractMonths('2024-08-31', 6)).toBe('2024-02-29');
+    expect(subtractMonths('2026-09-14', 12)).toBe('2025-09-14');
   });
 
   it('uses upload deal median and records pull/upload deal conflict', () => {

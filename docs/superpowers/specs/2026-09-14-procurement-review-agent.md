@@ -191,6 +191,8 @@ export function parseFactTable(
 ): FactTables[typeof kind];
 ```
 
+`parsePlanTable` 行 id 为 `plan-${n}`（1-based），不因编码重复而碰撞。Hit id 为 `h-{dim}-{line.id}-{suffix}`。
+
 `query`：`policyKb === null` 为 `""`；否则用各行 `name`、`qty * unitPrice`、`applicant` 拼一句，≤200 字。
 
 默认 `rules.yaml` 与 `DEFAULT_RULES` 相同：
@@ -212,7 +214,7 @@ stockStaleDays: 7
 
 `ranges.*` 覆盖窗口。`rules.time.defaultWindowDays` 仅在测试未传 ranges 时的后备；产品路径必传 ranges。
 
-领用：界面选的 `ranges.usageDays` 是公式分母。事实表视为「已经是该窗口的合计」；`usage[].days` 只进 cite，不重算。
+领用：界面选的 `ranges.usageDays` 是公式分母。事实表视为「已经是该窗口的合计」；`usage[].days` 仍不进公式。cite 用领用笔数，不写天数。
 
 价：只统计 `at >= asOf - priceMonths` 的成交。
 
@@ -228,7 +230,9 @@ stockStaleDays: 7
 
 拉取与上传数字不一致 → `conflicts[]` 必有。**计算用 upload 那一侧的数**（有 upload 时）；cite.label 必须同时写出 pull 与 upload。没有 upload 才用 pull。不得丢任一侧。
 
-库存过期：用 `requestDate`（若缺则用 `pack.asOf`）对比 `stock.asOf`，超过 `stockStaleDays` 则量可跑，cite 含「库存可能不是当天」。成交最后一笔相对同一基准早于 `staleMonths`：**不出** `price.dev-high`。没有单独的 `low` 等级。
+量维 `cite.label` 必须能读出库存日期（或冲突两侧）、领用笔数、覆盖带；过期加「库存可能不是当天」。示例：`库存 2026-09-13 · 领用 1 笔 · 覆盖>4个月`。非冲突分支不写库存数量。`usage[].days` 仍不进公式。
+
+库存过期：用 `requestDate`（若缺则用 `pack.asOf`）对比 `stock.asOf`，超过 `stockStaleDays` 则量可跑，cite 含「库存可能不是当天」。成交最后一笔相对同一基准早于 `staleMonths`：**不出** `price.dev-high`（`|dev| > midPct` 时降为 `price.dev-mid`）。没有单独的 `low` 等级。
 
 ### 3.2 规则命中
 
@@ -244,8 +248,8 @@ stockStaleDays: 7
 - `median` = 窗口内该编码成交单价中位数（偶数笔：两中值平均）
 - `dev = (unitPrice - median) / median`
 - `|dev| > highPct` 且样本 ≥ minSamples 且未过期 → `price.dev-high` high
-- `midPct < |dev| ≤ highPct` → `price.dev-mid` mid
-- 样本 < minSamples 或过期：不编「价格正常」
+- 其余 `|dev| > midPct`（含超过 15% 但被样本/过期门挡住）→ `price.dev-mid` mid
+- 禁止「价格正常」
 
 时：窗口内该编码在途合计 > 0 且本行 `qty > 0` → `time.duplicate` mid。无日期则 cite 写「日期未知」。
 
@@ -285,7 +289,7 @@ stockStaleDays: 7
       "reason": "…",
       "advice": "…",
       "cite": { "label": "库存 2026-09-13 · 领用 14 笔 · 覆盖>4个月", "refs": [] },
-      "hitId": "h-qty-RM-001"
+      "hitId": "h-qty-M-煤-over"
     }
   ]
 }
