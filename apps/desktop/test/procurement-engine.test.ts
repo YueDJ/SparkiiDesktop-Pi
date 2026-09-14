@@ -122,6 +122,24 @@ describe('evaluatePack', () => {
     expect(snap.hits.find((h) => h.ruleId === 'qty.over-cover')?.cite.label).toMatch(/库存可能不是当天/);
   });
 
+  it('raises price.dev-mid when midPct < |dev| ≤ highPct even if dealCount < minSamples', () => {
+    const snap = evaluatePack({
+      plan: [brick],
+      facts: {
+        stock: [],
+        usage: [],
+        deals: [{ code: 'SP-203', unitPrice: 2410, at: '2026-06-01', source: 'upload' }],
+        transit: [],
+      },
+      rules: DEFAULT_RULES,
+      policyKb: null,
+      ranges,
+      asOf: '2026-09-14',
+    });
+    expect(snap.hits.find((h) => h.ruleId === 'price.dev-mid')).toMatchObject({ rowId: 'M-砖', level: 'mid' });
+    expect(snap.hits.some((h) => h.ruleId === 'price.dev-high')).toBe(false);
+  });
+
   it('does not raise price.dev-high when the last deal is older than staleMonths but inside priceMonths', () => {
     const snap = evaluatePack({
       plan: [coal],

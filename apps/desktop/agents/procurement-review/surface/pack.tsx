@@ -102,7 +102,17 @@ function gateCopy(pack: PackUiState): { title: string; miss: string; warn: boole
   };
 }
 
+function sparkiiApi(): { getPathForFile?(file: File): string } {
+  return ((window as unknown as { sparkii?: { getPathForFile?(file: File): string } }).sparkii ?? {});
+}
+
 function electronPath(file: File): string | undefined {
+  try {
+    const fromApi = sparkiiApi().getPathForFile?.(file);
+    if (typeof fromApi === 'string' && fromApi.length > 0) return fromApi;
+  } catch {
+    // File.path is a test-only fallback after Electron 44 removed it.
+  }
   const path = (file as File & { path?: string }).path;
   return typeof path === 'string' && path.length > 0 ? path : undefined;
 }

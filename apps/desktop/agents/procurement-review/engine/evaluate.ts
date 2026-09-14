@@ -149,14 +149,12 @@ function evaluatePriceRules(
   const staleCutoff = subtractMonths(refDate, staleMonths);
   const stale = lastDeal !== null && lastDeal < staleCutoff;
 
-  if (line.dealCount < minSamples) return;
-
   const dev = (line.unitPrice - line.medianPrice) / line.medianPrice;
   const absDev = Math.abs(dev);
   const baseMetrics = { dev, median: line.medianPrice, dealCount: line.dealCount };
   const citeLabel = buildPriceCite(line, conflicts);
 
-  if (absDev > highPct && !stale) {
+  if (absDev > highPct && line.dealCount >= minSamples && !stale) {
     hits.push({
       id: `h-price-${line.code}-high`,
       rowId: line.id,

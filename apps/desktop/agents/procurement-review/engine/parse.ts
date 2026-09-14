@@ -85,12 +85,21 @@ function aoaToCsv(aoa: unknown[][]): string {
     .join('\n');
 }
 
-export function parseXlsxBuffer(buf: ArrayBuffer): Record<string, string>[] {
-  const workbook = XLSX.read(buf, { type: 'array' });
-  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+export function rowsFromWorkbook(workbook: {
+  SheetNames?: string[];
+  Sheets?: Record<string, XLSX.WorkSheet | undefined>;
+}): Record<string, string>[] {
+  const name = workbook.SheetNames?.[0];
+  if (!name) return [];
+  const sheet = workbook.Sheets?.[name];
+  if (!sheet) return [];
   const aoa = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: '' });
   if (aoa.length === 0) return [];
   return parseCsv(aoaToCsv(aoa));
+}
+
+export function parseXlsxBuffer(buf: ArrayBuffer): Record<string, string>[] {
+  return rowsFromWorkbook(XLSX.read(buf, { type: 'array' }));
 }
 
 export function parsePlanTable(rows: Record<string, string>[], _source: SourceKind): PlanLine[] {

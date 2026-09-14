@@ -244,6 +244,11 @@ export function Workbench({
 
   const title = sessionTitle?.trim() || procurementSessionTitle(null, session.meta.inputs?.[0]?.name ?? null);
 
+  const mergeReport = () => {
+    if (blocking) return;
+    actions.review('report_merged', { stepId: 'report' });
+  };
+
   const exportReport = () => {
     if (!review || blocking) return;
     void (async () => {
@@ -346,7 +351,7 @@ export function Workbench({
               </div>
               <div className="gate-actions">
                 <button className="btn" type="button" onClick={onBackToAnalyze}>返回分析</button>
-                <button className="btn" type="button" disabled={blocking}>写入意见</button>
+                <button className="btn" type="button" disabled={blocking} onClick={mergeReport}>写入意见</button>
                 <button className="btn primary" type="button" disabled={blocking} onClick={exportReport}>导出</button>
               </div>
             </div>

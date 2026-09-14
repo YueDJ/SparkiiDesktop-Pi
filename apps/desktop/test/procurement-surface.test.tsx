@@ -139,6 +139,21 @@ describe('analyze and review workbench', () => {
       path: expect.stringMatching(/财务采购审核\.docx$/),
     })));
   });
+
+  it('writes opinion via report_merged when high risk is cleared', () => {
+    const review = vi.fn();
+    const reviewed = {
+      ...session,
+      entries: [
+        ...session.entries,
+        { id: 'e2', kind: 'custom', customType: 'workflow_state', data: { action: 'risk_confirmed', payload: { riskId: 'r1' } } },
+      ],
+    };
+    render(<ProcurementSurface sessionId="s1" mode="live" title="" session={reviewed as any} actions={{ review } as any} agent={agent} />);
+    fireEvent.click(screen.getByRole('button', { name: '进入复核' }));
+    fireEvent.click(screen.getByRole('button', { name: '写入意见' }));
+    expect(review).toHaveBeenCalledWith('report_merged', { stepId: 'report' });
+  });
 });
 
 describe('pack startWorkflow', () => {
@@ -253,6 +268,31 @@ describe('pack startWorkflow', () => {
     fireEvent.click(screen.getByRole('button', { name: '完整性审核' }));
     await waitFor(() => expect(startWorkflow).toHaveBeenCalled());
     expect(review).not.toHaveBeenCalled();
+  });
+
+  it('resolves upload paths via window.sparkii.getPathForFile when File.path is missing', async () => {
+    (window as any).sparkii = {
+      getPathForFile: vi.fn((file: File) => `C:/downloads/${file.name}`),
+    };
+    try {
+      const startWorkflow = vi.fn().mockResolvedValue({ sessionId: 'wf-path' });
+      const plan = csvFile(
+        'plan.csv',
+        '物资编码,物资名称,申请数量,单位,预估单价\nRM-001,烟煤,2800,吨,920\n',
+      );
+      render(<ProcurementSurface
+        sessionId={null} mode="live" title=""
+        session={idleSession}
+        actions={{ startWorkflow, review: vi.fn() } as any}
+        agent={agent}
+      />);
+      upload('上传计划', plan);
+      fireEvent.click(screen.getByRole('button', { name: '完整性审核' }));
+      await waitFor(() => expect(startWorkflow).toHaveBeenCalled());
+      expect(startWorkflow.mock.calls[0][0].documents[0]).toBe('C:/downloads/plan.csv');
+    } finally {
+      delete (window as any).sparkii;
+    }
   });
 
   it('clears pack uploads when sessionId changes', () => {
