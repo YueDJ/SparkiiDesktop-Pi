@@ -1,5 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, it, expect, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+
+afterEach(cleanup);
 import ProcurementSurface from '../agents/procurement-review/surface/index.js';
 import { canStartFull, canStartThin } from '../agents/procurement-review/surface/pack.js';
 
@@ -76,5 +78,34 @@ describe('analyze and review workbench', () => {
     const conds = container.querySelector('.conds');
     const rule = container.querySelector('.rule-bar');
     expect(rule && conds?.contains(rule) && rule.parentElement === conds).toBe(true);
+  });
+
+  const agent = { id: 'procurement-review', name: 'procurement-review', surfaceType: 'workflow' as const };
+  const emptySession = { entries: [], streaming: false, status: 'idle' as const, meta: { currentStep: null } };
+
+  it('resets to analyze when sessionId changes to another session with review output', () => {
+    const { rerender } = render(<ProcurementSurface sessionId="s1" mode="live" title="" session={session as any} actions={{} as any} agent={agent} />);
+    fireEvent.click(screen.getByRole('button', { name: '进入复核' }));
+    expect(screen.getByRole('button', { name: '导出' })).toBeTruthy();
+    rerender(<ProcurementSurface sessionId="s2" mode="live" title="" session={session as any} actions={{} as any} agent={agent} />);
+    expect(screen.queryByRole('button', { name: '采纳' })).toBeNull();
+    expect(screen.getByRole('button', { name: '进入复核' })).toBeTruthy();
+  });
+
+  it('resets to pack when sessionId changes to a session without review output', () => {
+    const { rerender } = render(<ProcurementSurface sessionId="s1" mode="live" title="" session={session as any} actions={{} as any} agent={agent} />);
+    fireEvent.click(screen.getByRole('button', { name: '进入复核' }));
+    rerender(<ProcurementSurface sessionId="s2" mode="live" title="" session={emptySession} actions={{} as any} agent={agent} />);
+    expect(screen.getByRole('button', { name: '开始分析' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '导出' })).toBeNull();
+  });
+
+  it('returns to analyze from pack after 返回准备 when findings exist', () => {
+    render(<ProcurementSurface sessionId="s1" mode="live" title="" session={session as any} actions={{} as any} agent={agent} />);
+    fireEvent.click(screen.getByRole('button', { name: '返回准备' }));
+    expect(screen.getByRole('button', { name: '开始分析' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '返回分析' }));
+    expect(screen.queryByRole('button', { name: '采纳' })).toBeNull();
+    expect(screen.getByRole('button', { name: '进入复核' })).toBeTruthy();
   });
 });

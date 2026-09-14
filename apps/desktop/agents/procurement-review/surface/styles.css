@@ -499,6 +499,25 @@
 .procurement .badge.mid { background: var(--warn-bg); color: var(--warn); }
 .procurement .none { margin: 0; font-size: 13px; color: var(--text-3); }
 
+.procurement-stack {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.procurement-stack > .procurement:first-child {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
+.procurement-stack > .procurement:last-child {
+  height: auto;
+  overflow: visible;
+}
+.procurement .pack-resume {
+  border-top: 1px solid var(--border);
+}
+
 .procurement .rule-bar {
   width: auto;
   min-height: 0;

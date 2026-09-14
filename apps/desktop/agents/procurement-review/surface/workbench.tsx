@@ -184,10 +184,14 @@ export function Workbench({
   session,
   actions,
   page,
-  onPageChange,
+  onBackToPack,
+  onBackToAnalyze,
+  onEnterReview,
 }: AgentSurfaceProps & {
   page: 'run' | 'review';
-  onPageChange: (page: UiPage) => void;
+  onBackToPack: () => void;
+  onBackToAnalyze: () => void;
+  onEnterReview: () => void;
 }) {
   const snap = useMemo(() => evaluationFromEntries(session.entries), [session.entries]);
   const findings = useMemo(
@@ -220,17 +224,17 @@ export function Workbench({
         <h1>财务采购审核</h1>
         <p className="lead">审核需求计划的数量、单价、时点与程序合规。</p>
         <nav className="stepper" aria-label="审核步骤">
-          <button className={`step ${stepNo > 1 ? 'done' : 'on'}`} type="button" onClick={() => onPageChange('pack')}>
+          <button className={`step ${stepNo > 1 ? 'done' : 'on'}`} type="button" onClick={onBackToPack}>
             <span className="n">1</span>
             <span><b>准备</b><em>计划与对照</em></span>
           </button>
           <span className={`step-line ${stepNo > 1 ? 'done' : ''}`} />
-          <button className={`step ${stepNo === 2 ? 'on' : stepNo > 2 ? 'done' : ''}`} type="button" onClick={() => onPageChange('run')}>
+          <button className={`step ${stepNo === 2 ? 'on' : stepNo > 2 ? 'done' : ''}`} type="button" onClick={onBackToAnalyze}>
             <span className="n">2</span>
             <span><b>分析</b><em>生成结论</em></span>
           </button>
           <span className={`step-line ${stepNo > 2 ? 'done' : ''}`} />
-          <button className={`step ${stepNo === 3 ? 'on' : ''}`} type="button" onClick={() => onPageChange('review')}>
+          <button className={`step ${stepNo === 3 ? 'on' : ''}`} type="button" onClick={onEnterReview}>
             <span className="n">3</span>
             <span><b>复核</b><em>确认意见</em></span>
           </button>
@@ -299,7 +303,7 @@ export function Workbench({
                 </p>
               </div>
               <div className="gate-actions">
-                <button className="btn" type="button" onClick={() => onPageChange('run')}>返回分析</button>
+                <button className="btn" type="button" onClick={onBackToAnalyze}>返回分析</button>
                 <button className="btn" type="button" disabled={blocking}>写入意见</button>
                 <button className="btn primary" type="button" disabled={blocking}>导出</button>
               </div>
@@ -314,8 +318,8 @@ export function Workbench({
                 </p>
               </div>
               <div className="gate-actions">
-                <button className="btn" type="button" onClick={() => onPageChange('pack')}>返回准备</button>
-                <button className="btn primary" type="button" onClick={() => onPageChange('review')}>进入复核</button>
+                <button className="btn" type="button" onClick={onBackToPack}>返回准备</button>
+                <button className="btn primary" type="button" onClick={onEnterReview}>进入复核</button>
               </div>
             </div>
           )}
