@@ -1,0 +1,28 @@
+{
+  "plan": [
+    { "id": "M-煤", "code": "RM-001", "name": "烟煤", "qty": 2800, "unit": "吨", "unitPrice": 920 },
+    { "id": "M-砖", "code": "SP-203", "name": "镁铬砖", "qty": 40, "unit": "吨", "unitPrice": 2680 }
+  ],
+  "facts": {
+    "stock": [
+      { "code": "RM-001", "qty": 4200, "asOf": "2026-09-13", "source": "upload" },
+      { "code": "SP-203", "qty": 95, "asOf": "2026-09-13", "source": "upload" }
+    ],
+    "usage": [
+      { "code": "RM-001", "qty": 2100, "days": 90, "source": "upload" },
+      { "code": "SP-203", "qty": 12, "days": 90, "source": "upload" }
+    ],
+    "deals": [
+      { "code": "RM-001", "unitPrice": 780, "at": "2026-01-15", "source": "upload" },
+      { "code": "RM-001", "unitPrice": 780, "at": "2026-02-15", "source": "upload" },
+      { "code": "RM-001", "unitPrice": 780, "at": "2026-03-15", "source": "upload" },
+      { "code": "SP-203", "unitPrice": 2410, "at": "2026-06-01", "source": "upload" }
+    ],
+    "transit": [
+      { "code": "SP-203", "qty": 36, "ref": "PO-883", "at": "2026-09-02", "source": "upload" }
+    ]
+  },
+  "policyKb": "default",
+  "ranges": { "usageDays": 90, "priceMonths": 12, "transitDays": 30 },
+  "asOf": "2026-09-14"
+}
