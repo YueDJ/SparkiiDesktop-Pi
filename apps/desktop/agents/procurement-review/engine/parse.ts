@@ -107,7 +107,7 @@ export function parsePlanTable(rows: Record<string, string>[], _source: SourceKi
     const code = findValue(row, ['物资编码', '编码', 'code']) ?? null;
     const name = findValue(row, ['物资名称', '名称', 'name']) ?? '';
     return {
-      id: code ?? `plan-${index + 1}`,
+      id: `plan-${index + 1}`,
       code,
       name,
       qty: parseNum(findValue(row, ['申请数量', '数量', 'qty'])),

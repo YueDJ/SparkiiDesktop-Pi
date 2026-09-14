@@ -11,7 +11,7 @@ description: 根据 load、search、evaluation 写采购审核发现，输出严
 
 请为每条命中写人话发现，输出严格 JSON，不输出 Markdown 或额外文字。不要调用任何导出/写文件工具：
 
-{"findings":[{"id":"r1","rowId":"M-煤","dim":"qty","level":"high","title":"烟煤可覆盖约 10 个月","reason":"…","advice":"…","cite":{"label":"库存 2026-09-13 · 领用 14 笔 · 覆盖>4个月","refs":[]},"hitId":"h-qty-RM-001"}]}
+{"findings":[{"id":"r1","rowId":"M-煤","dim":"qty","level":"high","title":"烟煤可覆盖约 10 个月","reason":"…","advice":"…","cite":{"label":"库存 2026-09-13 · 领用 14 笔 · 覆盖>4个月","refs":[]},"hitId":"h-qty-M-煤-over"}]}
 
 规则：
 1. 量 / 价 / 时 / 完整性：`hitId` 必须在 `evaluation.hits`。多写的丢弃。

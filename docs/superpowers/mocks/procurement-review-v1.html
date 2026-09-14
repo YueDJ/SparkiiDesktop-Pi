@@ -1,0 +1,1081 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>财务采购审核 · 界面稿</title>
+  <style>
+    :root {
+      --bg: #F5F7FB;
+      --surface: #FFFFFF;
+      --border: #EAF0F6;
+      --border-strong: #E2E8F0;
+      --text: #1E293B;
+      --text-2: #475569;
+      --text-3: #64748B;
+      --primary: #2563EB;
+      --primary-hover: #1D4ED8;
+      --primary-bg: #EFF6FF;
+      --risk: #B91C1C;
+      --risk-bg: #FEF2F2;
+      --warn: #C2410C;
+      --warn-bg: #FFF7ED;
+      --ok: #15803D;
+      --ok-bg: #F0FDF4;
+      --off: #94A3B8;
+      --off-bg: #F8FAFC;
+      --radius-card: 12px;
+      --radius-button: 10px;
+      --radius-pill: 999px;
+      --shadow-card: 0 2px 8px rgba(15, 23, 42, .04);
+      --shadow-overlay: 0 8px 24px rgba(15, 23, 42, .12);
+      --font: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; }
+    body {
+      font-family: var(--font);
+      color: var(--text);
+      background: var(--bg);
+    }
+    ::selection { background: #BFDBFE; color: var(--text); }
+    button, select { cursor: pointer; font: inherit; color: inherit; }
+    button:focus-visible, .step:focus-visible, .mode:focus-visible, .subject:focus-visible, .policy:focus-visible, .risk:focus-visible, select:focus-visible {
+      outline: 3px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    .page {
+      width: min(1280px, calc(100% - 32px));
+      height: 100%;
+      margin: 0 auto;
+      padding: 16px 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .page > h1, .page > .lead, .page > .stepper { flex: none; }
+    h1 { margin: 0 0 6px; font-size: 22px; letter-spacing: -.02em; }
+    .lead { margin: 0 0 16px; color: var(--text-2); font-size: 13px; }
+    .sub:empty { display: none; }
+
+    .stepper {
+      display: grid;
+      grid-template-columns: 1fr 40px 1fr 40px 1fr;
+      align-items: center;
+      margin-bottom: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      padding: 8px 12px;
+      box-shadow: var(--shadow-card);
+    }
+    .step {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      border: 0;
+      background: transparent;
+      min-height: 48px;
+      color: var(--text-3);
+      border-radius: 10px;
+    }
+    .step .n {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1px solid #D7DEE8;
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+      font-weight: 750;
+      background: #fff;
+    }
+    .step b { font-size: 14px; font-weight: 650; }
+    .step em { display: block; font-style: normal; font-size: 11px; font-weight: 400; color: var(--text-3); }
+    .step.on { color: var(--primary); }
+    .step.on .n { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .step.on b { font-weight: 750; }
+    .step.done { color: var(--ok); }
+    .step.done .n { background: var(--ok-bg); border-color: #BBF7D0; color: var(--ok); }
+    .step-line { height: 1px; background: #D7DEE8; }
+    .step-line.done { background: #86EFAC; }
+
+    .modes {
+      display: none;
+      justify-content: flex-end;
+      gap: 4px;
+      margin: 0 0 14px;
+    }
+    .modes.show { display: flex; }
+    .mode {
+      border: 0;
+      background: transparent;
+      color: var(--text-3);
+      font-size: 13px;
+      padding: 6px 10px;
+      border-bottom: 2px solid transparent;
+    }
+    .mode[aria-pressed="true"] {
+      color: var(--text);
+      font-weight: 700;
+      border-bottom-color: var(--primary);
+    }
+
+    .shell {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow-overlay);
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .title { font-size: 14px; font-weight: 700; }
+    .sub { font-size: 12px; color: var(--text-3); }
+    .toolbar-right { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .chip {
+      height: 28px; padding: 0 10px; border: 1px solid var(--border);
+      border-radius: var(--radius-pill); font-size: 12px; color: var(--text-2);
+      display: inline-flex; align-items: center; background: var(--surface);
+    }
+    .chip.on { background: var(--ok-bg); color: var(--ok); border-color: #BBF7D0; }
+    .chip.off { background: var(--off-bg); color: var(--off); }
+    .btn {
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      border-radius: var(--radius-button);
+      padding: 8px 12px;
+      min-height: 36px;
+    }
+    .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .btn.primary:hover { background: var(--primary-hover); }
+    .btn:disabled { opacity: .42; cursor: not-allowed; }
+
+    .flow, .analyze {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      padding: 20px 24px 16px 20px;
+      background: #F7F9FC;
+    }
+    .board {
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr);
+      gap: 0 16px;
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+    .rail { position: relative; }
+    .rail::before {
+      content: "";
+      position: absolute;
+      left: 15px;
+      top: 12px;
+      bottom: 12px;
+      width: 1px;
+      background: #D7DEE8;
+    }
+    .stages { display: flex; flex-direction: column; gap: 22px; padding-bottom: 8px; }
+    .stage { position: relative; }
+    .stage .dot {
+      position: absolute;
+      left: -52px;
+      top: 18px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #fff;
+      border: 1px solid #D7DEE8;
+      color: var(--text-2);
+      font-size: 12px;
+      font-weight: 750;
+      display: grid;
+      place-items: center;
+      z-index: 1;
+    }
+    .stage.ok .dot {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+    .stage.wait .dot { border-color: #F5C16E; color: var(--warn); }
+
+    .subject, .cond, .policy {
+      width: 100%;
+      text-align: left;
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-card);
+    }
+    .subject.ready, .policy.ready { border-color: #93C5FD; }
+    .subject {
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      gap: 14px 16px;
+      align-items: start;
+      padding: 16px 18px;
+    }
+    .ico {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: var(--primary-bg);
+      color: var(--primary);
+      display: grid;
+      place-items: center;
+      grid-row: 1 / 3;
+    }
+    .ico svg { width: 22px; height: 22px; }
+    .subject-top, .policy-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .subject h2, .policy h2 { margin: 0 0 4px; font-size: 17px; letter-spacing: -.02em; }
+    .subject p, .policy p { margin: 0; font-size: 13px; color: var(--text-2); }
+    .status {
+      border-radius: var(--radius-pill);
+      padding: 4px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      background: var(--off-bg);
+      color: var(--text-3);
+      white-space: nowrap;
+    }
+    .status.on { background: var(--ok-bg); color: var(--ok); }
+    .status.wait { background: var(--warn-bg); color: var(--warn); }
+    .status.both { background: var(--primary-bg); color: var(--primary); }
+
+    .stage-copy { margin: 0 0 10px; font-size: 13px; color: var(--text-2); }
+    .stage-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    .stage-bar p { margin: 0; font-size: 13px; color: var(--text-2); }
+    .stage-bar b { color: var(--text); }
+
+    .conds {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .cond { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .conds > .cond { min-height: 100%; }
+    .cond.ready { border-color: #86EFAC; }
+    .cond-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .mark {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      font-size: 13px;
+      font-weight: 750;
+      background: var(--primary-bg);
+      color: var(--primary);
+    }
+    .cond.ready .mark { background: var(--ok-bg); color: var(--ok); }
+    .cond h3 { margin: 0; font-size: 16px; }
+    .need { margin: 0; font-size: 12px; color: var(--text-2); line-height: 1.5; }
+
+    .hits { display: flex; flex-direction: column; gap: 6px; }
+    .hit {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--text-2);
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: var(--off-bg);
+    }
+    .hit.live { background: #F8FBFF; color: var(--text); }
+    .hit.file { background: #F8FDF9; color: var(--text); }
+    .hit b { font-size: 11px; margin-right: 6px; }
+    .hit.live b { color: var(--primary); }
+    .hit.file b { color: var(--ok); }
+    .together {
+      margin: 0;
+      font-size: 12px;
+      color: var(--primary);
+      background: var(--primary-bg);
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+    .gap { margin: 0; font-size: 12px; font-weight: 650; color: var(--warn); }
+    .cond.ready .gap { color: var(--ok); }
+
+    .acts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-top: auto;
+    }
+    .range {
+      height: 32px;
+      border: 1px solid var(--border-strong);
+      background: #fff;
+      border-radius: 8px;
+      padding: 0 8px;
+      font-size: 12px;
+      color: var(--text-2);
+    }
+    .act {
+      border: 1px solid var(--border-strong);
+      background: #fff;
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 12px;
+      min-height: 32px;
+      color: var(--text-2);
+    }
+    .act.pull {
+      color: var(--primary);
+      border-color: #BFDBFE;
+      background: var(--primary-bg);
+    }
+    .act:disabled { opacity: .42; cursor: not-allowed; }
+
+    .policy {
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      gap: 12px 16px;
+      align-items: start;
+      padding: 14px 16px;
+    }
+    .policy .ico { grid-row: 1 / 3; }
+    .kb {
+      width: min(360px, 100%);
+      height: 36px;
+      border: 1px solid var(--border-strong);
+      background: #fff;
+      border-radius: 8px;
+      padding: 0 10px;
+      font-size: 13px;
+      color: var(--text);
+      margin-top: 8px;
+    }
+
+    .gate {
+      flex: none;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      padding: 12px 20px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .gate b { display: block; font-size: 14px; }
+    .gate .miss { margin: 4px 0 0; font-size: 12px; color: var(--text-2); max-width: 68ch; }
+    .gate .miss.warn { color: var(--warn); }
+    .gate-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .progress {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      background: #F7F9FC;
+    }
+    .prog {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-3);
+    }
+    .prog i {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .prog.done { color: var(--ok); font-weight: 650; }
+    .prog.skip { color: var(--off); }
+
+    .analyze { padding: 18px 20px 12px; }
+    .sheet {
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-card);
+      margin-bottom: 16px;
+      overflow: auto;
+    }
+    .cond.has-high { border-color: #FECACA; }
+    .cond.has-high .mark { background: var(--risk-bg); color: var(--risk); }
+    .cond.has-mid { border-color: #FED7AA; }
+    .cond.has-mid .mark { background: var(--warn-bg); color: var(--warn); }
+    .find {
+      padding: 10px 0 0;
+      margin-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+    .find:first-of-type { margin-top: 2px; }
+    .find.active { background: #F8FBFF; margin: 10px -8px 0; padding: 10px 8px 0; border-radius: 8px; border-top-color: transparent; }
+    .find-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .find-top b { font-size: 13px; }
+    .find p { margin: 0 0 6px; font-size: 12px; color: var(--text-2); line-height: 1.55; }
+    .find .cite { margin: 0 0 8px; }
+    .find .ops { margin-bottom: 2px; }
+    .none { margin: 0; font-size: 13px; color: var(--text-3); }
+    .rule-bar {
+      width: auto;
+      min-height: 0;
+    }
+
+    .workbench { flex: 1; display: grid; grid-template-columns: 1.15fr .85fr; min-height: 0; }
+    .panel { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+    .panel + .panel { border-left: 1px solid var(--border); }
+    .panel-head {
+      padding: 12px 16px 8px;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: baseline;
+    }
+    .panel-head b { font-size: 13px; }
+    .panel-head span { font-size: 12px; color: var(--text-3); }
+    .panel-body { padding: 0 16px 16px; overflow: auto; flex: 1; }
+
+    table.grid { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+    table.grid th, table.grid td {
+      border-bottom: 1px solid var(--border);
+      padding: 8px 7px;
+      text-align: right;
+      white-space: nowrap;
+    }
+    table.grid th:first-child, table.grid td:first-child,
+    table.grid th:nth-child(2), table.grid td:nth-child(2) { text-align: left; }
+    table.grid th { color: var(--text-3); font-weight: 650; }
+    table.grid tr.active td { background: var(--primary-bg); }
+
+    .banner {
+      border: 1px solid #FDE68A;
+      background: #FFFBEB;
+      color: #92400E;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 12px;
+      margin-bottom: 12px;
+    }
+    .counts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+    .count { border: 1px solid var(--border); border-radius: var(--radius-card); padding: 10px 12px; }
+    .count .n { font-size: 22px; font-weight: 750; line-height: 1; font-variant-numeric: tabular-nums; }
+    .count .l { font-size: 12px; color: var(--text-3); margin-top: 4px; }
+    .count.high .n { color: var(--risk); }
+    .count.mid .n { color: var(--warn); }
+    .count.ok .n { color: var(--ok); }
+
+    .filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+    .filter {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: var(--radius-pill);
+      padding: 4px 9px;
+      font-size: 12px;
+      color: var(--text-2);
+    }
+    .filter.on { border-color: var(--primary); color: var(--primary); background: var(--primary-bg); }
+
+    .risk {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: var(--radius-card);
+      padding: 12px;
+      margin-bottom: 8px;
+    }
+    .risk.active { border-color: #BFDBFE; background: #F8FBFF; }
+    .risk-top { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+    .badge { border-radius: var(--radius-pill); padding: 2px 8px; font-size: 11px; font-weight: 700; }
+    .badge.high { background: var(--risk-bg); color: var(--risk); }
+    .badge.mid { background: var(--warn-bg); color: var(--warn); }
+    .badge.dim { background: var(--primary-bg); color: var(--primary); }
+    .risk h3 { margin: 0; font-size: 13px; }
+    .risk p { margin: 0 0 8px; font-size: 12px; color: var(--text-2); line-height: 1.55; }
+    .cite {
+      font-size: 12px;
+      color: var(--text);
+      background: #F1F5F9;
+      border-radius: 8px;
+      padding: 6px 8px;
+      margin-bottom: 8px;
+    }
+    .ops { display: flex; gap: 6px; }
+    .ops button {
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+    .ops .on-ok { background: var(--ok-bg); color: var(--ok); border-color: #BBF7D0; }
+    .ops .on-ignore { background: var(--off-bg); color: var(--text-3); }
+    .ops .on-up { background: var(--warn-bg); color: var(--warn); border-color: #FED7AA; }
+
+    .skeleton { height: 12px; background: #E8EEF6; border-radius: 6px; margin-bottom: 10px; }
+    .skeleton.lg { height: 72px; }
+    .foot { margin-top: 14px; font-size: 13px; color: var(--text-2); }
+
+    @media (max-width: 980px) {
+      .conds { grid-template-columns: 1fr; }
+      .progress { gap: 10px; }
+      .subject, .policy { grid-template-columns: 48px 1fr; }
+      .ico { grid-row: auto; }
+      .workbench { grid-template-columns: 1fr; }
+      .panel + .panel { border-left: 0; border-top: 1px solid var(--border); }
+      html, body { height: auto; overflow: auto; }
+      .page { height: auto; }
+      .shell { min-height: 70vh; }
+      .stepper { grid-template-columns: 1fr; gap: 4px; }
+      .step-line { display: none; }
+      .step { justify-content: flex-start; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .subject, .cond, .policy { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>财务采购审核</h1>
+    <p class="lead">审核需求计划的数量、单价、时点与程序合规。</p>
+    <nav class="stepper" aria-label="审核步骤">
+      <button class="step on" type="button" data-screen="pack">
+        <span class="n">1</span>
+        <span><b>准备</b><em>计划与对照</em></span>
+      </button>
+      <span class="step-line" data-line="1"></span>
+      <button class="step" type="button" data-screen="run">
+        <span class="n">2</span>
+        <span><b>分析</b><em>生成结论</em></span>
+      </button>
+      <span class="step-line" data-line="2"></span>
+      <button class="step" type="button" data-screen="review">
+        <span class="n">3</span>
+        <span><b>复核</b><em>确认意见</em></span>
+      </button>
+    </nav>
+    <div class="shell" id="shell"></div>
+  </div>
+
+  <script>
+    const rows = [
+      { id: "M-煤", code: "RM-001", name: "烟煤", qty: 2800, stock: 4200, use90: 2100, price: 920, hist: 780, transit: 0 },
+      { id: "M-膏", code: "RM-014", name: "脱硫石膏", qty: 180, stock: 60, use90: 420, price: 86, hist: 84, transit: 0 },
+      { id: "M-砖", code: "SP-203", name: "镁铬砖", qty: 40, stock: 95, use90: 12, price: 2680, hist: 2410, transit: 36 },
+      { id: "M-砂", code: "RM-008", name: "硅砂", qty: 120, stock: 88, use90: 240, price: 155, hist: 150, transit: 0 }
+    ];
+
+    const findingsFull = [
+      { id: "r1", row: "M-煤", dim: "量", level: "high", title: "烟煤可覆盖约 10 个月", reason: "库存 4200 吨 + 本次 2800 吨，近 90 天领用 2100 吨，覆盖约 10 个月，超过 4 个月阈值。", advice: "核减至 2–3 个月用量，或附冬储说明。", cite: "库存 2026-09-13 · 领用 14 笔 · 覆盖>4个月" },
+      { id: "r2", row: "M-煤", dim: "价", level: "high", title: "烟煤单价偏离 18%", reason: "本次 920 元/吨，近 12 个月中位价 780 元/吨（12 笔），偏离 17.9%。", advice: "要求供应商书面说明，或比价近三个月其他煤源。", cite: "成交 12 笔 · 中位 780 · 偏离>15%" },
+      { id: "r3", row: "M-砖", dim: "时", level: "mid", title: "镁铬砖在途 36 吨仍申报", reason: "PO-883 未入库 36 吨，本次再报 40 吨。", advice: "待本批入库后再补，或证明窑况急需。", cite: "在途 PO-883 · 9月2日 · 30天重复" },
+      { id: "r4", row: "M-砖", dim: "价", level: "mid", title: "镁铬砖单价偏离 11%", reason: "本次 2680 元，中位价 2410 元，偏离 11.2%。", advice: "可放行，请备注是否耐火度升级。", cite: "成交 5 笔 · 中位 2410 · 偏离 5%–15%" },
+      { id: "r5", row: "M-煤", dim: "合规", level: "mid", title: "烟煤单行金额超集采线", reason: "2800×920 约 257.6 万，超战略燃料 200 万集采线。", advice: "补集采说明或拆单依据。", cite: "《采购管理办法》第12条 · RM-001" }
+    ];
+
+    const findingsThin = [
+      { id: "t1", row: "M-煤", dim: "完整性", level: "mid", title: "数量、单价、时点未评估", reason: "本次仅提交需求计划，缺少库存、领用、成交与在途数据。", advice: "补充对照数据后重新分析。", cite: "对照数据未提交" },
+      { id: "t2", row: "M-煤", dim: "合规", level: "mid", title: "烟煤单行金额超集采线", reason: "按计划单价估算约 257.6 万，超战略燃料 200 万集采线。金额取自计划，非成交价。", advice: "补集采说明。", cite: "《采购管理办法》第12条 · RM-001" }
+    ];
+
+    let screen = "pack";
+    let pulling = "";
+    let activeRisk = "r1";
+    const state = {};
+    const pulled = { plan: false, stock: false, usage: false, price: false, transit: false };
+    const uploaded = { plan: false, stock: false, usage: false, price: false, transit: false };
+    const range = { plan: "month", usage: "90", price: "12", transit: "30" };
+    const api = { plan: true, stock: true, usage: true, price: true, transit: true };
+    const KBS = [
+      { id: "", name: "不使用" },
+      { id: "default", name: "采购制度（默认）" },
+      { id: "group", name: "集团采购办法" }
+    ];
+    let policyKb = "default";
+
+    const DIM = {
+      plan: { ids: ["plan"], system: "OA", pull: "从 OA 获取", file: "9月需求计划.xlsx" },
+      qty: { ids: ["stock", "usage"], system: "库存系统", pull: "从库存获取", file: "库存_0913.csv · 领用_90天.csv" },
+      price: { ids: ["price"], system: "U8", pull: "从 U8 获取", file: "成交_12个月.xlsx" },
+      time: { ids: ["transit"], system: "OA", pull: "从 OA 获取", file: "在途.xlsx" }
+    };
+
+    const shell = document.getElementById("shell");
+
+    function readyId(id) { return pulled[id] || uploaded[id]; }
+    function readyDim(key) { return DIM[key].ids.every(readyId); }
+    function bothDim(key) { return DIM[key].ids.every((id) => pulled[id] && uploaded[id]); }
+    function apiOn(key) { return DIM[key].ids.every((id) => api[id]); }
+
+    function dimsFromPack() {
+      return {
+        qty: readyDim("qty"),
+        price: readyDim("price"),
+        time: readyDim("time"),
+        rule: Boolean(policyKb)
+      };
+    }
+
+    function fillFull() {
+      Object.keys(pulled).forEach((id) => { pulled[id] = true; uploaded[id] = false; });
+      policyKb = "default";
+    }
+
+    function fillThin() {
+      Object.keys(pulled).forEach((id) => { pulled[id] = false; uploaded[id] = id === "plan"; });
+      policyKb = "default";
+    }
+
+    function rangeLabel(key) {
+      if (key === "plan") return range.plan === "month" ? "本月计划" : range.plan === "last" ? "上月计划" : "指定单号";
+      if (key === "qty") return "库存当日 · 领用近 " + range.usage + " 天";
+      if (key === "price") return "成交近 " + range.price + " 个月";
+      return "在途近 " + range.transit + " 天";
+    }
+
+    function pullCopy(key) {
+      if (key === "plan") return "OA · CG20260914021 · 4 行 · " + rangeLabel("plan");
+      if (key === "qty") return "库存系统 · 今天 14:02 · 86 个编码 · 领用 " + range.usage + " 天 1,204 笔";
+      if (key === "price") return "U8 · 近 " + range.price + " 个月 · 312 笔成交";
+      return "OA · 近 " + range.transit + " 天 · 在途 6 单 · 含 PO-883";
+    }
+
+    function chip(on, label) {
+      return `<span class="chip ${on ? "on" : "off"}">${label}</span>`;
+    }
+
+    function toolbar(opts) {
+      const d = opts.dims;
+      return `<div class="toolbar">
+        <div>
+          <div class="title">财务采购审核</div>
+          <div class="sub">${opts.sub}</div>
+        </div>
+        <div class="toolbar-right">
+          ${chip(d.qty, "量")}
+          ${chip(d.price, "价")}
+          ${chip(d.time, "时")}
+          ${chip(d.rule, "合规")}
+          ${opts.extra || ""}
+        </div>
+      </div>`;
+    }
+
+    const docIco = `<span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/></svg></span>`;
+    const bookIco = `<span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 0-3 3z"/><path d="M5 4v16"/></svg></span>`;
+
+    function rangeSelect(key) {
+      if (key === "plan") {
+        return `<select class="range" data-range="plan" aria-label="计划范围">
+          <option value="month" ${range.plan === "month" ? "selected" : ""}>本月</option>
+          <option value="last" ${range.plan === "last" ? "selected" : ""}>上月</option>
+          <option value="id" ${range.plan === "id" ? "selected" : ""}>指定单号</option>
+        </select>`;
+      }
+      if (key === "qty") {
+        return `<select class="range" data-range="usage" aria-label="领用范围">
+          <option value="30" ${range.usage === "30" ? "selected" : ""}>领用 30 天</option>
+          <option value="90" ${range.usage === "90" ? "selected" : ""}>领用 90 天</option>
+          <option value="180" ${range.usage === "180" ? "selected" : ""}>领用 180 天</option>
+        </select>`;
+      }
+      if (key === "price") {
+        return `<select class="range" data-range="price" aria-label="成交范围">
+          <option value="6" ${range.price === "6" ? "selected" : ""}>成交 6 个月</option>
+          <option value="12" ${range.price === "12" ? "selected" : ""}>成交 12 个月</option>
+          <option value="24" ${range.price === "24" ? "selected" : ""}>成交 24 个月</option>
+        </select>`;
+      }
+      return `<select class="range" data-range="transit" aria-label="在途范围">
+        <option value="15" ${range.transit === "15" ? "selected" : ""}>在途 15 天</option>
+        <option value="30" ${range.transit === "30" ? "selected" : ""}>在途 30 天</option>
+        <option value="60" ${range.transit === "60" ? "selected" : ""}>在途 60 天</option>
+      </select>`;
+    }
+
+    function hits(key) {
+      const spec = DIM[key];
+      const bits = [];
+      if (pulling === key || (pulling === "all" && key !== "plan")) bits.push(`<div class="hit live"><b>获取中</b>${spec.system} · ${rangeLabel(key)}</div>`);
+      else if (spec.ids.some((id) => pulled[id])) bits.push(`<div class="hit live"><b>系统</b>${pullCopy(key)}</div>`);
+      if (spec.ids.some((id) => uploaded[id])) bits.push(`<div class="hit file"><b>文件</b>${spec.file}</div>`);
+      if (bothDim(key)) bits.push(`<p class="together">系统与文件同时对照，差异将标出。</p>`);
+      return bits.join("");
+    }
+
+    function actions(key) {
+      const spec = DIM[key];
+      const on = apiOn(key);
+      const busy = pulling === key || (pulling === "all" && key !== "plan");
+      const pulledAlready = spec.ids.every((id) => pulled[id]);
+      const uploadedAlready = spec.ids.every((id) => uploaded[id]);
+      return `<div class="acts">
+        ${rangeSelect(key)}
+        <button class="act pull" type="button" data-pull="${key}" ${on && !busy ? "" : "disabled"}>
+          ${busy ? "获取中…" : pulledAlready ? "重新获取" : spec.pull}
+        </button>
+        <button class="act" type="button" data-upload="${key}">${uploadedAlready ? "更换文件" : "上传"}</button>
+      </div>`;
+    }
+
+    function planStatus() {
+      if (bothDim("plan")) return "系统 + 文件";
+      if (pulled.plan) return "已获取";
+      if (uploaded.plan) return "已上传";
+      return "未提交";
+    }
+
+    function dimStatus(key, ready) {
+      if (bothDim(key)) return "系统 + 文件";
+      if (ready) return pulled[DIM[key].ids[0]] ? "已获取" : "已上传";
+      return "未提交";
+    }
+
+    function condCard(key, ready, title, ask, note) {
+      return `<div class="cond ${ready ? "ready" : ""}">
+        <div class="cond-top">
+          <span class="mark">${title}</span>
+          <span class="status ${bothDim(key) ? "both" : ready ? "on" : "wait"}">${dimStatus(key, ready)}</span>
+        </div>
+        <h3>${ask}</h3>
+        <p class="need">${note}</p>
+        <div class="hits">${hits(key)}</div>
+        ${actions(key)}
+      </div>`;
+    }
+
+    function renderPack() {
+      const d = dimsFromPack();
+      const planOk = readyDim("plan");
+      const canFlow = planOk && d.qty && d.price && d.time;
+      const miss = [];
+      if (!planOk) miss.push("需求计划");
+      if (!d.qty) miss.push("库存和领用");
+      if (!d.price) miss.push("历史成交");
+      if (!d.time) miss.push("在途采购");
+
+      shell.innerHTML = toolbar({ sub: planOk ? "CG20260914021 · 4 行" : "", dims: d }) + `
+        <div class="flow">
+          <div class="board">
+            <div class="rail" aria-hidden="true"></div>
+            <div class="stages">
+              <section class="stage ${planOk ? "ok" : "wait"}">
+                <div class="dot">1</div>
+                <div class="subject ${planOk ? "ready" : ""}">
+                  ${docIco}
+                  <div class="subject-top">
+                    <div>
+                      <h2>物资需求计划</h2>
+                      <p>${planOk ? "可再次获取或补充文件。" : "从 OA 获取，或上传文件。"}</p>
+                    </div>
+                    <span class="status ${bothDim("plan") ? "both" : planOk ? "on" : "wait"}">${planStatus()}</span>
+                  </div>
+                  <div>
+                    <div class="hits">${hits("plan")}</div>
+                    ${actions("plan")}
+                  </div>
+                </div>
+              </section>
+
+              <section class="stage ${d.qty && d.price && d.time ? "ok" : "wait"}">
+                <div class="dot">2</div>
+                <div class="stage-bar">
+                  <p><b>对照数据</b>　库存、成交、在途。系统获取或上传均可。</p>
+                  <button class="btn primary" type="button" data-pull="all" ${pulling ? "disabled" : ""}>${pulling === "all" ? "获取中…" : "获取对照数据"}</button>
+                </div>
+                <div class="conds">
+                  ${condCard("qty", d.qty, "量", "数量", "对照库存与领用。")}
+                  ${condCard("price", d.price, "价", "单价", "对照本厂成交。")}
+                  ${condCard("time", d.time, "时", "时点", "对照在途订单。")}
+                </div>
+              </section>
+
+              <section class="stage ${policyKb ? "ok" : ""}">
+                <div class="dot">3</div>
+                <div class="policy ${policyKb ? "ready" : ""}">
+                  ${bookIco}
+                  <div class="policy-top">
+                    <div>
+                      <h2>制度</h2>
+                      <p>${policyKb ? "按所选制度审核程序合规。" : "不选用则只做完整性检查。"}</p>
+                    </div>
+                    <span class="status ${policyKb ? "on" : "wait"}">${policyKb ? "已选用" : "未选用"}</span>
+                  </div>
+                  <label>
+                    <select class="kb" data-kb aria-label="本次用哪套制度">
+                      ${KBS.map((x) => `<option value="${x.id}" ${x.id === policyKb ? "selected" : ""}>${x.name}</option>`).join("")}
+                    </select>
+                  </label>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+        <div class="gate">
+          <div>
+            <b>${canFlow ? "材料已齐" : "待提交"}</b>
+            <p class="miss ${canFlow ? "" : "warn"}">${canFlow
+              ? (policyKb ? "将评估数量、单价、时点与合规。" : "将评估数量、单价、时点。制度未选用。")
+              : miss.join("、")}</p>
+          </div>
+          <div class="gate-actions">
+            <button class="btn" type="button" data-goto="thin" ${planOk ? "" : "disabled"}>完整性审核</button>
+            <button class="btn primary" type="button" data-goto="run" ${canFlow ? "" : "disabled"}>开始分析</button>
+          </div>
+        </div>`;
+    }
+
+    function planTable(thin, activeRow) {
+      return `<table class="grid">
+        <thead><tr><th>编码</th><th>物资</th><th>本次</th><th>库存</th><th>90天领用</th><th>单价</th><th>中位价</th><th>在途</th></tr></thead>
+        <tbody>${rows.map((r) => `<tr class="${r.id === activeRow ? "active" : ""}">
+          <td>${r.code}</td><td>${r.name}</td><td>${r.qty}</td>
+          <td>${thin ? "—" : r.stock}</td><td>${thin ? "—" : r.use90}</td>
+          <td>${r.price}</td><td>${thin ? "—" : r.hist}</td><td>${thin ? "—" : r.transit}</td>
+        </tr>`).join("")}</tbody>
+      </table>`;
+    }
+
+    function findCard(f, withOps) {
+      const st = state[f.id];
+      const ops = withOps ? `<div class="ops">
+        <button type="button" data-act="confirmed" data-id="${f.id}" class="${st === "confirmed" ? "on-ok" : ""}">采纳</button>
+        <button type="button" data-act="ignored" data-id="${f.id}" class="${st === "ignored" ? "on-ignore" : ""}">忽略</button>
+        <button type="button" data-act="escalated" data-id="${f.id}" class="${st === "escalated" ? "on-up" : ""}">升级</button>
+      </div>` : "";
+      return `<article class="find ${f.id === activeRisk ? "active" : ""}" data-risk="${f.id}">
+        <div class="find-top">
+          <span class="badge ${f.level}">${f.level === "high" ? "高" : "中"}</span>
+          <b>${f.title}</b>
+        </div>
+        <p>${f.reason}</p>
+        <p>${f.advice}</p>
+        <div class="cite">依据 ${f.cite}</div>
+        ${ops}
+      </article>`;
+    }
+
+    function dimPane(title, ask, items, closed, withOps) {
+      const high = items.filter((f) => f.level === "high").length;
+      const done = items.filter((f) => state[f.id]).length;
+      const tone = closed ? "" : high ? "has-high" : items.length ? "has-mid" : "ready";
+      const status = closed
+        ? "未评估"
+        : !items.length
+          ? "无异常"
+          : withOps
+            ? `${done}/${items.length} 已处理`
+            : (high ? high + " 条高风险" : items.length + " 条");
+      const body = closed
+        ? `<p class="none">${closed}</p>`
+        : items.length
+          ? items.map((f) => findCard(f, withOps)).join("")
+          : `<p class="none">未命中规则。</p>`;
+      return `<div class="cond ${tone}">
+        <div class="cond-top">
+          <span class="mark">${title}</span>
+          <span class="status ${closed ? "wait" : high && done < items.length ? "wait" : "on"}">${status}</span>
+        </div>
+        <h3>${ask}</h3>
+        ${body}
+      </div>`;
+    }
+
+    function renderWorkbench(phase) {
+      const review = phase === "review";
+      const d = dimsFromPack();
+      const thin = !d.qty && !d.price && !d.time;
+      const list = thin ? findingsThin : findingsFull.filter((f) => f.dim !== "合规" || policyKb);
+      if (!list.some((f) => f.id === activeRisk)) activeRisk = list[0]?.id;
+      const active = list.find((f) => f.id === activeRisk);
+      const qty = list.filter((f) => f.dim === "量");
+      const price = list.filter((f) => f.dim === "价");
+      const time = list.filter((f) => f.dim === "时");
+      const rule = list.filter((f) => f.dim === "合规" || f.dim === "完整性");
+      const highLeft = list.filter((f) => f.level === "high" && !state[f.id]).length;
+      const done = list.filter((f) => state[f.id]).length;
+      const canExport = review && highLeft === 0;
+      const steps = [
+        ["对齐编码", "done"],
+        ["完整性", "done"],
+        ["套规则", thin ? "skip" : "done"],
+        ["制度", policyKb ? "done" : "skip"],
+        ["撰写发现", "done"]
+      ];
+
+      const bar = review
+        ? `<div class="progress"><span class="prog ${highLeft ? "" : "done"}"><i></i>${highLeft ? highLeft + " 条高风险待处理" : "高风险已处理"}</span><span class="prog done"><i></i>已处理 ${done}/${list.length}</span></div>`
+        : `<div class="progress" aria-label="分析进度">${steps.map(([name, st]) => `<span class="prog ${st}"><i></i>${name}${st === "skip" ? " · 跳过" : ""}</span>`).join("")}</div>`;
+
+      const gate = review
+        ? `<div class="gate">
+            <div>
+              <b>${canExport ? "可以写入意见" : "高风险待处理"}</b>
+              <p class="miss ${canExport ? "" : "warn"}">${canExport ? "写入后走审批，再导出。" : "高风险须采纳、忽略或升级后，才能导出。"}</p>
+            </div>
+            <div class="gate-actions">
+              <button class="btn" type="button" data-goto="run">返回分析</button>
+              <button class="btn" type="button" ${canExport ? "" : "disabled"}>写入意见</button>
+              <button class="btn primary" type="button" ${canExport ? "" : "disabled"}>导出</button>
+            </div>
+          </div>`
+        : `<div class="gate">
+            <div>
+              <b>分析完成</b>
+              <p class="miss">${rows.length} 行已对齐 · ${list.length} 条发现${policyKb ? "" : " · 制度未选用"}</p>
+            </div>
+            <div class="gate-actions">
+              <button class="btn" type="button" data-goto="pack">返回准备</button>
+              <button class="btn primary" type="button" data-goto="review">进入复核</button>
+            </div>
+          </div>`;
+
+      shell.innerHTML = toolbar({ sub: "CG20260914021 · 4 行", dims: d }) + bar + `
+        <div class="analyze">
+          ${thin ? `<div class="banner">对照数据未提交，数量、单价、时点未评估。</div>` : ""}
+          <div class="sheet">${planTable(thin, active?.row)}</div>
+          <div class="conds">
+            ${dimPane("量", "数量", qty, thin || !d.qty ? "对照未提交。" : "", review)}
+            ${dimPane("价", "单价", price, thin || !d.price ? "对照未提交。" : "", review)}
+            ${dimPane("时", "时点", time, thin || !d.time ? "对照未提交。" : "", review)}
+            ${rule.length ? `<div class="cond rule-bar ${rule.some((f) => f.level === "high") ? "has-high" : "has-mid"}">
+              <div class="cond-top">
+                <span class="mark">${thin ? "整" : "规"}</span>
+                <span class="status wait">${thin ? "完整性 / 合规" : "合规"}</span>
+              </div>
+              <h3>${thin ? "完整性" : "程序合规"}</h3>
+              ${rule.map((f) => findCard(f, review)).join("")}
+            </div>` : ""}
+          </div>
+        </div>` + gate;
+    }
+
+    function syncChrome() {
+      const stepNo = screen === "pack" ? 1 : screen === "run" ? 2 : 3;
+      document.querySelectorAll(".step").forEach((el) => {
+        const n = el.dataset.screen === "pack" ? 1 : el.dataset.screen === "run" ? 2 : 3;
+        el.classList.toggle("on", n === stepNo);
+        el.classList.toggle("done", n < stepNo);
+      });
+      document.querySelectorAll(".step-line").forEach((el) => {
+        el.classList.toggle("done", Number(el.dataset.line) < stepNo);
+      });
+    }
+
+    function render() {
+      if (screen === "pack") renderPack();
+      else if (screen === "run") renderWorkbench("run");
+      else renderWorkbench("review");
+      syncChrome();
+    }
+
+    function setScreen(next) {
+      screen = next === "thin" ? "review" : next;
+      if (next === "run") {
+        if (!readyDim("plan")) fillFull();
+      }
+      if (next === "review") {
+        if (!readyDim("plan")) fillFull();
+      }
+      if (next === "thin") {
+        fillThin();
+        activeRisk = "t1";
+      }
+      render();
+    }
+
+    function startPull(key) {
+      const ids = key === "all" ? ["stock", "usage", "price", "transit"] : DIM[key].ids;
+      pulling = key;
+      render();
+      setTimeout(() => {
+        ids.forEach((id) => { pulled[id] = true; });
+        pulling = "";
+        render();
+      }, 420);
+    }
+
+    document.querySelector(".page").addEventListener("click", (e) => {
+      const screenBtn = e.target.closest("[data-screen]");
+      if (screenBtn) {
+        setScreen(screenBtn.dataset.screen);
+        return;
+      }
+    });
+
+    shell.addEventListener("change", (e) => {
+      const sel = e.target.closest("[data-range]");
+      if (sel) range[sel.dataset.range] = sel.value;
+      const kbSel = e.target.closest("[data-kb]");
+      if (kbSel) {
+        policyKb = kbSel.value;
+        render();
+      }
+    });
+
+    shell.addEventListener("click", (e) => {
+      const pull = e.target.closest("[data-pull]");
+      if (pull && !pull.disabled) {
+        startPull(pull.dataset.pull);
+        return;
+      }
+      const upload = e.target.closest("[data-upload]");
+      if (upload) {
+        DIM[upload.dataset.upload].ids.forEach((id) => { uploaded[id] = !uploaded[id]; });
+        render();
+        return;
+      }
+      const goto = e.target.closest("[data-goto]");
+      if (goto && !goto.disabled) {
+        const dest = goto.dataset.goto;
+        setScreen(dest === "thin" || dest === "pack" || dest === "review" || dest === "run" ? dest : "run");
+        return;
+      }
+      const act = e.target.closest("[data-act]");
+      if (act) {
+        const id = act.dataset.id;
+        state[id] = state[id] === act.dataset.act ? undefined : act.dataset.act;
+        activeRisk = id;
+        render();
+        return;
+      }
+      const card = e.target.closest("[data-risk]");
+      if (card) {
+        activeRisk = card.dataset.risk;
+        render();
+      }
+    });
+
+    render();
+  </script>
+</body>
+</html>

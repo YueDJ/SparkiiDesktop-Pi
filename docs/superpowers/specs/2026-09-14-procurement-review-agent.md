@@ -184,6 +184,7 @@ export function prepareWorkflowInput(pack: PackInput, documents: string[]): {
 export function parseCsv(text: string): Record<string, string>[];
 export function parseXlsxBuffer(buf: ArrayBuffer): Record<string, string>[];
 export function parsePlanTable(rows: Record<string, string>[], source: SourceKind): PlanLine[];
+// parsePlanTable 行 id 为 plan-${n}（1-based），不因编码重复而碰撞。Hit id 为 h-{dim}-{line.id}-{suffix}。
 export function parseFactTable(
   kind: 'stock' | 'usage' | 'deals' | 'transit',
   rows: Record<string, string>[],
@@ -212,7 +213,7 @@ stockStaleDays: 7
 
 `ranges.*` 覆盖窗口。`rules.time.defaultWindowDays` 仅在测试未传 ranges 时的后备；产品路径必传 ranges。
 
-领用：界面选的 `ranges.usageDays` 是公式分母。事实表视为「已经是该窗口的合计」；`usage[].days` 只进 cite，不重算。
+领用：界面选的 `ranges.usageDays` 是公式分母。事实表视为「已经是该窗口的合计」；`usage[].days` 仍不进公式。cite 用领用笔数，不写天数。
 
 价：只统计 `at >= asOf - priceMonths` 的成交。
 
