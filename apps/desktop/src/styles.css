@@ -104,8 +104,6 @@ table.tbl th { background: var(--color-controlBg); color: var(--color-textSecond
 .ui-approval-empty { padding: var(--spacing-sm) var(--spacing-xs); }
 
 /* 审批队列抽屉 */
-.ui-approval-drawer { width: 420px; max-width: 94%; }
-.ui-approval-qhead { display: flex; align-items: baseline; justify-content: space-between; gap: var(--spacing-sm); padding: var(--spacing-xs) 0; border-bottom: 1px solid var(--color-border); }
 .ui-approval-qhint { color: var(--color-textMuted); font-size: var(--font-size-xs); }
 .ui-approval-queue { display: flex; flex-direction: column; gap: var(--spacing-md); }
 .ui-approval-group { display: flex; flex-direction: column; gap: var(--spacing-xs); }

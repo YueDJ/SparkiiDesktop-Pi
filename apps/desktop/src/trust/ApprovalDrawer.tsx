@@ -1,4 +1,4 @@
-import { Drawer } from '@sparkii/ui';
+import { Drawer, EmptyState } from '@sparkii/ui';
 import { ApprovalCard } from './ApprovalCard.js';
 import { useApprovalInbox } from './ApprovalInbox.js';
 
@@ -15,13 +15,10 @@ export function ApprovalDrawer({ open, currentSessionId = null, onClose }: Appro
   const others = unclaimed.filter((p) => p.sessionId !== currentSessionId);
 
   return (
-    <Drawer open={open} fixed title="需要你确认" onClose={onClose} className="ui-approval-drawer">
-      <div className="ui-approval-qhead">
-        <b>{unclaimed.length ? `${unclaimed.length} 处改动等你看` : '暂无待确认'}</b>
-      </div>
+    <Drawer open={open} fixed title="需要你确认" onClose={onClose}>
       <div className="ui-approval-queue">
         {unclaimed.length === 0 ? (
-          <div className="ui-muted ui-approval-empty">没有待确认的事项</div>
+          <EmptyState title="没有待确认的事项" />
         ) : (
           <>
             {current.length > 0 && (

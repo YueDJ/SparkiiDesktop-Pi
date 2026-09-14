@@ -56,7 +56,8 @@ describe('ApprovalDrawer', () => {
     );
     expect(await screen.findByText('导出审核报告')).toBeTruthy();
     expect(screen.getByRole('dialog', { name: '需要你确认' })).toBeTruthy();
-    expect(screen.getByText('1 处改动等你看')).toBeTruthy();
+    expect(screen.queryByText(/处改动等你看/)).toBeNull();
+    expect(screen.queryByText('暂无待确认')).toBeNull();
     expect(screen.getByText('当前会话')).toBeTruthy();
     expect(screen.queryByText(/本地文件目录/)).toBeNull();
     expect(screen.queryByText(/中风险/)).toBeNull();
@@ -82,6 +83,15 @@ describe('ApprovalDrawer', () => {
     expect(screen.getAllByTestId('approval-queue-item')).toHaveLength(2);
     expect(screen.queryByText(/session-1234/)).toBeNull();
     expect(screen.queryByText(/session-9999/)).toBeNull();
+  });
+
+  it('uses the shared drawer and an empty state without a count headline', async () => {
+    renderApproval(<ApprovalDrawer open onClose={() => {}} />, []);
+    const dialog = screen.getByRole('dialog', { name: '需要你确认' });
+    expect(dialog.className).toContain('ui-drawer');
+    expect(dialog.className).not.toContain('ui-drawer--sm');
+    expect(screen.getByRole('heading', { name: '没有待确认的事项' })).toBeTruthy();
+    expect(screen.queryByText(/处改动等你看/)).toBeNull();
   });
 
   it('does not drive a renderer-side timeout for routine cards', async () => {
