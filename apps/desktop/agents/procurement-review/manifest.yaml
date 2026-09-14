@@ -1,0 +1,25 @@
+name: procurement-review
+displayName: 财务采购审核
+sortOrder: 25
+version: 1.0.0
+surface:
+  type: workflow
+  entry: surface/index.tsx
+knowledge:
+  enabled: true
+  picker: hidden
+  backend: bm25
+capabilities:
+  entry: agent/capabilities.ts
+  tools: [document.read, knowledge.search, report.export]
+modelRequirements:
+  requires: [reasoning]
+modelRouting:
+  tasks:
+    default:
+      - { provider: deepseek, modelId: deepseek-v4-flash }
+    report:
+      - { provider: deepseek, modelId: deepseek-v4-pro }
+      - { provider: deepseek, modelId: deepseek-v4-flash }
+    title:
+      - { provider: deepseek, modelId: deepseek-v4-flash }
