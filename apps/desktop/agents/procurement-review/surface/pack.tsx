@@ -2,8 +2,9 @@ import { useRef, useState, type ChangeEvent } from 'react';
 import type { AgentSurfaceActions, AgentSurfaceProps } from '../../../src/surface/contract.js';
 import { DEFAULT_RULES } from '../engine/default-rules.js';
 import { prepareWorkflowInput } from '../engine/evaluate.js';
-import { parseCsv, parseFactTable, parsePlanTable, parseXlsxBuffer } from '../engine/parse.js';
+import { extractPlanNo, parseCsv, parseFactTable, parsePlanTable, parseXlsxBuffer } from '../engine/parse.js';
 import type { FactTables, PackInput, PolicyKb } from '../engine/types.js';
+import { procurementSessionTitle } from './title.js';
 
 export interface PackUiState {
   planReady: boolean;
@@ -29,6 +30,22 @@ export const EMPTY_PACK_FILES: PackFiles = {
   usage: null,
   deals: null,
   transit: null,
+};
+
+export type PackPrefs = {
+  policyKb: 'default' | null;
+  planRange: string;
+  usageDays: '30' | '90' | '180';
+  priceMonths: '6' | '12' | '24';
+  transitDays: '15' | '30' | '60';
+};
+
+export const DEFAULT_PACK_PREFS: PackPrefs = {
+  policyKb: 'default',
+  planRange: 'month',
+  usageDays: '90',
+  priceMonths: '12',
+  transitDays: '30',
 };
 
 export function packUiFromFiles(files: PackFiles, policyKb: PackUiState['policyKb']): PackUiState {
@@ -102,8 +119,16 @@ function gateCopy(pack: PackUiState): { title: string; miss: string; warn: boole
   };
 }
 
-function sparkiiApi(): { getPathForFile?(file: File): string } {
-  return ((window as unknown as { sparkii?: { getPathForFile?(file: File): string } }).sparkii ?? {});
+function sparkiiApi(): {
+  getPathForFile?(file: File): string;
+  setChatTitle?(sessionId: string, title: string, source?: 'user' | 'agent'): Promise<{ ok: boolean; reason?: 'locked' }>;
+  appendError?(rec: { id: string; message: string; source: string; createdAt: number }): Promise<unknown>;
+} {
+  return ((window as unknown as { sparkii?: {
+    getPathForFile?(file: File): string;
+    setChatTitle?(sessionId: string, title: string, source?: 'user' | 'agent'): Promise<{ ok: boolean; reason?: 'locked' }>;
+    appendError?(rec: { id: string; message: string; source: string; createdAt: number }): Promise<unknown>;
+  } }).sparkii ?? {});
 }
 
 function electronPath(file: File): string | undefined {
@@ -130,26 +155,19 @@ async function readRows(file: File): Promise<Record<string, string>[]> {
   return parseCsv(await file.text());
 }
 
-function collectDocuments(files: PackFiles): string[] {
-  return [files.plan, files.stock, files.usage, files.deals, files.transit]
-    .flatMap((file) => {
-      if (!file) return [];
-      const path = electronPath(file);
-      return path ? [path] : [];
-    });
-}
-
 export async function startPackWorkflow(
   mode: 'thin' | 'full',
   files: PackFiles,
   ctx: { policyKb: PolicyKb; ranges: PackInput['ranges'] },
   actions: AgentSurfaceActions,
-): Promise<void> {
-  if (!files.plan) return;
-  const documents = collectDocuments(files);
-  if (documents.length === 0 || !electronPath(files.plan)) return;
+): Promise<{ ok: true; sessionId: string } | { ok: false; message: string }> {
+  if (!files.plan) return { ok: false, message: '无法解析文件路径' };
+  const planPath = electronPath(files.plan);
+  if (!planPath) return { ok: false, message: '无法解析文件路径' };
+  const documents = [planPath];
 
-  const plan = parsePlanTable(await readRows(files.plan), 'upload');
+  const planRows = await readRows(files.plan);
+  const plan = parsePlanTable(planRows, 'upload');
   const facts: FactTables = { stock: [], usage: [], deals: [], transit: [] };
   if (mode === 'full') {
     if (files.stock) facts.stock = parseFactTable('stock', await readRows(files.stock), 'upload');
@@ -172,25 +190,27 @@ export async function startPackWorkflow(
     sessionId = typeof started?.sessionId === 'string' && started.sessionId.length > 0
       ? started.sessionId
       : undefined;
-  } catch {
-    return;
+  } catch (err) {
+    return { ok: false, message: err instanceof Error && err.message ? err.message : '未能开始分析' };
   }
-  if (!sessionId) return;
+  if (!sessionId) return { ok: false, message: '未能开始分析' };
+  const planNo = extractPlanNo(planRows);
+  void sparkiiApi().setChatTitle?.(sessionId, procurementSessionTitle(planNo, files.plan.name), 'agent');
   actions.review('evaluation', { stepId: 'review', payload: prepared.evaluation });
+  return { ok: true, sessionId };
 }
 
 export type PackPageProps = AgentSurfaceProps & {
   files: PackFiles;
   onFile: (slot: PackSlot, file: File) => void;
+  prefs: PackPrefs;
+  onPrefs: (next: PackPrefs) => void;
 };
 
-export function PackPage({ files, onFile, actions }: PackPageProps) {
-  const [policyKb, setPolicyKb] = useState<PackUiState['policyKb']>('default');
-  const [planRange, setPlanRange] = useState('month');
-  const [usageDays, setUsageDays] = useState('90');
-  const [priceMonths, setPriceMonths] = useState('12');
-  const [transitDays, setTransitDays] = useState('30');
+export function PackPage({ files, onFile, actions, prefs, onPrefs }: PackPageProps) {
   const [starting, setStarting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { policyKb, planRange, usageDays, priceMonths, transitDays } = prefs;
 
   const planInput = useRef<HTMLInputElement>(null);
   const stockInput = useRef<HTMLInputElement>(null);
@@ -221,7 +241,18 @@ export function PackPage({ files, onFile, actions }: PackPageProps) {
   const onStart = (mode: 'thin' | 'full') => {
     if (starting) return;
     setStarting(true);
-    void startPackWorkflow(mode, files, startCtx(), actions).finally(() => setStarting(false));
+    void startPackWorkflow(mode, files, startCtx(), actions).then((r) => {
+      if (r.ok) setError(null);
+      else {
+        setError(r.message);
+        void sparkiiApi().appendError?.({
+          id: `procurement-start-${Date.now()}`,
+          message: r.message,
+          source: '财务采购审核',
+          createdAt: Date.now(),
+        });
+      }
+    }).finally(() => setStarting(false));
   };
 
   const qtyHit = files.stock && files.usage
@@ -290,7 +321,7 @@ export function PackPage({ files, onFile, actions }: PackPageProps) {
                         {pack.planReady ? <div className="hit file"><b>文件</b>已上传需求计划</div> : null}
                       </div>
                       <div className="acts">
-                        <select className="range" aria-label="计划范围" value={planRange} onChange={(e) => setPlanRange(e.target.value)}>
+                        <select className="range" aria-label="计划范围" value={planRange} onChange={(e) => onPrefs({ ...prefs, planRange: e.target.value })}>
                           <option value="month">本月</option>
                           <option value="last">上月</option>
                           <option value="id">指定单号</option>
@@ -330,7 +361,7 @@ export function PackPage({ files, onFile, actions }: PackPageProps) {
                         {qtyHit ? <div className="hit file"><b>文件</b>{qtyHit}</div> : null}
                       </div>
                       <div className="acts">
-                        <select className="range" aria-label="领用范围" value={usageDays} onChange={(e) => setUsageDays(e.target.value)}>
+                        <select className="range" aria-label="领用范围" value={usageDays} onChange={(e) => onPrefs({ ...prefs, usageDays: e.target.value as PackPrefs['usageDays'] })}>
                           <option value="30">领用 30 天</option>
                           <option value="90">领用 90 天</option>
                           <option value="180">领用 180 天</option>
@@ -358,7 +389,7 @@ export function PackPage({ files, onFile, actions }: PackPageProps) {
                         {pack.priceReady ? <div className="hit file"><b>文件</b>已上传历史成交</div> : null}
                       </div>
                       <div className="acts">
-                        <select className="range" aria-label="成交范围" value={priceMonths} onChange={(e) => setPriceMonths(e.target.value)}>
+                        <select className="range" aria-label="成交范围" value={priceMonths} onChange={(e) => onPrefs({ ...prefs, priceMonths: e.target.value as PackPrefs['priceMonths'] })}>
                           <option value="6">成交 6 个月</option>
                           <option value="12">成交 12 个月</option>
                           <option value="24">成交 24 个月</option>
@@ -382,7 +413,7 @@ export function PackPage({ files, onFile, actions }: PackPageProps) {
                         {pack.timeReady ? <div className="hit file"><b>文件</b>已上传在途采购</div> : null}
                       </div>
                       <div className="acts">
-                        <select className="range" aria-label="在途范围" value={transitDays} onChange={(e) => setTransitDays(e.target.value)}>
+                        <select className="range" aria-label="在途范围" value={transitDays} onChange={(e) => onPrefs({ ...prefs, transitDays: e.target.value as PackPrefs['transitDays'] })}>
                           <option value="15">在途 15 天</option>
                           <option value="30">在途 30 天</option>
                           <option value="60">在途 60 天</option>
@@ -415,7 +446,7 @@ export function PackPage({ files, onFile, actions }: PackPageProps) {
                         className="kb"
                         aria-label="本次用哪套制度"
                         value={pack.policyKb ?? ''}
-                        onChange={(e) => setPolicyKb(e.target.value === 'default' ? 'default' : null)}
+                        onChange={(e) => onPrefs({ ...prefs, policyKb: e.target.value === 'default' ? 'default' : null })}
                       >
                         <option value="default">采购制度（默认）</option>
                         <option value="">不使用</option>
@@ -431,6 +462,7 @@ export function PackPage({ files, onFile, actions }: PackPageProps) {
             <div>
               <b>{gate.title}</b>
               <p className={`miss ${gate.warn ? 'warn' : ''}`}>{gate.miss}</p>
+              {error ? <p className="miss warn" role="alert">{error}</p> : null}
             </div>
             <div className="gate-actions">
               <button className="btn" type="button" disabled={!thinOk || starting} onClick={() => onStart('thin')}>完整性审核</button>

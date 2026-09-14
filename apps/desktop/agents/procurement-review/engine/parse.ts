@@ -102,6 +102,14 @@ export function parseXlsxBuffer(buf: ArrayBuffer): Record<string, string>[] {
   return rowsFromWorkbook(XLSX.read(buf, { type: 'array' }));
 }
 
+export function extractPlanNo(rows: Record<string, string>[]): string | null {
+  for (const row of rows) {
+    const value = findValue(row, ['计划单号', '计划编号', 'planNo']);
+    if (value) return value.trim();
+  }
+  return null;
+}
+
 export function parsePlanTable(rows: Record<string, string>[], _source: SourceKind): PlanLine[] {
   return rows.map((row, index) => {
     const code = findValue(row, ['物资编码', '编码', 'code']) ?? null;

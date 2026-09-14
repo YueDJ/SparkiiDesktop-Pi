@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import * as XLSX from 'xlsx';
-import { parseCsv, parsePlanTable, parseFactTable, parseXlsxBuffer, rowsFromWorkbook } from '../agents/procurement-review/engine/parse.js';
+import { extractPlanNo, parseCsv, parsePlanTable, parseFactTable, parseXlsxBuffer, rowsFromWorkbook } from '../agents/procurement-review/engine/parse.js';
 
 function xlsxArrayBuffer(workbook: XLSX.WorkBook): ArrayBuffer {
   return XLSX.write(workbook, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
@@ -17,6 +17,12 @@ describe('parse tables', () => {
       { 物资编码: 'RM-001', 物资名称: '烟煤', 申请数量: '2800', 单位: '吨', 预估单价: '920' },
     ], 'upload');
     expect(lines[0]).toMatchObject({ code: 'RM-001', name: '烟煤', qty: 2800, unitPrice: 920 });
+  });
+
+  it('extracts planNo from 计划单号 / planNo', () => {
+    expect(extractPlanNo([{ 计划单号: 'PR-202609-01', 物资编码: 'RM-001' }])).toBe('PR-202609-01');
+    expect(extractPlanNo([{ planNo: 'P-9', 物资编码: 'RM-001' }])).toBe('P-9');
+    expect(extractPlanNo([{ 物资编码: 'RM-001' }])).toBe(null);
   });
 
   it('gives unique plan ids when two rows share a material code', () => {

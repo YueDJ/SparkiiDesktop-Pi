@@ -248,6 +248,7 @@ describe('pack startWorkflow', () => {
     fireEvent.click(screen.getByRole('button', { name: '完整性审核' }));
     await waitFor(() => expect(startWorkflow).toHaveBeenCalled());
     expect(review).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByRole('alert').textContent ?? '').toMatch(/未能开始/));
   });
 
   it('does not persist evaluation when startWorkflow fails', async () => {
@@ -268,6 +269,7 @@ describe('pack startWorkflow', () => {
     fireEvent.click(screen.getByRole('button', { name: '完整性审核' }));
     await waitFor(() => expect(startWorkflow).toHaveBeenCalled());
     expect(review).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByRole('alert').textContent ?? '').toMatch(/未能开始|start failed/));
   });
 
   it('resolves upload paths via window.sparkii.getPathForFile when File.path is missing', async () => {
@@ -317,6 +319,65 @@ describe('pack startWorkflow', () => {
     />);
     expect(screen.getByRole('button', { name: '完整性审核' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '开始分析' })).toBeDisabled();
+  });
+
+  it('passes only the plan path as documents even when facts are uploaded', async () => {
+    const startWorkflow = vi.fn().mockResolvedValue({ sessionId: 'wf-docs' });
+    const plan = csvFile('plan.csv', '物资编码,物资名称,申请数量,单位,预估单价\nRM-001,烟煤,2800,吨,920\n', 'C:/tmp/plan.csv');
+    const stock = csvFile('stock.csv', '物资编码,库存数量,快照日期\nRM-001,4200,2026-09-13\n', 'C:/tmp/stock.csv');
+    const usage = csvFile('usage.csv', '物资编码,领用数量,天数\nRM-001,2100,90\n', 'C:/tmp/usage.csv');
+    render(<ProcurementSurface sessionId={null} mode="live" title="" session={idleSession} actions={{ startWorkflow, review: vi.fn() } as any} agent={agent} />);
+    upload('上传计划', plan);
+    upload('上传库存', stock);
+    upload('上传领用', usage);
+    fireEvent.click(screen.getByRole('button', { name: '开始分析' }));
+    await waitFor(() => expect(startWorkflow).toHaveBeenCalled());
+    expect(startWorkflow.mock.calls[0][0].documents).toEqual(['C:/tmp/plan.csv']);
+  });
+
+  it('shows an alert when startWorkflow fails', async () => {
+    const startWorkflow = vi.fn().mockRejectedValue(new Error('start failed'));
+    const plan = csvFile('plan.csv', '物资编码,物资名称,申请数量,单位,预估单价\nRM-001,烟煤,2800,吨,920\n', 'C:/tmp/plan.csv');
+    render(<ProcurementSurface sessionId="prev" mode="live" title="" session={idleSession} actions={{ startWorkflow, review: vi.fn() } as any} agent={agent} />);
+    upload('上传计划', plan);
+    fireEvent.click(screen.getByRole('button', { name: '完整性审核' }));
+    await waitFor(() => expect(screen.getByRole('alert').textContent ?? '').toMatch(/未能开始|start failed/));
+  });
+
+  it('shows an alert when the plan path cannot be resolved', async () => {
+    const startWorkflow = vi.fn();
+    const plan = csvFile('plan.csv', '物资编码,物资名称,申请数量,单位,预估单价\nRM-001,烟煤,2800,吨,920\n');
+    render(<ProcurementSurface sessionId={null} mode="live" title="" session={idleSession} actions={{ startWorkflow, review: vi.fn() } as any} agent={agent} />);
+    upload('上传计划', plan);
+    fireEvent.click(screen.getByRole('button', { name: '完整性审核' }));
+    await waitFor(() => expect(screen.getByRole('alert').textContent ?? '').toMatch(/路径/));
+    expect(startWorkflow).not.toHaveBeenCalled();
+  });
+
+  it('publishes the session title via window.sparkii.setChatTitle after start', async () => {
+    const setChatTitle = vi.fn().mockResolvedValue({ ok: true });
+    (window as any).sparkii = { getPathForFile: (file: File) => `C:/tmp/${file.name}`, setChatTitle };
+    try {
+      const startWorkflow = vi.fn().mockResolvedValue({ sessionId: 'wf-title' });
+      const plan = csvFile('plan.csv', '计划单号,物资编码,物资名称,申请数量,单位,预估单价\nPR-202609-01,RM-001,烟煤,2800,吨,920\n');
+      render(<ProcurementSurface sessionId={null} mode="live" title="" session={idleSession} actions={{ startWorkflow, review: vi.fn() } as any} agent={agent} />);
+      upload('上传计划', plan);
+      fireEvent.click(screen.getByRole('button', { name: '完整性审核' }));
+      await waitFor(() => expect(setChatTitle).toHaveBeenCalledWith('wf-title', 'PR-202609-01', 'agent'));
+    } finally {
+      delete (window as any).sparkii;
+    }
+  });
+
+  it('keeps pack window prefs after returning to 准备', () => {
+    render(<ProcurementSurface sessionId="s1" mode="live" title="" session={session as any} actions={{ review: vi.fn() } as any} agent={agent} />);
+    fireEvent.click(screen.getByRole('button', { name: '返回准备' }));
+    fireEvent.change(screen.getByLabelText('领用范围'), { target: { value: '30' } });
+    fireEvent.change(screen.getByLabelText('本次用哪套制度'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: '返回分析' }));
+    fireEvent.click(screen.getByRole('button', { name: '返回准备' }));
+    expect((screen.getByLabelText('领用范围') as HTMLSelectElement).value).toBe('30');
+    expect((screen.getByLabelText('本次用哪套制度') as HTMLSelectElement).value).toBe('');
   });
 });
 

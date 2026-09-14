@@ -231,6 +231,8 @@ stockStaleDays: 7
 
 库存过期：用 `requestDate`（若缺则用 `pack.asOf`）对比 `stock.asOf`，超过 `stockStaleDays` 则量可跑，cite 含「库存可能不是当天」。成交最后一笔相对同一基准早于 `staleMonths`：**不出** `price.dev-high`。没有单独的 `low` 等级。
 
+量 cite.label 必须能读出库存日期（或冲突两侧）、领用笔数、覆盖带。示例：`库存 2026-09-13 · 领用 1 笔 · 覆盖>4个月`。`usage[].days` 仍不进公式。非冲突分支不写库存数量。
+
 ### 3.2 规则命中
 
 量：
@@ -245,8 +247,8 @@ stockStaleDays: 7
 - `median` = 窗口内该编码成交单价中位数（偶数笔：两中值平均）
 - `dev = (unitPrice - median) / median`
 - `|dev| > highPct` 且样本 ≥ minSamples 且未过期 → `price.dev-high` high
-- `midPct < |dev| ≤ highPct` → `price.dev-mid` mid
-- 样本 < minSamples 或过期：不编「价格正常」
+- 其余 `|dev| > midPct`（含超过 15% 但被样本/过期门挡住）→ `price.dev-mid` mid
+- 禁止编「价格正常」
 
 时：窗口内该编码在途合计 > 0 且本行 `qty > 0` → `time.duplicate` mid。无日期则 cite 写「日期未知」。
 
@@ -286,7 +288,7 @@ stockStaleDays: 7
       "reason": "…",
       "advice": "…",
       "cite": { "label": "库存 2026-09-13 · 领用 14 笔 · 覆盖>4个月", "refs": [] },
-      "hitId": "h-qty-RM-001"
+      "hitId": "h-qty-M-煤-over"
     }
   ]
 }
@@ -375,7 +377,9 @@ actions.review('risk_comment', { stepId: 'review', payload: { riskId: finding.id
 - 完整性审核：调用 `evaluatePack` 时 **facts 传空表**（即使已上传对照，本按钮也不用）。
 - 开始分析：用已上传的 facts；未开维关闭。
 
-标题：`procurementSessionTitle(planNo, fileName)`。
+标题：`procurementSessionTitle(planNo, fileName)`。`extractPlanNo` 别名：计划单号 / 计划编号 / planNo。拿到 `sessionId` 后 `setChatTitle(id, procurementSessionTitle(extractPlanNo(rows), fileName), 'agent')`。
+
+`documents` **只含计划路径**。Electron 路径仍先 `getPathForFile`。失败必须在门槛旁 `role="alert"` 出中文原因，并 `appendError`。制度与三个窗口是 session 级，返回准备不丢；换 session 才重置。
 
 `loadProfile` 还要求：`ui/pages/home.json`、`ui/theme.yaml`、`ui/theme/tokens.json`、`agent/knowledge/corpus.json`。缺任一文件会 `PROFILE_INVALID`。从合同审核克隆 UI 三件套（`home.json` 的 page 改为 `procurement-review/home`，widgets 可空）。`corpus.json` 必须有合成制度片段（至少一条战略燃料集采线 200 万，与夹具烟煤金额同语义），不得 `[]`。
 
