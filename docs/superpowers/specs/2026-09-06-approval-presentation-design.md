@@ -151,7 +151,7 @@ type ApprovalViewModel = {
 
 | 表面 | 本轮怎么用 ViewModel |
 | --- | --- |
-| 右侧抽屉 `ApprovalPanel` | 例行提案。标题「需要你确认」；队列「N 处改动等你看」。每张卡：title、preview、技术细节、拒绝/允许。保留「当前会话 / 其他会话」分组；卡片正文不写会话 UUID。 |
+| 右侧抽屉 `ApprovalPanel` | 例行提案。标题「需要你确认」。队列摘要已删除（2026-09-14）。每张卡：title、preview、技术细节、拒绝/允许。保留「当前会话 / 其他会话」分组；卡片正文不写会话 UUID。 |
 | 居中模态 `ApprovalModal` | 只渲染 `chrome.mode === 'modal'` 的提案。壳层若尚未挂上，本轮按 `mode` 挂上。 |
 | 审批中心 `ApprovalCenter` | 列表行用 `title`；高风险才显示风险徽标和倒计时。 |
 | 首页「待你处理」 | 同上，点进仍打开审批。 |
@@ -161,16 +161,18 @@ type ApprovalViewModel = {
 壳层文案：
 
 - 抽屉标题：需要你确认
-- 队列摘要：暂无待确认 / N 处改动等你看
+- 队列摘要：已删除。见 `docs/superpowers/specs/2026-09-14-right-drawer-redesign-design.md` §5。空态仍是「没有待确认的事项」
 - 技术细节开关：技术细节 ▸ / ▾
 - 空态：没有待确认的事项
 
 ## Layout
 
+顶行队列摘要已由 `docs/superpowers/specs/2026-09-14-right-drawer-redesign-design.md` §5 删除；下面卡片结构仍有效。
+
 例行卡片：
 
 ```text
-需要你确认                         2 处改动等你看
+需要你确认
 当前会话
 
 ┌─────────────────────────────────────┐

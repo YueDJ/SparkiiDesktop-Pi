@@ -189,6 +189,9 @@ aria-label="打开运行中心，当前运行 2/4，排队 1"
 
 ### 7.2 运行中心抽屉
 
+> 抽屉信息架构与文案已由 `docs/superpowers/specs/2026-09-14-right-drawer-redesign-design.md` §8 取代。§7.1 状态栏格式仍有效。
+
+
 由底部状态栏打开，右侧抽屉结构：
 
 ```text
