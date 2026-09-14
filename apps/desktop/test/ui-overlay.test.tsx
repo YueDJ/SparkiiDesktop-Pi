@@ -19,7 +19,10 @@ describe('ui overlays and menu', () => {
     const panel = screen.getByRole('dialog', { name: '运行中心' });
     expect(panel.className).toContain('ui-drawer');
     expect(panel.className).not.toContain('ui-drawer--sm');
-    expect(screen.getByLabelText('关闭').querySelector('svg')).toBeTruthy();
+    const close = screen.getByLabelText('关闭');
+    expect(close.className).toContain('ui-dismiss');
+    expect(close.className).not.toContain('ui-icon-btn');
+    expect(close.querySelector('svg')).toBeTruthy();
     rerender(<Drawer open title="账号" size="sm" onClose={() => {}}>内容</Drawer>);
     expect(screen.getByRole('dialog', { name: '账号' }).className).toContain('ui-drawer--sm');
   });
