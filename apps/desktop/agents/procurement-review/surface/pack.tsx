@@ -1,5 +1,9 @@
 import { useRef, useState, type ChangeEvent } from 'react';
-import type { AgentSurfaceProps } from '../../../src/surface/contract.js';
+import type { AgentSurfaceActions, AgentSurfaceProps } from '../../../src/surface/contract.js';
+import { DEFAULT_RULES } from '../engine/default-rules.js';
+import { prepareWorkflowInput } from '../engine/evaluate.js';
+import { parseCsv, parseFactTable, parsePlanTable, parseXlsxBuffer } from '../engine/parse.js';
+import type { FactTables, PackInput, PolicyKb } from '../engine/types.js';
 
 export interface PackUiState {
   planReady: boolean;
@@ -9,8 +13,33 @@ export interface PackUiState {
   policyKb: 'default' | null;
 }
 
-type FactDim = 'qty' | 'price' | 'time';
-type UploadDim = 'plan' | FactDim;
+export type PackSlot = 'plan' | 'stock' | 'usage' | 'deals' | 'transit';
+
+export interface PackFiles {
+  plan: File | null;
+  stock: File | null;
+  usage: File | null;
+  deals: File | null;
+  transit: File | null;
+}
+
+export const EMPTY_PACK_FILES: PackFiles = {
+  plan: null,
+  stock: null,
+  usage: null,
+  deals: null,
+  transit: null,
+};
+
+export function packUiFromFiles(files: PackFiles, policyKb: PackUiState['policyKb']): PackUiState {
+  return {
+    planReady: Boolean(files.plan),
+    qtyReady: Boolean(files.stock && files.usage),
+    priceReady: Boolean(files.deals),
+    timeReady: Boolean(files.transit),
+    policyKb,
+  };
+}
 
 export function canStartThin(pack: PackUiState): boolean {
   return pack.planReady;
@@ -39,13 +68,6 @@ const BOOK_ICON = (
     </svg>
   </span>
 );
-
-function readyKey(dim: UploadDim): keyof PackUiState {
-  if (dim === 'plan') return 'planReady';
-  if (dim === 'qty') return 'qtyReady';
-  if (dim === 'price') return 'priceReady';
-  return 'timeReady';
-}
 
 function gateCopy(pack: PackUiState): { title: string; miss: string; warn: boolean } {
   const policyNote = pack.policyKb ? '含程序合规' : '制度未选用';
@@ -80,43 +102,117 @@ function gateCopy(pack: PackUiState): { title: string; miss: string; warn: boole
   };
 }
 
-export function PackPage(_props: AgentSurfaceProps) {
-  const [pack, setPack] = useState<PackUiState>({
-    planReady: false,
-    qtyReady: false,
-    priceReady: false,
-    timeReady: false,
-    policyKb: 'default',
-  });
+function electronPath(file: File): string | undefined {
+  const path = (file as File & { path?: string }).path;
+  return typeof path === 'string' && path.length > 0 ? path : undefined;
+}
+
+function asOfToday(): string {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
+async function readRows(file: File): Promise<Record<string, string>[]> {
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.xlsx')) return parseXlsxBuffer(await file.arrayBuffer());
+  return parseCsv(await file.text());
+}
+
+function collectDocuments(files: PackFiles): string[] {
+  return [files.plan, files.stock, files.usage, files.deals, files.transit]
+    .flatMap((file) => {
+      if (!file) return [];
+      const path = electronPath(file);
+      return path ? [path] : [];
+    });
+}
+
+export async function startPackWorkflow(
+  mode: 'thin' | 'full',
+  files: PackFiles,
+  ctx: { policyKb: PolicyKb; ranges: PackInput['ranges'] },
+  actions: AgentSurfaceActions,
+): Promise<void> {
+  if (!files.plan) return;
+  const documents = collectDocuments(files);
+  if (documents.length === 0 || !electronPath(files.plan)) return;
+
+  const plan = parsePlanTable(await readRows(files.plan), 'upload');
+  const facts: FactTables = { stock: [], usage: [], deals: [], transit: [] };
+  if (mode === 'full') {
+    if (files.stock) facts.stock = parseFactTable('stock', await readRows(files.stock), 'upload');
+    if (files.usage) facts.usage = parseFactTable('usage', await readRows(files.usage), 'upload');
+    if (files.deals) facts.deals = parseFactTable('deals', await readRows(files.deals), 'upload');
+    if (files.transit) facts.transit = parseFactTable('transit', await readRows(files.transit), 'upload');
+  }
+
+  const prepared = prepareWorkflowInput({
+    plan,
+    facts,
+    rules: DEFAULT_RULES,
+    policyKb: ctx.policyKb,
+    ranges: ctx.ranges,
+    asOf: asOfToday(),
+  }, documents);
+  const { sessionId } = await Promise.resolve(actions.startWorkflow(prepared)) ?? {};
+  void sessionId;
+  actions.review('evaluation', { stepId: 'review', payload: prepared.evaluation });
+}
+
+export type PackPageProps = AgentSurfaceProps & {
+  files: PackFiles;
+  onFile: (slot: PackSlot, file: File) => void;
+};
+
+export function PackPage({ files, onFile, actions }: PackPageProps) {
+  const [policyKb, setPolicyKb] = useState<PackUiState['policyKb']>('default');
   const [planRange, setPlanRange] = useState('month');
   const [usageDays, setUsageDays] = useState('90');
   const [priceMonths, setPriceMonths] = useState('12');
   const [transitDays, setTransitDays] = useState('30');
+  const [starting, setStarting] = useState(false);
 
   const planInput = useRef<HTMLInputElement>(null);
-  const qtyInput = useRef<HTMLInputElement>(null);
-  const priceInput = useRef<HTMLInputElement>(null);
-  const timeInput = useRef<HTMLInputElement>(null);
+  const stockInput = useRef<HTMLInputElement>(null);
+  const usageInput = useRef<HTMLInputElement>(null);
+  const dealsInput = useRef<HTMLInputElement>(null);
+  const transitInput = useRef<HTMLInputElement>(null);
 
-  const markReady = (dim: UploadDim) => {
-    const key = readyKey(dim);
-    setPack((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
-  };
-
-  const onUploadClick = (dim: UploadDim) => {
-    markReady(dim);
-    const node = dim === 'plan' ? planInput : dim === 'qty' ? qtyInput : dim === 'price' ? priceInput : timeInput;
-    node.current?.click();
-  };
-
-  const onFileChange = (dim: UploadDim) => (event: ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files?.length) markReady(dim);
-  };
-
+  const pack = packUiFromFiles(files, policyKb);
   const thinOk = canStartThin(pack);
   const fullOk = canStartFull(pack);
   const factsReady = pack.qtyReady && pack.priceReady && pack.timeReady;
   const gate = gateCopy(pack);
+
+  const onFileChange = (slot: PackSlot) => (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) onFile(slot, file);
+  };
+
+  const startCtx = (): { policyKb: PolicyKb; ranges: PackInput['ranges'] } => ({
+    policyKb,
+    ranges: {
+      usageDays: usageDays === '30' || usageDays === '180' ? Number(usageDays) as 30 | 180 : 90,
+      priceMonths: priceMonths === '6' || priceMonths === '24' ? Number(priceMonths) as 6 | 24 : 12,
+      transitDays: transitDays === '15' || transitDays === '60' ? Number(transitDays) as 15 | 60 : 30,
+    },
+  });
+
+  const onStart = (mode: 'thin' | 'full') => {
+    if (starting) return;
+    setStarting(true);
+    void startPackWorkflow(mode, files, startCtx(), actions).finally(() => setStarting(false));
+  };
+
+  const qtyHit = files.stock && files.usage
+    ? '已上传库存与领用'
+    : files.stock
+      ? '已上传库存'
+      : files.usage
+        ? '已上传领用'
+        : null;
 
   return (
     <div className="procurement">
@@ -182,7 +278,7 @@ export function PackPage(_props: AgentSurfaceProps) {
                           <option value="id">指定单号</option>
                         </select>
                         <button className="act pull" type="button" disabled>从 OA 获取</button>
-                        <button className="act" type="button" onClick={() => onUploadClick('plan')}>
+                        <button className="act" type="button" onClick={() => planInput.current?.click()}>
                           {pack.planReady ? '更换文件' : '上传'}
                         </button>
                         <input
@@ -213,7 +309,7 @@ export function PackPage(_props: AgentSurfaceProps) {
                       <h3>数量</h3>
                       <p className="need">对照库存与领用。</p>
                       <div className="hits">
-                        {pack.qtyReady ? <div className="hit file"><b>文件</b>已上传库存与领用</div> : null}
+                        {qtyHit ? <div className="hit file"><b>文件</b>{qtyHit}</div> : null}
                       </div>
                       <div className="acts">
                         <select className="range" aria-label="领用范围" value={usageDays} onChange={(e) => setUsageDays(e.target.value)}>
@@ -222,10 +318,14 @@ export function PackPage(_props: AgentSurfaceProps) {
                           <option value="180">领用 180 天</option>
                         </select>
                         <button className="act pull" type="button" disabled>从库存获取</button>
-                        <button className="act" type="button" onClick={() => onUploadClick('qty')}>
-                          {pack.qtyReady ? '更换文件' : '上传'}
+                        <button className="act" type="button" onClick={() => stockInput.current?.click()}>
+                          {files.stock ? '更换库存' : '上传库存'}
                         </button>
-                        <input ref={qtyInput} type="file" accept={FILE_ACCEPT} hidden aria-label="上传数量" onChange={onFileChange('qty')} />
+                        <button className="act" type="button" onClick={() => usageInput.current?.click()}>
+                          {files.usage ? '更换领用' : '上传领用'}
+                        </button>
+                        <input ref={stockInput} type="file" accept={FILE_ACCEPT} hidden aria-label="上传库存" onChange={onFileChange('stock')} />
+                        <input ref={usageInput} type="file" accept={FILE_ACCEPT} hidden aria-label="上传领用" onChange={onFileChange('usage')} />
                       </div>
                     </div>
 
@@ -246,10 +346,10 @@ export function PackPage(_props: AgentSurfaceProps) {
                           <option value="24">成交 24 个月</option>
                         </select>
                         <button className="act pull" type="button" disabled>从 U8 获取</button>
-                        <button className="act" type="button" onClick={() => onUploadClick('price')}>
+                        <button className="act" type="button" onClick={() => dealsInput.current?.click()}>
                           {pack.priceReady ? '更换文件' : '上传'}
                         </button>
-                        <input ref={priceInput} type="file" accept={FILE_ACCEPT} hidden aria-label="上传单价" onChange={onFileChange('price')} />
+                        <input ref={dealsInput} type="file" accept={FILE_ACCEPT} hidden aria-label="上传成交" onChange={onFileChange('deals')} />
                       </div>
                     </div>
 
@@ -270,10 +370,10 @@ export function PackPage(_props: AgentSurfaceProps) {
                           <option value="60">在途 60 天</option>
                         </select>
                         <button className="act pull" type="button" disabled aria-label="获取在途">从 OA 获取</button>
-                        <button className="act" type="button" onClick={() => onUploadClick('time')}>
+                        <button className="act" type="button" onClick={() => transitInput.current?.click()}>
                           {pack.timeReady ? '更换文件' : '上传'}
                         </button>
-                        <input ref={timeInput} type="file" accept={FILE_ACCEPT} hidden aria-label="上传时点" onChange={onFileChange('time')} />
+                        <input ref={transitInput} type="file" accept={FILE_ACCEPT} hidden aria-label="上传在途" onChange={onFileChange('transit')} />
                       </div>
                     </div>
                   </div>
@@ -297,7 +397,7 @@ export function PackPage(_props: AgentSurfaceProps) {
                         className="kb"
                         aria-label="本次用哪套制度"
                         value={pack.policyKb ?? ''}
-                        onChange={(e) => setPack((prev) => ({ ...prev, policyKb: e.target.value === 'default' ? 'default' : null }))}
+                        onChange={(e) => setPolicyKb(e.target.value === 'default' ? 'default' : null)}
                       >
                         <option value="default">采购制度（默认）</option>
                         <option value="">不使用</option>
@@ -315,8 +415,8 @@ export function PackPage(_props: AgentSurfaceProps) {
               <p className={`miss ${gate.warn ? 'warn' : ''}`}>{gate.miss}</p>
             </div>
             <div className="gate-actions">
-              <button className="btn" type="button" disabled={!thinOk}>完整性审核</button>
-              <button className="btn primary" type="button" disabled={!fullOk}>开始分析</button>
+              <button className="btn" type="button" disabled={!thinOk || starting} onClick={() => onStart('thin')}>完整性审核</button>
+              <button className="btn primary" type="button" disabled={!fullOk || starting} onClick={() => onStart('full')}>开始分析</button>
             </div>
           </div>
         </div>

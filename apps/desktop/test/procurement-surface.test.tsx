@@ -140,3 +140,78 @@ describe('analyze and review workbench', () => {
     })));
   });
 });
+
+describe('pack startWorkflow', () => {
+  const agent = { id: 'procurement-review', name: 'procurement-review', surfaceType: 'workflow' as const };
+  const idleSession = { entries: [], streaming: false, status: 'idle' as const, meta: { currentStep: null } };
+
+  function csvFile(name: string, text: string, path?: string) {
+    const file = new File([text], name, { type: 'text/csv' });
+    if (path) Object.defineProperty(file, 'path', { value: path });
+    return file;
+  }
+
+  function upload(label: string, file: File) {
+    fireEvent.change(document.querySelector(`input[aria-label="${label}"]`) as HTMLInputElement, {
+      target: { files: [file] },
+    });
+  }
+
+  it('starts workflow with evaluation and persists the snapshot', async () => {
+    const startWorkflow = vi.fn().mockResolvedValue({ sessionId: 'wf-1' });
+    const review = vi.fn();
+    const plan = csvFile(
+      'plan.csv',
+      '物资编码,物资名称,申请数量,单位,预估单价\nRM-001,烟煤,2800,吨,920\n',
+      'C:/tmp/plan.csv',
+    );
+    render(<ProcurementSurface
+      sessionId={null} mode="live" title=""
+      session={idleSession}
+      actions={{ startWorkflow, review } as any}
+      agent={agent}
+    />);
+    upload('上传计划', plan);
+    fireEvent.click(screen.getByRole('button', { name: '完整性审核' }));
+    await waitFor(() => expect(startWorkflow).toHaveBeenCalled());
+    const payload = startWorkflow.mock.calls[0][0];
+    expect(typeof payload.documents[0]).toBe('string');
+    expect(payload.documents[0]).toBe('C:/tmp/plan.csv');
+    expect(payload.evaluation.closed).toMatchObject({ qty: true, price: true, time: true });
+    expect(payload.query).toMatch(/烟煤/);
+    expect(payload.evaluation.hits.some((h: { ruleId: string }) => h.ruleId === 'completeness.dims-closed')).toBe(true);
+    await waitFor(() => expect(review).toHaveBeenCalledWith('evaluation', expect.objectContaining({
+      stepId: 'review',
+      payload: expect.objectContaining({ hits: expect.any(Array) }),
+    })));
+  });
+
+  it('starts 开始分析 with open qty after stock and usage files', async () => {
+    const startWorkflow = vi.fn().mockResolvedValue({ sessionId: 'wf-2' });
+    const plan = csvFile(
+      'plan.csv',
+      '物资编码,物资名称,申请数量,单位,预估单价\nRM-001,烟煤,2800,吨,920\n',
+      'C:/tmp/plan.csv',
+    );
+    const stock = csvFile('stock.csv', '物资编码,库存数量,快照日期\nRM-001,4200,2026-09-13\n');
+    const usage = csvFile('usage.csv', '物资编码,领用数量,天数\nRM-001,2100,90\n');
+    render(<ProcurementSurface
+      sessionId={null} mode="live" title=""
+      session={idleSession}
+      actions={{ startWorkflow, review: vi.fn() } as any}
+      agent={agent}
+    />);
+    upload('上传计划', plan);
+    expect(screen.getByRole('button', { name: '开始分析' })).toBeDisabled();
+    upload('上传库存', stock);
+    expect(screen.getByRole('button', { name: '开始分析' })).toBeDisabled();
+    upload('上传领用', usage);
+    expect(screen.getByRole('button', { name: '开始分析' })).not.toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: '开始分析' }));
+    await waitFor(() => expect(startWorkflow).toHaveBeenCalled());
+    const payload = startWorkflow.mock.calls[0][0];
+    expect(typeof payload.documents[0]).toBe('string');
+    expect(payload.evaluation.closed.qty).toBe(false);
+    expect(payload.evaluation.lines[0].stockQty).toBe(4200);
+  });
+});
