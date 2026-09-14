@@ -33,7 +33,10 @@ describe('procurement-review isolation', () => {
     for (const root of roots) {
       for (const file of walk(dirOf(root))) {
         const text = readFileSync(file, 'utf8');
-        if (/if\s*\(\s*(agent\.id|profileId|agentId)\s*===\s*['"]procurement-review['"]/.test(text)) {
+        // 命中即失败：禁止对 procurement-review 做 === / == / 左右对调 / case 分支。
+        // agent-surface-bindings.ts 的 Record 映射不含这些运算符，不应被扫中。
+        const BRANCH = /(?:agent\.id|profileId|agentId)\s*===?\s*['"]procurement-review['"]|['"]procurement-review['"]\s*===?\s*(?:agent\.id|profileId|agentId)|case\s+['"]procurement-review['"]/;
+        if (BRANCH.test(text)) {
           hits.push(relative(repoRoot, file));
         }
       }

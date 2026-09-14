@@ -1,6 +1,11 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from 'vitest';
 import * as XLSX from 'xlsx';
 import { extractPlanNo, parseCsv, parsePlanTable, parseFactTable, parseXlsxBuffer, rowsFromWorkbook } from '../agents/procurement-review/engine/parse.js';
+
+const here = dirname(fileURLToPath(import.meta.url));
 
 function xlsxArrayBuffer(workbook: XLSX.WorkBook): ArrayBuffer {
   return XLSX.write(workbook, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
@@ -23,6 +28,13 @@ describe('parse tables', () => {
     expect(extractPlanNo([{ 计划单号: 'PR-202609-01', 物资编码: 'RM-001' }])).toBe('PR-202609-01');
     expect(extractPlanNo([{ planNo: 'P-9', 物资编码: 'RM-001' }])).toBe('P-9');
     expect(extractPlanNo([{ 物资编码: 'RM-001' }])).toBe(null);
+  });
+
+  it('parses fixtures/plan.csv', () => {
+    const text = readFileSync(join(here, '../agents/procurement-review/fixtures/plan.csv'), 'utf8');
+    const lines = parsePlanTable(parseCsv(text), 'upload');
+    expect(lines.map((l) => l.code)).toEqual(['RM-001', 'RM-014', 'SP-203', 'RM-008']);
+    expect(lines[0].id).toBe('plan-1');
   });
 
   it('gives unique plan ids when two rows share a material code', () => {

@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { evaluatePack, prepareWorkflowInput } from '../agents/procurement-review/engine/evaluate.js';
 import { DEFAULT_RULES } from '../agents/procurement-review/engine/default-rules.js';
 import { subtractMonths } from '../agents/procurement-review/engine/join.js';
+import demoPack from '../agents/procurement-review/fixtures/demo-pack.json';
+import type { PackInput } from '../agents/procurement-review/engine/types.js';
 
 const coal = { id: 'M-煤', code: 'RM-001', name: '烟煤', qty: 2800, unit: '吨', unitPrice: 920 };
 const brick = { id: 'M-砖', code: 'SP-203', name: '镁铬砖', qty: 40, unit: '吨', unitPrice: 2680 };
@@ -260,6 +262,14 @@ describe('evaluatePack', () => {
     const hit = snap.hits.find((h) => h.ruleId === 'time.duplicate');
     expect(hit?.cite.label).toMatch(/10/);
     expect(hit?.cite.label).toMatch(/36/);
+  });
+
+  it('evaluates the demo pack to coal over-cover, brick mid-price, and brick transit', () => {
+    // 断言是故意的：JSON import 会把 source / usageDays / policyKb 放宽成 string / number；不要改夹具去迁就类型。
+    const snap = evaluatePack({ ...demoPack, rules: DEFAULT_RULES } as PackInput);
+    expect(snap.hits.some((h) => h.ruleId === 'qty.over-cover' && h.rowId === 'M-煤')).toBe(true);
+    expect(snap.hits.some((h) => h.ruleId === 'price.dev-mid' && h.rowId === 'M-砖')).toBe(true);
+    expect(snap.hits.some((h) => h.ruleId === 'time.duplicate' && h.rowId === 'M-砖')).toBe(true);
   });
 
   it('prepareWorkflowInput blanks query when policyKb is null', () => {
