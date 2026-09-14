@@ -9,4 +9,7 @@ describe('agent surface bindings', () => {
   it('binds knowledge-qa to a component', () => {
     expect(typeof surfaceByAgent['knowledge-qa']).toBe('function');
   });
+  it('binds procurement-review to a component', () => {
+    expect(typeof surfaceByAgent['procurement-review']).toBe('function');
+  });
 });

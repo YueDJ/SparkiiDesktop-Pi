@@ -1,9 +1,10 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 afterEach(cleanup);
 import ProcurementSurface from '../agents/procurement-review/surface/index.js';
 import { canStartFull, canStartThin } from '../agents/procurement-review/surface/pack.js';
+import { procurementSessionTitle } from '../agents/procurement-review/surface/title.js';
 
 expect.extend({
   toBeDisabled(received: unknown) {
@@ -16,6 +17,14 @@ expect.extend({
 });
 
 const empty = { planReady: false, qtyReady: false, priceReady: false, timeReady: false, policyKb: 'default' as const };
+
+describe('procurementSessionTitle', () => {
+  it('prefers plan number, then file stem, then the agent name', () => {
+    expect(procurementSessionTitle('CG20260914021', '9月需求计划.xlsx')).toBe('CG20260914021');
+    expect(procurementSessionTitle(null, '9月需求计划.xlsx')).toBe('9月需求计划');
+    expect(procurementSessionTitle(null, null)).toBe('财务采购审核');
+  });
+});
 
 describe('pack gates', () => {
   it('allows thin when plan is ready; full when plan plus any fact dim', () => {
@@ -107,5 +116,27 @@ describe('analyze and review workbench', () => {
     fireEvent.click(screen.getByRole('button', { name: '返回分析' }));
     expect(screen.queryByRole('button', { name: '采纳' })).toBeNull();
     expect(screen.getByRole('button', { name: '进入复核' })).toBeTruthy();
+  });
+
+  it('exports a docx when review is open and high risk is cleared', async () => {
+    const requestExport = vi.fn();
+    const reviewed = {
+      ...session,
+      entries: [
+        ...session.entries,
+        { id: 'e2', kind: 'custom', customType: 'workflow_state', data: { action: 'risk_confirmed', payload: { riskId: 'r1' } } },
+      ],
+      meta: { currentStep: 'report', workspacePath: 'C:/ws/procurement' },
+    };
+    render(<ProcurementSurface sessionId="s1" mode="live" title="" session={reviewed as any} actions={{ review: vi.fn(), requestExport } as any} agent={agent} />);
+    fireEvent.click(screen.getByRole('button', { name: '进入复核' }));
+    expect(screen.getByRole('button', { name: '导出' })).not.toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: '导出' }));
+    await waitFor(() => expect(requestExport).toHaveBeenCalledWith(expect.objectContaining({
+      title: '财务采购审核',
+      format: 'docx',
+      content: expect.stringMatching(/^UEs/),
+      path: expect.stringMatching(/财务采购审核\.docx$/),
+    })));
   });
 });

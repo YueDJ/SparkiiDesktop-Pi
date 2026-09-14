@@ -3,6 +3,8 @@ import type { AgentSurfaceProps, CustomSessionEntry, SessionEntry } from '../../
 import { extractWorkflowResult } from '../../../src/surface/normalize.js';
 import type { EvaluationSnapshot, JoinedLine } from '../engine/types.js';
 import { sanitizeFindings, type Finding } from './findings.js';
+import { bytesToBase64, documentFromHtml, reportExportPath } from './report-docx.js';
+import { procurementSessionTitle } from './title.js';
 
 export type UiPage = 'pack' | 'run' | 'review';
 export type ReviewState = 'none' | 'confirmed' | 'ignored' | 'escalated';
@@ -71,6 +73,29 @@ function dimLabel(dim: Finding['dim']): string {
   if (dim === 'time') return '时';
   if (dim === 'completeness') return '整';
   return '规';
+}
+
+function reviewLabel(state: ReviewState): string {
+  if (state === 'confirmed') return '已采纳';
+  if (state === 'ignored') return '已忽略';
+  if (state === 'escalated') return '已升级';
+  return '未处理';
+}
+
+function esc(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function reportHtml(title: string, findings: Finding[], states: Record<string, ReviewState>): string {
+  const rows = findings.map((f) => {
+    const state = states[f.id] ?? 'none';
+    return `<tr><td>${esc(f.title)}</td><td>${f.level === 'high' ? '高' : '中'}</td><td>${reviewLabel(state)}</td></tr>`;
+  }).join('');
+  return `<h1>${esc(title)}</h1><table><thead><tr><th>发现</th><th>等级</th><th>复核</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function FindingCard({
@@ -183,6 +208,7 @@ function PlanTable({ lines, snap }: { lines: JoinedLine[]; snap: EvaluationSnaps
 export function Workbench({
   session,
   actions,
+  title: sessionTitle,
   page,
   onBackToPack,
   onBackToAnalyze,
@@ -214,6 +240,22 @@ export function Workbench({
 
   const applyReview = (id: string, action: Exclude<ReviewState, 'none'>) => {
     actions.review(`risk_${action}`, { stepId: 'review', payload: { riskId: id } });
+  };
+
+  const title = sessionTitle?.trim() || procurementSessionTitle(null, session.meta.inputs?.[0]?.name ?? null);
+
+  const exportReport = () => {
+    if (!review || blocking) return;
+    void (async () => {
+      const html = reportHtml(title, findings, states);
+      const bytes = await documentFromHtml(title, html);
+      actions.requestExport({
+        title,
+        format: 'docx',
+        content: bytesToBase64(bytes),
+        path: reportExportPath(session.meta.workspacePath, title),
+      });
+    })();
   };
 
   const stepNo = review ? 3 : 2;
@@ -305,7 +347,7 @@ export function Workbench({
               <div className="gate-actions">
                 <button className="btn" type="button" onClick={onBackToAnalyze}>返回分析</button>
                 <button className="btn" type="button" disabled={blocking}>写入意见</button>
-                <button className="btn primary" type="button" disabled={blocking}>导出</button>
+                <button className="btn primary" type="button" disabled={blocking} onClick={exportReport}>导出</button>
               </div>
             </div>
           ) : (
