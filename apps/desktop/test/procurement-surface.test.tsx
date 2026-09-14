@@ -4,6 +4,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 afterEach(cleanup);
 import ProcurementSurface from '../agents/procurement-review/surface/index.js';
 import { canStartFull, canStartThin } from '../agents/procurement-review/surface/pack.js';
+import { analysisProgress } from '../agents/procurement-review/surface/progress.js';
+import { documentFromHtml, reportHtml } from '../agents/procurement-review/surface/report-docx.js';
 import { procurementSessionTitle } from '../agents/procurement-review/surface/title.js';
 
 expect.extend({
@@ -378,6 +380,64 @@ describe('pack startWorkflow', () => {
     fireEvent.click(screen.getByRole('button', { name: '返回准备' }));
     expect((screen.getByLabelText('领用范围') as HTMLSelectElement).value).toBe('30');
     expect((screen.getByLabelText('本次用哪套制度') as HTMLSelectElement).value).toBe('');
+  });
+});
+
+describe('analysis progress and export title', () => {
+  const agent = { id: 'procurement-review', name: 'procurement-review', surfaceType: 'workflow' as const };
+
+  it('marks 制度 on and 撰写发现 waiting while search is streaming', () => {
+    const steps = analysisProgress({
+      streaming: true, status: 'running', currentStep: 'search',
+      thin: false, policyClosed: false, reviewReady: false,
+    });
+    expect(steps.find((s) => s.id === 'policy')).toMatchObject({ state: 'on' });
+    expect(steps.find((s) => s.id === 'write')).toMatchObject({ state: 'wait' });
+    expect(steps.find((s) => s.id === 'rules')).toMatchObject({ state: 'done' });
+  });
+
+  it('skips 套规则 on a thin pack and skips 制度 when policy is closed', () => {
+    const steps = analysisProgress({
+      streaming: false, status: 'done', currentStep: 'report',
+      thin: true, policyClosed: true, reviewReady: true,
+    });
+    expect(steps.find((s) => s.id === 'rules')).toMatchObject({ state: 'skip' });
+    expect(steps.find((s) => s.id === 'policy')).toMatchObject({ state: 'skip' });
+  });
+
+  it('shows live analysis progress on ProcurementSurface while search is streaming', () => {
+    const liveSession = {
+      entries: [
+        { kind: 'custom', id: 'e1', customType: 'workflow_state', data: { action: 'evaluation', payload: {
+          lines: [], hits: [], closed: { qty: false, price: false, time: false, compliance: false }, conflicts: [],
+        } } },
+        { kind: 'custom', id: 'e2', customType: 'workflow_step_start', data: { stepId: 'search' } },
+      ],
+      streaming: true,
+      status: 'running' as const,
+      meta: { currentStep: 'search' },
+    };
+    render(<ProcurementSurface sessionId="s-live" mode="live" title="" session={liveSession as any} actions={{ review: vi.fn() } as any} agent={agent} />);
+    const bar = screen.getByLabelText('分析进度');
+    const policy = Array.from(bar.querySelectorAll('.prog')).find((n) => (n.textContent ?? '').includes('制度'));
+    const write = Array.from(bar.querySelectorAll('.prog')).find((n) => (n.textContent ?? '').includes('撰写发现'));
+    expect(policy?.className).toMatch(/\bon\b/);
+    expect(write?.className).not.toMatch(/\bdone\b/);
+    expect((screen.getByRole('button', { name: '进入复核' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText('分析进行中')).toBeTruthy();
+  });
+
+  it('does not write the title twice into the docx', async () => {
+    const html = reportHtml([], {});
+    expect(html.includes('<h1>')).toBe(false);
+    const xml = new TextDecoder().decode(await documentFromHtml('财务采购审核', html));
+    expect(xml.split('财务采购审核').length - 1).toBe(1);
+  });
+
+  it('falls back to 财务采购审核, not 合同审核报告, when the title is empty', async () => {
+    const xml = new TextDecoder().decode(await documentFromHtml('', reportHtml([], {})));
+    expect(xml).not.toContain('合同审核报告');
+    expect(xml).toContain('财务采购审核');
   });
 });
 

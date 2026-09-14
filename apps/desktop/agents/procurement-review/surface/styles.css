@@ -298,7 +298,8 @@
   gap: 12px;
 }
 .procurement .cond { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
-.procurement .conds > .cond { min-height: 100%; }
+.procurement .conds > .cond:not(.rule-bar) { min-height: 100%; }
+.procurement .conds > .cond.rule-bar { min-height: 0; align-self: start; }
 .procurement .cond.ready { border-color: #86EFAC; }
 .procurement .cond-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .procurement .mark {
@@ -425,6 +426,7 @@
   background: currentColor;
 }
 .procurement .prog.done { color: var(--ok); font-weight: 650; }
+.procurement .prog.on { color: var(--primary); font-weight: 650; }
 .procurement .prog.skip { color: var(--off); }
 
 .procurement .banner {

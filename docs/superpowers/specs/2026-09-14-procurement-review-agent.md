@@ -58,7 +58,7 @@ actions.startWorkflow({ documents, evaluation, query })
     隐藏 search: knowledge.search（必跑；bm25；policyKb===null 则 query=""）
     skill review: procurement_write_findings（inputs.from = load, search, evaluation）
     skill report: procurement_report（inputs.from = review；此时还没有人的采纳，只出草稿）
-分析页：有 workflow_step_end 且 stepId=review 即可「进入复核」（不必等 report）
+分析页：streaming 或 status===running 时即可进入（不必等 review）；有 workflow_step_end 且 stepId=review 才可「进入复核」（不必等 report）
 复核页：actions.review(...) 记采纳
 导出：actions.requestExport(...) → report.export 审批门（与合同审核相同）
 ```
@@ -347,6 +347,7 @@ apps/desktop/agents/procurement-review/
   surface/index.tsx
   surface/pack.tsx
   surface/workbench.tsx
+  surface/progress.ts
   surface/findings.ts
   surface/title.ts
   surface/styles.css
@@ -381,6 +382,8 @@ actions.review('risk_comment', { stepId: 'review', payload: { riskId: finding.id
 
 `documents` **只含计划路径**。Electron 路径仍先 `getPathForFile`。失败必须在门槛旁 `role="alert"` 出中文原因，并 `appendError`。制度与三个窗口是 session 级，返回准备不丢；换 session 才重置。
 
+分析进度：对齐 / 完整性 / 套规则来自已算完的 evaluation；制度 / 撰写发现跟 `currentStep` / `streaming`。`streaming || status==='running'` 时即使还没有 `review` step_end，也进入分析页，否则 live `on` 状态不可达。进入分析页 ≠ 分析完成：没有 `review` step_end 之前，门槛文案是「分析进行中」，**所有复核入口（分析页门槛按钮、准备页 pack-resume 卡片、步骤条第 3 步）一律禁用**，不得写入意见或导出。
+
 `loadProfile` 还要求：`ui/pages/home.json`、`ui/theme.yaml`、`ui/theme/tokens.json`、`agent/knowledge/corpus.json`。缺任一文件会 `PROFILE_INVALID`。从合同审核克隆 UI 三件套（`home.json` 的 page 改为 `procurement-review/home`，widgets 可空）。`corpus.json` 必须有合成制度片段（至少一条战略燃料集采线 200 万，与夹具烟煤金额同语义），不得 `[]`。
 
 ---
@@ -390,7 +393,7 @@ actions.review('risk_comment', { stepId: 'review', payload: { riskId: finding.id
 1. `test/surface-bindings.test.ts` 增加 `procurement-review`。
 2. `test/procurement-isolation.test.ts`：生产代码无 `agentId === 'procurement-review'` 特判。
 3. Engine：烟煤超覆盖、烟煤价偏、镁铬砖在途、镁铬砖价偏、无编码关维、**有库存无领用关量**、薄路径 dims-closed、冲突用 upload 计算且 conflicts 保留两侧、库存过期 cite、成交过期不升 high、未选用制度无合规 hit。
-4. Surface：无计划两按钮不可点；只有计划只能完整性审核；有任一对照维可开始分析；分析页无采纳；`workflow_step_end` + `review` 才进分析；复核高风险未处理不能导出；合规卡是 `.conds` 的子列。
+4. Surface：无计划两按钮不可点；只有计划只能完整性审核；有任一对照维可开始分析；分析页无采纳；`streaming` 或 `status==='running'` 时可进分析页；进入复核须 `workflow_step_end` + `review`；复核高风险未处理不能导出；合规卡是 `.conds` 的子列。
 5. 必须有一条测试：`startWorkflow` 载荷含 `documents` `evaluation` `query`，随后 `actions.review('evaluation', …)`。
 6. `vitest` 与 `pnpm --filter @sparkii/desktop typecheck` 必须过。
 

@@ -1,3 +1,4 @@
+import type { Finding } from './findings.js';
 import type { HtmlNode } from './html.js';
 import { parseHtml, styleColor, styleFontWeight } from './html.js';
 
@@ -30,7 +31,7 @@ export async function documentFromHtml(title: string, html: string): Promise<Uin
   const root = parseHtml(html);
   const titled = Boolean(findClass(root, 'contract-report-mock-title'));
   const body = [
-    ...(titled ? [] : [paragraph(run(title || '合同审核报告', { bold: true, color: TEXT, size: 36 }), pStyle('ReportTitle'))]),
+    ...(titled ? [] : [paragraph(run(title || '财务采购审核', { bold: true, color: TEXT, size: 36 }), pStyle('ReportTitle'))]),
     ...blocksFrom(root),
     sectionProps(),
   ].join('');
@@ -44,6 +45,21 @@ export async function documentFromHtml(title: string, html: string): Promise<Uin
     'word/numbering.xml': numberingXml(),
     'word/document.xml': documentXml,
   });
+}
+
+function reviewLabel(state: string): string {
+  if (state === 'confirmed') return '已采纳';
+  if (state === 'ignored') return '已忽略';
+  if (state === 'escalated') return '已升级';
+  return '未处理';
+}
+
+export function reportHtml(findings: Finding[], states: Record<string, string>): string {
+  const rows = findings.map((f) => {
+    const state = states[f.id] ?? 'none';
+    return `<tr><td>${esc(f.title)}</td><td>${f.level === 'high' ? '高' : '中'}</td><td>${reviewLabel(state)}</td></tr>`;
+  }).join('');
+  return `<table><thead><tr><th>发现</th><th>等级</th><th>复核</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function blocksFrom(node: HtmlNode): string[] {
