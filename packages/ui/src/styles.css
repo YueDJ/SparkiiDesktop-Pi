@@ -63,7 +63,7 @@ button { font: inherit; color: inherit; }
 .ui-error-toast-msg { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .ui-error-toast-close { border: none; background: none; color: inherit; cursor: pointer; padding: 0; flex: none; }
 .ui-error-center { display: flex; flex-direction: column; gap: var(--spacing-sm); }
-.ui-error-center-actions { display: flex; gap: var(--spacing-xs); }
+.ui-error-center-actions { position: sticky; top: 0; background: var(--color-surface); z-index: 1; display: flex; gap: var(--spacing-xs); }
 .ui-error-center-list { display: flex; flex-direction: column; }
 .ui-error-center-row { display: flex; align-items: flex-start; gap: var(--spacing-sm); padding: var(--spacing-xs) 0; border-bottom: 1px dashed var(--color-border); }
 .ui-error-center-row > svg { flex: none; margin-top: 2px; }

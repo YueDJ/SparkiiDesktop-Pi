@@ -32,6 +32,14 @@ const renderShell = () => render(
 );
 
 describe('ErrorCenter through Shell', () => {
+  it('shows an empty error drawer without a unread kicker', () => {
+    renderShell();
+    fireEvent.click(screen.getByRole('button', { name: /报错中心/ }));
+    expect(screen.getByRole('dialog', { name: '报错中心' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: '暂无报错记录' })).toBeTruthy();
+    expect(screen.queryByText(/条未读/)).toBeNull();
+  });
+
   it('closes the toast and marks all read from the drawer', () => {
     renderShell();
     fireEvent.click(screen.getByText('触发报错'));
