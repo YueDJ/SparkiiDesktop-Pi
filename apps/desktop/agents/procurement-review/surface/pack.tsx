@@ -156,8 +156,16 @@ export async function startPackWorkflow(
     ranges: ctx.ranges,
     asOf: asOfToday(),
   }, documents);
-  const { sessionId } = await Promise.resolve(actions.startWorkflow(prepared)) ?? {};
-  void sessionId;
+  let sessionId: string | undefined;
+  try {
+    const started = await Promise.resolve(actions.startWorkflow(prepared));
+    sessionId = typeof started?.sessionId === 'string' && started.sessionId.length > 0
+      ? started.sessionId
+      : undefined;
+  } catch {
+    return;
+  }
+  if (!sessionId) return;
   actions.review('evaluation', { stepId: 'review', payload: prepared.evaluation });
 }
 

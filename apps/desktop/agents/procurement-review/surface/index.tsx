@@ -30,6 +30,7 @@ export default function ProcurementSurface(props: AgentSurfaceProps) {
   useEffect(() => {
     const sessionChanged = sessionIdRef.current !== props.sessionId;
     const becameReady = !readyRef.current && reviewReady;
+    if (sessionChanged) setFiles(EMPTY_PACK_FILES);
     sessionIdRef.current = props.sessionId;
     readyRef.current = reviewReady;
     setPage((current) => {

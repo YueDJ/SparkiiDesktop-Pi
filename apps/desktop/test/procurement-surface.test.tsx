@@ -214,4 +214,69 @@ describe('pack startWorkflow', () => {
     expect(payload.evaluation.closed.qty).toBe(false);
     expect(payload.evaluation.lines[0].stockQty).toBe(4200);
   });
+
+  it('does not persist evaluation when startWorkflow returns no sessionId', async () => {
+    const startWorkflow = vi.fn().mockResolvedValue({});
+    const review = vi.fn();
+    const plan = csvFile(
+      'plan.csv',
+      '物资编码,物资名称,申请数量,单位,预估单价\nRM-001,烟煤,2800,吨,920\n',
+      'C:/tmp/plan.csv',
+    );
+    render(<ProcurementSurface
+      sessionId="prev" mode="live" title=""
+      session={idleSession}
+      actions={{ startWorkflow, review } as any}
+      agent={agent}
+    />);
+    upload('上传计划', plan);
+    fireEvent.click(screen.getByRole('button', { name: '完整性审核' }));
+    await waitFor(() => expect(startWorkflow).toHaveBeenCalled());
+    expect(review).not.toHaveBeenCalled();
+  });
+
+  it('does not persist evaluation when startWorkflow fails', async () => {
+    const startWorkflow = vi.fn().mockRejectedValue(new Error('start failed'));
+    const review = vi.fn();
+    const plan = csvFile(
+      'plan.csv',
+      '物资编码,物资名称,申请数量,单位,预估单价\nRM-001,烟煤,2800,吨,920\n',
+      'C:/tmp/plan.csv',
+    );
+    render(<ProcurementSurface
+      sessionId="prev" mode="live" title=""
+      session={idleSession}
+      actions={{ startWorkflow, review } as any}
+      agent={agent}
+    />);
+    upload('上传计划', plan);
+    fireEvent.click(screen.getByRole('button', { name: '完整性审核' }));
+    await waitFor(() => expect(startWorkflow).toHaveBeenCalled());
+    expect(review).not.toHaveBeenCalled();
+  });
+
+  it('clears pack uploads when sessionId changes', () => {
+    const plan = csvFile(
+      'plan.csv',
+      '物资编码,物资名称,申请数量,单位,预估单价\nRM-001,烟煤,2800,吨,920\n',
+      'C:/tmp/plan.csv',
+    );
+    const { rerender } = render(<ProcurementSurface
+      sessionId="s1" mode="live" title=""
+      session={idleSession}
+      actions={{} as any}
+      agent={agent}
+    />);
+    upload('上传计划', plan);
+    expect(screen.getByRole('button', { name: '完整性审核' })).not.toBeDisabled();
+    rerender(<ProcurementSurface
+      sessionId="s2" mode="live" title=""
+      session={idleSession}
+      actions={{} as any}
+      agent={agent}
+    />);
+    expect(screen.getByRole('button', { name: '完整性审核' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '开始分析' })).toBeDisabled();
+  });
 });
+
