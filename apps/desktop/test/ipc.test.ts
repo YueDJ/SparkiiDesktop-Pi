@@ -192,6 +192,7 @@ async function makeRuntime(opts: {
       subscribe: vi.fn(() => () => {}),
       cancelPending: vi.fn(() => true),
       setMaxAgents: vi.fn(),
+      updateMeta: vi.fn(() => true),
     },
     subject: { userId: 'tester', roles: ['admin'] },
     chatSessions: { get: () => opts.chatSession ?? null, list: vi.fn(() => []), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
@@ -2963,6 +2964,150 @@ describe('ipc provider handlers', () => {
     const result = await handlers.get('sparkii:setChatTitle')!(null, 'wf-1', '采购合同.pdf', 'agent');
     expect(result).toEqual({ ok: true });
     expect(windowSent.some((c) => c[0] === 'sparkii:event:chat-event' && c[1]?.type === 'session_title' && c[1]?.title === '采购合同.pdf')).toBe(true);
+  });
+
+  it('setChatTitle updates the runtime pool label instead of leaving the session id', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const send = vi.fn(async (command: any) => {
+      if (command.type === 'set_session_name') return { success: true };
+      return { success: true };
+    });
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send },
+      chatSession: { profileId: 'contract-review', model: null, kind: 'workflow' },
+      getWindow: () => ({
+        on: () => {},
+        isDestroyed: () => false,
+        webContents: { send: () => {} },
+      }) as any,
+      profile: {
+        dir: join(dataDir, 'profiles', 'contract-review'),
+        profile: { manifest: { displayName: '合同审核智能体' }, agent: { tools: [], prompts: { system: 'test' } } },
+      } as any,
+    });
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:setChatTitle')!(null, 'wf-1', '采购合同', 'agent');
+    expect(rt.pool.updateMeta).toHaveBeenCalledWith('wf-1', { label: '采购合同' });
+  });
+
+  it('reopening a session acquires the pool with displayName and Pi title, not the uuid prefix', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    vi.mocked(listPiSessions).mockResolvedValueOnce([
+      {
+        id: '01a06da9-ff37-7fe6-b320-2bda26cb3188',
+        name: '采购合同',
+        firstMessage: '---\nname: contract_risk_review\n',
+        path: '/tmp/s.jsonl',
+        cwd: '',
+        created: new Date(),
+        modified: new Date(),
+        messageCount: 1,
+      },
+    ] as any);
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      chatSession: {
+        profileId: 'contract-review',
+        model: null,
+        piSessionFile: '/tmp/s.jsonl',
+        kind: 'workflow',
+      },
+      profile: {
+        dir: join(dataDir, 'profiles', 'contract-review'),
+        profile: { manifest: { displayName: '合同审核智能体' }, agent: { tools: [], prompts: { system: 'test' } } },
+      } as any,
+    });
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:completeText')!(null, '01a06da9-ff37-7fe6-b320-2bda26cb3188', 'x');
+    expect(rt.pool.acquire).toHaveBeenCalledWith(
+      '01a06da9-ff37-7fe6-b320-2bda26cb3188',
+      expect.objectContaining({
+        meta: {
+          profileId: 'contract-review',
+          profileName: '合同审核智能体',
+          label: '采购合同',
+        },
+      }),
+    );
+    vi.mocked(listPiSessions).mockReset();
+    vi.mocked(listPiSessions).mockImplementation(listPiSessions as any);
+  });
+
+  it('reopening a nameless workflow session uses 新会话, not the skill body', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    vi.mocked(listPiSessions).mockResolvedValueOnce([
+      {
+        id: 'wf-skill',
+        name: '   ',
+        firstMessage: '---\nname: contract_risk_review\n---\n# 风险比对',
+        path: '/tmp/s.jsonl',
+        cwd: '',
+        created: new Date(),
+        modified: new Date(),
+        messageCount: 1,
+      },
+    ] as any);
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      chatSession: { profileId: 'contract-review', model: null, piSessionFile: '/tmp/s.jsonl', kind: 'workflow' },
+      profile: {
+        dir: join(dataDir, 'profiles', 'contract-review'),
+        profile: { manifest: { displayName: '合同审核智能体' }, agent: { tools: [], prompts: { system: 'test' } } },
+      } as any,
+    });
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:completeText')!(null, 'wf-skill', 'x');
+    expect(rt.pool.acquire).toHaveBeenCalledWith(
+      'wf-skill',
+      expect.objectContaining({
+        meta: { profileId: 'contract-review', profileName: '合同审核智能体', label: '新会话' },
+      }),
+    );
+    vi.mocked(listPiSessions).mockReset();
+    vi.mocked(listPiSessions).mockImplementation(listPiSessions as any);
+  });
+
+  it('reopening still acquires display meta when listing Pi sessions fails', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    vi.mocked(listPiSessions).mockRejectedValueOnce(new Error('catalog down'));
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      chatSession: { profileId: 'contract-review', model: null, piSessionFile: '/tmp/s.jsonl', kind: 'workflow' },
+      profile: {
+        dir: join(dataDir, 'profiles', 'contract-review'),
+        profile: { manifest: { displayName: '合同审核智能体' }, agent: { tools: [], prompts: { system: 'test' } } },
+      } as any,
+    });
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:completeText')!(null, 'wf-down', 'x');
+    expect(rt.pool.acquire).toHaveBeenCalledWith(
+      'wf-down',
+      expect.objectContaining({
+        meta: { profileId: 'contract-review', profileName: '合同审核智能体', label: '新会话' },
+      }),
+    );
+    vi.mocked(listPiSessions).mockReset();
+    vi.mocked(listPiSessions).mockImplementation(listPiSessions as any);
   });
 
   it('setChatTitle rejects empty titles and agent writes after a user lock', async () => {

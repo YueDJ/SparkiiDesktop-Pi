@@ -217,6 +217,88 @@ describe("PiRuntimePool", () => {
     expect(skillsDirs).toEqual(["/skills-a", "/skills-b"]);
   });
 
+  it("updateMeta patches a live slot label and emits a snapshot", async () => {
+    const handle = new FakeHandle();
+    const pool = new PiRuntimePool({ maxAgents: 1, makeSupervisor: () => handle });
+    const snapshots: RuntimePoolSnapshot[] = [];
+    pool.subscribe((s) => snapshots.push(s));
+
+    await pool.acquire("a", { meta: { profileId: "contract-review", profileName: "合同审核智能体", label: "新会话" } });
+    handle.ready();
+    const before = snapshots.length;
+
+    expect(pool.updateMeta("a", { label: "采购合同" })).toBe(true);
+    expect(pool.snapshot().slots[0]).toMatchObject({
+      profileId: "contract-review",
+      profileName: "合同审核智能体",
+      label: "采购合同",
+    });
+    expect(snapshots.length).toBeGreaterThan(before);
+  });
+
+  it("updateMeta patches a queued session without waking it", async () => {
+    const handle = new FakeHandle();
+    const pool = new PiRuntimePool({ maxAgents: 1, makeSupervisor: () => handle });
+    await pool.acquire("a", { meta: { profileId: "general", profileName: "通用智能体", label: "会话#1" } });
+    handle.ready();
+
+    const pending = pool.acquire("b", {
+      meta: { profileId: "contract-review", profileName: "合同审核智能体", label: "新会话" },
+    });
+    expect(pool.snapshot().queue[0]).toMatchObject({ label: "新会话" });
+
+    expect(pool.updateMeta("b", { label: "采购合同" })).toBe(true);
+    expect(pool.snapshot().queue[0]).toMatchObject({
+      profileId: "contract-review",
+      profileName: "合同审核智能体",
+      label: "采购合同",
+    });
+    expect(pool.snapshot().slots[0].sessionId).toBe("a");
+
+    await pool.release("a");
+    await pending;
+    expect(pool.snapshot().slots[0]).toMatchObject({ sessionId: "b", label: "采购合同" });
+  });
+
+  it("snapshot uses 新会话 when acquire has no label, not the session id", async () => {
+    const handle = new FakeHandle();
+    const pool = new PiRuntimePool({ maxAgents: 1, makeSupervisor: () => handle });
+    await pool.acquire("01a06da9-ff37-7fe6-b320-2bda26cb3188");
+    handle.ready();
+    expect(pool.snapshot().slots[0]).toMatchObject({
+      sessionId: "01a06da9-ff37-7fe6-b320-2bda26cb3188",
+      label: "新会话",
+    });
+    expect(pool.snapshot().slots[0].label).not.toBe("01a06da9-ff37-7fe6-b320-2bda26cb3188");
+  });
+
+  it("updateMeta follows renameSession so a temp key can receive the real title", async () => {
+    const handle = new FakeHandle();
+    const pool = new PiRuntimePool({ maxAgents: 1, makeSupervisor: () => handle });
+    await pool.acquire("new:temp", { meta: { profileId: "contract-review", profileName: "合同审核智能体", label: "新会话" } });
+    handle.ready();
+    pool.renameSession("new:temp", "wf-1");
+    expect(pool.updateMeta("wf-1", { label: "采购合同" })).toBe(true);
+    expect(pool.snapshot().slots[0]).toMatchObject({
+      sessionId: "wf-1",
+      profileName: "合同审核智能体",
+      label: "采购合同",
+    });
+  });
+
+  it("updateMeta is a no-op for an unknown session", async () => {
+    const handle = new FakeHandle();
+    const pool = new PiRuntimePool({ maxAgents: 1, makeSupervisor: () => handle });
+    await pool.acquire("a", { meta: { profileId: "general", profileName: "通用智能体", label: "会话#1" } });
+    handle.ready();
+    const snapshots: RuntimePoolSnapshot[] = [];
+    pool.subscribe((s) => snapshots.push(s));
+
+    expect(pool.updateMeta("missing", { label: "采购合同" })).toBe(false);
+    expect(pool.snapshot().slots[0].label).toBe("会话#1");
+    expect(snapshots).toHaveLength(0);
+  });
+
   it("hides internal probe slots and queue items from the snapshot", async () => {
     const handle = new FakeHandle();
     const pool = new PiRuntimePool({ maxAgents: 1, makeSupervisor: () => handle });

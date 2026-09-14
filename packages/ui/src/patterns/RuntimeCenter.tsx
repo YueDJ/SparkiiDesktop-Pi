@@ -202,7 +202,8 @@ export function RuntimeCenter({
           <div key={q.queueId} className="ui-runtime-row">
             <div className="ui-runtime-main">
               <b>{q.profileName}</b>
-              <span className="ui-muted">{q.profileName} · {q.label} · 第 {q.position} 位</span>
+              <span className="ui-muted">{q.label}</span>
+              <span className="ui-muted">第 {q.position} 位</span>
             </div>
             <Button size="sm" disabled={busy === `cancel:${q.queueId}`} onClick={() => void run(`cancel:${q.queueId}`, () => onCancelQueue(q.queueId))}>取消排队</Button>
           </div>

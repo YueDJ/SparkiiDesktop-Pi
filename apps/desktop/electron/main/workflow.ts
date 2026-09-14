@@ -17,6 +17,7 @@ import { loadSettings, type AppSettings } from './settings.js';
 import { knowledgeFromManifest, patchRagSettings, ragFromSettings } from './rag-settings.js';
 import { runMainKnowledgeSearch } from './rag-search.js';
 import { executeDocumentRead } from './document-read.js';
+import { profilePoolMeta } from './pool-meta.js';
 
 const allTools = new Map<string, ToolDef>(
   [documentConnector, knowledgeConnector, reportConnector].flatMap((c) => c.tools.map((t) => [t.name, t] as const)),
@@ -353,6 +354,7 @@ export async function runWorkflow(
       target ?? undefined,
       thinkingLevel,
     ),
+    meta: profilePoolMeta(rt, profileId),
   });
 
   let sessionId: string | undefined;

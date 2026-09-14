@@ -36,7 +36,10 @@ describe('ui shell patterns', () => {
     fireEvent.click(screen.getByText('停止'));
     fireEvent.click(screen.getByText('确认停止'));
     expect(onStop).toHaveBeenCalledWith('s1');
-    expect(screen.getByText('合同审核 · 新会话 · 第 1 位')).toBeTruthy();
+    expect(screen.getByText('合同审核')).toBeTruthy();
+    expect(screen.getByText('新会话')).toBeTruthy();
+    expect(screen.getByText('第 1 位')).toBeTruthy();
+    expect(screen.queryByText('合同审核 · 新会话 · 第 1 位')).toBeNull();
   });
 
   it('shell renders topbar, rail, status bar and surface', () => {

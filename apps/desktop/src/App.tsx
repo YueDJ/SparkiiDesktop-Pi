@@ -58,7 +58,7 @@ function stickyOrder(sessions: ShellSession[]): ShellSession[] {
   return [...vis.filter((s) => s.pinned), ...vis.filter((s) => !s.pinned), ...arch];
 }
 
-function mapRuntimePool(raw: any, pendingApprovals: any[]): RuntimePoolSummary {
+export function mapRuntimePool(raw: any, pendingApprovals: any[]): RuntimePoolSummary {
   const pendingSessionIds = new Set(pendingApprovals.map((p: any) => p.sessionId));
   return {
     active: Number(raw?.active ?? 0),
@@ -68,7 +68,7 @@ function mapRuntimePool(raw: any, pendingApprovals: any[]): RuntimePoolSummary {
       sessionId: s.sessionId,
       profileId: s.profileId,
       profileName: s.profileName || s.profileId,
-      label: s.label || s.sessionId,
+      label: s.label || '新会话',
       status: pendingSessionIds.has(s.sessionId)
         ? 'waiting-approval'
         : s.status === 'streaming' || s.status === 'starting'
@@ -79,7 +79,7 @@ function mapRuntimePool(raw: any, pendingApprovals: any[]): RuntimePoolSummary {
       queueId: q.queueId,
       profileId: q.profileId,
       profileName: q.profileName || q.profileId,
-      label: q.label || q.queueId,
+      label: q.label || '新会话',
       position: q.position,
     })),
   };

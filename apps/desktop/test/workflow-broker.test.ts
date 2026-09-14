@@ -91,6 +91,23 @@ function makeHarness(opts: {
   return { rt, getWindow, send, appends, release, sessionId, profileId };
 }
 
+it('acquires the workflow slot with the agent display name, not the session id', async () => {
+  const { rt, getWindow } = makeHarness({ steps: [] });
+  const acquire = rt.pool.acquire;
+  const metas: unknown[] = [];
+  rt.pool.acquire = async (key: string, opts?: { meta?: unknown }) => {
+    metas.push(opts?.meta);
+    return acquire(key, opts);
+  };
+  const broker = createBroker(rt, getWindow);
+  await runWf(rt, getWindow, { documents: [] }, broker, 'contract-review');
+  expect(metas[0]).toEqual({
+    profileId: 'contract-review',
+    profileName: '合同审核',
+    label: '新会话',
+  });
+});
+
 it('uses the runtime session id for the workflow session record', async () => {
   const send = vi.fn();
   const getWindow = () => ({ webContents: { send } }) as any;

@@ -65,7 +65,7 @@ export class PiRuntimePool {
           sessionId: s.sessionId as string,
           profileId: s.meta?.profileId ?? "",
           profileName: s.meta?.profileName ?? s.meta?.profileId ?? "",
-          label: s.meta?.label ?? (s.sessionId as string),
+          label: s.meta?.label ?? "新会话",
           status: s.status,
           startedAt: s.startedAt,
         })),
@@ -75,7 +75,7 @@ export class PiRuntimePool {
         queueId: p.id,
         profileId: p.options.meta?.profileId ?? "",
         profileName: p.options.meta?.profileName ?? p.options.meta?.profileId ?? "",
-        label: p.options.meta?.label ?? p.sessionId,
+        label: p.options.meta?.label ?? "新会话",
         position: i + 1,
       })),
     };
@@ -178,6 +178,28 @@ export class PiRuntimePool {
     this.bySession.delete(from);
     this.bySession.set(to, slot.client);
     this.emitSnapshot();
+  }
+
+  updateMeta(sessionId: string, patch: Partial<RuntimeAcquireMeta>): boolean {
+    const slot = this.slots.find((s) => s.sessionId === sessionId);
+    if (slot) {
+      slot.meta = {
+        ...slot.meta,
+        ...patch,
+        profileId: patch.profileId ?? slot.meta?.profileId ?? "",
+      };
+      this.emitSnapshot();
+      return true;
+    }
+    const pending = this.pending.find((p) => p.sessionId === sessionId);
+    if (!pending) return false;
+    pending.options.meta = {
+      ...pending.options.meta,
+      ...patch,
+      profileId: patch.profileId ?? pending.options.meta?.profileId ?? "",
+    };
+    this.emitSnapshot();
+    return true;
   }
 
   async release(sessionId: string): Promise<void> {

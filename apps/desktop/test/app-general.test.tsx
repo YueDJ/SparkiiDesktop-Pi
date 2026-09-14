@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, waitFor, cleanup } from '@testing-library/react';
-import { App, sessionDisplayName, orderSessions } from '../src/App.js';
+import { App, sessionDisplayName, orderSessions, mapRuntimePool } from '../src/App.js';
 
 afterEach(cleanup);
 
@@ -12,6 +12,20 @@ describe('sessionDisplayName', () => {
     expect(sessionDisplayName({ title: '很长的标题'.repeat(5), firstMessage: 'x' })).toBe('很长的标题'.repeat(5));
     expect(sessionDisplayName({ updatedAt: new Date(2026, 7, 26, 10, 30).getTime() })).toContain('08/26');
     expect(sessionDisplayName({})).toBe('会话');
+  });
+});
+
+describe('mapRuntimePool', () => {
+  it('does not use session or queue ids as the display label', () => {
+    const mapped = mapRuntimePool({
+      maxAgents: 4,
+      active: 1,
+      queued: 1,
+      slots: [{ sessionId: '01a06da9-ff37-7fe6-b320-2bda26cb3188', profileId: 'contract-review', profileName: '合同审核智能体', status: 'streaming' }],
+      queue: [{ queueId: 'q1', profileId: 'general', profileName: '通用智能体', position: 1 }],
+    }, []);
+    expect(mapped.sessions[0].label).toBe('新会话');
+    expect(mapped.queue[0].label).toBe('新会话');
   });
 });
 

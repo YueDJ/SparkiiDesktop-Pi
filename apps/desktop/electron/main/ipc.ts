@@ -20,6 +20,7 @@ import {
   importDocumentParseModule,
   listDocumentParseModules,
 } from './document-parse-modules.js';
+import { profilePoolMeta } from './pool-meta.js';
 import { runMainKnowledgeSearch, searchAuditSummary, SESSION_DATASET_GONE } from './rag-search.js';
 import { fetchAndCacheDocument } from './rag-open.js';
 import {
@@ -281,14 +282,16 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
 
     const rec = rt.chatSessions.get(sessionId);
     if (!rec) throw new Error('session not found');
+    let named: string | undefined;
+    try {
+      named = (await listPiSessions(join(rt.piAgentDir, 'sessions'))).find((s) => s.id === sessionId)?.name?.trim() || undefined;
+    } catch {
+      named = undefined;
+    }
     const slot = await rt.pool.acquire(sessionId, {
       saddle: buildSaddle(rec.profileId, sessionId),
       resumeSessionFile: rec.piSessionFile ?? undefined,
-      meta: {
-        profileId: rec.profileId,
-        profileName: (rt.profileOf(rec.profileId).profile as { manifest?: { displayName?: string } })?.manifest?.displayName ?? rec.profileId,
-        label: sessionId.slice(0, 8),
-      },
+      meta: profilePoolMeta(rt, rec.profileId, named),
     });
     open = { slot, profileId: rec.profileId };
     openSessions.set(sessionId, open);
@@ -586,11 +589,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     const tempKey = `new:${randomUUID()}`;
     const slot = await rt.pool.acquire(tempKey, {
       saddle: buildAgentSaddle(rt.agentOf(profileId), anchorDir(tempKey), workspacePath, target ?? undefined, thinkingLevel),
-      meta: {
-        profileId,
-        profileName: (rt.profileOf(profileId).profile as { manifest?: { displayName?: string } })?.manifest?.displayName ?? profileId,
-        label: '新会话',
-      },
+      meta: profilePoolMeta(rt, profileId),
     });
 
     let createdSessionId: string | undefined;
@@ -850,12 +849,14 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       rt.chatSessions.update(sessionId, { titleLockedByUser: true });
     }
     getWindow()?.webContents.send('sparkii:event:chat-event', { type: 'session_title', sessionId, title: trimmed });
+    rt.pool.updateMeta(sessionId, { label: trimmed });
     const open = openSessions.get(sessionId);
     if (!open) {
       if (rec) {
         void rt.pool.acquire(sessionId, {
           saddle: buildSaddle(rec.profileId, sessionId),
           resumeSessionFile: rec.piSessionFile ?? undefined,
+          meta: profilePoolMeta(rt, rec.profileId, trimmed),
         }).then((slot) => {
           openSessions.set(sessionId, { slot, profileId: rec.profileId });
           return slot.client.send({ type: 'set_session_name', name: trimmed });
@@ -1445,6 +1446,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     const sessionId = randomUUID();
     const slot = await rt.pool.acquire(sessionId, {
       saddle: buildAgentSaddle(rt.agentOf(profileId), anchorDir(sessionId)),
+      meta: profilePoolMeta(rt, profileId),
     });
     slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId }));
     slot.supervisor.onConnectorRead?.((req) => handleConnectorRead(req, profileId, sessionId));
