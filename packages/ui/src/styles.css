@@ -353,13 +353,13 @@ button { font: inherit; color: inherit; }
 }
 .ui-account-trust {
   display: flex; align-items: flex-start; gap: var(--spacing-sm);
-  padding: var(--spacing-sm); border-radius: var(--radius-md);
+  padding: var(--spacing-sm); border-radius: var(--radius-card);
   background: var(--color-controlBg); color: var(--color-textSecondary); font-size: var(--font-size-sm);
 }
 .ui-account-trust b { display: block; color: var(--color-text); font-weight: var(--font-weight-semibold); }
 .ui-account-action {
   display: flex; align-items: center; justify-content: space-between; width: 100%;
-  padding: var(--spacing-sm); border: 1px solid var(--color-border); border-radius: var(--radius-md);
+  padding: var(--spacing-sm); border: 1px solid var(--color-border); border-radius: var(--radius-card);
   background: var(--color-surface); color: var(--color-text); font-size: var(--font-size-md);
   cursor: pointer; text-align: left;
 }

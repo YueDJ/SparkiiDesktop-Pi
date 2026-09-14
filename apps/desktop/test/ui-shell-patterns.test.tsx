@@ -18,7 +18,7 @@ describe('ui shell patterns', () => {
 
   it('runtime center renders running and queued items and invokes actions', () => {
     const onStop = vi.fn();
-    render(
+    const { container } = render(
       <RuntimeCenter
         snapshot={{
           active: 1,
@@ -32,6 +32,8 @@ describe('ui shell patterns', () => {
         onCancelQueue={vi.fn()}
       />,
     );
+    expect(container.querySelectorAll('.ui-runtime-meter .is-run')).toHaveLength(1);
+    expect(container.querySelectorAll('.ui-runtime-meter .is-wait')).toHaveLength(1);
     expect(screen.getByRole('heading', { name: '智能体' })).toBeTruthy();
     expect(screen.getByRole('img', { name: '运行 1，排队 1，空闲 3' })).toBeTruthy();
     expect(screen.queryByText('运行 1/4 · 排队 1 · 空闲 3')).toBeNull();
