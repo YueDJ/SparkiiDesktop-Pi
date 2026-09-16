@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Select, SettingsRow, TextField, useErrors } from '@sparkii/ui';
+import { Button, SelectMenu, SettingsRow, TextField, useErrors } from '@sparkii/ui';
 
 export type RagPaneApi = {
   getSettings?(): Promise<unknown>;
@@ -155,16 +155,16 @@ export function SettingsKnowledgePane({ api }: { api?: RagPaneApi }) {
             const value = rag.bindings.find((b) => b.agentId === agent.id)?.defaultDatasetId ?? '';
             return (
               <SettingsRow key={agent.id} label={agent.name}>
-                <Select
+                <SelectMenu
                   data-testid={`rag-default-dataset-${agent.id}`}
+                  aria-label={`${agent.name}默认库`}
                   value={value}
-                  onChange={(e) => setBinding(agent.id, e.target.value)}
-                >
-                  <option value="">未指定（连通后用列表第一项）</option>
-                  {datasets.map((d) => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
-                  ))}
-                </Select>
+                  options={[
+                    { value: '', label: '未指定（连通后用列表第一项）' },
+                    ...datasets.map((d) => ({ value: d.id, label: d.name })),
+                  ]}
+                  onChange={(next) => setBinding(agent.id, next)}
+                />
               </SettingsRow>
             );
           })}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Select } from '@sparkii/ui';
+import { SelectMenu } from '@sparkii/ui';
 import type { SparkiiApi } from '../types/sparkii-api.js';
 import type { KnowledgeSelection } from '../../electron/preload/api-types.js';
 
@@ -20,21 +20,22 @@ export function KnowledgeDatasetPicker(props: {
   }, [api]);
 
   const selected = value.mode === 'all' ? ALL : (value.datasetIds[0] ?? '');
+  const options = [
+    { value: ALL, label: '全部可见库' },
+    ...datasets.map((d) => ({ value: d.id, label: d.name })),
+  ];
 
   return (
-    <Select
+    <SelectMenu
       data-testid="knowledge-dataset-select"
+      aria-label="知识库"
       value={selected}
-      onChange={(e) => {
-        const next = e.target.value;
+      placeholder="选择知识库"
+      options={options}
+      placement="top"
+      onChange={(next) => {
         onChange(next === ALL ? { mode: 'all' } : { mode: 'ids', datasetIds: [next] });
       }}
-    >
-      {selected === '' ? <option value="" disabled>选择知识库</option> : null}
-      <option value={ALL}>全部可见库</option>
-      {datasets.map((d) => (
-        <option key={d.id} value={d.id}>{d.name}</option>
-      ))}
-    </Select>
+    />
   );
 }
