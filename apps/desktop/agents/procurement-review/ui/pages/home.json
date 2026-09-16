@@ -1,0 +1,5 @@
+{
+  "page": "procurement-review/home",
+  "layout": { "type": "grid", "columns": 2 },
+  "widgets": []
+}

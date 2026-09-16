@@ -1,0 +1,4 @@
+requireApproval:
+  - report.export
+timeoutMs: 300000
+highRiskDoubleConfirm: true

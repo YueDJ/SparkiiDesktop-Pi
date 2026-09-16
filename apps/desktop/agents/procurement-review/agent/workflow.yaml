@@ -1,0 +1,7 @@
+version: 1
+engine: linear
+steps:
+  - { id: load,    type: tool,  ref: document.read, map: { documents: documents } }
+  - { id: search,  type: tool,  ref: knowledge.search, map: { query: query } }
+  - { id: review,  type: skill, ref: procurement_write_findings, inputs: { from: [load, search, evaluation] } }
+  - { id: report,  type: skill, ref: procurement_report, inputs: { from: review } }
