@@ -1,9 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { computeMenuPosition, MENU_GAP_FALLBACK_PX, MENU_GAP_TOKEN } from '@sparkii/ui';
+import {
+  computeMenuPosition,
+  MENU_GAP_FALLBACK_PX,
+  MENU_GAP_TOKEN,
+  MENU_TRIGGER_GAP_FALLBACK_PX,
+  MENU_TRIGGER_GAP_TOKEN,
+  MENU_VIEWPORT_GAP_TOKEN,
+} from '@sparkii/ui';
 
-const gap = MENU_GAP_FALLBACK_PX;
+const gap = MENU_TRIGGER_GAP_FALLBACK_PX;
+const edge = MENU_GAP_FALLBACK_PX;
 
-function pos(over: Parameters<typeof computeMenuPosition>[0] extends infer T ? Partial<T> : never) {
+function pos(over: Partial<Parameters<typeof computeMenuPosition>[0]> = {}) {
   return computeMenuPosition({
     anchor: { top: 40, right: 200, bottom: 72, left: 80 },
     menuWidth: 220,
@@ -11,6 +19,7 @@ function pos(over: Parameters<typeof computeMenuPosition>[0] extends infer T ? P
     viewportWidth: 1024,
     viewportHeight: 768,
     gap,
+    edge,
     preferredPlacement: 'bottom',
     preferredAlign: 'start',
     ...over,
@@ -18,9 +27,12 @@ function pos(over: Parameters<typeof computeMenuPosition>[0] extends infer T ? P
 }
 
 describe('computeMenuPosition', () => {
-  it('uses the theme spacing-xs token for the gap', () => {
-    expect(MENU_GAP_TOKEN).toBe('--spacing-xs');
-    expect(MENU_GAP_FALLBACK_PX).toBe(8);
+  it('uses theme tokens for trigger gap and viewport inset', () => {
+    expect(MENU_TRIGGER_GAP_TOKEN).toBe('--spacing-xs');
+    expect(MENU_VIEWPORT_GAP_TOKEN).toBe('--spacing-md');
+    expect(MENU_GAP_TOKEN).toBe('--spacing-md');
+    expect(MENU_TRIGGER_GAP_FALLBACK_PX).toBe(8);
+    expect(MENU_GAP_FALLBACK_PX).toBe(16);
   });
 
   it('opens down from the top and up from the bottom', () => {
@@ -56,23 +68,23 @@ describe('computeMenuPosition', () => {
     expect(flipDown.top).toBe(56 + gap);
   });
 
-  it('keeps a gap from every viewport edge, including a right-flush audit trigger', () => {
+  it('keeps a viewport-token gap from every edge, including a right-flush audit trigger', () => {
     const flushRight = pos({
       anchor: { top: 80, right: 1024, bottom: 114, left: 894 },
       menuWidth: 220,
       preferredAlign: 'start',
       viewportWidth: 1024,
     });
-    expect(flushRight.left).toBe(1024 - 220 - gap);
-    expect(flushRight.left + 220).toBeLessThanOrEqual(1024 - gap);
-    expect(flushRight.left).toBeGreaterThanOrEqual(gap);
-    expect(flushRight.maxWidth).toBe(1024 - gap * 2);
+    expect(flushRight.left).toBe(1024 - 220 - edge);
+    expect(flushRight.left + 220).toBeLessThanOrEqual(1024 - edge);
+    expect(flushRight.left).toBeGreaterThanOrEqual(edge);
+    expect(flushRight.maxWidth).toBe(1024 - edge * 2);
 
     const flushLeft = pos({
       anchor: { top: 80, right: 40, bottom: 114, left: 0 },
       preferredAlign: 'end',
       viewportWidth: 1024,
     });
-    expect(flushLeft.left).toBe(gap);
+    expect(flushLeft.left).toBe(edge);
   });
 });

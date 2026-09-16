@@ -4,6 +4,8 @@ import { useFocusScope } from './useFocusScope.js';
 import {
   computeMenuPosition,
   readMenuGap,
+  readMenuTriggerGap,
+  viewportSize,
   type MenuAlign,
   type MenuPlacement,
   type MenuPosition,
@@ -12,8 +14,14 @@ import {
 export {
   computeMenuPosition,
   readMenuGap,
+  readMenuTriggerGap,
+  viewportSize,
   MENU_GAP_FALLBACK_PX,
   MENU_GAP_TOKEN,
+  MENU_TRIGGER_GAP_FALLBACK_PX,
+  MENU_TRIGGER_GAP_TOKEN,
+  MENU_VIEWPORT_GAP_FALLBACK_PX,
+  MENU_VIEWPORT_GAP_TOKEN,
 } from './menu-placement.js';
 export type { MenuAlign, MenuPlacement, MenuPosition } from './menu-placement.js';
 
@@ -68,13 +76,15 @@ export function Menu({
       const menu = ref.current;
       const anchor = containerRef.current;
       if (!menu || !anchor) return;
+      const view = viewportSize();
       const next = computeMenuPosition({
         anchor: anchor.getBoundingClientRect(),
         menuWidth: menu.offsetWidth,
         menuHeight: menu.offsetHeight,
-        viewportWidth: window.innerWidth,
-        viewportHeight: window.innerHeight,
-        gap: readMenuGap(menu),
+        viewportWidth: view.width,
+        viewportHeight: view.height,
+        gap: readMenuTriggerGap(menu),
+        edge: readMenuGap(menu),
         preferredPlacement: placement,
         preferredAlign: align,
       });

@@ -1,7 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { act, render, screen, fireEvent, cleanup } from '@testing-library/react';
-import { Drawer, Modal, Menu, MenuItem, MENU_GAP_FALLBACK_PX, SelectMenu } from '@sparkii/ui';
+import { Drawer, Modal, Menu, MenuItem, MENU_GAP_FALLBACK_PX, MENU_TRIGGER_GAP_FALLBACK_PX, SelectMenu } from '@sparkii/ui';
 
 afterEach(cleanup);
 
@@ -91,7 +91,8 @@ describe('ui overlays and menu', () => {
   });
 
   it('recomputes live placement and keeps a viewport gap', () => {
-    const gap = MENU_GAP_FALLBACK_PX;
+    const triggerGap = MENU_TRIGGER_GAP_FALLBACK_PX;
+    const edge = MENU_GAP_FALLBACK_PX;
     render(<Harness />);
     const anchor = screen.getByTestId('menu-anchor');
     const menu = document.body.querySelector('.ui-menu--fixed') as HTMLElement;
@@ -99,19 +100,19 @@ describe('ui overlays and menu', () => {
     mockBox(menu, { top: 0, left: 0, width: 220, height: 120 });
     act(() => { window.dispatchEvent(new Event('resize')); });
     expect(menu.dataset.placement).toBe('bottom');
-    expect(Number.parseFloat(menu.style.top)).toBe(80 + 34 + gap);
-    expect(Number.parseFloat(menu.style.left) + 220).toBeLessThanOrEqual(window.innerWidth - gap);
-    expect(Number.parseFloat(menu.style.left)).toBeGreaterThanOrEqual(gap);
+    expect(Number.parseFloat(menu.style.top)).toBe(80 + 34 + triggerGap);
+    expect(Number.parseFloat(menu.style.left) + 220).toBeLessThanOrEqual(window.innerWidth - edge);
+    expect(Number.parseFloat(menu.style.left)).toBeGreaterThanOrEqual(edge);
 
     mockBox(anchor, { top: window.innerHeight - 50, left: 80, width: 130, height: 34 });
     act(() => { window.dispatchEvent(new Event('scroll')); });
     expect(menu.dataset.placement).toBe('top');
     expect(menu.style.top).toBe('');
-    expect(Number.parseFloat(menu.style.bottom)).toBeGreaterThan(gap);
+    expect(Number.parseFloat(menu.style.bottom)).toBeGreaterThan(edge);
   });
 
   it('select menu inherits the shared Menu gap from the right edge', () => {
-    const gap = MENU_GAP_FALLBACK_PX;
+    const edge = MENU_GAP_FALLBACK_PX;
     render(
       <SelectMenu
         data-testid="audit-filter"
@@ -131,7 +132,7 @@ describe('ui overlays and menu', () => {
     mockBox(menu, { top: 0, left: 0, width: 220, height: 132 });
     act(() => { window.dispatchEvent(new Event('resize')); });
     const right = Number.parseFloat(menu.style.left) + 220;
-    expect(right).toBeLessThanOrEqual(window.innerWidth - gap);
+    expect(right).toBeLessThanOrEqual(window.innerWidth - edge);
     expect(right).not.toBe(window.innerWidth);
   });
 });
