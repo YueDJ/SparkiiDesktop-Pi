@@ -2,7 +2,7 @@ import { useEffect, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { useFocusScope } from './useFocusScope.js';
 
-export function Menu({ open, onClose, children, containerRef, placement = 'bottom' }: { open: boolean; onClose(): void; children: ReactNode; containerRef?: RefObject<HTMLElement | null>; placement?: 'top' | 'bottom' }) {
+export function Menu({ open, onClose, children, containerRef, placement = 'bottom', align = 'end' }: { open: boolean; onClose(): void; children: ReactNode; containerRef?: RefObject<HTMLElement | null>; placement?: 'top' | 'bottom'; align?: 'start' | 'end' }) {
   const ref = useFocusScope<HTMLDivElement>(open, onClose);
 
   useEffect(() => {
@@ -23,10 +23,12 @@ export function Menu({ open, onClose, children, containerRef, placement = 'botto
   if (anchor) {
     const rect = anchor.getBoundingClientRect();
     const gap = 6;
-    const right = Math.max(0, window.innerWidth - rect.right);
+    const edge = align === 'start'
+      ? { left: rect.left }
+      : { right: Math.max(0, window.innerWidth - rect.right) };
     const style = placement === 'top'
-      ? { bottom: window.innerHeight - rect.top + gap, right }
-      : { top: rect.bottom + gap, right };
+      ? { bottom: window.innerHeight - rect.top + gap, ...edge }
+      : { top: rect.bottom + gap, ...edge };
     return createPortal(
       <div ref={ref} className="ui-menu ui-menu--fixed" role="menu" tabIndex={-1} style={style}>{children}</div>,
       document.body,
@@ -36,9 +38,17 @@ export function Menu({ open, onClose, children, containerRef, placement = 'botto
   return <div ref={ref} className={`ui-menu ui-menu--${placement}`} role="menu" tabIndex={-1}>{children}</div>;
 }
 
-export function MenuItem({ label, hint, onSelect, trailing = '›', testId }: { label: string; hint?: string; onSelect(): void; trailing?: ReactNode; testId?: string }) {
+export function MenuItem({ label, hint, onSelect, trailing = '›', testId, disabled, current }: { label: string; hint?: string; onSelect(): void; trailing?: ReactNode; testId?: string; disabled?: boolean; current?: boolean }) {
   return (
-    <button type="button" role="menuitem" className="ui-menu-item" data-testid={testId} onClick={onSelect}>
+    <button
+      type="button"
+      role="menuitem"
+      className="ui-menu-item"
+      data-testid={testId}
+      data-current={current || undefined}
+      disabled={disabled}
+      onClick={() => { if (!disabled) onSelect(); }}
+    >
       <span>{label}</span>
       {hint && <span className="ui-menu-item-hint">{hint}</span>}
       <span className="ui-menu-item-chevron">{trailing}</span>

@@ -17,12 +17,25 @@ export function useFocusScope<T extends HTMLElement>(open: boolean, onClose: () 
       ? Array.from(node.querySelectorAll<HTMLElement>(FOCUSABLE)).filter((el) => !el.hasAttribute('disabled'))
       : [];
 
-    (focusables[0] ?? node)?.focus();
+    const current = focusables.find((el) => el.hasAttribute('data-current'));
+    (current ?? focusables[0] ?? node)?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
         onCloseRef.current();
+        return;
+      }
+
+      if (focusables.length > 0 && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
+        event.preventDefault();
+        const active = document.activeElement as HTMLElement | null;
+        let idx = active ? focusables.indexOf(active) : -1;
+        if (idx < 0) idx = event.key === 'ArrowDown' ? -1 : 0;
+        const next = event.key === 'ArrowDown'
+          ? focusables[(idx + 1) % focusables.length]
+          : focusables[(idx - 1 + focusables.length) % focusables.length];
+        next.focus();
         return;
       }
 

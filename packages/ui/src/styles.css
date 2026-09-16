@@ -42,7 +42,16 @@ button { font: inherit; color: inherit; }
   height: var(--control-height-md); border: 1px solid var(--color-controlBorder); border-radius: var(--radius-control);
   background: var(--color-controlBg); color: var(--color-text); font-size: var(--font-size-md); padding: 0 var(--spacing-sm);
 }
-.ui-field:focus, .ui-textarea:focus, .ui-select:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-controlFocusRing); outline: none; }
+.ui-field:focus, .ui-textarea:focus, .ui-select:focus, .ui-select-menu-trigger:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-controlFocusRing); outline: none; }
+.ui-select-menu { position: relative; display: inline-flex; min-width: 0; }
+.ui-select-menu-trigger {
+  display: inline-flex; align-items: center; justify-content: space-between; gap: var(--spacing-xs);
+  appearance: none; -webkit-appearance: none; cursor: pointer; text-align: left; min-width: 0;
+}
+.ui-select-menu-trigger.ui-select { min-width: 10em; }
+.ui-select-menu-trigger:disabled { opacity: .55; cursor: not-allowed; }
+.ui-select-menu-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-select-menu-caret { flex: none; color: var(--color-textMuted); }
 .ui-textarea { height: auto; min-height: var(--control-textarea-min); padding-top: var(--spacing-xs); resize: vertical; }
 .ui-switch { width: 36px; height: 21px; border-radius: var(--radius-pill); background: var(--color-controlBorder); position: relative; border: none; cursor: pointer; padding: 0; }
 .ui-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%; background: var(--color-onPrimary); transition: left var(--motion-fast) var(--motion-ease); }
@@ -98,7 +107,7 @@ button { font: inherit; color: inherit; }
 .ui-menu--bottom { top: calc(100% + 6px); right: 0; }
 .ui-menu--top { bottom: calc(100% + 6px); right: 0; }
 .ui-menu-item { display: flex; align-items: center; width: 100%; gap: var(--spacing-xs); padding: var(--spacing-xs) var(--spacing-sm); border: none; background: none; color: var(--color-text); border-radius: var(--radius-control); cursor: pointer; }
-.ui-menu-item:hover { background: var(--color-primaryBg); }
+.ui-menu-item:hover, .ui-menu-item:focus, .ui-menu-item:focus-visible { background: var(--color-primaryBg); }
 .ui-menu-item-hint { margin-left: auto; color: var(--color-textMuted); font-size: var(--font-size-sm); }
 .ui-menu-item-chevron { color: var(--color-textMuted); }
 

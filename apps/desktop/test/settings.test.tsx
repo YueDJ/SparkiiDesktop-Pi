@@ -56,10 +56,9 @@ describe('SettingsView', () => {
     expect(screen.getAllByText('llama3.1').length).toBeGreaterThan(0);
     expect(api.listModels).toHaveBeenCalledWith('deepseek', '');
 
-    const select = screen.getByTestId('default-model-select') as HTMLSelectElement;
-    const optionValues = Array.from(select.options).map((o) => o.value);
-    expect(optionValues).toContain('qwen2.5');
-    expect(optionValues).toContain('llama3.1');
+    fireEvent.click(screen.getByTestId('default-model-select'));
+    expect(screen.getByRole('menuitem', { name: 'qwen2.5' })).toBeTruthy();
+    expect(screen.getByRole('menuitem', { name: 'llama3.1' })).toBeTruthy();
   });
 
   it('tests the connection and reports reachability', async () => {
@@ -78,7 +77,8 @@ describe('SettingsView', () => {
 
     fireEvent.click(screen.getByText('拉取模型列表（联网）'));
     await screen.findByText(/已联网拉取 2 个模型/);
-    fireEvent.change(screen.getByTestId('default-model-select'), { target: { value: 'qwen2.5' } });
+    fireEvent.click(screen.getByTestId('default-model-select'));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'qwen2.5' }));
     fireEvent.click(screen.getByText('保存'));
     await screen.findByText('设置已保存');
 
@@ -92,9 +92,26 @@ describe('SettingsView', () => {
     render(<SettingsView api={api} />);
     await screen.findByText('已加载本机配置');
     fireEvent.click(screen.getByText('智能体与运行'));
-    fireEvent.change(screen.getByTestId('log-level-select'), { target: { value: 'debug' } });
+    fireEvent.click(screen.getByTestId('log-level-select'));
+    fireEvent.click(screen.getByRole('menuitem', { name: '调试' }));
     fireEvent.click(screen.getByText('保存'));
     await waitFor(() => expect(api.saveSettings).toHaveBeenCalled());
     expect(api.saveSettings).toHaveBeenCalledWith(expect.objectContaining({ logLevel: 'debug' }));
+  });
+
+  it('has no native select on converted settings panes', async () => {
+    const api = makeApi({
+      queryAudit: vi.fn().mockResolvedValue([]),
+      listRagDatasets: vi.fn().mockResolvedValue({ ok: true, datasets: [] }),
+      listAgents: vi.fn().mockResolvedValue([
+        { id: 'knowledge-qa', name: '企业知识问答', knowledge: { enabled: true } },
+      ]),
+    });
+    const { container } = render(<SettingsView api={api} />);
+    await screen.findByText('已加载本机配置');
+    for (const name of ['大模型连接', '知识库', '智能体与运行', '外观与语言', '审计']) {
+      fireEvent.click(screen.getByRole('button', { name }));
+      expect(container.querySelector('select'), name).toBeNull();
+    }
   });
 });

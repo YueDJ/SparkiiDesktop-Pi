@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AuditTimeline, Button, Card, Select } from '@sparkii/ui';
+import { AuditTimeline, Button, Card, SelectMenu } from '@sparkii/ui';
 
 export interface AuditRowLike {
   id?: string;
@@ -48,11 +48,17 @@ export function AuditView(props: AuditViewProps) {
         <b className="audit-title">审计留痕</b>
         <Button size="sm" variant={view === 'timeline' ? 'primary' : 'secondary'} className="audit-head-right" onClick={() => setView('timeline')}>时间线</Button>
         <Button size="sm" variant={view === 'table' ? 'primary' : 'secondary'} onClick={() => setView('table')}>表格</Button>
-        <Select className="audit-filter" value={result} onChange={(e) => setResult(e.target.value as typeof result)}>
-          <option value="all">全部结果</option>
-          <option value="executed">已执行</option>
-          <option value="not-executed">未执行</option>
-        </Select>
+        <SelectMenu
+          className="audit-filter"
+          aria-label="结果"
+          value={result}
+          options={[
+            { value: 'all', label: '全部结果' },
+            { value: 'executed', label: '已执行' },
+            { value: 'not-executed', label: '未执行' },
+          ]}
+          onChange={(next) => setResult(next as typeof result)}
+        />
         <Button variant="primary" size="sm" onClick={exportJsonl}>导出</Button>
       </div>
 

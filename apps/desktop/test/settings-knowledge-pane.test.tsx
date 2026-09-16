@@ -25,6 +25,7 @@ function makeApi(over: Record<string, unknown> = {}) {
     ]),
     listAgents: vi.fn().mockResolvedValue([
       { id: 'knowledge-qa', name: '企业知识问答', knowledge: { enabled: true } },
+      { id: 'contract-review', name: '合同审核智能体', knowledge: { enabled: true, picker: 'hidden' } },
       { id: 'general', name: '通用智能体', knowledge: { enabled: false } },
     ]),
     getApiKey: vi.fn().mockResolvedValue('sk-should-not-be-used'),
@@ -68,5 +69,22 @@ describe('Settings knowledge pane', () => {
     fireEvent.click(screen.getByRole('button', { name: '知识库' }));
     await screen.findByTestId('rag-api-key-input');
     expect(getApiKey).not.toHaveBeenCalledWith('sparkiirag');
+  });
+
+  it('uses an in-page menu for default-dataset rows including hidden pickers', async () => {
+    const api = makeApi();
+    render(<SettingsView api={api} />);
+    fireEvent.click(screen.getByRole('button', { name: '知识库' }));
+    const qa = await screen.findByTestId('rag-default-dataset-knowledge-qa') as HTMLButtonElement;
+    const contract = await screen.findByTestId('rag-default-dataset-contract-review') as HTMLButtonElement;
+    await waitFor(() => expect(api.listRagDatasets).toHaveBeenCalled());
+    expect(qa.tagName).toBe('BUTTON');
+    expect(contract.tagName).toBe('BUTTON');
+    expect(document.querySelector('select')).toBeNull();
+    expect(screen.queryByTestId('rag-default-dataset-general')).toBeNull();
+    fireEvent.click(qa);
+    expect(document.body.querySelector('.ui-menu--fixed')).toBeTruthy();
+    fireEvent.click(screen.getByRole('menuitem', { name: '法规' }));
+    expect(qa.value).toBe('law');
   });
 });

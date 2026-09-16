@@ -372,14 +372,17 @@ describe('pack startWorkflow', () => {
   });
 
   it('keeps pack window prefs after returning to 准备', () => {
-    render(<ProcurementSurface sessionId="s1" mode="live" title="" session={session as any} actions={{ review: vi.fn() } as any} agent={agent} />);
+    const { container } = render(<ProcurementSurface sessionId="s1" mode="live" title="" session={session as any} actions={{ review: vi.fn() } as any} agent={agent} />);
     fireEvent.click(screen.getByRole('button', { name: '返回准备' }));
-    fireEvent.change(screen.getByLabelText('领用范围'), { target: { value: '30' } });
-    fireEvent.change(screen.getByLabelText('本次用哪套制度'), { target: { value: '' } });
+    expect(container.querySelector('select')).toBeNull();
+    fireEvent.click(screen.getByLabelText('领用范围'));
+    fireEvent.click(screen.getByRole('menuitem', { name: '领用 30 天' }));
+    fireEvent.click(screen.getByLabelText('本次用哪套制度'));
+    fireEvent.click(screen.getByRole('menuitem', { name: '不使用' }));
     fireEvent.click(screen.getByRole('button', { name: '返回分析' }));
     fireEvent.click(screen.getByRole('button', { name: '返回准备' }));
-    expect((screen.getByLabelText('领用范围') as HTMLSelectElement).value).toBe('30');
-    expect((screen.getByLabelText('本次用哪套制度') as HTMLSelectElement).value).toBe('');
+    expect((screen.getByLabelText('领用范围') as HTMLButtonElement).value).toBe('30');
+    expect((screen.getByLabelText('本次用哪套制度') as HTMLButtonElement).value).toBe('');
   });
 });
 

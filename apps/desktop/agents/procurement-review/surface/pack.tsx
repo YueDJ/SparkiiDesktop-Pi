@@ -1,4 +1,5 @@
 import { useRef, useState, type ChangeEvent } from 'react';
+import { SelectMenu } from '@sparkii/ui';
 import type { AgentSurfaceActions, AgentSurfaceProps } from '../../../src/surface/contract.js';
 import { DEFAULT_RULES } from '../engine/default-rules.js';
 import { prepareWorkflowInput } from '../engine/evaluate.js';
@@ -321,11 +322,18 @@ export function PackPage({ files, onFile, actions, prefs, onPrefs }: PackPagePro
                         {pack.planReady ? <div className="hit file"><b>文件</b>已上传需求计划</div> : null}
                       </div>
                       <div className="acts">
-                        <select className="range" aria-label="计划范围" value={planRange} onChange={(e) => onPrefs({ ...prefs, planRange: e.target.value })}>
-                          <option value="month">本月</option>
-                          <option value="last">上月</option>
-                          <option value="id">指定单号</option>
-                        </select>
+                        <SelectMenu
+                          variant="plain"
+                          className="range"
+                          aria-label="计划范围"
+                          value={planRange}
+                          options={[
+                            { value: 'month', label: '本月' },
+                            { value: 'last', label: '上月' },
+                            { value: 'id', label: '指定单号' },
+                          ]}
+                          onChange={(next) => onPrefs({ ...prefs, planRange: next })}
+                        />
                         <button className="act pull" type="button" disabled>从 OA 获取</button>
                         <button className="act" type="button" onClick={() => planInput.current?.click()}>
                           {pack.planReady ? '更换文件' : '上传'}
@@ -361,11 +369,18 @@ export function PackPage({ files, onFile, actions, prefs, onPrefs }: PackPagePro
                         {qtyHit ? <div className="hit file"><b>文件</b>{qtyHit}</div> : null}
                       </div>
                       <div className="acts">
-                        <select className="range" aria-label="领用范围" value={usageDays} onChange={(e) => onPrefs({ ...prefs, usageDays: e.target.value as PackPrefs['usageDays'] })}>
-                          <option value="30">领用 30 天</option>
-                          <option value="90">领用 90 天</option>
-                          <option value="180">领用 180 天</option>
-                        </select>
+                        <SelectMenu
+                          variant="plain"
+                          className="range"
+                          aria-label="领用范围"
+                          value={usageDays}
+                          options={[
+                            { value: '30', label: '领用 30 天' },
+                            { value: '90', label: '领用 90 天' },
+                            { value: '180', label: '领用 180 天' },
+                          ]}
+                          onChange={(next) => onPrefs({ ...prefs, usageDays: next as PackPrefs['usageDays'] })}
+                        />
                         <button className="act pull" type="button" disabled>从库存获取</button>
                         <button className="act" type="button" onClick={() => stockInput.current?.click()}>
                           {files.stock ? '更换库存' : '上传库存'}
@@ -389,11 +404,18 @@ export function PackPage({ files, onFile, actions, prefs, onPrefs }: PackPagePro
                         {pack.priceReady ? <div className="hit file"><b>文件</b>已上传历史成交</div> : null}
                       </div>
                       <div className="acts">
-                        <select className="range" aria-label="成交范围" value={priceMonths} onChange={(e) => onPrefs({ ...prefs, priceMonths: e.target.value as PackPrefs['priceMonths'] })}>
-                          <option value="6">成交 6 个月</option>
-                          <option value="12">成交 12 个月</option>
-                          <option value="24">成交 24 个月</option>
-                        </select>
+                        <SelectMenu
+                          variant="plain"
+                          className="range"
+                          aria-label="成交范围"
+                          value={priceMonths}
+                          options={[
+                            { value: '6', label: '成交 6 个月' },
+                            { value: '12', label: '成交 12 个月' },
+                            { value: '24', label: '成交 24 个月' },
+                          ]}
+                          onChange={(next) => onPrefs({ ...prefs, priceMonths: next as PackPrefs['priceMonths'] })}
+                        />
                         <button className="act pull" type="button" disabled>从 U8 获取</button>
                         <button className="act" type="button" onClick={() => dealsInput.current?.click()}>
                           {pack.priceReady ? '更换文件' : '上传'}
@@ -413,11 +435,18 @@ export function PackPage({ files, onFile, actions, prefs, onPrefs }: PackPagePro
                         {pack.timeReady ? <div className="hit file"><b>文件</b>已上传在途采购</div> : null}
                       </div>
                       <div className="acts">
-                        <select className="range" aria-label="在途范围" value={transitDays} onChange={(e) => onPrefs({ ...prefs, transitDays: e.target.value as PackPrefs['transitDays'] })}>
-                          <option value="15">在途 15 天</option>
-                          <option value="30">在途 30 天</option>
-                          <option value="60">在途 60 天</option>
-                        </select>
+                        <SelectMenu
+                          variant="plain"
+                          className="range"
+                          aria-label="在途范围"
+                          value={transitDays}
+                          options={[
+                            { value: '15', label: '在途 15 天' },
+                            { value: '30', label: '在途 30 天' },
+                            { value: '60', label: '在途 60 天' },
+                          ]}
+                          onChange={(next) => onPrefs({ ...prefs, transitDays: next as PackPrefs['transitDays'] })}
+                        />
                         <button className="act pull" type="button" disabled aria-label="获取在途">从 OA 获取</button>
                         <button className="act" type="button" onClick={() => transitInput.current?.click()}>
                           {pack.timeReady ? '更换文件' : '上传'}
@@ -442,15 +471,17 @@ export function PackPage({ files, onFile, actions, prefs, onPrefs }: PackPagePro
                       </span>
                     </div>
                     <label>
-                      <select
+                      <SelectMenu
+                        variant="plain"
                         className="kb"
                         aria-label="本次用哪套制度"
                         value={pack.policyKb ?? ''}
-                        onChange={(e) => onPrefs({ ...prefs, policyKb: e.target.value === 'default' ? 'default' : null })}
-                      >
-                        <option value="default">采购制度（默认）</option>
-                        <option value="">不使用</option>
-                      </select>
+                        options={[
+                          { value: 'default', label: '采购制度（默认）' },
+                          { value: '', label: '不使用' },
+                        ]}
+                        onChange={(next) => onPrefs({ ...prefs, policyKb: next === 'default' ? 'default' : null })}
+                      />
                     </label>
                   </div>
                 </section>

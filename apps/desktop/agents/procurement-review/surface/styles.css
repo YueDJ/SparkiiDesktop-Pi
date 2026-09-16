@@ -45,7 +45,8 @@
 
 .procurement button:focus-visible,
 .procurement .step:focus-visible,
-.procurement select:focus-visible {
+.procurement select:focus-visible,
+.procurement .ui-select-menu-trigger:focus-visible {
   outline: 3px solid var(--primary);
   outline-offset: 2px;
 }
@@ -350,7 +351,10 @@
   padding: 0 8px;
   font-size: 12px;
   color: var(--text-2);
+  min-width: 7.5em;
 }
+.procurement .range .ui-select-menu-caret,
+.procurement .kb .ui-select-menu-caret { color: var(--text-3); }
 .procurement .act {
   border: 1px solid var(--border-strong);
   background: #fff;
@@ -376,7 +380,7 @@
 }
 .procurement .policy .ico { grid-row: 1 / 3; }
 .procurement .kb {
-  width: min(360px, 100%);
+  width: 100%;
   height: 36px;
   border: 1px solid var(--border-strong);
   background: #fff;
@@ -384,6 +388,10 @@
   padding: 0 10px;
   font-size: 13px;
   color: var(--text);
+}
+.procurement .policy .ui-select-menu {
+  display: block;
+  width: min(360px, 100%);
   margin-top: 8px;
 }
 

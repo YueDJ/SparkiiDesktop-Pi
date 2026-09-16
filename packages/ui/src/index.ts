@@ -7,6 +7,7 @@ export * from './primitives/Card.js';
 export * from './primitives/TextField.js';
 export * from './primitives/TextArea.js';
 export * from './primitives/Select.js';
+export * from './primitives/SelectMenu.js';
 export * from './primitives/Switch.js';
 export * from './primitives/Tabs.js';
 export * from './primitives/ListRow.js';

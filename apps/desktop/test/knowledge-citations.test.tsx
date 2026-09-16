@@ -38,6 +38,15 @@ function makeApi(over: Record<string, unknown> = {}) {
   };
 }
 
+function datasetPicker() {
+  return screen.getByTestId('knowledge-dataset-select') as HTMLButtonElement;
+}
+
+function chooseDataset(label: string) {
+  fireEvent.click(datasetPicker());
+  fireEvent.click(screen.getByRole('menuitem', { name: label }));
+}
+
 const actions = {
   newSession: vi.fn(),
   openSession: vi.fn(),
@@ -221,7 +230,7 @@ describe('knowledge-qa surface', () => {
 
   it('shows dataset select when knowledge-qa surface mounts picker', async () => {
     const api = makeApi();
-    render(
+    const { container } = render(
       <KnowledgeQaSurface
         agent={{ id: 'knowledge-qa', name: '企业知识问答', surfaceType: 'chat', knowledge: { enabled: true, picker: 'session', backend: 'sparkiirag' } }}
         sessionId="k1"
@@ -232,6 +241,10 @@ describe('knowledge-qa surface', () => {
       />,
     );
     await waitFor(() => expect(screen.getByTestId('knowledge-dataset-select')).toBeTruthy());
+    expect(container.querySelector('select')).toBeNull();
+    fireEvent.click(screen.getByTestId('knowledge-dataset-select'));
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(document.body.querySelector('.ui-menu--fixed')).toBeNull();
   });
 
   it('selects the agent default dataset instead of all visible libraries', async () => {
@@ -247,7 +260,7 @@ describe('knowledge-qa surface', () => {
       />,
     );
     await waitFor(() => {
-      expect((screen.getByTestId('knowledge-dataset-select') as HTMLSelectElement).value).toBe('hr');
+      expect(datasetPicker().value).toBe('hr');
     });
   });
 
@@ -264,10 +277,10 @@ describe('knowledge-qa surface', () => {
       />,
     );
     await waitFor(() => {
-      expect((screen.getByTestId('knowledge-dataset-select') as HTMLSelectElement).value).toBe('hr');
+      expect(datasetPicker().value).toBe('hr');
     });
-    fireEvent.change(screen.getByTestId('knowledge-dataset-select'), { target: { value: '__all__' } });
-    expect((screen.getByTestId('knowledge-dataset-select') as HTMLSelectElement).value).toBe('__all__');
+    chooseDataset('全部可见库');
+    expect(datasetPicker().value).toBe('__all__');
     view.rerender(
       <KnowledgeQaSurface
         agent={{ id: 'knowledge-qa', name: '企业知识问答', surfaceType: 'chat', knowledge: { enabled: true, picker: 'session', backend: 'sparkiirag' } }}
@@ -279,7 +292,7 @@ describe('knowledge-qa surface', () => {
       />,
     );
     await waitFor(() => {
-      expect((screen.getByTestId('knowledge-dataset-select') as HTMLSelectElement).value).toBe('hr');
+      expect(datasetPicker().value).toBe('hr');
     });
   });
 
@@ -297,10 +310,10 @@ describe('knowledge-qa surface', () => {
       />,
     );
     await waitFor(() => {
-      expect((screen.getByTestId('knowledge-dataset-select') as HTMLSelectElement).value).toBe('hr');
+      expect(datasetPicker().value).toBe('hr');
     });
-    fireEvent.change(screen.getByTestId('knowledge-dataset-select'), { target: { value: '__all__' } });
-    expect((screen.getByTestId('knowledge-dataset-select') as HTMLSelectElement).value).toBe('__all__');
+    chooseDataset('全部可见库');
+    expect(datasetPicker().value).toBe('__all__');
     view.rerender(
       <KnowledgeQaSurface
         agent={{ id: 'knowledge-qa', name: '企业知识问答', surfaceType: 'chat', knowledge: { enabled: true, picker: 'session', backend: 'sparkiirag' } }}
@@ -312,7 +325,7 @@ describe('knowledge-qa surface', () => {
       />,
     );
     await waitFor(() => {
-      expect((screen.getByTestId('knowledge-dataset-select') as HTMLSelectElement).value).toBe('hr');
+      expect(datasetPicker().value).toBe('hr');
     });
   });
 
@@ -332,9 +345,9 @@ describe('knowledge-qa surface', () => {
       />,
     );
     await waitFor(() => {
-      expect((screen.getByTestId('knowledge-dataset-select') as HTMLSelectElement).value).toBe('hr');
+      expect(datasetPicker().value).toBe('hr');
     });
-    fireEvent.change(screen.getByTestId('knowledge-dataset-select'), { target: { value: '__all__' } });
+    chooseDataset('全部可见库');
     fireEvent.change(screen.getByTestId('composer-input'), { target: { value: '高温津贴怎么发' } });
     fireEvent.keyDown(screen.getByTestId('composer-input'), { key: 'Enter' });
     await waitFor(() => expect(actions.openSession).toHaveBeenCalledWith('s-new'));
@@ -349,7 +362,7 @@ describe('knowledge-qa surface', () => {
         api={api as any}
       />,
     );
-    expect((screen.getByTestId('knowledge-dataset-select') as HTMLSelectElement).value).toBe('__all__');
+    expect(datasetPicker().value).toBe('__all__');
   });
 
   it('publishes a placeholder title when promptSession creates a session', async () => {
