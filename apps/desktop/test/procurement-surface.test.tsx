@@ -372,8 +372,9 @@ describe('pack startWorkflow', () => {
   });
 
   it('keeps pack window prefs after returning to 准备', () => {
-    render(<ProcurementSurface sessionId="s1" mode="live" title="" session={session as any} actions={{ review: vi.fn() } as any} agent={agent} />);
+    const { container } = render(<ProcurementSurface sessionId="s1" mode="live" title="" session={session as any} actions={{ review: vi.fn() } as any} agent={agent} />);
     fireEvent.click(screen.getByRole('button', { name: '返回准备' }));
+    expect(container.querySelector('select')).toBeNull();
     fireEvent.click(screen.getByLabelText('领用范围'));
     fireEvent.click(screen.getByRole('menuitem', { name: '领用 30 天' }));
     fireEvent.click(screen.getByLabelText('本次用哪套制度'));

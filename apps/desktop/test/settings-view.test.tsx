@@ -33,10 +33,11 @@ describe('SettingsView provider rendering', () => {
     render(<SettingsView api={makeApi()} />);
     await screen.findByText('已加载本机配置');
 
-    const optionTexts = screen.getAllByRole('option').map((o) => o.textContent);
-    expect(optionTexts).toContain('DeepSeek');
-    expect(optionTexts).toContain('本地 Ollama');
-    expect(optionTexts).not.toContain('Google');
+    fireEvent.click(screen.getByTestId('provider-select'));
+    const optionTexts = screen.getAllByRole('menuitem').map((o) => o.textContent);
+    expect(optionTexts.some((text) => text?.includes('DeepSeek'))).toBe(true);
+    expect(optionTexts.some((text) => text?.includes('本地 Ollama'))).toBe(true);
+    expect(optionTexts.some((text) => text?.includes('Google'))).toBe(false);
     expect(document.querySelector('.dot')).toBeNull();
     expect(screen.queryByText('●')).toBeNull();
   });
@@ -47,8 +48,8 @@ describe('SettingsView provider rendering', () => {
 
     expect(screen.queryByText('接口地址(Base URL)')).toBeNull();
 
-    const providerSelect = screen.getAllByRole('combobox')[0] as HTMLSelectElement;
-    fireEvent.change(providerSelect, { target: { value: 'ollama' } });
+    fireEvent.click(screen.getByTestId('provider-select'));
+    fireEvent.click(screen.getByRole('menuitem', { name: /本地 Ollama/ }));
     expect(await screen.findByDisplayValue('http://127.0.0.1:11434/v1')).toBeTruthy();
     expect(screen.getByText('接口地址(Base URL)')).toBeTruthy();
   });
@@ -58,8 +59,8 @@ describe('SettingsView provider rendering', () => {
     render(<SettingsView api={makeApi({ getApiKey })} />);
     await screen.findByText('已加载本机配置');
 
-    const providerSelect = screen.getAllByRole('combobox')[0] as HTMLSelectElement;
-    fireEvent.change(providerSelect, { target: { value: 'ollama' } });
+    fireEvent.click(screen.getByTestId('provider-select'));
+    fireEvent.click(screen.getByRole('menuitem', { name: /本地 Ollama/ }));
 
     expect(await screen.findByDisplayValue('sk-ollama')).toBeTruthy();
     expect(getApiKey).toHaveBeenCalledWith('ollama');
@@ -69,7 +70,8 @@ describe('SettingsView provider rendering', () => {
     const saveSettings = vi.fn().mockResolvedValue({});
     render(<SettingsView api={makeApi({ saveSettings })} />);
     await screen.findByText('已加载本机配置');
-    fireEvent.change(screen.getByTestId('default-thinking-select'), { target: { value: 'high' } });
+    fireEvent.click(screen.getByTestId('default-thinking-select'));
+    fireEvent.click(screen.getByRole('menuitem', { name: '高' }));
     fireEvent.click(screen.getByText('保存'));
     await waitFor(() => expect(saveSettings).toHaveBeenCalled());
     const arg = saveSettings.mock.calls[0][0] as Record<string, unknown>;
@@ -82,7 +84,8 @@ describe('SettingsView provider rendering', () => {
     await screen.findByText('已加载本机配置');
 
     fireEvent.click(screen.getByText('智能体与运行'));
-    fireEvent.change(screen.getByTestId('chat-detail-level-select'), { target: { value: 'debug' } });
+    fireEvent.click(screen.getByTestId('chat-detail-level-select'));
+    fireEvent.click(screen.getByRole('menuitem', { name: '调试' }));
     fireEvent.click(screen.getByText('保存'));
 
     await waitFor(() => expect(saveSettings).toHaveBeenCalled());

@@ -80,6 +80,7 @@ describe('Settings knowledge pane', () => {
     await waitFor(() => expect(api.listRagDatasets).toHaveBeenCalled());
     expect(qa.tagName).toBe('BUTTON');
     expect(contract.tagName).toBe('BUTTON');
+    expect(document.querySelector('select')).toBeNull();
     expect(screen.queryByTestId('rag-default-dataset-general')).toBeNull();
     fireEvent.click(qa);
     expect(document.body.querySelector('.ui-menu--fixed')).toBeTruthy();

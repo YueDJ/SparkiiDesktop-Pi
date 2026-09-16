@@ -30,6 +30,19 @@ describe('AuditView', () => {
     expect(screen.getByText('时间')).toBeTruthy();
   });
 
+  it('has no native select and filters from the in-page menu', async () => {
+    const { container } = render(<AuditView api={makeApi(ROWS)} />);
+    await screen.findByText('proposal.approved');
+    expect(container.querySelector('select')).toBeNull();
+    fireEvent.click(screen.getByLabelText('结果'));
+    fireEvent.click(screen.getByRole('menuitem', { name: '未执行' }));
+    expect(screen.queryByText('proposal.approved')).toBeNull();
+    expect(screen.getByText('report.export')).toBeTruthy();
+    fireEvent.click(screen.getByLabelText('结果'));
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(document.body.querySelector('.ui-menu--fixed')).toBeNull();
+  });
+
   it('exports the queried rows as JSONL', async () => {
     const onExport = vi.fn();
     render(<AuditView api={makeApi(ROWS)} onExport={onExport} />);

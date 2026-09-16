@@ -323,6 +323,7 @@ export function PackPage({ files, onFile, actions, prefs, onPrefs }: PackPagePro
                       </div>
                       <div className="acts">
                         <SelectMenu
+                          variant="plain"
                           className="range"
                           aria-label="计划范围"
                           value={planRange}
@@ -369,6 +370,7 @@ export function PackPage({ files, onFile, actions, prefs, onPrefs }: PackPagePro
                       </div>
                       <div className="acts">
                         <SelectMenu
+                          variant="plain"
                           className="range"
                           aria-label="领用范围"
                           value={usageDays}
@@ -403,6 +405,7 @@ export function PackPage({ files, onFile, actions, prefs, onPrefs }: PackPagePro
                       </div>
                       <div className="acts">
                         <SelectMenu
+                          variant="plain"
                           className="range"
                           aria-label="成交范围"
                           value={priceMonths}
@@ -433,6 +436,7 @@ export function PackPage({ files, onFile, actions, prefs, onPrefs }: PackPagePro
                       </div>
                       <div className="acts">
                         <SelectMenu
+                          variant="plain"
                           className="range"
                           aria-label="在途范围"
                           value={transitDays}
@@ -468,6 +472,7 @@ export function PackPage({ files, onFile, actions, prefs, onPrefs }: PackPagePro
                     </div>
                     <label>
                       <SelectMenu
+                        variant="plain"
                         className="kb"
                         aria-label="本次用哪套制度"
                         value={pack.policyKb ?? ''}

@@ -230,7 +230,7 @@ describe('knowledge-qa surface', () => {
 
   it('shows dataset select when knowledge-qa surface mounts picker', async () => {
     const api = makeApi();
-    render(
+    const { container } = render(
       <KnowledgeQaSurface
         agent={{ id: 'knowledge-qa', name: '企业知识问答', surfaceType: 'chat', knowledge: { enabled: true, picker: 'session', backend: 'sparkiirag' } }}
         sessionId="k1"
@@ -241,6 +241,10 @@ describe('knowledge-qa surface', () => {
       />,
     );
     await waitFor(() => expect(screen.getByTestId('knowledge-dataset-select')).toBeTruthy());
+    expect(container.querySelector('select')).toBeNull();
+    fireEvent.click(screen.getByTestId('knowledge-dataset-select'));
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(document.body.querySelector('.ui-menu--fixed')).toBeNull();
   });
 
   it('selects the agent default dataset instead of all visible libraries', async () => {

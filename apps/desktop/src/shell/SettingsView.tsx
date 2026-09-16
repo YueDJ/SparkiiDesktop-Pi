@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Select, SettingsLayout, SettingsRow, Switch, TextField, useErrors } from '@sparkii/ui';
+import { Button, SelectMenu, SettingsLayout, SettingsRow, Switch, TextField, useErrors } from '@sparkii/ui';
 import { THINKING_LEVELS, thinkingLevelLabel } from '../workbench/thinking-levels.js';
 import {
   CHAT_DETAIL_LEVELS,
@@ -118,6 +118,8 @@ export function SettingsView(props: SettingsViewProps) {
   const [chatDetailLevel, setChatDetailLevel] = useState<ChatDetailLevel>('standard');
   const [logLevel, setLogLevel] = useState<'debug' | 'info' | 'warn' | 'error'>('info');
   const [logRows, setLogRows] = useState<Array<{ ts: number; level: string; msg: string; ctx?: unknown }>>([]);
+  const [theme, setTheme] = useState('浅色');
+  const [language, setLanguage] = useState('简体中文');
 
   const active = entries.find((e) => e.id === providerId);
 
@@ -251,9 +253,13 @@ export function SettingsView(props: SettingsViewProps) {
           <h3 className="settings-section-title">大模型连接</h3>
           <div className="ui-muted settings-hint">配置模型端点与任务路由；数据默认不出本机</div>
           <SettingsRow label="服务商">
-            <Select data-testid="provider-select" value={providerId} onChange={(e) => switchProvider(e.target.value)}>
-              {entries.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-            </Select>
+            <SelectMenu
+              data-testid="provider-select"
+              aria-label="服务商"
+              value={providerId}
+              options={entries.map((e) => ({ value: e.id, label: e.name }))}
+              onChange={switchProvider}
+            />
           </SettingsRow>
           {active?.kind === 'custom' && (
             <>
@@ -261,10 +267,15 @@ export function SettingsView(props: SettingsViewProps) {
                 <TextField data-testid="base-url-input" value={customBaseUrl} onChange={(e) => setCustomBaseUrl(e.target.value)} />
               </SettingsRow>
               <SettingsRow label="API 类型">
-                <Select value={customApi} onChange={(e) => setCustomApi(e.target.value as 'openai-completions' | 'anthropic-messages')}>
-                  <option value="openai-completions">openai-completions</option>
-                  <option value="anthropic-messages">anthropic-messages</option>
-                </Select>
+                <SelectMenu
+                  aria-label="API 类型"
+                  value={customApi}
+                  options={[
+                    { value: 'openai-completions', label: 'openai-completions' },
+                    { value: 'anthropic-messages', label: 'anthropic-messages' },
+                  ]}
+                  onChange={(next) => setCustomApi(next as 'openai-completions' | 'anthropic-messages')}
+                />
               </SettingsRow>
             </>
           )}
@@ -272,27 +283,46 @@ export function SettingsView(props: SettingsViewProps) {
             <TextField data-testid="api-key-input" type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="本地端点可留空" />
           </SettingsRow>
           <SettingsRow label="默认模型">
-            <Select data-testid="default-model-select" value={defaultModel} onChange={(e) => setDefaultModel(e.target.value)}>
-              <option value="">未设置（使用路由“默认”）</option>
-              {defaultModel && !models.includes(defaultModel) && <option value={defaultModel}>{defaultModel}</option>}
-              {models.map((m) => <option key={m} value={m}>{m}</option>)}
-            </Select>
+            <SelectMenu
+              data-testid="default-model-select"
+              aria-label="默认模型"
+              value={defaultModel}
+              options={[
+                { value: '', label: '未设置（使用路由“默认”）' },
+                ...(defaultModel && !models.includes(defaultModel) ? [{ value: defaultModel, label: defaultModel }] : []),
+                ...models.map((m) => ({ value: m, label: m })),
+              ]}
+              onChange={setDefaultModel}
+            />
           </SettingsRow>
           <SettingsRow label="默认思考强度">
-            <Select data-testid="default-thinking-select" value={defaultThinkingLevel} onChange={(e) => setDefaultThinkingLevel(e.target.value)}>
-              <option value="">跟随 SDK 默认（中）</option>
-              {THINKING_LEVELS.map((l) => <option key={l} value={l}>{thinkingLevelLabel(l)}</option>)}
-            </Select>
+            <SelectMenu
+              data-testid="default-thinking-select"
+              aria-label="默认思考强度"
+              value={defaultThinkingLevel}
+              options={[
+                { value: '', label: '跟随 SDK 默认（中）' },
+                ...THINKING_LEVELS.map((l) => ({ value: l, label: thinkingLevelLabel(l) })),
+              ]}
+              onChange={setDefaultThinkingLevel}
+            />
           </SettingsRow>
           <SettingsRow label="任务路由(按任务选模型)">
             <div className="settings-routes">
               {ROUTE_TASKS.map(({ key, label }) => (
                 <div key={key} className="settings-route-row">
                   <span className="settings-route-label">{label}</span>
-                  <Select className="route-select" data-testid={`route-select-${key}`} value={routes[key] ?? ''} onChange={(e) => setRoutes((r) => ({ ...r, [key]: e.target.value }))}>
-                    <option value="">跟随默认模型</option>
-                    {models.map((m) => <option key={m} value={m}>{m}</option>)}
-                  </Select>
+                  <SelectMenu
+                    className="route-select"
+                    data-testid={`route-select-${key}`}
+                    aria-label={label}
+                    value={routes[key] ?? ''}
+                    options={[
+                      { value: '', label: '跟随默认模型' },
+                      ...models.map((m) => ({ value: m, label: m })),
+                    ]}
+                    onChange={(next) => setRoutes((r) => ({ ...r, [key]: next }))}
+                  />
                 </div>
               ))}
             </div>
@@ -328,30 +358,37 @@ export function SettingsView(props: SettingsViewProps) {
           <h3 className="settings-section-title">智能体与运行</h3>
           <div className="ui-muted settings-hint">并行上限只约束智能体，不约束文档解析。</div>
           <SettingsRow label="并行智能体上限">
-            <Select value={String(maxAgents)} onChange={(e) => setMaxAgents(Number(e.target.value))}>
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => <option key={n} value={n}>{n}</option>)}
-            </Select>
+            <SelectMenu
+              aria-label="并行智能体上限"
+              value={String(maxAgents)}
+              options={[1, 2, 3, 4, 5, 6, 7, 8].map((n) => ({ value: String(n), label: String(n) }))}
+              onChange={(next) => setMaxAgents(Number(next))}
+            />
           </SettingsRow>
           <SettingsRow label="超出上限时排队"><Switch checked={queueEnabled} onCheckedChange={setQueueEnabled} label="超出上限时排队" /></SettingsRow>
           <SettingsRow label="聊天信息详细程度">
-            <Select
+            <SelectMenu
               data-testid="chat-detail-level-select"
+              aria-label="聊天信息详细程度"
               value={chatDetailLevel}
-              onChange={(e) => setChatDetailLevel(e.target.value as ChatDetailLevel)}
-            >
-              {CHAT_DETAIL_LEVELS.map((level) => (
-                <option key={level} value={level}>{chatDetailLevelLabel(level)}</option>
-              ))}
-            </Select>
+              options={CHAT_DETAIL_LEVELS.map((level) => ({ value: level, label: chatDetailLevelLabel(level) }))}
+              onChange={(next) => setChatDetailLevel(next as ChatDetailLevel)}
+            />
           </SettingsRow>
           <SettingsRow label="崩溃自动恢复"><Switch checked onCheckedChange={() => {}} label="崩溃自动恢复" /></SettingsRow>
           <SettingsRow label="日志级别">
-            <Select data-testid="log-level-select" value={logLevel} onChange={(e) => setLogLevel(e.target.value as typeof logLevel)}>
-              <option value="debug">调试</option>
-              <option value="info">信息</option>
-              <option value="warn">警告</option>
-              <option value="error">错误</option>
-            </Select>
+            <SelectMenu
+              data-testid="log-level-select"
+              aria-label="日志级别"
+              value={logLevel}
+              options={[
+                { value: 'debug', label: '调试' },
+                { value: 'info', label: '信息' },
+                { value: 'warn', label: '警告' },
+                { value: 'error', label: '错误' },
+              ]}
+              onChange={(next) => setLogLevel(next as typeof logLevel)}
+            />
           </SettingsRow>
           <SettingsRow label="运行日志">
             <Button onClick={refreshLogs}>刷新</Button>
@@ -385,8 +422,22 @@ export function SettingsView(props: SettingsViewProps) {
       {pane === 'appearance' && (
         <>
           <h3 className="settings-section-title">外观与语言</h3>
-          <SettingsRow label="主题"><Select><option>浅色</option><option>深色</option></Select></SettingsRow>
-          <SettingsRow label="界面语言"><Select><option>简体中文</option><option>English</option></Select></SettingsRow>
+          <SettingsRow label="主题">
+            <SelectMenu
+              aria-label="主题"
+              value={theme}
+              options={[{ value: '浅色', label: '浅色' }, { value: '深色', label: '深色' }]}
+              onChange={setTheme}
+            />
+          </SettingsRow>
+          <SettingsRow label="界面语言">
+            <SelectMenu
+              aria-label="界面语言"
+              value={language}
+              options={[{ value: '简体中文', label: '简体中文' }, { value: 'English', label: 'English' }]}
+              onChange={setLanguage}
+            />
+          </SettingsRow>
         </>
       )}
       {pane === 'audit' && (

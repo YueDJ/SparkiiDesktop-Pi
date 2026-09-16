@@ -15,6 +15,7 @@ export function SelectMenu({
   placeholder,
   disabled,
   className = '',
+  variant = 'field',
   'aria-label': ariaLabel,
   'data-testid': testId,
   placement = 'bottom',
@@ -25,6 +26,8 @@ export function SelectMenu({
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  /** `field` keeps `.ui-select` chrome; `plain` is for page-owned trigger styles. */
+  variant?: 'field' | 'plain';
   'aria-label'?: string;
   'data-testid'?: string;
   placement?: 'top' | 'bottom';
@@ -34,13 +37,18 @@ export function SelectMenu({
   const selected = options.find((option) => option.value === value);
   const label = selected?.label ?? placeholder ?? '';
   const close = () => setOpen(false);
-  const fieldLike = !className;
+  const triggerClass = [
+    'ui-select-menu-trigger',
+    variant === 'field' ? 'ui-select' : '',
+    className,
+  ].filter(Boolean).join(' ');
 
   return (
     <div ref={wrapperRef} className="ui-select-menu">
       <button
         type="button"
-        className={`ui-select-menu-trigger ${fieldLike ? 'ui-select' : className}`}
+        role="combobox"
+        className={triggerClass}
         aria-label={ariaLabel}
         aria-haspopup="menu"
         aria-expanded={open}
@@ -54,10 +62,12 @@ export function SelectMenu({
       </button>
       {open && !disabled && (
         <Menu open onClose={close} containerRef={wrapperRef} placement={placement} align="start">
-          {options.filter((option) => !option.disabled).map((option) => (
+          {options.map((option) => (
             <MenuItem
               key={option.value}
               label={option.label}
+              disabled={option.disabled}
+              current={option.value === value}
               trailing={option.value === value ? '✓' : ''}
               onSelect={() => { close(); onChange(option.value); }}
             />

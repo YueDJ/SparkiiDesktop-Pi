@@ -35,11 +35,13 @@ test('provider settings smoke', async () => {
   await page.getByRole('button', { name: '保存' }).click();
   await expect(page.getByText('设置已保存')).toBeVisible();
 
-  await providerSelect.selectOption('ollama');
+  await providerSelect.click();
+  await page.getByRole('menuitem', { name: /本地 Ollama/ }).click();
   await expect(baseUrlInput).toHaveValue('http://127.0.0.1:11434/v1');
   await expect(apiKeyInput).toHaveValue('');
 
-  await providerSelect.selectOption('deepseek');
+  await providerSelect.click();
+  await page.getByRole('menuitem', { name: /DeepSeek/ }).click();
   await expect(baseUrlInput).not.toBeVisible();
   await expect(apiKeyInput).toHaveValue('sk-test-123');
 
