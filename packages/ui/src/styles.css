@@ -104,8 +104,8 @@ button { font: inherit; color: inherit; }
 .ui-modal { width: 420px; max-width: 92%; background: var(--color-surface); border-radius: var(--radius-overlay); box-shadow: var(--shadow-overlay); }
 .ui-menu { position: absolute; min-width: 220px; max-height: min(320px, 60vh); overflow-y: auto; background: var(--color-surface); border: 1px solid var(--color-borderStrong); border-radius: var(--radius-card); box-shadow: var(--shadow-overlay); padding: var(--spacing-xs); z-index: var(--z-dropdown); }
 .ui-menu--fixed { position: fixed; transform: translateX(0); }
-.ui-menu--bottom { top: calc(100% + 6px); right: 0; }
-.ui-menu--top { bottom: calc(100% + 6px); right: 0; }
+.ui-menu--bottom { top: calc(100% + var(--spacing-xs)); right: 0; }
+.ui-menu--top { bottom: calc(100% + var(--spacing-xs)); right: 0; }
 .ui-menu-item { display: flex; align-items: center; width: 100%; gap: var(--spacing-xs); padding: var(--spacing-xs) var(--spacing-sm); border: none; background: none; color: var(--color-text); border-radius: var(--radius-control); cursor: pointer; }
 .ui-menu-item:hover, .ui-menu-item:focus, .ui-menu-item:focus-visible { background: var(--color-primaryBg); }
 .ui-menu-item-hint { margin-left: auto; color: var(--color-textMuted); font-size: var(--font-size-sm); }
