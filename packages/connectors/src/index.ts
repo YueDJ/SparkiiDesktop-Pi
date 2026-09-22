@@ -8,3 +8,4 @@ export * from './sparkiirag/types.js';
 export * from './sparkiionto/client.js';
 export * from './sparkiionto/graph.js';
 export * from './sparkiionto/types.js';
+export * from './sparkiionto/tools.js';
