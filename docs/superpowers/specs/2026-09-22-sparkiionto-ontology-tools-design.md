@@ -248,6 +248,9 @@ type OntologyToolResult = {
 
 节点一律裁剪为 `{ id, type, label?, content?, properties? }`；边为 `{ source, target, type, weight }`。**不返回**服务端原始信封、不返回内部路径、不返回 token。
 
+实施期落定的取值（回填）：`QUERY_MAX_BYTES = 256 * 1024`；`TOOL_BUDGET_MS = { 'ontology.query': 10_000, default: 30_000 }`；
+`limit` 上限只在 `ontology.search_documents`（20），其余工具的 `limit` 默认 20、服务端各自另有上限。
+
 ### 5.3 命名与唯一性
 
 - 命名空间固定 `ontology.`；动词在后的下划线命名。
@@ -332,9 +335,18 @@ type OntologyToolResult = {
 
 ---
 
-## 12. 待确认
+## 12. 结论与交付说明
 
-1. 工具数量是否最终定为 11 个；是否需要把 `ontology.decisions` 与 `ontology.decision_chain` 合并为一个。
+**工具数量维持 11 个。** `ontology.decisions` 与 `ontology.decision_chain` 不合并：前者是
+决策**列表**（可按类别过滤），后者是某一条决策的**单条追溯**（因果链 + 先例 + 合规），语义粒度不同，
+拆开才能让模型区分"列记录"与"追一条"。
+
+**交付说明（已知边界）：**
+
+1. 图谱内容为空：实测 6 节点 5 边，全为文档分块；因果结论需图谱内容就绪后才可依赖。
+2. `ontology.path` / `ontology.distance_matrix` / `ontology.reason` / `ontology.query`
+   在对端修复前会返回 `empty` 或 403（§13 事项 1 / 2）。
+3. 本体文档检索改由 `ontology.search_documents` 承担，`knowledge.search` 不再连本体（D13）。
 
 ---
 

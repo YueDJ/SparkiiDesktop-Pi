@@ -235,20 +235,37 @@ GET  /api/v1/onto/jobs/{job_id}                      # job:read
 
 ---
 
-## 6. 本期不用、但后续"本体能力"会用到的端点
+## 6. 本体能力会用的端点（按实测修正）
 
-同进程内已挂载且用同一套凭据（`product_require_auth`：GET 需 `graph:read`，写方法需 `graph:write`）：
+同进程内已挂载且用同一套凭据。**授权口径两套并存**：
+
+| 面 | 前缀 | 判权方式 |
+| --- | --- | --- |
+| 产品面 | `/api/v1/*` | **逐端点**声明动作（如 `/api/v1/onto/graph/search` 声明 `graph:read`） |
+| Explorer 面 | `/api/*` | **按 HTTP 动词**：GET → `graph:read`；POST/PUT/PATCH/DELETE → `graph:write` |
 
 | 能力 | 端点 |
 | --- | --- |
-| 图检索/邻域/路径/统计 | `POST /api/graph/search`、`GET /api/graph/node/{id}/neighbors`、`GET /api/graph/path`、`GET /api/graph/stats`、`GET /api/graph/semantic-neighborhood` |
-| SPARQL（只读） | `POST /api/sparql` |
-| 推理 | `POST /api/reason` |
-| 决策链 | `GET /api/decisions`、`/{id}/chain`、`/{id}/precedents`、`/causal-distance` |
-| 血缘 | `GET /api/provenance?node_id=`、`/api/provenance/report` |
-| 产品面血缘/审计 | `GET /api/v1/onto/provenance`、`GET /api/v1/onto/audit`（`audit:read`） |
+| 产品面图（本轮工具用） | `POST /api/v1/onto/graph/search`、`GET /api/v1/onto/graph/summary`、`GET /api/v1/onto/graph/nodes/{id}` |
+| Explorer 图检索/邻域/路径/统计 | `GET /api/graph/node/{id}/neighbors`、`GET /api/graph/path`、`GET /api/graph/stats`、`GET /api/graph/nodes`、`GET /api/graph/edges`、`GET /api/graph/semantic-neighborhood`（`POST /api/graph/search` 按动词判权为写，只读凭据下 403） |
+| SPARQL（只读，按动词判权） | `POST /api/sparql` |
+| 推理（按动词判权） | `POST /api/reason` |
+| 距离矩阵（按动词判权） | `POST /api/graph/distance-matrix` |
+| 决策 | `GET /api/decisions`、`GET /api/decisions/{id}`、`/{id}/chain`、`/{id}/precedents`、`/{id}/compliance`、`/causal-distance` |
+| 血缘（两处并存） | Explorer 面 `GET /api/provenance?node_id=`、`/api/provenance/report`；**产品面 `GET /api/v1/onto/provenance`（本轮选用）** |
+| 审计 | `GET /api/v1/onto/audit`（需 `audit:read`；只读凭据 403） |
+| 分析 | `GET /api/analytics`（可选 `metrics`：centrality/community/connectivity）、`GET /api/analytics/validation` |
+| 时间 | `GET /api/temporal/bounds`、`GET /api/temporal/snapshot?at=`、`GET /api/temporal/diff`、`GET /api/temporal/patterns`、`GET /api/temporal/distance-history` |
+| 词汇 | `GET /api/vocabulary/schemes`、`GET /api/vocabulary/concepts?scheme=`、`GET /api/vocabulary/hierarchy?scheme=` |
+| 标注读 / 记忆读 / markdown 读 | `GET /api/annotations`、`GET /api/memories`、`GET /api/markdown/{kind}/{resource_id}`（`kind` ∈ `context-node` / `agent-memory`） |
 | 本体生命周期 | `GET /api/v1/onto/domains/{id}/drafts`、`GET /api/v1/onto/drafts/{id}`、`POST /api/v1/onto/drafts/{id}/submit`、`POST /api/v1/onto/drafts/{id}/reject`（`lifecycle.py`，前缀 `/api/v1/onto`；动作为 `ontology:draft|review|publish|rollback`） |
 | 事件推送 | `WS /api/v1/onto/events`、`WS /ws/graph-updates`（Origin 白名单，禁止 query 传凭据） |
+
+**血缘两处并存**：Explorer 面 `GET /api/provenance`（`{detail}` 错误封装）与产品面
+`GET /api/v1/onto/provenance`（`{code,message}` 封装）同时存在，两者都可读，本轮选用产品面。
+Explorer 面判权按 HTTP 动词（GET → `graph:read`），因此 `POST /api/graph/search`、`POST /api/sparql`、
+`POST /api/reason`、`POST /api/graph/distance-matrix` 在只读凭据下会被判为写而 403——这是对端
+判权口径问题，记录为待办，本端连接器照常实现（见 spec §13 事项 2）。
 
 ---
 
