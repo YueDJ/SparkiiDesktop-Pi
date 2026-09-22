@@ -13,6 +13,13 @@ import { sortAgents } from './agent-catalog.js';
 import { resolveExportPath } from './export-path.js';
 import { loadSettings, saveSettings } from './settings.js';
 import { knowledgeFromManifest, patchRagSettings, ragFromSettings, type KnowledgeSelection } from './rag-settings.js';
+import {
+  checkKnowledgeBaseUrl,
+  isKnowledgeBackendId,
+  knowledgeBackendSettings,
+  patchKnowledgeSettings,
+  type KnowledgeSettingsPartial,
+} from './knowledge-settings.js';
 import { documentParseFromSettings, saveDocumentParseSettings } from './document-parse-settings.js';
 import {
   DOWNLOAD_UNREACHABLE,
@@ -32,7 +39,7 @@ import {
   shouldAbortGeneration,
   type GroundingTurn,
 } from './rag-grounding.js';
-import { buildProviderList } from './provider-catalog.js';
+import { buildProviderList, findReservedProviderConflict, isReservedKnowledgeProviderId } from './provider-catalog.js';
 import { allocateAutoWorkspace, assertAgentId, ensureWorkspaceDir } from './workspace.js';
 import { buildAgentSaddle } from './saddle.js';
 import { buildAttachmentPrompt, stageAttachments } from './attachments.js';
@@ -1316,18 +1323,21 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   ipcMain.handle('sparkii:queryAudit', (_e, filter: object) => rt.audit.query(filter));
   ipcMain.handle('sparkii:getSettings', async () => {
     const settings = await loadSettings(rt.dataDir);
-    const { rag: _storedRag, documentParse: _storedDp, ...rest } = settings;
+    const { rag: _storedRag, sparkiionto: _storedOnto, documentParse: _storedDp, ...rest } = settings;
     const apiKey = settings.activeProviderId ? await rt.keyFor(settings.activeProviderId) : null;
     const ragKey = await rt.keyFor('sparkiirag');
+    const ontoToken = await rt.knowledgeToken('sparkiionto');
     return {
       ...rest,
       ...(apiKey ? { apiKey } : {}),
       rag: { ...ragFromSettings(settings), hasApiKey: Boolean(ragKey) },
+      // 绝不回传 token：只回 hasToken。
+      sparkiionto: { ...knowledgeBackendSettings('sparkiionto', settings), hasToken: Boolean(ontoToken) },
       documentParse: documentParseFromSettings(settings),
     };
   });
   ipcMain.handle('sparkii:getApiKey', (_e, providerId: string) => {
-    if (providerId === 'sparkiirag' || providerId === 'apiKey:sparkiirag') return null;
+    if (isReservedKnowledgeProviderId(providerId)) return null;
     return rt.keyFor(providerId);
   });
   ipcMain.handle('sparkii:listProviders', async () => {
@@ -1340,10 +1350,29 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     return buildProviderList(runtimeProviders, settings.providers ?? []);
   });
   ipcMain.handle('sparkii:saveSettings', async (_e, settings: unknown) => {
-    const s = settings as Parameters<typeof saveSettings>[1] & { apiKey?: string; rag?: unknown; documentParse?: unknown };
-    const { apiKey, rag: _dropRag, documentParse: _dropDp, ...rest } = s;
+    const s = settings as Parameters<typeof saveSettings>[1] & {
+      apiKey?: string;
+      rag?: unknown;
+      sparkiionto?: unknown;
+      documentParse?: unknown;
+    };
+    // 唯一持久化自定义服务商的路径：知识后端的凭据 id 是保留名，撞名会让 keyFor 读到知识凭据。
+    const conflict = findReservedProviderConflict(s.providers);
+    if (conflict) {
+      return {
+        ok: false,
+        error: `自定义服务商 id "${conflict}" 是知识后端保留名（sparkiirag / sparkiionto），请改用其它 id`,
+      };
+    }
+    const { apiKey, rag: _dropRag, sparkiionto: _dropOnto, documentParse: _dropDp, ...rest } = s;
     const prev = await loadSettings(rt.dataDir);
-    await saveSettings(rt.dataDir, { ...prev, ...rest, rag: prev.rag, documentParse: prev.documentParse });
+    await saveSettings(rt.dataDir, {
+      ...prev,
+      ...rest,
+      rag: prev.rag,
+      sparkiionto: prev.sparkiionto,
+      documentParse: prev.documentParse,
+    });
     if (rest.logLevel) logger.level = rest.logLevel;
     if (s.activeProviderId) {
       await rt.setKey(s.activeProviderId, apiKey ?? '');
@@ -1354,6 +1383,24 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       );
     }
     await writePiModelsConfig(rt.piAgentDir, s.providers ?? []);
+    return { ok: true };
+  });
+  ipcMain.handle('sparkii:saveKnowledgeSettings', async (_e, backend: string, partial: KnowledgeSettingsPartial = {}) => {
+    if (!isKnowledgeBackendId(backend)) return { ok: false, error: `未知知识后端：${backend || '（空）'}` };
+    const next = partial ?? {};
+    // 写严格：只在用户真的提供地址时校验，空地址沿用既有值。
+    if (typeof next.baseUrl === 'string' && next.baseUrl.trim()) {
+      const check = checkKnowledgeBaseUrl(next.baseUrl);
+      if (!check.ok) return { ok: false, error: `知识库地址无效：${check.reason}` };
+    }
+    await patchKnowledgeSettings(rt.dataDir, backend, {
+      baseUrl: next.baseUrl,
+      similarityThreshold: next.similarityThreshold,
+      vectorSimilarityWeight: next.vectorSimilarityWeight,
+      bindings: next.bindings,
+    });
+    const token = typeof next.apiKey === 'string' ? next.apiKey.trim() : '';
+    if (token) await rt.setKnowledgeToken(backend, token);
     return { ok: true };
   });
   ipcMain.handle('sparkii:saveRagSettings', async (_e, partial: {

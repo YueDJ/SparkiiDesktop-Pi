@@ -61,6 +61,7 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
     getSettings: () => invoke('getSettings'),
     saveSettings: (settings) => invoke('saveSettings', settings),
     saveRagSettings: (partial) => invoke('saveRagSettings', partial) as Promise<{ ok: true }>,
+    saveKnowledgeSettings: (backend, partial) => invoke('saveKnowledgeSettings', backend, partial) as Promise<{ ok: boolean; error?: string }>,
     saveDocumentParseSettings: (partial) => invoke('saveDocumentParseSettings', partial) as Promise<{ ok: true }>,
     listDocumentParseModules: () => invoke('listDocumentParseModules') as ReturnType<SparkiiApi['listDocumentParseModules']>,
     retryDocumentParse: () => invoke('retryDocumentParse') as Promise<{ ok: true }>,

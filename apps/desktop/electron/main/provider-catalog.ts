@@ -23,6 +23,27 @@ export const BUILTIN_PROVIDER_IDS: readonly string[] = [
 
 export type ProviderKind = "builtin" | "custom";
 
+/**
+ * 知识后端的凭据 id 是保留名：自定义模型服务商若取同名，`keyFor(id)` 会读到知识凭据
+ * （`main` 上原本没有任何保留名机制）。保存自定义服务商时拒绝这两个 id。
+ */
+export const RESERVED_KNOWLEDGE_PROVIDER_IDS: readonly string[] = ["sparkiirag", "sparkiionto"];
+
+export function isReservedKnowledgeProviderId(id: unknown): boolean {
+  const text = String(id ?? "").trim();
+  return RESERVED_KNOWLEDGE_PROVIDER_IDS.some((reserved) => text === reserved || text === `apiKey:${reserved}`);
+}
+
+/** 返回第一个与知识后端凭据命名冲突的服务商 id（没有则返回 null）。 */
+export function findReservedProviderConflict(providers: unknown): string | null {
+  if (!Array.isArray(providers)) return null;
+  for (const item of providers) {
+    const id = (item ?? {}) as { id?: unknown };
+    if (isReservedKnowledgeProviderId(id.id)) return String(id.id);
+  }
+  return null;
+}
+
 export type ProviderApi = "openai-completions" | "anthropic-messages";
 
 export interface CustomProvider {

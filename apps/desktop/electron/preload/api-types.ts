@@ -71,6 +71,21 @@ export type KnowledgeSelection =
   | { mode: 'ids'; datasetIds: string[] }
   | { mode: 'all' };
 
+/** 远端知识后端的判别值（`bm25` 是本地语料，不经凭据与网络）。 */
+export type KnowledgeBackendId = 'sparkiirag' | 'sparkiionto';
+
+export type KnowledgeAgentBinding = { agentId: string; defaultDatasetId: string };
+
+/** `sparkii:saveKnowledgeSettings` 的写入载荷：URL 写严格，空 token 不覆盖已存凭据。 */
+export type KnowledgeSettingsPartial = {
+  baseUrl?: string;
+  similarityThreshold?: number;
+  vectorSimilarityWeight?: number;
+  bindings?: KnowledgeAgentBinding[];
+  apiKey?: string;
+};
+
+
 export interface SparkiiApi {
   getLocalSubject(): Promise<{ userId: string; roles: string[] }>;
   chooseDocument(opts?: ChooseDocumentOptions): Promise<{ path?: string }>;
@@ -138,7 +153,7 @@ export interface SparkiiApi {
     id: string;
     name: string;
     surfaceType?: string;
-    knowledge?: { enabled: boolean; picker: 'hidden' | 'session'; backend: 'bm25' | 'sparkiirag' };
+    knowledge?: { enabled: boolean; picker: 'hidden' | 'session'; backend: 'bm25' | 'sparkiirag' | 'sparkiionto' };
   }>>;
   listPendingApprovals(): Promise<unknown[]>;
   decideApproval(id: string, approved: boolean, note?: string): Promise<unknown>;
@@ -152,6 +167,7 @@ export interface SparkiiApi {
     bindings?: Array<{ agentId: string; defaultDatasetId: string }>;
     apiKey?: string;
   }): Promise<{ ok: true }>;
+  saveKnowledgeSettings(backend: KnowledgeBackendId, partial: KnowledgeSettingsPartial): Promise<{ ok: boolean; error?: string }>;
   saveDocumentParseSettings(partial: { idleMinutes: number; keepResident: boolean }): Promise<{ ok: true }>;
   listDocumentParseModules(): Promise<Array<{
     id: string;

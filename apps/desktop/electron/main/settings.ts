@@ -24,6 +24,11 @@ export interface AppSettings {
     vectorSimilarityWeight?: number;
     bindings?: Array<{ agentId: string; defaultDatasetId: string }>;
   };
+  sparkiionto?: {
+    baseUrl?: string;
+    similarityThreshold?: number;
+    bindings?: Array<{ agentId: string; defaultDatasetId: string }>;
+  };
   documentParse?: {
     idleMinutes: number;
     keepResident: boolean;

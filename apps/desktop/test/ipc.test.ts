@@ -136,6 +136,8 @@ async function makeRuntime(opts: {
   client: { send: (command: any) => Promise<any>; onEvent?: (cb: (event: any) => void) => () => void };
   setKey?: (providerId: string, key: string) => Promise<void>;
   keyFor?: (providerId: string) => Promise<string | null>;
+  knowledgeToken?: (backend: string) => Promise<string | null>;
+  setKnowledgeToken?: (backend: string, token: string) => Promise<void>;
   chatSession?: { profileId: string; model: string | null; piSessionFile?: string | null; kind?: string };
   profile?: unknown;
   agentOf?: (id: string) => unknown;
@@ -230,6 +232,8 @@ async function makeRuntime(opts: {
     },
     keyFor: opts.keyFor ?? (async () => null),
     setKey: opts.setKey ?? (async () => {}),
+    knowledgeToken: opts.knowledgeToken ?? (async () => null),
+    setKnowledgeToken: opts.setKnowledgeToken ?? (async () => {}),
   } as unknown as Runtime;
   registerIpc(
     rt,

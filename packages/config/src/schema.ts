@@ -28,7 +28,7 @@ export const manifestSchema = z.object({
   knowledge: z.object({
     enabled: z.boolean(),
     picker: z.enum(['hidden', 'session']),
-    backend: z.enum(['bm25', 'sparkiirag']),
+    backend: z.enum(['bm25', 'sparkiirag', 'sparkiionto']),
   }).optional(),
 });
 

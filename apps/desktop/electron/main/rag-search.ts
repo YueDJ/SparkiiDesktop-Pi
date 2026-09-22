@@ -21,7 +21,7 @@ export async function executeKnowledgeSearch(opts: {
   args: Record<string, unknown>;
   profileId: string;
   sessionId: string;
-  backend: 'bm25' | 'sparkiirag';
+  backend: 'bm25' | 'sparkiirag' | 'sparkiionto';
   picker: 'hidden' | 'session';
   selection: KnowledgeSelection | null;
   configured: boolean;
