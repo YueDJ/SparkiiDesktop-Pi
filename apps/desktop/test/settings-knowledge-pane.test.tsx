@@ -55,8 +55,9 @@ function makeApi(over: Record<string, unknown> = {}) {
       { id: 'deepseek', name: 'DeepSeek', kind: 'builtin', baseUrl: 'https://api.deepseek.com', apiKeyAuth: true, oauthAuth: false },
     ]),
     listAgents: vi.fn().mockResolvedValue([
-      { id: 'knowledge-qa', name: '企业知识问答', knowledge: { enabled: true } },
+      { id: 'knowledge-qa', name: '企业知识问答', knowledge: { enabled: true, backend: 'sparkiirag' } },
       { id: 'contract-review', name: '合同审核智能体', knowledge: { enabled: true, picker: 'hidden' } },
+      { id: 'onto-qa', name: '工艺本体问答', knowledge: { enabled: true, backend: 'sparkiionto' } },
       { id: 'general', name: '通用智能体', knowledge: { enabled: false } },
     ]),
     getApiKey: vi.fn().mockResolvedValue('sk-should-not-be-used'),
@@ -124,6 +125,8 @@ describe('Settings knowledge pane', () => {
     render(<SettingsView api={makeApi()} />);
     fireEvent.click(screen.getByRole('button', { name: '知识库' }));
     await screen.findByTestId('rag-base-url-input');
+    // 智能体行是异步加载的：先等 Onto 组那一行出现，再逐字核对既有 testid。
+    await screen.findByTestId('sparkiionto-default-domain-onto-qa');
     for (const id of [
       'knowledge-rag-group',
       'knowledge-onto-group',
@@ -135,12 +138,34 @@ describe('Settings knowledge pane', () => {
       'sparkiionto-api-token-input',
       'sparkiionto-similarity-threshold-input',
       'rag-default-dataset-knowledge-qa',
-      'sparkiionto-default-domain-knowledge-qa',
+      'sparkiionto-default-domain-onto-qa',
     ]) {
       expect(screen.getByTestId(id)).toBeTruthy();
     }
+    // Onto 组只列本体后端的智能体（RAG-only 的 knowledge-qa 不再出现在这里）；
+    // RAG 组行为不变——仍列全部启用知识的智能体，包括本体那一个。
+    expect(screen.queryByTestId('sparkiionto-default-domain-knowledge-qa')).toBeNull();
+    expect(screen.getByTestId('rag-default-dataset-onto-qa')).toBeTruthy();
     // Onto 组不暴露向量权重（服务端忽略该字段）。
     expect(screen.queryByTestId('sparkiionto-vector-similarity-weight-input')).toBeNull();
+  });
+
+  it('hides the whole Onto default-domain block when no agent uses the Onto backend', async () => {
+    const listAgents = vi.fn().mockResolvedValue([
+      { id: 'knowledge-qa', name: '企业知识问答', knowledge: { enabled: true } },
+      { id: 'contract-review', name: '合同审核智能体', knowledge: { enabled: true, picker: 'hidden' } },
+      { id: 'general', name: '通用智能体', knowledge: { enabled: false } },
+    ]);
+    render(<SettingsView api={makeApi({ listAgents })} />);
+    fireEvent.click(screen.getByRole('button', { name: '知识库' }));
+    const ontoGroup = await screen.findByTestId('knowledge-onto-group');
+    // 先确认智能体确实已加载（RAG 组已出行为准），再看 Onto 组那一块确实整块不在。
+    await screen.findByTestId('rag-default-dataset-knowledge-qa');
+    expect(within(ontoGroup).queryByText('智能体默认域')).toBeNull();
+    expect(screen.queryByTestId('sparkiionto-default-domain-knowledge-qa')).toBeNull();
+    // RAG 组的既有行为不变。
+    expect(within(screen.getByTestId('knowledge-rag-group')).getByText('智能体默认库')).toBeTruthy();
+    expect(screen.getByTestId('rag-default-dataset-contract-review')).toBeTruthy();
   });
 
   it('saves the RAG thresholds from the RAG group', async () => {

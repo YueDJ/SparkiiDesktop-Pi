@@ -220,6 +220,9 @@ node node_modules/typescript/bin/tsc --noEmit -p apps/desktop/tsconfig.electron.
 ## Task 9 — 文档收尾与提交
 
 - [ ] **Step 1:** 回填契约文档 §9"待确认"（HTTPS/域删除/token 轮换）与本计划前置表（若修订号变化）。
+  - **交付说明（已知边界）· F2：** RAG 会话**新写出**的 `knowledge_turn` 现在也带 `"backend":"sparkiirag"`（spec Decision 9 里该字段可选、缺省即 `sparkiirag`，故不违约）；渲染行为由 `knowledge-citations.test.tsx` / `ipc.test.ts` 锁定，历史 JSONL 读回语义不变。
+  - **交付说明（已知边界）· F5：** RAG 组比 `main` 多了一层 `<section data-testid="knowledge-rag-group">` 容器（组内节点顺序与 `rag-*` testid 逐字未动，既有用例只把查询收窄到组内），免得后人把它当成 `main` 的既有结构。
+  - **交付说明（已知边界）· F6：** `packages/connectors/test/fixtures/sparkiionto/` 里 `document-upload` / `documents-list` / `domain-create` / `domains-list` / `job-get` / `job-process` 6 组入库·作业面响应未被任何测试引用，属实测证据留存（`fixtures/sparkiionto/README.md` 已说明，入库属本轮 non-goal）。
 - [ ] **Step 2:** 提交（分主题，便于审阅）：
 ```bash
 git commit -m "feat(connectors): add SparkiiOnto knowledge client with capability negotiation"

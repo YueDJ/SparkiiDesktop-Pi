@@ -131,9 +131,18 @@ export class SparkiiOntoClient {
     return this.baseUrl;
   }
 
-  /** `/api/v1/system/healthz`：不需要凭据；503 且 `status:"nok"` 视为不健康。 */
+  /**
+   * `/api/v1/system/healthz`：不需要凭据；503 且 `status:"nok"` 视为不健康。
+   *
+   * 例外：401/403 **不是**"服务不健康"而是凭据/权限问题（例如 healthz 前面挂了要求
+   * 鉴权的反向代理），按 HTTP 状态码抛 `SparkiiOntoHttpError`，探活侧即可分类成
+   * unauthorized/forbidden。503 与其它响应（含非 JSON）仍按"不健康"处理。
+   */
   async health(): Promise<{ ok: boolean }> {
     const res = await this.send(`${this.baseUrl}/api/v1/system/healthz`, { method: 'GET' });
+    if (res.status === 401 || res.status === 403) {
+      throw this.httpError(res.status, await this.bodyIfJson(res));
+    }
     const type = res.headers.get('content-type') ?? '';
     if (!type.includes('application/json')) return { ok: res.ok };
     const payload = await this.parseJson(res);
@@ -274,6 +283,20 @@ export class SparkiiOntoClient {
       return await res.json();
     } catch (error) {
       throw new ConnectorError('CONNECTOR_IO', error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  /**
+   * 宽容解析：只用于给 401/403 补全文案。响应体形状不可依赖（可能是代理/网关生成的，
+   * 也可能根本没有 JSON 正文），读不到就只按状态码给文案，绝不因此改变错误分类。
+   */
+  private async bodyIfJson(res: Response): Promise<unknown> {
+    const type = res.headers.get('content-type') ?? '';
+    if (!type.includes('application/json')) return undefined;
+    try {
+      return await res.json();
+    } catch {
+      return undefined;
     }
   }
 }

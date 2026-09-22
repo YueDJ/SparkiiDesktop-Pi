@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { probeKnowledgeBackend } from '../electron/main/knowledge-probe.js';
+import { invalidBackendProbeResult, probeKnowledgeBackend } from '../electron/main/knowledge-probe.js';
 
 const fixturesDir = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -105,6 +105,17 @@ describe('probeKnowledgeBackend (sparkiionto)', () => {
     expect(denied.error?.message).not.toContain(TOKEN);
   });
 
+  it('classifies a healthz 401 as a credential problem instead of "unhealthy"', async () => {
+    const result = await probeKnowledgeBackend('sparkiionto', {
+      baseUrl: OK_BASE,
+      credential: TOKEN,
+      fetch: routedFetch({ '/api/v1/system/healthz': () => json('info-no-token', 401) }),
+    });
+    expect(result).toMatchObject({ ok: false, backend: 'sparkiionto', error: { code: 'CONNECTOR_DENIED', reason: 'unauthorized' } });
+    expect(result.error?.message).toMatch(/凭据/);
+    expect(result.error?.message).not.toContain(TOKEN);
+  });
+
   it('reports an /info that does not belong to this product as unsupported', async () => {
     for (const payload of [
       { product: 'SparkiiRAG', version: '1', api_version: 'v1', deployment_profile: 'single-instance', capabilities: { datasets: true } },
@@ -161,6 +172,18 @@ describe('probeKnowledgeBackend (sparkiionto)', () => {
     expect(JSON.stringify(auth)).toContain('fresh-token');
     expect(JSON.stringify(auth)).not.toContain('stale-token');
     expect(seen).toEqual(['info']);
+  });
+});
+
+describe('invalidBackendProbeResult', () => {
+  it('carries the renderer-required backend field on the unknown-backend branch', () => {
+    expect(invalidBackendProbeResult('bm25')).toMatchObject({
+      ok: false,
+      backend: 'bm25',
+      error: { code: 'CONNECTOR_UNSUPPORTED', reason: 'invalid_config' },
+    });
+    expect(invalidBackendProbeResult(undefined)).toMatchObject({ ok: false, error: { reason: 'invalid_config' } });
+    expect(invalidBackendProbeResult(undefined).error.message).toContain('（空）');
   });
 });
 

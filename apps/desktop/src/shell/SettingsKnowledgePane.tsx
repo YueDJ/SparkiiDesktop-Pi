@@ -22,11 +22,19 @@ export type KnowledgePaneApi = {
   saveKnowledgeSettings?(backend: KnowledgeBackendId, partial: KnowledgeSettingsPartial): Promise<{ ok: boolean; error?: string }>;
   testKnowledgeConnection?(backend: KnowledgeBackendId, override?: KnowledgeProbeOverride): Promise<KnowledgeProbeResult>;
   listKnowledgeDatasets?(backend: KnowledgeBackendId, override?: KnowledgeProbeOverride): Promise<KnowledgeProbeResult>;
-  listAgents?(): Promise<Array<{ id: string; name: string; displayName?: string; knowledge?: { enabled?: boolean } }>>;
+  listAgents?(): Promise<AgentSummary[]>;
 };
 
 /** 兼容旧导出名（RAG 单组时期），调用点无需改名。 */
 export type RagPaneApi = KnowledgePaneApi;
+
+/** `listAgents` 的 renderer 侧视图：`knowledge.backend` 决定该智能体归哪一组。 */
+export type AgentSummary = {
+  id: string;
+  name: string;
+  displayName?: string;
+  knowledge?: { enabled?: boolean; backend?: string };
+};
 
 const DEFAULT_BASE_URL = 'http://127.0.0.1:9380';
 const DEFAULT_THRESHOLD = 0.2;
@@ -168,7 +176,7 @@ export function SettingsKnowledgePane({ api }: { api?: KnowledgePaneApi }) {
   const [info, setInfo] = useState('');
   const [testing, setTesting] = useState(false);
   const [datasets, setDatasets] = useState<DatasetOption[]>([]);
-  const [agents, setAgents] = useState<Array<{ id: string; name: string; displayName?: string }>>([]);
+  const [agents, setAgents] = useState<AgentSummary[]>([]);
   const [onto, setOnto] = useState<OntoState>(DEFAULT_ONTO);
   const [ontoToken, setOntoToken] = useState('');
   const [ontoInfo, setOntoInfo] = useState('');
@@ -201,10 +209,9 @@ export function SettingsKnowledgePane({ api }: { api?: KnowledgePaneApi }) {
   useEffect(() => {
     void load();
     void api?.listAgents?.().then((list) => {
-      setAgents(list.filter((a) => a.knowledge?.enabled === true).map((a) => ({
-        id: a.id,
-        name: a.displayName ?? a.name,
-      })));
+      setAgents(list
+        .filter((a) => a.knowledge?.enabled === true)
+        .map((a) => ({ id: a.id, name: a.displayName ?? a.name, knowledge: a.knowledge })));
     }).catch(() => setAgents([]));
   }, [api]);
 
@@ -307,6 +314,11 @@ export function SettingsKnowledgePane({ api }: { api?: KnowledgePaneApi }) {
 
   const ragPlaintext = plaintextWarning(rag.baseUrl);
   const ontoPlaintext = plaintextWarning(onto.baseUrl);
+  /**
+   * Onto 组只列**真正用 Onto 后端**的智能体（今天是零个：现存智能体都是 RAG-only/BM25）。
+   * RAG 组保持既有行为——列全部启用知识的智能体——故两组故意不对称。
+   */
+  const ontoAgents = agents.filter((agent) => agent.knowledge?.backend === 'sparkiionto');
 
   return (
     <>
@@ -427,10 +439,10 @@ export function SettingsKnowledgePane({ api }: { api?: KnowledgePaneApi }) {
           <Button variant="primary" onClick={saveOnto}>保存</Button>
         </div>
         {ontoInfo && <div className="ui-muted settings-hint">{ontoInfo}</div>}
-        {agents.length > 0 && (
+        {ontoAgents.length > 0 && (
           <>
             <h3 className="settings-section-title settings-title-mt">智能体默认域</h3>
-            {agents.map((agent) => {
+            {ontoAgents.map((agent) => {
               const value = onto.bindings.find((b) => b.agentId === agent.id)?.defaultDatasetId ?? '';
               return (
                 <SettingsRow key={agent.id} label={agent.name}>

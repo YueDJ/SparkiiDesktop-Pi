@@ -50,9 +50,14 @@ function fail(
   return { ok: false, backend, ...(baseUrl ? { baseUrl } : {}), error: { code, message, reason } };
 }
 
-export function invalidBackendProbeResult(backend: unknown): { ok: false; error: KnowledgeProbeError } {
+export function invalidBackendProbeResult(
+  backend: unknown,
+): { ok: false; backend: KnowledgeBackendId; error: KnowledgeProbeError } {
   return {
     ok: false,
+    // renderer 侧 `KnowledgeProbeResult.backend` 是必填（`electron/preload/api-types.ts`）；
+    // 未知后端不是合法 id，原样回带便于诊断（当前 UI 不读这个字段）。
+    backend: backend as KnowledgeBackendId,
     error: {
       code: 'CONNECTOR_UNSUPPORTED',
       message: `未知知识后端：${String(backend ?? '') || '（空）'}`,

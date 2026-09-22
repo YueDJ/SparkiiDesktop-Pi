@@ -79,6 +79,50 @@ describe('SparkiiOnto base url', () => {
   });
 });
 
+describe('SparkiiOntoClient /health', () => {
+  function healthClient(res: () => Response | Promise<Response>) {
+    const { fetchImpl, mock } = routedFetch({ '/api/v1/system/healthz': res });
+    return {
+      mock,
+      client: new SparkiiOntoClient({ baseUrl: 'http://127.0.0.1:9380', apiKey: TOKEN, fetch: fetchImpl }),
+    };
+  }
+
+  it('reports ok from the measured healthz payload', async () => {
+    const { client, mock } = healthClient(() => json('healthz'));
+    await expect(client.health()).resolves.toEqual({ ok: true });
+    expect(String(mock.mock.calls[0][0])).toBe('http://127.0.0.1:9380/api/v1/system/healthz');
+  });
+
+  it('throws CONNECTOR_DENIED (not "unhealthy") when healthz answers 401/403', async () => {
+    const cases: Array<{ status: number; res: () => Response }> = [
+      { status: 401, res: () => json('info-no-token', 401) },
+      { status: 403, res: () => jsonValue({ detail: 'permission denied' }, 403) },
+    ];
+    for (const item of cases) {
+      const { client } = healthClient(item.res);
+      const error = await client.health().catch((e: unknown) => e as ConnectorError);
+      expect(error, String(item.status)).toBeInstanceOf(ConnectorError);
+      expect(error.code, String(item.status)).toBe('CONNECTOR_DENIED');
+      expect(error.message, String(item.status)).toContain(String(item.status));
+      expect(error.message, String(item.status)).not.toContain(TOKEN);
+    }
+  });
+
+  it('keeps 503, 422 and non-JSON responses as a plain "not ok"', async () => {
+    const cases: Array<{ label: string; res: () => Response }> = [
+      { label: '503 status nok', res: () => jsonValue({ status: 'nok' }, 503) },
+      { label: '422 product envelope', res: () => json('retrieval-422-missing-field', 422) },
+      { label: '503 html', res: () => new Response('<html>nope</html>', { status: 503, headers: { 'content-type': 'text/html' } }) },
+      { label: '503 empty body', res: () => new Response(null, { status: 503 }) },
+    ];
+    for (const item of cases) {
+      const { client } = healthClient(item.res);
+      await expect(client.health(), item.label).resolves.toEqual({ ok: false });
+    }
+  });
+});
+
 describe('SparkiiOntoClient /info negotiation', () => {
   it('negotiates once, caches, and sends the bearer token', async () => {
     const { fetchImpl, mock } = routedFetch(infoRoutes());
