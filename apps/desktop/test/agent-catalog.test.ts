@@ -9,8 +9,8 @@ describe('sortAgents', () => {
     ]);
 
     expect(out).toEqual([
-      { id: 'general', name: '通用智能体' },
-      { id: 'contract-review', name: '合同审核智能体' },
+      { id: 'general', name: '通用智能体', declaresOntologyTools: false },
+      { id: 'contract-review', name: '合同审核智能体', declaresOntologyTools: false },
     ]);
   });
 
@@ -30,9 +30,23 @@ describe('sortAgents', () => {
     ]);
 
     expect(out).toEqual([
-      { id: 'general', name: '通用智能体' },
-      { id: 'alpha', name: 'alpha' },
-      { id: 'zeta', name: 'zeta' },
+      { id: 'general', name: '通用智能体', declaresOntologyTools: false },
+      { id: 'alpha', name: 'alpha', declaresOntologyTools: false },
+      { id: 'zeta', name: 'zeta', declaresOntologyTools: false },
     ]);
+  });
+
+  it('derives declaresOntologyTools from tool declarations', () => {
+    const out = sortAgents([
+      { id: 'contract-review', name: 'contract-review', capabilities: { tools: ['document.read', 'knowledge.search', 'report.export'] } },
+      { id: 'procurement-review', name: 'procurement-review', capabilities: { tools: ['document.read', 'knowledge.search', 'report.export'] } },
+      { id: 'knowledge-qa', name: 'knowledge-qa', capabilities: { tools: ['knowledge.search', 'knowledge.fetch_document'] } },
+      { id: 'general', name: 'general', capabilities: { tools: ['read', 'ls', 'grep', 'find', 'bash', 'edit', 'write'] } },
+      { id: 'onto-qa', name: 'onto-qa', capabilities: { tools: ['ontology.search_documents', 'ontology.search_nodes'] } },
+    ]);
+    for (const id of ['contract-review', 'procurement-review', 'knowledge-qa', 'general']) {
+      expect(out.find((x) => x.id === id)?.declaresOntologyTools).toBe(false);
+    }
+    expect(out.find((x) => x.id === 'onto-qa')?.declaresOntologyTools).toBe(true);
   });
 });

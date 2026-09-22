@@ -4,9 +4,10 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm } from 'node:fs/promises';
 import { isAbsolute, join } from 'node:path';
 import { listPiSessions, readPiSessionEntries, connectorWriteProposal, type PiProviderInfo, type SessionSaddle, type ConnectorReadRequest, type ConnectorReadResult } from '@sparkii/agent-host';
-import { knowledgeConnector, SparkiiRagClient } from '@sparkii/connectors';
+import { knowledgeConnector, sparkiiOntoConnector, SparkiiRagClient } from '@sparkii/connectors';
 import { applyThinkingLevel, createBroker, modelTargetKey, resolveModelTarget, resolveSessionModel, resolveThinkingLevel, runWorkflow, selectModel } from './workflow.js';
 import { documentReadAuditSummary, executeDocumentRead } from './document-read.js';
+import { executeOntologyTool, ontologyAuditSummary } from './ontology-tools.js';
 import { getDocumentParseSupervisor } from './document-parse-supervisor.js';
 import { findCompatibleModels, type ModelCapability } from '@sparkii/model-router';
 import { sortAgents } from './agent-catalog.js';
@@ -458,6 +459,27 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         resource: 'document.read',
         sessionId,
         payloadSummary: documentReadAuditSummary(req.args, result),
+      });
+      return result;
+    }
+    if (req.toolName.startsWith('ontology.')) {
+      const ontoTool = sparkiiOntoConnector.tools.find((t) => t.name === req.toolName);
+      if (!ontoTool) {
+        return { ok: false, error: { code: 'CONNECTOR_DENIED', message: 'unhandled' } };
+      }
+      const result = await executeOntologyTool({
+        toolName: req.toolName,
+        args: req.args,
+        profileId,
+        settings: await loadSettings(rt.dataDir),
+        credential: await rt.knowledgeToken('sparkiionto'),
+      });
+      await rt.audit.append({
+        actor: rt.subject.userId,
+        action: 'tool.read',
+        resource: req.toolName,
+        sessionId,
+        payloadSummary: ontologyAuditSummary(req.toolName, req.args, result),
       });
       return result;
     }
@@ -1319,9 +1341,33 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       displayName: pr.profile.manifest.displayName,
       sortOrder: pr.profile.manifest.sortOrder,
       surfaceType: rt.agentOf(pr.profile.manifest.name).manifest.surface.type,
+      capabilities: pr.profile.manifest.capabilities,
       knowledge: pr.profile.manifest.knowledge,
     }))),
   );
+  ipcMain.handle('sparkii:probeOntologyGraph', async () => {
+    const result = await executeOntologyTool({
+      toolName: 'ontology.graph_summary',
+      args: {},
+      profileId: '',
+      settings: await loadSettings(rt.dataDir),
+      credential: await rt.knowledgeToken('sparkiionto'),
+    });
+    if (!result.ok) {
+      return { ok: false, error: result.error?.message ?? '图谱自检失败' };
+    }
+    const summary = (result.data ?? {}) as {
+      nodeCount?: number;
+      edgeCount?: number;
+      nodeTypes?: Record<string, number>;
+    };
+    return {
+      ok: true,
+      nodeCount: typeof summary.nodeCount === 'number' ? summary.nodeCount : 0,
+      edgeCount: typeof summary.edgeCount === 'number' ? summary.edgeCount : 0,
+      nodeTypes: summary.nodeTypes,
+    };
+  });
   ipcMain.handle('sparkii:chooseDocument', async (_e, opts?: ChooseDocumentOptions) => {
     if (process.env.SPARKII_E2E_DOCUMENT) {
       grantDocumentPath(process.env.SPARKII_E2E_DOCUMENT);

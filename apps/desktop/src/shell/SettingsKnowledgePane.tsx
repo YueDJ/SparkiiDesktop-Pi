@@ -5,6 +5,7 @@ import type {
   KnowledgeProbeOverride,
   KnowledgeProbeResult,
   KnowledgeSettingsPartial,
+  OntologyGraphProbeResult,
 } from '../../electron/preload/api-types.js';
 
 /** “知识库”两块分组（SparkiiRAG + SparkiiOnto）共用的 IPC 面。 */
@@ -23,6 +24,7 @@ export type KnowledgePaneApi = {
   testKnowledgeConnection?(backend: KnowledgeBackendId, override?: KnowledgeProbeOverride): Promise<KnowledgeProbeResult>;
   listKnowledgeDatasets?(backend: KnowledgeBackendId, override?: KnowledgeProbeOverride): Promise<KnowledgeProbeResult>;
   listAgents?(): Promise<AgentSummary[]>;
+  probeOntologyGraph?(): Promise<OntologyGraphProbeResult>;
 };
 
 /** 兼容旧导出名（RAG 单组时期），调用点无需改名。 */
@@ -33,6 +35,7 @@ export type AgentSummary = {
   id: string;
   name: string;
   displayName?: string;
+  declaresOntologyTools?: boolean;
   knowledge?: { enabled?: boolean; backend?: string };
 };
 
@@ -182,6 +185,7 @@ export function SettingsKnowledgePane({ api }: { api?: KnowledgePaneApi }) {
   const [ontoInfo, setOntoInfo] = useState('');
   const [ontoTesting, setOntoTesting] = useState(false);
   const [ontoDatasets, setOntoDatasets] = useState<DatasetOption[]>([]);
+  const [graphProbe, setGraphProbe] = useState<OntologyGraphProbeResult | null>(null);
 
   const load = async () => {
     if (!api?.getSettings) return;
@@ -211,8 +215,17 @@ export function SettingsKnowledgePane({ api }: { api?: KnowledgePaneApi }) {
     void api?.listAgents?.().then((list) => {
       setAgents(list
         .filter((a) => a.knowledge?.enabled === true)
-        .map((a) => ({ id: a.id, name: a.displayName ?? a.name, knowledge: a.knowledge })));
+        .map((a) => ({
+          id: a.id,
+          name: a.displayName ?? a.name,
+          knowledge: a.knowledge,
+          declaresOntologyTools: a.declaresOntologyTools,
+        })));
     }).catch(() => setAgents([]));
+    const probeGraph = api?.probeOntologyGraph;
+    if (probeGraph) {
+      void probeGraph().then(setGraphProbe).catch(() => setGraphProbe(null));
+    }
   }, [api]);
 
   const test = async () => {
@@ -315,10 +328,10 @@ export function SettingsKnowledgePane({ api }: { api?: KnowledgePaneApi }) {
   const ragPlaintext = plaintextWarning(rag.baseUrl);
   const ontoPlaintext = plaintextWarning(onto.baseUrl);
   /**
-   * Onto 组只列**真正用 Onto 后端**的智能体（今天是零个：现存智能体都是 RAG-only/BM25）。
+   * Onto 组只列**声明了本体工具**（`ontology.*`）的智能体。
    * RAG 组保持既有行为——列全部启用知识的智能体——故两组故意不对称。
    */
-  const ontoAgents = agents.filter((agent) => agent.knowledge?.backend === 'sparkiionto');
+  const ontoAgents = agents.filter((agent) => agent.declaresOntologyTools === true);
 
   return (
     <>
@@ -439,6 +452,15 @@ export function SettingsKnowledgePane({ api }: { api?: KnowledgePaneApi }) {
           <Button variant="primary" onClick={saveOnto}>保存</Button>
         </div>
         {ontoInfo && <div className="ui-muted settings-hint">{ontoInfo}</div>}
+        {graphProbe != null && (
+          <div className="ui-muted settings-hint" data-testid="sparkiionto-graph-selfcheck">
+            {graphProbe.ok
+              ? (graphProbe.nodeCount === 0 && graphProbe.edgeCount === 0)
+                ? '图谱暂无数据'
+                : `图谱自检：${graphProbe.nodeCount} 个节点 · ${graphProbe.edgeCount} 条边`
+              : `图谱自检失败：${graphProbe.error ?? '未知错误'}`}
+          </div>
+        )}
         {ontoAgents.length > 0 && (
           <>
             <h3 className="settings-section-title settings-title-mt">智能体默认域</h3>

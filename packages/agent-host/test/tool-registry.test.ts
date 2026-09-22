@@ -19,6 +19,13 @@ describe("resolveToolDefinitions", () => {
     expect(() => resolveToolDefinitions(["read", "nope"], { cwd: tmpdir(), propose })).toThrow(/unknown tool in saddle: nope/);
   });
 
+  it("resolves the ontology connector tool surface", () => {
+    const defs = resolveToolDefinitions(["ontology.graph_summary"], {
+      cwd: tmpdir(), workspaceRoot: mkdtempSync(join(tmpdir(), "ws-")), propose,
+    });
+    expect(defs.map((d) => d.name)).toEqual(["ontology_graph_summary"]);
+  });
+
   it("read tool returns WORKSPACE_NOT_CREATED when workspace missing", async () => {
     const ws = join(tmpdir(), "missing-ws-" + Date.now());
     const defs = resolveToolDefinitions(["read"], { cwd: tmpdir(), workspaceRoot: ws, propose });

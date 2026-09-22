@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from 'vitest';
-import { knowledgeConnector } from '@sparkii/connectors';
+import { knowledgeConnector, sparkiiOntoConnector } from '@sparkii/connectors';
 import { loadProfile } from '@sparkii/config';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -76,6 +76,11 @@ describe('knowledge-qa isolation', () => {
     const call = src.slice(src.indexOf('api.openRagDocument?.(', src.indexOf('onOpenDocument')));
     expect(call).toContain('backend: doc.backend,');
   });
+
+  it('本体工具全部在 Main 执行且不在 Pi 侧发请求', () => {
+    for (const t of sparkiiOntoConnector.tools) expect(t.host).toBe('main');
+    expect(sourceOf('packages/connectors/src/sparkiionto/tools.ts')).not.toMatch(/\bfetch\(/);
+  });
 });
 
 /**
@@ -107,4 +112,8 @@ describe('shipped profiles keep the knowledge block recorded on main', () => {
 
 function dirOf(path: string): string {
   return path;
+}
+
+function sourceOf(rel: string): string {
+  return readFileSync(join(repoRoot, rel), 'utf8');
 }

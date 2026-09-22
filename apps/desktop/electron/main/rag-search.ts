@@ -6,13 +6,12 @@ import {
   type ProfileKnowledge,
   type RagSettings,
 } from './rag-settings.js';
+import type { KnowledgeBackendId } from './knowledge-settings.js';
 
 export type { KnowledgeSelection };
 
 export const SPARKIIRAG_UNCONFIGURED = '请先在设置 → 知识库配置 SparkiiRAG';
 export const SPARKIIRAG_EMPTY = '请先在 SparkiiRAG 建库';
-export const SPARKIIONTO_UNCONFIGURED = '请先在设置 → 知识库配置 SparkiiOnto';
-export const SPARKIIONTO_EMPTY = '请先在 SparkiiOnto 建域';
 export const SESSION_DATASET_GONE = '所选知识库已不可见，请重新选择';
 
 export function denied(message: string): { ok: false; error: { code: 'CONNECTOR_DENIED'; message: string } } {
@@ -37,7 +36,7 @@ export type KnowledgeSearchClient = {
  * 其余按后端选各自 client（出站字段差异由 client 自己负责，调用方只给该后端的配置）。
  */
 export function knowledgeClientFor(
-  backend: ProfileKnowledge['backend'],
+  backend: 'bm25' | KnowledgeBackendId,
   rag: RagSettings,
   credential: string | null,
 ): KnowledgeSearchClient | null {
@@ -47,13 +46,13 @@ export function knowledgeClientFor(
     : new SparkiiRagClient({ baseUrl: rag.baseUrl, apiKey: credential });
 }
 
-/** 每个后端自己的"未配置/没有可用域"文案（RAG 文案逐字节保持现状）。 */
-function unconfiguredFor(backend: ProfileKnowledge['backend']): string {
-  return backend === 'sparkiionto' ? SPARKIIONTO_UNCONFIGURED : SPARKIIRAG_UNCONFIGURED;
+/** `knowledge.search` 只连 SparkiiRAG（本体已移入 `ontology.*`），文案逐字节保持现状。 */
+function unconfiguredFor(_backend: ProfileKnowledge['backend']): string {
+  return SPARKIIRAG_UNCONFIGURED;
 }
 
-function emptyCorpusFor(backend: ProfileKnowledge['backend']): string {
-  return backend === 'sparkiionto' ? SPARKIIONTO_EMPTY : SPARKIIRAG_EMPTY;
+function emptyCorpusFor(_backend: ProfileKnowledge['backend']): string {
+  return SPARKIIRAG_EMPTY;
 }
 
 /** 把本轮后端写进命中片段/文档，供出处归属使用（`bm25` 不经过这里）。 */
@@ -75,7 +74,7 @@ export async function executeKnowledgeSearch(opts: {
   args: Record<string, unknown>;
   profileId: string;
   sessionId: string;
-  backend: 'bm25' | 'sparkiirag' | 'sparkiionto';
+  backend: 'bm25' | 'sparkiirag';
   picker: 'hidden' | 'session';
   selection: KnowledgeSelection | null;
   configured: boolean;
