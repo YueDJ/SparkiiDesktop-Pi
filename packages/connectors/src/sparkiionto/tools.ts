@@ -38,7 +38,7 @@ export const sparkiiOntoConnector: Connector = {
         properties: {
           query: { type: 'string' },
           domainId: { type: 'string', description: '工艺知识域标识；缺省用该智能体绑定的默认域。' },
-          limit: { type: 'number', maximum: 20 },
+          limit: { type: 'number', maximum: 20, default: 6 },
         },
         required: ['query'],
       },
@@ -99,7 +99,7 @@ export const sparkiiOntoConnector: Connector = {
         type: 'object',
         properties: {
           decisionId: { type: 'string' },
-          limit: { type: 'number', default: 20 },
+          limit: { type: 'number', default: 10 },
         },
         required: ['decisionId'],
       },

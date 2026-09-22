@@ -68,7 +68,7 @@ function clipStrings(value: unknown, maxLen: number): unknown {
 function truncateQueryRows(rows: unknown[], maxBytes: number): unknown[] {
   let maxLen = 1024;
   let out = rows.map((row) => clipStrings(row, maxLen));
-  while (JSON.stringify(out).length > maxBytes && maxLen > 1) {
+  while (Buffer.byteLength(JSON.stringify(out), 'utf8') > maxBytes && maxLen > 1) {
     maxLen = Math.floor(maxLen / 2);
     out = rows.map((row) => clipStrings(row, maxLen));
   }
@@ -181,7 +181,7 @@ async function dispatch(
     case 'ontology.query': {
       const rows = await graph.query({ query: String(args.query ?? '') });
       if (rows.length === 0) return { ok: true, empty: true };
-      if (JSON.stringify(rows).length > QUERY_MAX_BYTES) {
+      if (Buffer.byteLength(JSON.stringify(rows), 'utf8') > QUERY_MAX_BYTES) {
         return { ok: true, truncated: true, data: truncateQueryRows(rows, QUERY_MAX_BYTES) };
       }
       return { ok: true, data: rows };

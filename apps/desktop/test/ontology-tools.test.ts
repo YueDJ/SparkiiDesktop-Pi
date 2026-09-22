@@ -155,6 +155,24 @@ describe('executeOntologyTool', () => {
     expect(out.truncated).toBe(true);
   });
 
+  it('query 响应按 UTF-8 字节判超：中文字符数低于上限但字节数超标', async () => {
+    const chinese = '窑'.repeat(100_000);
+    const { fetchImpl } = routedFetch({
+      '/api/v1/info': () => jsonValue(INFO),
+      '/api/sparql': () => jsonValue({ columns: ['s'], rows: [{ s: chinese }], total: 1, truncated: false }),
+    });
+    const out = await executeOntologyTool({
+      toolName: 'ontology.query',
+      args: { query: 'SELECT ?s WHERE { ?s ?p ?o }' },
+      profileId: 'p1',
+      settings,
+      credential: 't',
+      fetch: fetchImpl,
+    });
+    expect(out.ok).toBe(true);
+    expect(out.truncated).toBe(true);
+  });
+
   it('query 的审计摘要包含查询全文', async () => {
     const { fetchImpl } = routedFetch({
       '/api/v1/info': () => jsonValue(INFO),
