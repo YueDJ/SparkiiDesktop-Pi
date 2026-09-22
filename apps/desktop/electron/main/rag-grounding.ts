@@ -1,19 +1,33 @@
 export const RAG_REFUSE_TEXT = '知识库没有相关内容，我无法回答。';
 export const KNOWLEDGE_TURN = 'knowledge_turn';
 
+/**
+ * 出处归属：远端知识后端 id。**可选字段**，缺省语义 = `sparkiirag`
+ * （历史 JSONL 里没有这个字段，读回时行为不变）。
+ */
+export type KnowledgeSourceBackend = 'sparkiirag' | 'sparkiionto';
+
 export type KnowledgeCitation = {
   index: number;
   documentId: string;
   documentName: string;
   datasetId: string;
   snippet: string;
+  backend?: KnowledgeSourceBackend;
+};
+
+export type GroundingDocument = {
+  documentId: string;
+  documentName: string;
+  datasetId: string;
+  backend?: KnowledgeSourceBackend;
 };
 
 export type GroundingTurn = {
   searchCalled: boolean;
   miss: boolean;
   sealed: boolean;
-  documents: Array<{ documentId: string; documentName: string; datasetId: string }>;
+  documents: GroundingDocument[];
   citations: KnowledgeCitation[];
 };
 
@@ -23,12 +37,19 @@ function asRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
-function asDocument(item: unknown): { documentId: string; documentName: string; datasetId: string } {
+/** 只认两个知识后端 id；缺省（含历史数据）不写字段，由调用方按 `sparkiirag` 解释。 */
+function backendTag(item: Record<string, unknown>): { backend?: KnowledgeSourceBackend } {
+  const value = item.backend;
+  return value === 'sparkiirag' || value === 'sparkiionto' ? { backend: value } : {};
+}
+
+function asDocument(item: unknown): GroundingDocument {
   const rec = asRecord(item);
   return {
     documentId: String(rec.documentId ?? ''),
     documentName: String(rec.documentName ?? ''),
     datasetId: String(rec.datasetId ?? ''),
+    ...backendTag(rec),
   };
 }
 
@@ -46,6 +67,7 @@ function citationsFromChunks(chunks: unknown[], startIndex: number): KnowledgeCi
       documentName: String(rec.documentName ?? ''),
       datasetId: String(rec.datasetId ?? ''),
       snippet: snippetFromChunk(item),
+      ...backendTag(rec),
     };
   });
 }
@@ -89,17 +111,21 @@ export function markSearchResult(
         documentId,
         documentName: String(rec.documentName ?? ''),
         datasetId: String(rec.datasetId ?? ''),
+        ...backendTag(rec),
       }];
     });
   }
-  const merged = new Map<string, GroundingTurn['documents'][number]>();
+  const merged = new Map<string, GroundingDocument>();
   for (const doc of [...base.documents, ...incoming]) {
     if (!doc.documentId) continue;
     const prev = merged.get(doc.documentId);
+    // 按 documentId 合并：backend 必须显式带上，否则会被合并丢成"默认后端"。
+    const backend = doc.backend ?? prev?.backend;
     merged.set(doc.documentId, {
       documentId: doc.documentId,
       documentName: doc.documentName || prev?.documentName || '',
       datasetId: doc.datasetId || prev?.datasetId || '',
+      ...(backend ? { backend } : {}),
     });
   }
   const citations = [...base.citations, ...citationsFromChunks(chunks, 1)].map((c, i) => ({

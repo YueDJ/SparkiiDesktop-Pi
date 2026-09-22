@@ -13,6 +13,21 @@ import { sortAgents } from './agent-catalog.js';
 import { resolveExportPath } from './export-path.js';
 import { loadSettings, saveSettings } from './settings.js';
 import { knowledgeFromManifest, patchRagSettings, ragFromSettings, type KnowledgeSelection } from './rag-settings.js';
+import {
+  checkKnowledgeBaseUrl,
+  isKnowledgeBackendId,
+  knowledgeBackendSettings,
+  patchKnowledgeSettings,
+  remoteKnowledgeBackend,
+  type KnowledgeBackendId,
+  type KnowledgeSettingsPartial,
+} from './knowledge-settings.js';
+import {
+  invalidBackendProbeResult,
+  probeKnowledgeBackend,
+  type KnowledgeProbeOverride,
+  type KnowledgeProbeResult,
+} from './knowledge-probe.js';
 import { documentParseFromSettings, saveDocumentParseSettings } from './document-parse-settings.js';
 import {
   DOWNLOAD_UNREACHABLE,
@@ -21,7 +36,7 @@ import {
   listDocumentParseModules,
 } from './document-parse-modules.js';
 import { profilePoolMeta } from './pool-meta.js';
-import { runMainKnowledgeSearch, searchAuditSummary, SESSION_DATASET_GONE } from './rag-search.js';
+import { knowledgeClientFor, runMainKnowledgeSearch, searchAuditSummary, SESSION_DATASET_GONE } from './rag-search.js';
 import { fetchAndCacheDocument } from './rag-open.js';
 import {
   KNOWLEDGE_TURN,
@@ -32,7 +47,7 @@ import {
   shouldAbortGeneration,
   type GroundingTurn,
 } from './rag-grounding.js';
-import { buildProviderList } from './provider-catalog.js';
+import { buildProviderList, findReservedProviderConflict, isReservedKnowledgeProviderId } from './provider-catalog.js';
 import { allocateAutoWorkspace, assertAgentId, ensureWorkspaceDir } from './workspace.js';
 import { buildAgentSaddle } from './saddle.js';
 import { buildAttachmentPrompt, stageAttachments } from './attachments.js';
@@ -53,24 +68,33 @@ import {
 } from './skill-library.js';
 import type { AgentRuntime } from './agent-registry.js';
 
+/** 按后端探活：读该后端自己的配置块与凭据，再交给 `knowledge-probe`。 */
+async function probeKnowledgeConnection(
+  rt: Runtime,
+  backend: KnowledgeBackendId,
+  override?: KnowledgeProbeOverride,
+): Promise<KnowledgeProbeResult> {
+  const settings = await loadSettings(rt.dataDir);
+  return probeKnowledgeBackend(backend, {
+    baseUrl: knowledgeBackendSettings(backend, settings).baseUrl,
+    credential: await rt.knowledgeToken(backend),
+    override,
+  });
+}
+
+/** 旧 IPC 的薄封装（renderer 兼容）：只改实现，不改返回形状与文案。 */
 async function probeRag(
   rt: Runtime,
   apiKeyOverride?: string | null,
 ): Promise<{ ok: boolean; datasets?: Array<{ id: string; name: string }>; error?: string }> {
-  const rag = ragFromSettings(await loadSettings(rt.dataDir));
-  const apiKey = (typeof apiKeyOverride === 'string' && apiKeyOverride.trim())
-    ? apiKeyOverride
-    : await rt.keyFor('sparkiirag');
-  if (!apiKey) return { ok: false, error: '未配置 API Key' };
-  try {
-    const client = new SparkiiRagClient({ baseUrl: rag.baseUrl, apiKey });
-    const health = await client.health();
-    if (!health.ok) return { ok: false, error: 'SparkiiRAG 不可达' };
-    const datasets = await client.listDatasets();
-    return { ok: true, datasets };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : String(e) };
-  }
+  const result = await probeKnowledgeConnection(
+    rt,
+    'sparkiirag',
+    apiKeyOverride ? { apiKey: apiKeyOverride } : undefined,
+  );
+  return result.ok
+    ? { ok: true, datasets: result.datasets ?? [] }
+    : { ok: false, error: result.error?.message ?? '连接失败' };
 }
 
 function parseSessionInputs(raw: string | null | undefined): { path: string; name?: string; missing?: boolean }[] | undefined {
@@ -351,7 +375,8 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     const open = openSessions.get(sessionId);
     if (!open) return;
     const knowledge = knowledgeFromManifest(rt.profileOf(open.profileId).profile.manifest);
-    if (knowledge.backend !== 'sparkiirag') return;
+    // `bm25` 是本地语料，没有出处可写；两个远端后端都要写。
+    if (knowledge.backend === 'bm25') return;
     const turn = groundingTurns.get(sessionId);
     if (!turn?.searchCalled || turn.miss || turn.sealed) return;
     groundingTurns.set(sessionId, sealTurn(turn));
@@ -366,21 +391,31 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     await open.slot.client.send({ type: 'abort' });
   }
 
-  async function persistDefaultDataset(profileId: string, datasetId: string): Promise<void> {
-    const rag = ragFromSettings(await loadSettings(rt.dataDir));
-    const bindings = rag.bindings.filter((b) => b.agentId !== profileId);
+  /** 默认域写入必须落在该后端自己的配置块里（否则 Onto 会话会把域 id 写进 rag.bindings）。 */
+  async function persistDefaultDataset(profileId: string, backend: KnowledgeBackendId, datasetId: string): Promise<void> {
+    const current = knowledgeBackendSettings(backend, await loadSettings(rt.dataDir));
+    const bindings = current.bindings.filter((b) => b.agentId !== profileId);
     bindings.push({ agentId: profileId, defaultDatasetId: datasetId });
-    await patchRagSettings(rt.dataDir, { bindings });
+    await patchKnowledgeSettings(rt.dataDir, backend, { bindings });
   }
 
-  async function cacheRagFile(args: { datasetId: string; documentId: string; fileName?: string }): Promise<{ ok: true; path: string } | { ok: false; error: { code: string; message: string } }> {
-    const rag = ragFromSettings(await loadSettings(rt.dataDir));
-    const apiKey = await rt.keyFor('sparkiirag');
-    if (!apiKey) return { ok: false, error: { code: 'CONNECTOR_DENIED', message: '未配置 API Key' } };
+  /** 原文落盘：按后端取该后端的地址/凭据/客户端（`knowledge.fetch_document` 与"打开原文"共用）。 */
+  async function cacheRagFile(
+    args: { datasetId: string; documentId: string; fileName?: string },
+    backend: KnowledgeBackendId,
+  ): Promise<{ ok: true; path: string } | { ok: false; error: { code: string; message: string } }> {
+    const rag = knowledgeBackendSettings(backend, await loadSettings(rt.dataDir));
+    const credential = await rt.knowledgeToken(backend);
+    const client = knowledgeClientFor(backend, rag, credential);
+    if (!client) {
+      const label = backend === 'sparkiionto' ? 'API Token' : 'API Key';
+      return { ok: false, error: { code: 'CONNECTOR_DENIED', message: `未配置 ${label}` } };
+    }
     try {
       const cached = await fetchAndCacheDocument({
-        client: new SparkiiRagClient({ baseUrl: rag.baseUrl, apiKey }),
+        client,
         cacheDir: join(rt.dataDir, 'rag-cache'),
+        backend,
         datasetId: args.datasetId,
         documentId: args.documentId,
         fileName: args.fileName,
@@ -400,7 +435,11 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       const datasetId = String(req.args.datasetId ?? '');
       const documentId = String(req.args.documentId ?? '');
       const fileName = typeof req.args.fileName === 'string' ? req.args.fileName : undefined;
-      const cached = await cacheRagFile({ datasetId, documentId, fileName });
+      // 模型自己取原文时同样按 manifest 的后端路由（`bm25` 沿既有 RAG 行为）。
+      const fetchBackend = remoteKnowledgeBackend(
+        knowledgeFromManifest(rt.profileOf(profileId).profile.manifest).backend,
+      );
+      const cached = await cacheRagFile({ datasetId, documentId, fileName }, fetchBackend);
       if (!cached.ok) return { ok: false, error: cached.error };
       return { ok: true, data: { path: cached.path } };
     }
@@ -426,13 +465,15 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       return { ok: false, error: { code: 'CONNECTOR_DENIED', message: 'unhandled' } };
     }
     const knowledge = knowledgeFromManifest(rt.profileOf(profileId).profile.manifest);
-    const rag = ragFromSettings(await loadSettings(rt.dataDir));
-    const apiKey = await rt.keyFor('sparkiirag');
+    const backend = remoteKnowledgeBackend(knowledge.backend);
+    const rag = knowledgeBackendSettings(backend, await loadSettings(rt.dataDir));
+    const apiKey = knowledge.backend === 'bm25' ? null : await rt.knowledgeToken(backend);
     const searchTool = knowledgeConnector.tools.find((t) => t.name === 'knowledge.search')!;
     const out = await runMainKnowledgeSearch({
       args: req.args,
       profileId,
       sessionId,
+      backend: knowledge.backend,
       selection: sessionKnowledgeSelections.get(sessionId) ?? null,
       knowledge,
       rag,
@@ -447,7 +488,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         if (!result.ok) throw new Error(result.error?.message ?? 'bm25 failed');
         return result.data;
       },
-      persistDefault: (id) => persistDefaultDataset(profileId, id),
+      persistDefault: (id) => persistDefaultDataset(profileId, backend, id),
     });
     await rt.audit.append({
       actor: rt.subject.userId,
@@ -456,7 +497,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       sessionId,
       payloadSummary: searchAuditSummary(String(req.args.query ?? ''), out.data),
     });
-    if (out.ok && knowledge.backend === 'sparkiirag') {
+    if (out.ok && knowledge.backend !== 'bm25') {
       const data = (out.data ?? {}) as { chunks?: unknown[]; documents?: GroundingTurn['documents'] };
       const next = markSearchResult(groundingTurns.get(sessionId) ?? resetTurn(), {
         chunks: Array.isArray(data.chunks) ? data.chunks : [],
@@ -469,7 +510,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
           void refuseEmptySearch(sessionId, payload);
         });
       }
-    } else if (!out.ok && knowledge.backend === 'sparkiirag' && out.error?.message === SESSION_DATASET_GONE) {
+    } else if (!out.ok && knowledge.backend !== 'bm25' && out.error?.message === SESSION_DATASET_GONE) {
       queueMicrotask(() => {
         void refuseEmptySearch(sessionId, { refused: true, text: SESSION_DATASET_GONE, documents: [], citations: [] });
       });
@@ -477,18 +518,35 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     return out;
   }
 
-  async function assertSparkiiRagReady(profileId: string): Promise<{ ok: true } | { ok: false; code: string; error: string }> {
+  /** 会话前探活：按该 profile 的后端取配置与凭据（`bm25` 不需要探活）。 */
+  async function assertKnowledgeReady(profileId: string): Promise<{ ok: true } | { ok: false; code: string; error: string }> {
     const knowledge = knowledgeFromManifest(rt.profileOf(profileId).profile.manifest);
-    if (knowledge.backend !== 'sparkiirag') return { ok: true };
-    const rag = ragFromSettings(await loadSettings(rt.dataDir));
-    const apiKey = await rt.keyFor('sparkiirag');
-    if (!rag.baseUrl || !apiKey) {
-      return { ok: false, code: 'CONNECTOR_DENIED', error: '请先在设置 → 知识库配置 SparkiiRAG' };
+    if (knowledge.backend === 'bm25') return { ok: true };
+    const backend = remoteKnowledgeBackend(knowledge.backend);
+    const rag = knowledgeBackendSettings(backend, await loadSettings(rt.dataDir));
+    const credential = await rt.knowledgeToken(backend);
+    if (backend === 'sparkiirag') {
+      if (!rag.baseUrl || !credential) {
+        return { ok: false, code: 'CONNECTOR_DENIED', error: '请先在设置 → 知识库配置 SparkiiRAG' };
+      }
+      try {
+        const datasets = await new SparkiiRagClient({ baseUrl: rag.baseUrl, apiKey: credential }).listDatasets();
+        if (datasets.length === 0) {
+          return { ok: false, code: 'CONNECTOR_DENIED', error: '请先在 SparkiiRAG 建库' };
+        }
+      } catch (e) {
+        return { ok: false, code: 'CONNECTOR_IO', error: e instanceof Error ? e.message : String(e) };
+      }
+      return { ok: true };
+    }
+    if (!credential) {
+      return { ok: false, code: 'CONNECTOR_DENIED', error: '请先在设置 → 知识库配置 SparkiiOnto' };
     }
     try {
-      const datasets = await new SparkiiRagClient({ baseUrl: rag.baseUrl, apiKey }).listDatasets();
+      const client = knowledgeClientFor(backend, rag, credential);
+      const datasets = await client!.listDatasets();
       if (datasets.length === 0) {
-        return { ok: false, code: 'CONNECTOR_DENIED', error: '请先在 SparkiiRAG 建库' };
+        return { ok: false, code: 'CONNECTOR_DENIED', error: '请先在 SparkiiOnto 建域' };
       }
     } catch (e) {
       return { ok: false, code: 'CONNECTOR_IO', error: e instanceof Error ? e.message : String(e) };
@@ -715,7 +773,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       ? rt.chatSessions.get(sessionId)?.profileId
       : context.profileId;
     if (profileIdForGate) {
-      const ragReady = await assertSparkiiRagReady(profileIdForGate);
+      const ragReady = await assertKnowledgeReady(profileIdForGate);
       if (!ragReady.ok) return ragReady;
     }
 
@@ -771,7 +829,8 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       if (!resp.success) throw new Error(resp.error ?? 'follow_up failed');
     } else {
       const knowledge = knowledgeFromManifest(rt.profileOf(open.profileId).profile.manifest);
-      if (knowledge.backend === 'sparkiirag') {
+      // 每轮开始重置该会话的接地状态：两个远端后端都要重置。
+      if (knowledge.backend !== 'bm25') {
         groundingTurns.set(resolvedSessionId, resetTurn());
       }
       const resp = await open.slot.client.send(images.length
@@ -1316,18 +1375,21 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   ipcMain.handle('sparkii:queryAudit', (_e, filter: object) => rt.audit.query(filter));
   ipcMain.handle('sparkii:getSettings', async () => {
     const settings = await loadSettings(rt.dataDir);
-    const { rag: _storedRag, documentParse: _storedDp, ...rest } = settings;
+    const { rag: _storedRag, sparkiionto: _storedOnto, documentParse: _storedDp, ...rest } = settings;
     const apiKey = settings.activeProviderId ? await rt.keyFor(settings.activeProviderId) : null;
     const ragKey = await rt.keyFor('sparkiirag');
+    const ontoToken = await rt.knowledgeToken('sparkiionto');
     return {
       ...rest,
       ...(apiKey ? { apiKey } : {}),
       rag: { ...ragFromSettings(settings), hasApiKey: Boolean(ragKey) },
+      // 绝不回传 token：只回 hasToken。
+      sparkiionto: { ...knowledgeBackendSettings('sparkiionto', settings), hasToken: Boolean(ontoToken) },
       documentParse: documentParseFromSettings(settings),
     };
   });
   ipcMain.handle('sparkii:getApiKey', (_e, providerId: string) => {
-    if (providerId === 'sparkiirag' || providerId === 'apiKey:sparkiirag') return null;
+    if (isReservedKnowledgeProviderId(providerId)) return null;
     return rt.keyFor(providerId);
   });
   ipcMain.handle('sparkii:listProviders', async () => {
@@ -1340,10 +1402,29 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     return buildProviderList(runtimeProviders, settings.providers ?? []);
   });
   ipcMain.handle('sparkii:saveSettings', async (_e, settings: unknown) => {
-    const s = settings as Parameters<typeof saveSettings>[1] & { apiKey?: string; rag?: unknown; documentParse?: unknown };
-    const { apiKey, rag: _dropRag, documentParse: _dropDp, ...rest } = s;
+    const s = settings as Parameters<typeof saveSettings>[1] & {
+      apiKey?: string;
+      rag?: unknown;
+      sparkiionto?: unknown;
+      documentParse?: unknown;
+    };
+    // 唯一持久化自定义服务商的路径：知识后端的凭据 id 是保留名，撞名会让 keyFor 读到知识凭据。
+    const conflict = findReservedProviderConflict(s.providers);
+    if (conflict) {
+      return {
+        ok: false,
+        error: `自定义服务商 id "${conflict}" 是知识后端保留名（sparkiirag / sparkiionto），请改用其它 id`,
+      };
+    }
+    const { apiKey, rag: _dropRag, sparkiionto: _dropOnto, documentParse: _dropDp, ...rest } = s;
     const prev = await loadSettings(rt.dataDir);
-    await saveSettings(rt.dataDir, { ...prev, ...rest, rag: prev.rag, documentParse: prev.documentParse });
+    await saveSettings(rt.dataDir, {
+      ...prev,
+      ...rest,
+      rag: prev.rag,
+      sparkiionto: prev.sparkiionto,
+      documentParse: prev.documentParse,
+    });
     if (rest.logLevel) logger.level = rest.logLevel;
     if (s.activeProviderId) {
       await rt.setKey(s.activeProviderId, apiKey ?? '');
@@ -1354,6 +1435,24 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       );
     }
     await writePiModelsConfig(rt.piAgentDir, s.providers ?? []);
+    return { ok: true };
+  });
+  ipcMain.handle('sparkii:saveKnowledgeSettings', async (_e, backend: string, partial: KnowledgeSettingsPartial = {}) => {
+    if (!isKnowledgeBackendId(backend)) return { ok: false, error: `未知知识后端：${backend || '（空）'}` };
+    const next = partial ?? {};
+    // 写严格：只在用户真的提供地址时校验，空地址沿用既有值。
+    if (typeof next.baseUrl === 'string' && next.baseUrl.trim()) {
+      const check = checkKnowledgeBaseUrl(next.baseUrl);
+      if (!check.ok) return { ok: false, error: `知识库地址无效：${check.reason}` };
+    }
+    await patchKnowledgeSettings(rt.dataDir, backend, {
+      baseUrl: next.baseUrl,
+      similarityThreshold: next.similarityThreshold,
+      vectorSimilarityWeight: next.vectorSimilarityWeight,
+      bindings: next.bindings,
+    });
+    const token = typeof next.apiKey === 'string' ? next.apiKey.trim() : '';
+    if (token) await rt.setKnowledgeToken(backend, token);
     return { ok: true };
   });
   ipcMain.handle('sparkii:saveRagSettings', async (_e, partial: {
@@ -1380,12 +1479,25 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   ipcMain.handle('sparkii:listRagDatasets', async (_e, apiKey?: string | null) => {
     return probeRag(rt, apiKey);
   });
-  ipcMain.handle('sparkii:openRagDocument', async (_e, args: { datasetId: string; documentId: string; fileName?: string }) => {
+  ipcMain.handle('sparkii:testKnowledgeConnection', async (_e, backend: string, override?: KnowledgeProbeOverride) => {
+    if (!isKnowledgeBackendId(backend)) return invalidBackendProbeResult(backend);
+    return probeKnowledgeConnection(rt, backend, override);
+  });
+  ipcMain.handle('sparkii:listKnowledgeDatasets', async (_e, backend: string, override?: KnowledgeProbeOverride) => {
+    if (!isKnowledgeBackendId(backend)) return invalidBackendProbeResult(backend);
+    return probeKnowledgeConnection(rt, backend, override);
+  });
+  ipcMain.handle('sparkii:openRagDocument', async (
+    _e,
+    args: { backend?: string; datasetId: string; documentId: string; fileName?: string },
+  ) => {
+    // `backend` 缺省 = sparkiirag（既有 renderer 行为不变），仍然只把 path 回给 renderer。
+    const backend: KnowledgeBackendId = isKnowledgeBackendId(args?.backend) ? args.backend : 'sparkiirag';
     const cached = await cacheRagFile({
       datasetId: String(args?.datasetId ?? ''),
       documentId: String(args?.documentId ?? ''),
       fileName: args?.fileName,
-    });
+    }, backend);
     if (!cached.ok) return { ok: false, error: cached.error.message };
     const error = await shell.openPath(cached.path);
     if (error) return { ok: false, error };

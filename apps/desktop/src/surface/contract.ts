@@ -8,7 +8,7 @@ export interface AgentDescriptor {
   knowledge?: {
     enabled: boolean;
     picker: 'hidden' | 'session';
-    backend: 'bm25' | 'sparkiirag';
+    backend: 'bm25' | 'sparkiirag' | 'sparkiionto';
   };
 }
 

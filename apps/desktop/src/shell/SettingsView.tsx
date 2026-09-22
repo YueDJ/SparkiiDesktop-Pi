@@ -11,6 +11,12 @@ import { AuditView } from '../audit/AuditView.js';
 import { SettingsSkillsPane, type SkillsPaneApi } from './SettingsSkillsPane.js';
 import { SettingsKnowledgePane } from './SettingsKnowledgePane.js';
 import { SettingsDocumentParsePane } from './SettingsDocumentParsePane.js';
+import type {
+  KnowledgeBackendId,
+  KnowledgeProbeOverride,
+  KnowledgeProbeResult,
+  KnowledgeSettingsPartial,
+} from '../../electron/preload/api-types.js';
 
 export interface ProviderEntry {
   id: string;
@@ -39,8 +45,11 @@ export interface SettingsApi {
     bindings?: Array<{ agentId: string; defaultDatasetId: string }>;
     apiKey?: string;
   }): Promise<{ ok: true }>;
+  saveKnowledgeSettings?(backend: KnowledgeBackendId, partial: KnowledgeSettingsPartial): Promise<{ ok: boolean; error?: string }>;
   testRagConnection?(apiKey?: string | null): Promise<{ ok: boolean; datasets?: Array<{ id: string; name: string }>; error?: string }>;
   listRagDatasets?(apiKey?: string | null): Promise<{ ok: boolean; datasets?: Array<{ id: string; name: string }>; error?: string }>;
+  testKnowledgeConnection?(backend: KnowledgeBackendId, override?: KnowledgeProbeOverride): Promise<KnowledgeProbeResult>;
+  listKnowledgeDatasets?(backend: KnowledgeBackendId, override?: KnowledgeProbeOverride): Promise<KnowledgeProbeResult>;
   listAgents?(): Promise<Array<{ id: string; name: string; displayName?: string; knowledge?: { enabled?: boolean } }>>;
   getApiKey?(provider: string): Promise<string | null>;
   listProviders?(): Promise<ProviderEntry[]>;
@@ -200,7 +209,7 @@ export function SettingsView(props: SettingsViewProps) {
       ? [...customProviders.filter((p) => p.id !== providerId), { id: providerId, name: active.name, baseUrl: customBaseUrl, api: customApi }]
       : customProviders;
     try {
-      await api.saveSettings({
+      const result = await api.saveSettings({
         activeProviderId: providerId,
         providers: nextCustom,
         defaultModel,
@@ -211,8 +220,14 @@ export function SettingsView(props: SettingsViewProps) {
         queueEnabled,
         chatDetailLevel,
         logLevel,
-      });
+      }) as { ok?: boolean; error?: string } | undefined;
       setCustomProviders(nextCustom);
+      // 命名冲突等校验失败由 Main 回 { ok: false, error } —— 不能静默丢弃。
+      if (result && result.ok === false) {
+        setInfo('设置未保存');
+        reportError(result.error ?? '设置未保存', { source: '系统设置' });
+        return;
+      }
       setInfo('设置已保存');
     } catch (e) {
       reportError(e instanceof Error ? e.message : String(e), { source: '系统设置' });

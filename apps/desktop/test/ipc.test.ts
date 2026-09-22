@@ -136,6 +136,8 @@ async function makeRuntime(opts: {
   client: { send: (command: any) => Promise<any>; onEvent?: (cb: (event: any) => void) => () => void };
   setKey?: (providerId: string, key: string) => Promise<void>;
   keyFor?: (providerId: string) => Promise<string | null>;
+  knowledgeToken?: (backend: string) => Promise<string | null>;
+  setKnowledgeToken?: (backend: string, token: string) => Promise<void>;
   chatSession?: { profileId: string; model: string | null; piSessionFile?: string | null; kind?: string };
   profile?: unknown;
   agentOf?: (id: string) => unknown;
@@ -166,6 +168,8 @@ async function makeRuntime(opts: {
     },
     getSessionId: () => boundSessionId,
   };
+  // 与生产 `createKnowledgeSecretStore` 对齐：`sparkiirag` 的知识凭据就是 `keyFor('sparkiirag')`。
+  const keyFor = opts.keyFor ?? (async () => null);
     const rt: any = {
     profiles: new Map(),
     gate: {},
@@ -228,8 +232,10 @@ async function makeRuntime(opts: {
         systemPrompt,
       };
     },
-    keyFor: opts.keyFor ?? (async () => null),
+    keyFor,
     setKey: opts.setKey ?? (async () => {}),
+    knowledgeToken: opts.knowledgeToken ?? (async (backend: string) => (backend === 'sparkiirag' ? keyFor('sparkiirag') : null)),
+    setKnowledgeToken: opts.setKnowledgeToken ?? (async () => {}),
   } as unknown as Runtime;
   registerIpc(
     rt,
@@ -378,6 +384,237 @@ describe('ipc provider handlers', () => {
     });
     const handlers = await registeredHandlers();
     expect(await handlers.get('sparkii:getApiKey')!(null, 'sparkiirag')).toBeNull();
+  });
+
+  it('getApiKey also hides sparkiionto and both knowledge keyring names', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const keys = new Map<string, string>([
+      ['deepseek', 'sk-ds'],
+      ['sparkiirag', 'rag-secret-please-hide'],
+      ['sparkiionto', 'onto-token-please-hide'],
+      ['apiKey:sparkiirag', 'rag-secret-please-hide'],
+      ['apiKey:sparkiionto', 'onto-token-please-hide'],
+    ]);
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      keyFor: async (id) => keys.get(id) ?? null,
+    });
+    const handlers = await registeredHandlers();
+    const getApiKey = handlers.get('sparkii:getApiKey')!;
+    expect(await getApiKey(null, 'sparkiirag')).toBeNull();
+    expect(await getApiKey(null, 'sparkiionto')).toBeNull();
+    expect(await getApiKey(null, 'apiKey:sparkiirag')).toBeNull();
+    expect(await getApiKey(null, 'apiKey:sparkiionto')).toBeNull();
+    // 守卫只认知识后端的保留名，普通服务商的 key 照旧返回。
+    expect(await getApiKey(null, 'deepseek')).toBe('sk-ds');
+  });
+
+  it('saveSettings rejects a custom provider whose id collides with a knowledge credential id', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const ollama = { id: 'ollama', name: '本地 Ollama', baseUrl: 'http://127.0.0.1:11434/v1', api: 'openai-completions' };
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({ providers: [ollama] }), 'utf8');
+    await makeRuntime({ dataDir, piAgentDir, client: { send: async () => ({ success: true }) } });
+    const handlers = await registeredHandlers();
+    const save = handlers.get('sparkii:saveSettings')!;
+
+    for (const id of ['sparkiirag', 'sparkiionto', 'apiKey:sparkiirag']) {
+      const rejected = await save(null, {
+        activeProviderId: id,
+        providers: [{ id, name: id, baseUrl: 'http://x', api: 'openai-completions' }],
+        apiKey: 'sk-x',
+      }) as { ok: boolean; error?: string };
+      expect(rejected.ok, id).toBe(false);
+      expect(rejected.error, id).toMatch(/保留名/);
+      expect(rejected.error, id).toContain(id);
+    }
+
+    // 被拒的保存没有动过既有的自定义服务商。
+    const afterReject = JSON.parse(await readFile(join(dataDir, 'settings.json'), 'utf8'));
+    expect(afterReject.providers).toEqual([ollama]);
+
+    // 不撞名的保存照旧成功，既有服务商原样保留。
+    const ok = await save(null, { activeProviderId: 'ollama', providers: [ollama], apiKey: 'sk-ollama' }) as { ok: boolean };
+    expect(ok.ok).toBe(true);
+    const afterSave = JSON.parse(await readFile(join(dataDir, 'settings.json'), 'utf8'));
+    expect(afterSave.providers).toEqual([ollama]);
+  });
+
+  it('testKnowledgeConnection probes healthz → info → datasets with the onto settings and token', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(
+      join(dataDir, 'settings.json'),
+      JSON.stringify({ sparkiionto: { baseUrl: 'http://onto.example:9380/', similarityThreshold: 0.3 } }),
+      'utf8',
+    );
+    const calls: Array<{ path: string; auth?: string }> = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      const path = new URL(String(url)).pathname;
+      calls.push({ path, auth: (init?.headers as Record<string, string> | undefined)?.Authorization });
+      if (path === '/api/v1/system/healthz') {
+        return new Response('{"status":"ok","product":"SparkiiOnto","version":"0.6.8"}', { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (path === '/api/v1/info') {
+        return new Response(JSON.stringify({
+          product: 'SparkiiOnto',
+          version: '0.6.8',
+          api_version: 'v1',
+          deployment_profile: 'single-instance',
+          retrieval: { backend: 'sql-lexical', semantic_embeddings: false },
+          capabilities: { datasets: true, document_fetch: true },
+        }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (path === '/api/v1/datasets') {
+        return new Response('{"code":0,"data":[{"id":"d264d494","name":"水泥工艺知识域"}]}', { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      throw new Error(`unexpected request ${url}`);
+    }));
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      knowledgeToken: async (backend) => (backend === 'sparkiionto' ? 'tok-onto' : null),
+    });
+
+    const handlers = await registeredHandlers();
+    const out = await handlers.get('sparkii:testKnowledgeConnection')!(null, 'sparkiionto') as {
+      ok: boolean;
+      baseUrl?: string;
+      info?: { retrieval: { backend: string; semantic_embeddings: boolean } };
+      datasets?: Array<{ id: string; name: string }>;
+    };
+    expect(out.ok).toBe(true);
+    expect(out.baseUrl).toBe('http://onto.example:9380');
+    expect(out.info?.retrieval).toEqual({ backend: 'sql-lexical', semantic_embeddings: false });
+    expect(out.datasets).toEqual([{ id: 'd264d494', name: '水泥工艺知识域' }]);
+    expect(calls.map((c) => c.path)).toEqual(['/api/v1/system/healthz', '/api/v1/info', '/api/v1/datasets']);
+    expect(calls[1].auth).toBe('Bearer tok-onto');
+    // 探活不读也不回传 RAG 的凭据。
+    expect(JSON.stringify(out)).not.toContain('tok-onto');
+  });
+
+  it('testKnowledgeConnection honours an unsaved override', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const urls: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL) => {
+      urls.push(String(url));
+      return new Response('{"status":"nok"}', { status: 503, headers: { 'content-type': 'application/json' } });
+    }));
+    await makeRuntime({ dataDir, piAgentDir, client: { send: async () => ({ success: true }) } });
+
+    const handlers = await registeredHandlers();
+    const out = await handlers.get('sparkii:testKnowledgeConnection')!(null, 'sparkiionto', {
+      baseUrl: 'http://override.example:9380',
+      apiKey: 'tok-override',
+    }) as { ok: boolean; baseUrl?: string; error?: { reason: string } };
+    expect(out.ok).toBe(false);
+    expect(out.error?.reason).toBe('unhealthy');
+    expect(urls[0]).toBe('http://override.example:9380/api/v1/system/healthz');
+  });
+
+  it('listKnowledgeDatasets tells 401 (credential) from 403 (permission) and flags an /info mismatch', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({ sparkiionto: { baseUrl: 'http://onto.example' } }), 'utf8');
+
+    const serve = (info: Response | (() => Response), datasets?: Response) => vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL) => {
+      const path = new URL(String(url)).pathname;
+      if (path === '/api/v1/system/healthz') {
+        return new Response('{"status":"ok"}', { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (path === '/api/v1/info') return typeof info === 'function' ? info() : info;
+      if (path === '/api/v1/datasets' && datasets) return datasets;
+      throw new Error(`unexpected request ${url}`);
+    }));
+    const ontoInfo = () => new Response(JSON.stringify({
+      product: 'SparkiiOnto',
+      version: '0.6.8',
+      api_version: 'v1',
+      deployment_profile: 'single-instance',
+      retrieval: { backend: 'sql-lexical', semantic_embeddings: false },
+      capabilities: { datasets: true },
+    }), { status: 200, headers: { 'content-type': 'application/json' } });
+
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      knowledgeToken: async () => 'tok-onto',
+    });
+    const handlers = await registeredHandlers();
+    const list = handlers.get('sparkii:listKnowledgeDatasets')!;
+
+    serve(new Response('{"code":401,"message":"invalid or expired credential"}', { status: 401, headers: { 'content-type': 'application/json' } }));
+    const denied = await list(null, 'sparkiionto') as { ok: boolean; error: { code: string; message: string; reason: string } };
+    expect(denied).toMatchObject({ ok: false, error: { code: 'CONNECTOR_DENIED', reason: 'unauthorized' } });
+    expect(denied.error.message).toMatch(/凭据/);
+
+    serve(ontoInfo, new Response('{"code":403,"message":"action denied"}', { status: 403, headers: { 'content-type': 'application/json' } }));
+    const forbidden = await list(null, 'sparkiionto') as { ok: boolean; error: { code: string; message: string; reason: string } };
+    expect(forbidden).toMatchObject({ ok: false, error: { code: 'CONNECTOR_DENIED', reason: 'forbidden' } });
+    expect(forbidden.error.message).toMatch(/权限/);
+    expect(forbidden.error.message).not.toBe(denied.error.message);
+
+    serve(() => new Response(JSON.stringify({ product: 'SparkiiRAG', api_version: 'v1' }), { status: 200, headers: { 'content-type': 'application/json' } }));
+    const mismatch = await list(null, 'sparkiionto') as { ok: boolean; error: { code: string; reason: string } };
+    expect(mismatch).toMatchObject({ ok: false, error: { code: 'CONNECTOR_UNSUPPORTED', reason: 'unsupported' } });
+
+    const unknown = await list(null, 'bm25') as { ok: boolean; error: { reason: string } };
+    expect(unknown).toMatchObject({ ok: false, error: { reason: 'invalid_config' } });
+  });
+
+  it('keeps testRagConnection as a thin sparkiirag wrapper', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL) => {
+      const path = new URL(String(url)).pathname;
+      if (path === '/api/v1/system/healthz') {
+        return new Response('{"status":"ok"}', { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (path === '/api/v1/datasets') {
+        return new Response('{"code":0,"data":[{"id":"law","name":"法规"}]}', { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      throw new Error(`unexpected request ${url}`);
+    }));
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      knowledgeToken: async (backend) => (backend === 'sparkiirag' ? 'rag-tok' : null),
+    });
+
+    const handlers = await registeredHandlers();
+    const ok = await handlers.get('sparkii:testRagConnection')!(null, null) as { ok: boolean; datasets?: Array<{ id: string; name: string }> };
+    expect(ok).toEqual({ ok: true, datasets: [{ id: 'law', name: '法规' }] });
+  });
+
+  it('testRagConnection keeps the legacy "no key" wording', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await makeRuntime({ dataDir, piAgentDir, client: { send: async () => ({ success: true }) } });
+
+    const handlers = await registeredHandlers();
+    const missing = await handlers.get('sparkii:testRagConnection')!(null, null) as { ok: boolean; error?: string };
+    expect(missing).toEqual({ ok: false, error: '未配置 API Key' });
   });
 
   it('empty saveRagSettings apiKey keeps the keyring value', async () => {
@@ -898,6 +1135,193 @@ describe('ipc provider handlers', () => {
     await waitUntil(() => sent.some((c) => c.type === 'abort'));
     const refused = sent.filter((c) => c.type === 'append_workflow_entry' && c.customType === 'knowledge_turn');
     expect(refused.at(-1)?.data).toMatchObject({ refused: true, documents: [] });
+  });
+
+  it('routes a SparkiiOnto session search, tags the hits and writes the domain into sparkiionto bindings', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({
+      rag: { baseUrl: 'http://rag.example' },
+      sparkiionto: { baseUrl: 'http://onto.example:9380' },
+    }), 'utf8');
+    const calls: Array<{ path: string; auth?: string }> = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      const path = new URL(String(url)).pathname;
+      calls.push({ path, auth: (init?.headers as Record<string, string> | undefined)?.Authorization });
+      if (path === '/api/v1/info') {
+        return new Response(JSON.stringify({
+          product: 'SparkiiOnto', version: '0.6.8', api_version: 'v1', deployment_profile: 'single-instance',
+          retrieval: { backend: 'sql-lexical', semantic_embeddings: false },
+          capabilities: { datasets: true, document_fetch: true },
+        }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (path === '/api/v1/datasets') {
+        return new Response('{"code":0,"data":[{"id":"d264d494","name":"水泥工艺知识域"}]}', {
+          status: 200, headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (path === '/api/v1/retrieval') {
+        return new Response(JSON.stringify({
+          code: 0,
+          data: {
+            chunks: [{
+              id: 'c1', content: '高温津贴按日计发', document_keyword: '水泥工艺.md',
+              document_id: 'doc-1', dataset_id: 'd264d494', similarity: 0.9,
+            }],
+            doc_aggs: [{ doc_id: 'doc-1', doc_name: '水泥工艺.md', count: 1 }],
+          },
+        }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      throw new Error(`unexpected request ${url}`);
+    }));
+    const events: Array<(e: unknown) => void> = [];
+    const sent: any[] = [];
+    const client = {
+      onEvent: (cb: (event: unknown) => void) => { events.push(cb); return () => {}; },
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's-onto', sessionFile: null, isStreaming: false } };
+        }
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      knowledgeToken: async (backend) => (backend === 'sparkiionto' ? 'tok-onto' : null),
+      profile: {
+        dir: join(dataDir, 'profiles', 'onto-agent'),
+        profile: {
+          manifest: { name: 'onto-agent', knowledge: { enabled: true, picker: 'hidden', backend: 'sparkiionto' } },
+          agent: { tools: ['knowledge.search'], prompts: { system: 'test' } },
+        },
+        router: { resolve: () => undefined },
+      },
+    });
+    const sessions = new Map<string, { id: string; profileId: string }>();
+    (rt as any).chatSessions.create = (rec: { id: string; profileId: string }) => { sessions.set(rec.id, rec); };
+    (rt as any).chatSessions.get = (id: string) => sessions.get(id) ?? null;
+    const handlers = await registeredHandlers();
+    const result = await handlers.get('sparkii:promptSession')!(null, null, '高温津贴怎么发', undefined, undefined, { profileId: 'onto-agent' });
+    expect(result).toMatchObject({ ok: true, sessionId: 's-onto' });
+
+    const read = (rt as any).__onConnectorRead;
+    const out = await read?.({ requestId: 'r1', toolName: 'knowledge.search', args: { query: '高温津贴怎么发' } });
+    expect(out?.ok).toBe(true);
+    expect((out as { data: { chunks: Array<{ backend?: string }> } }).data.chunks[0].backend).toBe('sparkiionto');
+    expect(calls.find((c) => c.path === '/api/v1/retrieval')?.auth).toBe('Bearer tok-onto');
+
+    // 默认域必须写进 sparkiionto.bindings，rag 配置块不被碰（否则 Onto 会话永远不更新自己的绑定）。
+    const settings = JSON.parse(await readFile(join(dataDir, 'settings.json'), 'utf8')) as {
+      rag: { baseUrl: string; bindings?: unknown };
+      sparkiionto: { bindings?: unknown };
+    };
+    expect(settings.sparkiionto.bindings).toEqual([{ agentId: 'onto-agent', defaultDatasetId: 'd264d494' }]);
+    expect(settings.rag.bindings).toBeUndefined();
+    expect(settings.rag.baseUrl).toBe('http://rag.example');
+
+    // 出处写进会话，并带上后端归属。
+    events[0]?.({ type: 'agent_settled' });
+    await waitUntil(() => sent.some((c) => c.type === 'append_workflow_entry' && c.customType === 'knowledge_turn' && c.data?.refused === false));
+    const turn = sent.find((c) => c.type === 'append_workflow_entry' && c.customType === 'knowledge_turn' && c.data?.refused === false);
+    expect(turn?.data?.documents?.[0]).toMatchObject({ documentId: 'doc-1', datasetId: 'd264d494', backend: 'sparkiionto' });
+    expect(turn?.data?.citations?.[0]).toMatchObject({ documentId: 'doc-1', backend: 'sparkiionto' });
+  });
+
+  it('fetches and opens an Onto source document under the backend cache segment', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({
+      sparkiionto: { baseUrl: 'http://onto.example:9380' },
+    }), 'utf8');
+    vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL) => {
+      const path = new URL(String(url)).pathname;
+      if (path === '/api/v1/info') {
+        return new Response(JSON.stringify({
+          product: 'SparkiiOnto', version: '0.6.8', api_version: 'v1', deployment_profile: 'single-instance',
+          retrieval: { backend: 'sql-lexical', semantic_embeddings: false }, capabilities: { datasets: true },
+        }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (path === '/api/v1/datasets') {
+        return new Response('{"code":0,"data":[{"id":"d264d494","name":"水泥工艺知识域"}]}', {
+          status: 200, headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (path === '/api/v1/datasets/d264d494/documents/doc-1') {
+        return new Response(new Uint8Array([104, 105]), {
+          status: 200, headers: { 'content-type': 'application/octet-stream' },
+        });
+      }
+      throw new Error(`unexpected request ${url}`);
+    }));
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's-onto', sessionFile: null, isStreaming: false } };
+        }
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      knowledgeToken: async (backend) => (backend === 'sparkiionto' ? 'tok-onto' : null),
+      profile: {
+        dir: join(dataDir, 'profiles', 'onto-agent'),
+        profile: {
+          manifest: { name: 'onto-agent', knowledge: { enabled: true, picker: 'hidden', backend: 'sparkiionto' } },
+          agent: { tools: ['knowledge.search', 'knowledge.fetch_document'], prompts: { system: 'test' } },
+        },
+        router: { resolve: () => undefined },
+      },
+    });
+    const sessions = new Map<string, { id: string; profileId: string }>();
+    (rt as any).chatSessions.create = (rec: { id: string; profileId: string }) => { sessions.set(rec.id, rec); };
+    (rt as any).chatSessions.get = (id: string) => sessions.get(id) ?? null;
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:promptSession')!(null, null, '你好', undefined, undefined, { profileId: 'onto-agent' });
+
+    // 模型自己取原文：必须走 Onto，而不是硬编码的 RAG。
+    const read = (rt as any).__onConnectorRead;
+    const fetched = await read?.({
+      requestId: 'r1', toolName: 'knowledge.fetch_document',
+      args: { datasetId: 'd264d494', documentId: 'doc-1', fileName: '水泥工艺.md' },
+    }) as { ok: boolean; data?: { path: string }; error?: { code: string } };
+    expect(fetched.ok).toBe(true);
+    const cachedPath = String(fetched.data?.path ?? '');
+    expect(cachedPath.replace(/\\/g, '/')).toMatch(/\/rag-cache\/sparkiionto\/d264d494\/doc-1\.md$/);
+    expect((await readFile(cachedPath)).toString()).toBe('hi');
+
+    const electron = await import('electron') as unknown as { shell: { openPath: ReturnType<typeof vi.fn> } };
+    electron.shell.openPath.mockClear();
+    const opened = await handlers.get('sparkii:openRagDocument')!(null, {
+      backend: 'sparkiionto', datasetId: 'd264d494', documentId: 'doc-1', fileName: '水泥工艺.md',
+    }) as { ok: boolean; path?: string };
+    expect(opened.ok).toBe(true);
+    expect(opened.path).toBe(cachedPath);
+    expect(electron.shell.openPath).toHaveBeenCalledTimes(1);
+    expect(electron.shell.openPath).toHaveBeenCalledWith(cachedPath);
+  });
+
+  it('openRagDocument defaults to sparkiirag and returns a bounded error when the credential is missing', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await makeRuntime({ dataDir, piAgentDir, client: { send: async () => ({ success: true }) } });
+    const handlers = await registeredHandlers();
+    const out = await handlers.get('sparkii:openRagDocument')!(null, {
+      datasetId: 'law', documentId: 'd1',
+    }) as { ok: boolean; error?: string };
+    expect(out).toEqual({ ok: false, error: '未配置 API Key' });
   });
 
   it('setSessionKnowledge rejects invalid payload', async () => {

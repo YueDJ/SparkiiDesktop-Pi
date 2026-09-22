@@ -14,7 +14,8 @@ import { buildAgentSaddle } from './saddle.js';
 import { allocateAutoWorkspace } from './workspace.js';
 import { isReadOnlyBashCommand, riskOfCommand } from './general-executor.js';
 import { loadSettings, type AppSettings } from './settings.js';
-import { knowledgeFromManifest, patchRagSettings, ragFromSettings } from './rag-settings.js';
+import { knowledgeFromManifest } from './rag-settings.js';
+import { knowledgeBackendSettings, patchKnowledgeSettings, remoteKnowledgeBackend } from './knowledge-settings.js';
 import { runMainKnowledgeSearch } from './rag-search.js';
 import { executeDocumentRead } from './document-read.js';
 import { profilePoolMeta } from './pool-meta.js';
@@ -263,22 +264,25 @@ export async function runTool(
     }
     if (toolName === 'knowledge.search') {
       const knowledge = knowledgeFromManifest(rt.profileOf(profileId).profile.manifest);
-      if (knowledge.backend === 'sparkiirag') {
-        const rag = ragFromSettings(await loadSettings(rt.dataDir));
+      // 两个远端后端都走 Main；`bm25`（本地语料）沿用下面的 tool.handler 兜底。
+      if (knowledge.backend !== 'bm25') {
+        const backend = remoteKnowledgeBackend(knowledge.backend);
+        const rag = knowledgeBackendSettings(backend, await loadSettings(rt.dataDir));
         return runMainKnowledgeSearch({
           args: (args ?? {}) as Record<string, unknown>,
           profileId,
           sessionId,
+          backend: knowledge.backend,
           selection: null,
           knowledge,
           rag,
-          apiKey: await rt.keyFor('sparkiirag'),
+          apiKey: await rt.knowledgeToken(backend),
           bm25: async () => { throw new Error('no bm25'); },
           persistDefault: async (id) => {
-            const current = ragFromSettings(await loadSettings(rt.dataDir));
+            const current = knowledgeBackendSettings(backend, await loadSettings(rt.dataDir));
             const next = current.bindings.filter((b) => b.agentId !== profileId);
             next.push({ agentId: profileId, defaultDatasetId: id });
-            await patchRagSettings(rt.dataDir, { bindings: next });
+            await patchKnowledgeSettings(rt.dataDir, backend, { bindings: next });
           },
         });
       }

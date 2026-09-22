@@ -20,7 +20,7 @@ export type KnowledgeSelection =
 
 export type ProfileKnowledge = {
   enabled: boolean;
-  backend: 'bm25' | 'sparkiirag';
+  backend: 'bm25' | 'sparkiirag' | 'sparkiionto';
   picker: 'hidden' | 'session';
 };
 
@@ -55,9 +55,11 @@ export function ragFromSettings(s: AppSettings): RagSettings {
 
 export function knowledgeFromManifest(manifest: unknown): ProfileKnowledge {
   const knowledge = (manifest as { knowledge?: Record<string, unknown> } | undefined)?.knowledge;
+  // 显式三分支：漏掉 `sparkiionto` 会把它静默压成 `bm25`（既有的隐式二分行为）。
+  const backend = knowledge?.backend;
   return {
     enabled: knowledge?.enabled === true,
-    backend: knowledge?.backend === 'sparkiirag' ? 'sparkiirag' : 'bm25',
+    backend: backend === 'sparkiirag' ? 'sparkiirag' : backend === 'sparkiionto' ? 'sparkiionto' : 'bm25',
     picker: knowledge?.picker === 'session' ? 'session' : 'hidden',
   };
 }

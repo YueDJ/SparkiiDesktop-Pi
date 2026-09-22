@@ -1,8 +1,17 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor, within } from '@testing-library/react';
 import { SettingsView } from '../src/shell/SettingsView.js';
 
 afterEach(cleanup);
+
+const ONTO_INFO = {
+  product: 'sparkiionto',
+  version: '0.6.8',
+  api_version: 'v1',
+  deployment_profile: 'on-prem',
+  retrieval: { backend: 'sql-lexical', semantic_embeddings: false },
+  capabilities: { document_fetch: true },
+};
 
 function makeApi(over: Record<string, unknown> = {}) {
   return {
@@ -15,17 +24,40 @@ function makeApi(over: Record<string, unknown> = {}) {
         similarityThreshold: 0.2,
         vectorSimilarityWeight: 0.3,
       },
+      sparkiionto: {
+        baseUrl: 'http://127.0.0.1:9380',
+        hasToken: false,
+        bindings: [],
+        similarityThreshold: 0.2,
+        vectorSimilarityWeight: 0.3,
+      },
     }),
     saveSettings: vi.fn().mockResolvedValue({}),
     saveRagSettings: vi.fn().mockResolvedValue({ ok: true }),
     testRagConnection: vi.fn().mockResolvedValue({ ok: true, datasets: [{ id: 'law', name: '法规' }] }),
     listRagDatasets: vi.fn().mockResolvedValue({ ok: true, datasets: [{ id: 'law', name: '法规' }] }),
+    saveKnowledgeSettings: vi.fn().mockResolvedValue({ ok: true }),
+    testKnowledgeConnection: vi.fn().mockResolvedValue({
+      ok: true,
+      backend: 'sparkiionto',
+      baseUrl: 'http://127.0.0.1:9380',
+      info: ONTO_INFO,
+      datasets: [{ id: 'tech', name: '工艺要求' }],
+    }),
+    listKnowledgeDatasets: vi.fn().mockResolvedValue({
+      ok: true,
+      backend: 'sparkiionto',
+      baseUrl: 'http://127.0.0.1:9380',
+      info: ONTO_INFO,
+      datasets: [{ id: 'tech', name: '工艺要求' }],
+    }),
     listProviders: vi.fn().mockResolvedValue([
       { id: 'deepseek', name: 'DeepSeek', kind: 'builtin', baseUrl: 'https://api.deepseek.com', apiKeyAuth: true, oauthAuth: false },
     ]),
     listAgents: vi.fn().mockResolvedValue([
-      { id: 'knowledge-qa', name: '企业知识问答', knowledge: { enabled: true } },
+      { id: 'knowledge-qa', name: '企业知识问答', knowledge: { enabled: true, backend: 'sparkiirag' } },
       { id: 'contract-review', name: '合同审核智能体', knowledge: { enabled: true, picker: 'hidden' } },
+      { id: 'onto-qa', name: '工艺本体问答', knowledge: { enabled: true, backend: 'sparkiionto' } },
       { id: 'general', name: '通用智能体', knowledge: { enabled: false } },
     ]),
     getApiKey: vi.fn().mockResolvedValue('sk-should-not-be-used'),
@@ -56,7 +88,8 @@ describe('Settings knowledge pane', () => {
     render(<SettingsView api={makeApi({ saveRagSettings })} />);
     fireEvent.click(screen.getByRole('button', { name: '知识库' }));
     await screen.findByTestId('rag-api-key-input');
-    fireEvent.click(screen.getByText('保存'));
+    // 两块分组各有一个"保存"，按分组取 RAG 那个（既有点击目标不变）。
+    fireEvent.click(within(screen.getByTestId('knowledge-rag-group')).getByText('保存'));
     await waitFor(() => expect(saveRagSettings).toHaveBeenCalled());
     const arg = saveRagSettings.mock.calls[0][0];
     expect(arg.apiKey === '' || arg.apiKey == null).toBe(true);
@@ -86,5 +119,122 @@ describe('Settings knowledge pane', () => {
     expect(document.body.querySelector('.ui-menu--fixed')).toBeTruthy();
     fireEvent.click(screen.getByRole('menuitem', { name: '法规' }));
     expect(qa.value).toBe('law');
+  });
+
+  it('renders both knowledge groups and keeps the existing RAG testids', async () => {
+    render(<SettingsView api={makeApi()} />);
+    fireEvent.click(screen.getByRole('button', { name: '知识库' }));
+    await screen.findByTestId('rag-base-url-input');
+    // 智能体行是异步加载的：先等 Onto 组那一行出现，再逐字核对既有 testid。
+    await screen.findByTestId('sparkiionto-default-domain-onto-qa');
+    for (const id of [
+      'knowledge-rag-group',
+      'knowledge-onto-group',
+      'rag-base-url-input',
+      'rag-api-key-input',
+      'rag-similarity-threshold-input',
+      'rag-vector-similarity-weight-input',
+      'sparkiionto-base-url-input',
+      'sparkiionto-api-token-input',
+      'sparkiionto-similarity-threshold-input',
+      'rag-default-dataset-knowledge-qa',
+      'sparkiionto-default-domain-onto-qa',
+    ]) {
+      expect(screen.getByTestId(id)).toBeTruthy();
+    }
+    // Onto 组只列本体后端的智能体（RAG-only 的 knowledge-qa 不再出现在这里）；
+    // RAG 组行为不变——仍列全部启用知识的智能体，包括本体那一个。
+    expect(screen.queryByTestId('sparkiionto-default-domain-knowledge-qa')).toBeNull();
+    expect(screen.getByTestId('rag-default-dataset-onto-qa')).toBeTruthy();
+    // Onto 组不暴露向量权重（服务端忽略该字段）。
+    expect(screen.queryByTestId('sparkiionto-vector-similarity-weight-input')).toBeNull();
+  });
+
+  it('hides the whole Onto default-domain block when no agent uses the Onto backend', async () => {
+    const listAgents = vi.fn().mockResolvedValue([
+      { id: 'knowledge-qa', name: '企业知识问答', knowledge: { enabled: true } },
+      { id: 'contract-review', name: '合同审核智能体', knowledge: { enabled: true, picker: 'hidden' } },
+      { id: 'general', name: '通用智能体', knowledge: { enabled: false } },
+    ]);
+    render(<SettingsView api={makeApi({ listAgents })} />);
+    fireEvent.click(screen.getByRole('button', { name: '知识库' }));
+    const ontoGroup = await screen.findByTestId('knowledge-onto-group');
+    // 先确认智能体确实已加载（RAG 组已出行为准），再看 Onto 组那一块确实整块不在。
+    await screen.findByTestId('rag-default-dataset-knowledge-qa');
+    expect(within(ontoGroup).queryByText('智能体默认域')).toBeNull();
+    expect(screen.queryByTestId('sparkiionto-default-domain-knowledge-qa')).toBeNull();
+    // RAG 组的既有行为不变。
+    expect(within(screen.getByTestId('knowledge-rag-group')).getByText('智能体默认库')).toBeTruthy();
+    expect(screen.getByTestId('rag-default-dataset-contract-review')).toBeTruthy();
+  });
+
+  it('saves the RAG thresholds from the RAG group', async () => {
+    const saveRagSettings = vi.fn().mockResolvedValue({ ok: true });
+    render(<SettingsView api={makeApi({ saveRagSettings })} />);
+    fireEvent.click(screen.getByRole('button', { name: '知识库' }));
+    fireEvent.change(await screen.findByTestId('rag-similarity-threshold-input'), { target: { value: '0.35' } });
+    fireEvent.change(screen.getByTestId('rag-vector-similarity-weight-input'), { target: { value: '0.5' } });
+    fireEvent.click(within(screen.getByTestId('knowledge-rag-group')).getByText('保存'));
+    await waitFor(() => expect(saveRagSettings).toHaveBeenCalled());
+    const arg = saveRagSettings.mock.calls[0][0];
+    expect(arg.similarityThreshold).toBe(0.35);
+    expect(arg.vectorSimilarityWeight).toBe(0.5);
+  });
+
+  it('saves the Onto threshold and never overwrites the token with an empty input', async () => {
+    const saveKnowledgeSettings = vi.fn().mockResolvedValue({ ok: true });
+    render(<SettingsView api={makeApi({ saveKnowledgeSettings })} />);
+    fireEvent.click(screen.getByRole('button', { name: '知识库' }));
+    const token = await screen.findByTestId('sparkiionto-api-token-input') as HTMLInputElement;
+    expect(token.type).toBe('password');
+    expect(token.value).toBe('');
+    fireEvent.change(screen.getByTestId('sparkiionto-similarity-threshold-input'), { target: { value: '0.4' } });
+    fireEvent.click(within(screen.getByTestId('knowledge-onto-group')).getByText('保存'));
+    await waitFor(() => expect(saveKnowledgeSettings).toHaveBeenCalled());
+    const [backend, arg] = saveKnowledgeSettings.mock.calls[0];
+    expect(backend).toBe('sparkiionto');
+    expect(arg.similarityThreshold).toBe(0.4);
+    expect(arg.apiKey === '' || arg.apiKey == null).toBe(true);
+  });
+
+  it('flags out-of-range thresholds in place without clamping the input', async () => {
+    render(<SettingsView api={makeApi()} />);
+    fireEvent.click(screen.getByRole('button', { name: '知识库' }));
+    const input = await screen.findByTestId('sparkiionto-similarity-threshold-input') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: '1.5' } });
+    expect(input.value).toBe('1.5');
+    expect(await screen.findByText(/阈值必须落在/)).toBeTruthy();
+  });
+
+  it('notes thresholds below 0.05', async () => {
+    render(<SettingsView api={makeApi()} />);
+    fireEvent.click(screen.getByRole('button', { name: '知识库' }));
+    fireEvent.change(await screen.findByTestId('rag-similarity-threshold-input'), { target: { value: '0.01' } });
+    expect(await screen.findByText(/几乎不过滤，会把无关片段当命中/)).toBeTruthy();
+  });
+
+  it('warns about plaintext non-loopback HTTP addresses without blocking save', async () => {
+    const saveRagSettings = vi.fn().mockResolvedValue({ ok: true });
+    render(<SettingsView api={makeApi({ saveRagSettings })} />);
+    fireEvent.click(screen.getByRole('button', { name: '知识库' }));
+    const baseUrl = await screen.findByTestId('rag-base-url-input');
+    expect(screen.queryByText(/被同网段嗅探/)).toBeNull();
+    fireEvent.change(baseUrl, { target: { value: 'http://10.0.0.8:9380' } });
+    expect(await screen.findByText(/被同网段嗅探/)).toBeTruthy();
+    fireEvent.click(within(screen.getByTestId('knowledge-rag-group')).getByText('保存'));
+    await waitFor(() => expect(saveRagSettings).toHaveBeenCalled());
+  });
+
+  it('shows the Onto copy and the /info capability negotiation after a test', async () => {
+    render(<SettingsView api={makeApi()} />);
+    fireEvent.click(screen.getByRole('button', { name: '知识库' }));
+    const group = await screen.findByTestId('knowledge-onto-group');
+    expect(within(group).getByText(/词法检索：适合短查询\/引用式提问/)).toBeTruthy();
+    expect(within(group).getByText(/默认 24 小时过期/)).toBeTruthy();
+    expect(within(group).getByText(/仅适用于本机联调/)).toBeTruthy();
+    fireEvent.click(within(group).getByText('测试连接'));
+    expect(await screen.findByText(/检索后端 sql-lexical/)).toBeTruthy();
+    expect(screen.getByText(/无语义嵌入/)).toBeTruthy();
+    expect(screen.getByText(/可打开原文/)).toBeTruthy();
   });
 });

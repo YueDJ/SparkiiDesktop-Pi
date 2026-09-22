@@ -10,7 +10,7 @@ vi.mock('electron', () => ({
 describe('sparkii api shape', () => {
   it('exposes the expected method names', () => {
     const names = [
-      'getLocalSubject', 'chooseDocument', 'readDocumentBytes', 'runWorkflow', 'prompt', 'listPendingApprovals', 'decideApproval', 'queryAudit', 'getSettings', 'saveSettings', 'saveRagSettings', 'testRagConnection', 'listRagDatasets', 'getApiKey', 'listModels', 'testConnection', 'listProviders', 'diagnostics', 'on',
+      'getLocalSubject', 'chooseDocument', 'readDocumentBytes', 'runWorkflow', 'prompt', 'listPendingApprovals', 'decideApproval', 'queryAudit', 'getSettings', 'saveSettings', 'saveRagSettings', 'saveKnowledgeSettings', 'testRagConnection', 'listRagDatasets', 'testKnowledgeConnection', 'listKnowledgeDatasets', 'getApiKey', 'listModels', 'testConnection', 'listProviders', 'diagnostics', 'on',
       'listErrors', 'appendError', 'clearError', 'clearErrors', 'markAllErrorsRead',
       'openChatSession', 'listChatSessions', 'getChatSession', 'promptSession', 'abortChat', 'getChatState', 'queueMutate', 'setChatTitle', 'completeText', 'setChatModel', 'setChatThinkingLevel', 'setChatWorkspace', 'updateWorkflowState', 'requestExportReport', 'allocateAutoWorkspace', 'chooseWorkspace', 'openWorkspace', 'getModelOptions', 'listThinkingLevels', 'deleteChatSession', 'setSessionPinned', 'setSessionArchived', 'setSessionOrder', 'listAgents', 'setSessionKnowledge', 'openRagDocument',
       'listUserSkills', 'listAgentSkills', 'previewUserSkill', 'chooseSkillFolder', 'importUserSkill', 'uninstallUserSkill', 'openUserSkillsDir',

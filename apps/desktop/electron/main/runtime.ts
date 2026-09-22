@@ -18,6 +18,7 @@ import { loadApiKey, saveApiKey } from "./settings.js";
 import { registerGeneralExecutor } from "./general-executor.js";
 import { resolveRuntimeToolsDir } from "./runtime-layout.js";
 import { loadAgentRuntimes, type AgentRuntime } from "./agent-registry.js";
+import type { KnowledgeBackendId } from "./knowledge-settings.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -38,12 +39,22 @@ export interface Runtime {
   agentOf(id: string): AgentRuntime;
   keyFor(providerId: string): Promise<string | null>;
   setKey(providerId: string, key: string): Promise<void>;
+  knowledgeToken(backend: KnowledgeBackendId): Promise<string | null>;
+  setKnowledgeToken(backend: KnowledgeBackendId, token: string): Promise<void>;
 }
 
 export interface KeyStore {
   keyFor(providerId: string): Promise<string | null>;
   setKey(providerId: string, key: string): Promise<void>;
 }
+
+export interface KnowledgeSecretStore {
+  knowledgeToken(backend: KnowledgeBackendId): Promise<string | null>;
+  setKnowledgeToken(backend: KnowledgeBackendId, token: string): Promise<void>;
+}
+
+/** 知识后端凭据命名空间：与模型服务商的 `apiKey:<provider>` 完全隔离。 */
+export const KNOWLEDGE_SECRET_PREFIX = "knowledge:";
 
 export function createKeyStore(keyring: Keyring): KeyStore {
   const keyCache = new Map<string, string>();
@@ -58,6 +69,32 @@ export function createKeyStore(keyring: Keyring): KeyStore {
     async setKey(providerId: string, key: string): Promise<void> {
       await saveApiKey(keyring, providerId, key);
       keyCache.set(providerId, key);
+    },
+  };
+}
+
+/**
+ * 知识后端凭据访问器。
+ * SparkiiRAG 沿用既有 `apiKey:sparkiirag`（不迁移、行为不变）；SparkiiOnto 走 `knowledge:sparkiionto`。
+ */
+export function createKnowledgeSecretStore(keyring: Keyring, apiKeys: KeyStore): KnowledgeSecretStore {
+  const tokenCache = new Map<string, string>();
+  return {
+    async knowledgeToken(backend: KnowledgeBackendId): Promise<string | null> {
+      if (backend === "sparkiirag") return apiKeys.keyFor("sparkiirag");
+      const cached = tokenCache.get(backend);
+      if (cached !== undefined) return cached;
+      const token = await keyring.get(`${KNOWLEDGE_SECRET_PREFIX}${backend}`);
+      if (token !== null) tokenCache.set(backend, token);
+      return token;
+    },
+    async setKnowledgeToken(backend: KnowledgeBackendId, token: string): Promise<void> {
+      if (backend === "sparkiirag") {
+        await apiKeys.setKey("sparkiirag", token);
+        return;
+      }
+      await keyring.set(`${KNOWLEDGE_SECRET_PREFIX}${backend}`, token);
+      tokenCache.set(backend, token);
     },
   };
 }
@@ -142,6 +179,7 @@ export async function assemble(opts: {
         : createUtilityHostHandle(entry, env),
   });
   const keyStore = createKeyStore(keyring);
+  const knowledgeSecrets = createKnowledgeSecretStore(keyring, keyStore);
   return {
     profiles, agents, gate, executor, audit, pool,
     subject: { userId: userInfo().username, roles: ["admin", "reviewer"] },
@@ -158,5 +196,7 @@ export async function assemble(opts: {
     },
     keyFor: keyStore.keyFor,
     setKey: keyStore.setKey,
+    knowledgeToken: knowledgeSecrets.knowledgeToken,
+    setKnowledgeToken: knowledgeSecrets.setKnowledgeToken,
   };
 }
