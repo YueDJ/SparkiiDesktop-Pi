@@ -69,7 +69,7 @@ const DEFAULT_PRECEDENT_LIMIT = 10;
  */
 export class SparkiiOntoGraph extends SparkiiOntoClient {
   /** 前置校验：`/info` 的 `capabilities.graph === true`，不满足抛 CONNECTOR_UNSUPPORTED。 */
-  private async ensureGraph(): Promise<void> {
+  protected async ensureGraph(): Promise<void> {
     const info = await this.info();
     if (info.capabilities.graph !== true) {
       throw new ConnectorError('CONNECTOR_UNSUPPORTED', 'SparkiiOnto 未声明 graph 能力，无法访问本体图');
