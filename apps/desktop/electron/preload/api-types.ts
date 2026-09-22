@@ -114,6 +114,15 @@ export type KnowledgeProbeResult = {
   error?: KnowledgeProbeError;
 };
 
+/** `sparkii:probeOntologyGraph` 的图谱自检结果（只读，失败不阻断保存）。 */
+export type OntologyGraphProbeResult = {
+  ok: boolean;
+  nodeCount?: number;
+  edgeCount?: number;
+  nodeTypes?: Record<string, number>;
+  error?: string;
+};
+
 
 export interface SparkiiApi {
   getLocalSubject(): Promise<{ userId: string; roles: string[] }>;
@@ -182,8 +191,10 @@ export interface SparkiiApi {
     id: string;
     name: string;
     surfaceType?: string;
+    declaresOntologyTools?: boolean;
     knowledge?: { enabled: boolean; picker: 'hidden' | 'session'; backend: 'bm25' | 'sparkiirag' };
   }>>;
+  probeOntologyGraph(): Promise<OntologyGraphProbeResult>;
   listPendingApprovals(): Promise<unknown[]>;
   decideApproval(id: string, approved: boolean, note?: string): Promise<unknown>;
   queryAudit(filter: object): Promise<unknown[]>;

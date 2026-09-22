@@ -57,7 +57,7 @@ function makeApi(over: Record<string, unknown> = {}) {
     listAgents: vi.fn().mockResolvedValue([
       { id: 'knowledge-qa', name: '企业知识问答', knowledge: { enabled: true, backend: 'sparkiirag' } },
       { id: 'contract-review', name: '合同审核智能体', knowledge: { enabled: true, picker: 'hidden' } },
-      { id: 'onto-qa', name: '工艺本体问答', knowledge: { enabled: true, backend: 'sparkiionto' } },
+      { id: 'onto-qa', name: '工艺本体问答', knowledge: { enabled: true }, declaresOntologyTools: true },
       { id: 'general', name: '通用智能体', knowledge: { enabled: false } },
     ]),
     getApiKey: vi.fn().mockResolvedValue('sk-should-not-be-used'),
@@ -236,5 +236,66 @@ describe('Settings knowledge pane', () => {
     expect(await screen.findByText(/检索后端 sql-lexical/)).toBeTruthy();
     expect(screen.getByText(/无语义嵌入/)).toBeTruthy();
     expect(screen.getByText(/可打开原文/)).toBeTruthy();
+  });
+
+  it('无本体智能体时默认域行不渲染', async () => {
+    const listAgents = vi.fn().mockResolvedValue([
+      { id: 'contract-review', name: '合同审核智能体', knowledge: { enabled: true, picker: 'hidden' }, declaresOntologyTools: false },
+      { id: 'procurement-review', name: '采购审核智能体', knowledge: { enabled: true, picker: 'hidden' }, declaresOntologyTools: false },
+      { id: 'knowledge-qa', name: '企业知识问答', knowledge: { enabled: true }, declaresOntologyTools: false },
+      { id: 'general', name: '通用智能体', knowledge: { enabled: false }, declaresOntologyTools: false },
+    ]);
+    render(<SettingsView api={makeApi({ listAgents })} />);
+    fireEvent.click(screen.getByRole('button', { name: '知识库' }));
+    const ontoGroup = await screen.findByTestId('knowledge-onto-group');
+    await screen.findByTestId('rag-default-dataset-knowledge-qa');
+    expect(within(ontoGroup).queryByText('智能体默认域')).toBeNull();
+    expect(screen.queryByTestId('sparkiionto-default-domain-onto-qa')).toBeNull();
+    expect(screen.queryByTestId('sparkiionto-default-domain-contract-review')).toBeNull();
+  });
+
+  it('声明 ontology.search_documents 的智能体出现并写入 sparkiionto.bindings', async () => {
+    const listAgents = vi.fn().mockResolvedValue([
+      { id: 'onto-qa', name: '工艺本体问答', knowledge: { enabled: true }, declaresOntologyTools: true },
+      { id: 'knowledge-qa', name: '企业知识问答', knowledge: { enabled: true }, declaresOntologyTools: false },
+    ]);
+    const saveKnowledgeSettings = vi.fn().mockResolvedValue({ ok: true });
+    const getSettings = vi.fn().mockResolvedValue({
+      activeProviderId: 'deepseek',
+      rag: { baseUrl: 'http://127.0.0.1:9380', hasApiKey: true, bindings: [], similarityThreshold: 0.2, vectorSimilarityWeight: 0.3 },
+      sparkiionto: { baseUrl: 'http://127.0.0.1:9380', hasToken: true, bindings: [], similarityThreshold: 0.2 },
+    });
+    render(<SettingsView api={makeApi({ listAgents, saveKnowledgeSettings, getSettings })} />);
+    fireEvent.click(screen.getByRole('button', { name: '知识库' }));
+    const select = await screen.findByTestId('sparkiionto-default-domain-onto-qa');
+    fireEvent.click(select);
+    fireEvent.click(await screen.findByRole('menuitem', { name: '工艺要求' }));
+    fireEvent.click(within(screen.getByTestId('knowledge-onto-group')).getByText('保存'));
+    await waitFor(() => expect(saveKnowledgeSettings).toHaveBeenCalled());
+    const [backend, arg] = saveKnowledgeSettings.mock.calls[0];
+    expect(backend).toBe('sparkiionto');
+    expect(arg.bindings).toContainEqual({ agentId: 'onto-qa', defaultDatasetId: 'tech' });
+  });
+
+  it('图谱自检行展示节点与边数量', async () => {
+    const probeOntologyGraph = vi.fn().mockResolvedValue({
+      ok: true,
+      nodeCount: 6,
+      edgeCount: 5,
+      nodeTypes: { document: 1, document_chunk: 5 },
+    });
+    render(<SettingsView api={makeApi({ probeOntologyGraph })} />);
+    fireEvent.click(screen.getByRole('button', { name: '知识库' }));
+    const group = await screen.findByTestId('knowledge-onto-group');
+    expect(await within(group).findByText(/6 个节点/)).toBeTruthy();
+    expect(within(group).getByText(/5 条边/)).toBeTruthy();
+  });
+
+  it('图里没有数据时给出"图谱暂无数据"', async () => {
+    const probeOntologyGraph = vi.fn().mockResolvedValue({ ok: true, nodeCount: 0, edgeCount: 0 });
+    render(<SettingsView api={makeApi({ probeOntologyGraph })} />);
+    fireEvent.click(screen.getByRole('button', { name: '知识库' }));
+    const group = await screen.findByTestId('knowledge-onto-group');
+    expect(await within(group).findByText('图谱暂无数据')).toBeTruthy();
   });
 });

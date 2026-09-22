@@ -1341,9 +1341,33 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       displayName: pr.profile.manifest.displayName,
       sortOrder: pr.profile.manifest.sortOrder,
       surfaceType: rt.agentOf(pr.profile.manifest.name).manifest.surface.type,
+      capabilities: pr.profile.manifest.capabilities,
       knowledge: pr.profile.manifest.knowledge,
     }))),
   );
+  ipcMain.handle('sparkii:probeOntologyGraph', async () => {
+    const result = await executeOntologyTool({
+      toolName: 'ontology.graph_summary',
+      args: {},
+      profileId: '',
+      settings: await loadSettings(rt.dataDir),
+      credential: await rt.knowledgeToken('sparkiionto'),
+    });
+    if (!result.ok) {
+      return { ok: false, error: result.error?.message ?? '图谱自检失败' };
+    }
+    const summary = (result.data ?? {}) as {
+      nodeCount?: number;
+      edgeCount?: number;
+      nodeTypes?: Record<string, number>;
+    };
+    return {
+      ok: true,
+      nodeCount: typeof summary.nodeCount === 'number' ? summary.nodeCount : 0,
+      edgeCount: typeof summary.edgeCount === 'number' ? summary.edgeCount : 0,
+      nodeTypes: summary.nodeTypes,
+    };
+  });
   ipcMain.handle('sparkii:chooseDocument', async (_e, opts?: ChooseDocumentOptions) => {
     if (process.env.SPARKII_E2E_DOCUMENT) {
       grantDocumentPath(process.env.SPARKII_E2E_DOCUMENT);
