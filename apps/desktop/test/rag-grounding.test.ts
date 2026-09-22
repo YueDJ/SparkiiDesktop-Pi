@@ -81,6 +81,47 @@ describe('rag grounding', () => {
     expect(knowledgeTurnPayload(turn).documents).toEqual([]);
   });
 
+  it('keeps the source backend on documents and citations, defaulting to no field', () => {
+    let turn = resetTurn();
+    turn = markSearchResult(turn, {
+      chunks: [{ documentId: 'd1', documentName: '水泥工艺.md', datasetId: 'd264d494', backend: 'sparkiionto' }],
+      documents: [{ documentId: 'd1', documentName: '水泥工艺.md', datasetId: '', backend: 'sparkiionto' }],
+    });
+    const payload = knowledgeTurnPayload(turn);
+    expect(payload.documents[0]).toEqual({
+      documentId: 'd1', documentName: '水泥工艺.md', datasetId: 'd264d494', backend: 'sparkiionto',
+    });
+    expect(payload.citations[0]).toMatchObject({ documentId: 'd1', backend: 'sparkiionto' });
+  });
+
+  it('does not drop the backend when merging a later search by documentId', () => {
+    let turn = resetTurn();
+    turn = markSearchResult(turn, {
+      chunks: [],
+      documents: [{ documentId: 'd1', documentName: '水泥工艺.md', datasetId: 'd264d494', backend: 'sparkiionto' }],
+    });
+    // 第二次命中同一个 documentId 但没带 backend：合并时不能丢，否则会退回"默认 sparkiirag"。
+    turn = markSearchResult(turn, {
+      chunks: [{ documentId: 'd1', documentName: '水泥工艺.md', datasetId: 'd264d494', content: '又一段' }],
+      documents: [{ documentId: 'd1', documentName: '', datasetId: '' }],
+    });
+    expect(knowledgeTurnPayload(turn).documents[0]).toMatchObject({
+      documentId: 'd1', documentName: '水泥工艺.md', datasetId: 'd264d494', backend: 'sparkiionto',
+    });
+  });
+
+  it('ignores an unknown backend tag and keeps legacy docs field-free', () => {
+    let turn = resetTurn();
+    turn = markSearchResult(turn, {
+      chunks: [{ documentId: 'd1', documentName: '办法.pdf', datasetId: 'law', backend: 'bm25' }],
+      documents: [{ documentId: 'd1', documentName: '办法.pdf', datasetId: 'law', backend: 'bm25' }],
+    });
+    expect(knowledgeTurnPayload(turn).documents[0]).toEqual({
+      documentId: 'd1', documentName: '办法.pdf', datasetId: 'law',
+    });
+    expect(knowledgeTurnPayload(turn).documents[0]).not.toHaveProperty('backend');
+  });
+
   it('toolCall-only message_end is not visible', () => {
     expect(isVisibleAssistantEnd({ message: { role: 'assistant', content: [{ type: 'toolCall', name: 'knowledge.search' }] } })).toBe(false);
     expect(isVisibleAssistantEnd({ message: { role: 'assistant', content: '根据办法' } })).toBe(true);

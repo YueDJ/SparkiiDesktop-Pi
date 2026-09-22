@@ -16,6 +16,14 @@ export function isKnowledgeBackendId(value: unknown): value is KnowledgeBackendI
   return KNOWLEDGE_BACKENDS.includes(String(value ?? '').trim() as KnowledgeBackendId);
 }
 
+/**
+ * 把 manifest 上的 `backend` 收成"远端知识后端"：`bm25` 是本地语料、不读设置块与凭据，
+ * 既有行为按 `sparkiirag` 处理（`ipc.ts` 的原文落盘/默认域写入沿用它）。
+ */
+export function remoteKnowledgeBackend(backend: string): KnowledgeBackendId {
+  return backend === 'sparkiionto' ? 'sparkiionto' : 'sparkiirag';
+}
+
 export const DEFAULT_KNOWLEDGE_BASE_URL = DEFAULT_RAG_BASE_URL;
 export const DEFAULT_SIMILARITY_THRESHOLD = 0.2;
 

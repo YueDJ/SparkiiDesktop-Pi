@@ -10,14 +10,20 @@ export type KnowledgeCitation = {
   documentName: string;
   datasetId: string;
   snippet: string;
+  /** 出处归属的后端；缺省 = `sparkiirag`（历史 JSONL 没有这个字段）。 */
+  backend?: 'sparkiirag' | 'sparkiionto';
 };
 
 export type KnowledgeTurnData = {
   refused?: boolean;
   text?: string;
-  documents: Array<{ documentId: string; documentName: string; datasetId: string }>;
+  documents: Array<{ documentId: string; documentName: string; datasetId: string; backend?: 'sparkiirag' | 'sparkiionto' }>;
   citations: KnowledgeCitation[];
 };
+
+function backendTag(rec: Record<string, unknown>): { backend?: 'sparkiirag' | 'sparkiionto' } {
+  return rec.backend === 'sparkiirag' || rec.backend === 'sparkiionto' ? { backend: rec.backend } : {};
+}
 
 function asDoc(item: unknown): KnowledgeTurnData['documents'][number] | null {
   if (!item || typeof item !== 'object') return null;
@@ -26,6 +32,7 @@ function asDoc(item: unknown): KnowledgeTurnData['documents'][number] | null {
     documentId: String(rec.documentId ?? ''),
     documentName: String(rec.documentName ?? ''),
     datasetId: String(rec.datasetId ?? ''),
+    ...backendTag(rec),
   };
 }
 
@@ -42,6 +49,7 @@ function asCitation(item: unknown, fallbackIndex: number): KnowledgeCitation | n
     documentName,
     datasetId: String(rec.datasetId ?? ''),
     snippet: String(rec.snippet ?? ''),
+    ...backendTag(rec),
   };
 }
 
@@ -81,7 +89,12 @@ export function KnowledgeAnswerBubble(props: {
       key: `${c.index}:${c.datasetId}:${c.documentId}`,
       label: `[${c.index}] ${c.documentName}`,
       title: c.snippet || undefined,
-      doc: { documentId: c.documentId, documentName: c.documentName, datasetId: c.datasetId },
+      doc: {
+        documentId: c.documentId,
+        documentName: c.documentName,
+        datasetId: c.datasetId,
+        ...(c.backend ? { backend: c.backend } : {}),
+      },
     }))
     : documents.map((doc) => ({
       key: `${doc.datasetId}:${doc.documentId}`,

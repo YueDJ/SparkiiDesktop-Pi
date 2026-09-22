@@ -168,6 +168,8 @@ async function makeRuntime(opts: {
     },
     getSessionId: () => boundSessionId,
   };
+  // 与生产 `createKnowledgeSecretStore` 对齐：`sparkiirag` 的知识凭据就是 `keyFor('sparkiirag')`。
+  const keyFor = opts.keyFor ?? (async () => null);
     const rt: any = {
     profiles: new Map(),
     gate: {},
@@ -230,9 +232,9 @@ async function makeRuntime(opts: {
         systemPrompt,
       };
     },
-    keyFor: opts.keyFor ?? (async () => null),
+    keyFor,
     setKey: opts.setKey ?? (async () => {}),
-    knowledgeToken: opts.knowledgeToken ?? (async () => null),
+    knowledgeToken: opts.knowledgeToken ?? (async (backend: string) => (backend === 'sparkiirag' ? keyFor('sparkiirag') : null)),
     setKnowledgeToken: opts.setKnowledgeToken ?? (async () => {}),
   } as unknown as Runtime;
   registerIpc(
@@ -1073,6 +1075,102 @@ describe('ipc provider handlers', () => {
     const refused = sent.filter((c) => c.type === 'append_workflow_entry' && c.customType === 'knowledge_turn');
     expect(refused.at(-1)?.data).toMatchObject({ refused: true, documents: [] });
   });
+
+  it('routes a SparkiiOnto session search, tags the hits and writes the domain into sparkiionto bindings', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({
+      rag: { baseUrl: 'http://rag.example' },
+      sparkiionto: { baseUrl: 'http://onto.example:9380' },
+    }), 'utf8');
+    const calls: Array<{ path: string; auth?: string }> = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      const path = new URL(String(url)).pathname;
+      calls.push({ path, auth: (init?.headers as Record<string, string> | undefined)?.Authorization });
+      if (path === '/api/v1/info') {
+        return new Response(JSON.stringify({
+          product: 'SparkiiOnto', version: '0.6.8', api_version: 'v1', deployment_profile: 'single-instance',
+          retrieval: { backend: 'sql-lexical', semantic_embeddings: false },
+          capabilities: { datasets: true, document_fetch: true },
+        }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (path === '/api/v1/datasets') {
+        return new Response('{"code":0,"data":[{"id":"d264d494","name":"水泥工艺知识域"}]}', {
+          status: 200, headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (path === '/api/v1/retrieval') {
+        return new Response(JSON.stringify({
+          code: 0,
+          data: {
+            chunks: [{
+              id: 'c1', content: '高温津贴按日计发', document_keyword: '水泥工艺.md',
+              document_id: 'doc-1', dataset_id: 'd264d494', similarity: 0.9,
+            }],
+            doc_aggs: [{ doc_id: 'doc-1', doc_name: '水泥工艺.md', count: 1 }],
+          },
+        }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      throw new Error(`unexpected request ${url}`);
+    }));
+    const events: Array<(e: unknown) => void> = [];
+    const sent: any[] = [];
+    const client = {
+      onEvent: (cb: (event: unknown) => void) => { events.push(cb); return () => {}; },
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's-onto', sessionFile: null, isStreaming: false } };
+        }
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      knowledgeToken: async (backend) => (backend === 'sparkiionto' ? 'tok-onto' : null),
+      profile: {
+        dir: join(dataDir, 'profiles', 'onto-agent'),
+        profile: {
+          manifest: { name: 'onto-agent', knowledge: { enabled: true, picker: 'hidden', backend: 'sparkiionto' } },
+          agent: { tools: ['knowledge.search'], prompts: { system: 'test' } },
+        },
+        router: { resolve: () => undefined },
+      },
+    });
+    const sessions = new Map<string, { id: string; profileId: string }>();
+    (rt as any).chatSessions.create = (rec: { id: string; profileId: string }) => { sessions.set(rec.id, rec); };
+    (rt as any).chatSessions.get = (id: string) => sessions.get(id) ?? null;
+    const handlers = await registeredHandlers();
+    const result = await handlers.get('sparkii:promptSession')!(null, null, '高温津贴怎么发', undefined, undefined, { profileId: 'onto-agent' });
+    expect(result).toMatchObject({ ok: true, sessionId: 's-onto' });
+
+    const read = (rt as any).__onConnectorRead;
+    const out = await read?.({ requestId: 'r1', toolName: 'knowledge.search', args: { query: '高温津贴怎么发' } });
+    expect(out?.ok).toBe(true);
+    expect((out as { data: { chunks: Array<{ backend?: string }> } }).data.chunks[0].backend).toBe('sparkiionto');
+    expect(calls.find((c) => c.path === '/api/v1/retrieval')?.auth).toBe('Bearer tok-onto');
+
+    // 默认域必须写进 sparkiionto.bindings，rag 配置块不被碰（否则 Onto 会话永远不更新自己的绑定）。
+    const settings = JSON.parse(await readFile(join(dataDir, 'settings.json'), 'utf8')) as {
+      rag: { baseUrl: string; bindings?: unknown };
+      sparkiionto: { bindings?: unknown };
+    };
+    expect(settings.sparkiionto.bindings).toEqual([{ agentId: 'onto-agent', defaultDatasetId: 'd264d494' }]);
+    expect(settings.rag.bindings).toBeUndefined();
+    expect(settings.rag.baseUrl).toBe('http://rag.example');
+
+    // 出处写进会话，并带上后端归属。
+    events[0]?.({ type: 'agent_settled' });
+    await waitUntil(() => sent.some((c) => c.type === 'append_workflow_entry' && c.customType === 'knowledge_turn' && c.data?.refused === false));
+    const turn = sent.find((c) => c.type === 'append_workflow_entry' && c.customType === 'knowledge_turn' && c.data?.refused === false);
+    expect(turn?.data?.documents?.[0]).toMatchObject({ documentId: 'doc-1', datasetId: 'd264d494', backend: 'sparkiionto' });
+    expect(turn?.data?.citations?.[0]).toMatchObject({ documentId: 'doc-1', backend: 'sparkiionto' });
+  });
+
 
   it('setSessionKnowledge rejects invalid payload', async () => {
     const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
