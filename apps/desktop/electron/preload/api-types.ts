@@ -85,6 +85,35 @@ export type KnowledgeSettingsPartial = {
   apiKey?: string;
 };
 
+/** 探活可带入未保存的临时值（设置页"测试连接"先测后存）。 */
+export type KnowledgeProbeOverride = { baseUrl?: string; apiKey?: string | null };
+
+export type KnowledgeProbeError = {
+  code: string;
+  message: string;
+  reason: 'unreachable' | 'unauthorized' | 'forbidden' | 'unsupported' | 'unhealthy' | 'invalid_config';
+};
+
+export type KnowledgeProbeDataset = { id: string; name: string };
+
+export type KnowledgeProbeResult = {
+  ok: boolean;
+  backend: KnowledgeBackendId;
+  /** 归一化后的地址（探活实际使用的那个）。 */
+  baseUrl?: string;
+  /** 仅 Onto 的 `/info` 能力协商结果。 */
+  info?: {
+    product: string;
+    version: string;
+    api_version: string;
+    deployment_profile: string;
+    retrieval: { backend: string; semantic_embeddings: boolean };
+    capabilities: Record<string, boolean>;
+  };
+  datasets?: KnowledgeProbeDataset[];
+  error?: KnowledgeProbeError;
+};
+
 
 export interface SparkiiApi {
   getLocalSubject(): Promise<{ userId: string; roles: string[] }>;
@@ -181,6 +210,8 @@ export interface SparkiiApi {
   downloadDocumentParseModule(id: string): Promise<{ ok: boolean; error?: string }>;
   testRagConnection(apiKey?: string | null): Promise<{ ok: boolean; datasets?: Array<{ id: string; name: string }>; error?: string }>;
   listRagDatasets(apiKey?: string | null): Promise<{ ok: boolean; datasets?: Array<{ id: string; name: string }>; error?: string }>;
+  testKnowledgeConnection(backend: KnowledgeBackendId, override?: KnowledgeProbeOverride): Promise<KnowledgeProbeResult>;
+  listKnowledgeDatasets(backend: KnowledgeBackendId, override?: KnowledgeProbeOverride): Promise<KnowledgeProbeResult>;
   setSessionKnowledge(sessionId: string, selection: KnowledgeSelection): Promise<{ ok: boolean; error?: string }>;
   openRagDocument(args: { datasetId: string; documentId: string; fileName?: string }): Promise<{ ok: boolean; path?: string; error?: string }>;
   getApiKey(provider: string): Promise<string | null>;

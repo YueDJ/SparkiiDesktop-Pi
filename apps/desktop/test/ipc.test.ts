@@ -384,6 +384,176 @@ describe('ipc provider handlers', () => {
     expect(await handlers.get('sparkii:getApiKey')!(null, 'sparkiirag')).toBeNull();
   });
 
+  it('testKnowledgeConnection probes healthz → info → datasets with the onto settings and token', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(
+      join(dataDir, 'settings.json'),
+      JSON.stringify({ sparkiionto: { baseUrl: 'http://onto.example:9380/', similarityThreshold: 0.3 } }),
+      'utf8',
+    );
+    const calls: Array<{ path: string; auth?: string }> = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
+      const path = new URL(String(url)).pathname;
+      calls.push({ path, auth: (init?.headers as Record<string, string> | undefined)?.Authorization });
+      if (path === '/api/v1/system/healthz') {
+        return new Response('{"status":"ok","product":"SparkiiOnto","version":"0.6.8"}', { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (path === '/api/v1/info') {
+        return new Response(JSON.stringify({
+          product: 'SparkiiOnto',
+          version: '0.6.8',
+          api_version: 'v1',
+          deployment_profile: 'single-instance',
+          retrieval: { backend: 'sql-lexical', semantic_embeddings: false },
+          capabilities: { datasets: true, document_fetch: true },
+        }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (path === '/api/v1/datasets') {
+        return new Response('{"code":0,"data":[{"id":"d264d494","name":"水泥工艺知识域"}]}', { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      throw new Error(`unexpected request ${url}`);
+    }));
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      knowledgeToken: async (backend) => (backend === 'sparkiionto' ? 'tok-onto' : null),
+    });
+
+    const handlers = await registeredHandlers();
+    const out = await handlers.get('sparkii:testKnowledgeConnection')!(null, 'sparkiionto') as {
+      ok: boolean;
+      baseUrl?: string;
+      info?: { retrieval: { backend: string; semantic_embeddings: boolean } };
+      datasets?: Array<{ id: string; name: string }>;
+    };
+    expect(out.ok).toBe(true);
+    expect(out.baseUrl).toBe('http://onto.example:9380');
+    expect(out.info?.retrieval).toEqual({ backend: 'sql-lexical', semantic_embeddings: false });
+    expect(out.datasets).toEqual([{ id: 'd264d494', name: '水泥工艺知识域' }]);
+    expect(calls.map((c) => c.path)).toEqual(['/api/v1/system/healthz', '/api/v1/info', '/api/v1/datasets']);
+    expect(calls[1].auth).toBe('Bearer tok-onto');
+    // 探活不读也不回传 RAG 的凭据。
+    expect(JSON.stringify(out)).not.toContain('tok-onto');
+  });
+
+  it('testKnowledgeConnection honours an unsaved override', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const urls: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL) => {
+      urls.push(String(url));
+      return new Response('{"status":"nok"}', { status: 503, headers: { 'content-type': 'application/json' } });
+    }));
+    await makeRuntime({ dataDir, piAgentDir, client: { send: async () => ({ success: true }) } });
+
+    const handlers = await registeredHandlers();
+    const out = await handlers.get('sparkii:testKnowledgeConnection')!(null, 'sparkiionto', {
+      baseUrl: 'http://override.example:9380',
+      apiKey: 'tok-override',
+    }) as { ok: boolean; baseUrl?: string; error?: { reason: string } };
+    expect(out.ok).toBe(false);
+    expect(out.error?.reason).toBe('unhealthy');
+    expect(urls[0]).toBe('http://override.example:9380/api/v1/system/healthz');
+  });
+
+  it('listKnowledgeDatasets tells 401 (credential) from 403 (permission) and flags an /info mismatch', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({ sparkiionto: { baseUrl: 'http://onto.example' } }), 'utf8');
+
+    const serve = (info: Response | (() => Response), datasets?: Response) => vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL) => {
+      const path = new URL(String(url)).pathname;
+      if (path === '/api/v1/system/healthz') {
+        return new Response('{"status":"ok"}', { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (path === '/api/v1/info') return typeof info === 'function' ? info() : info;
+      if (path === '/api/v1/datasets' && datasets) return datasets;
+      throw new Error(`unexpected request ${url}`);
+    }));
+    const ontoInfo = () => new Response(JSON.stringify({
+      product: 'SparkiiOnto',
+      version: '0.6.8',
+      api_version: 'v1',
+      deployment_profile: 'single-instance',
+      retrieval: { backend: 'sql-lexical', semantic_embeddings: false },
+      capabilities: { datasets: true },
+    }), { status: 200, headers: { 'content-type': 'application/json' } });
+
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      knowledgeToken: async () => 'tok-onto',
+    });
+    const handlers = await registeredHandlers();
+    const list = handlers.get('sparkii:listKnowledgeDatasets')!;
+
+    serve(new Response('{"code":401,"message":"invalid or expired credential"}', { status: 401, headers: { 'content-type': 'application/json' } }));
+    const denied = await list(null, 'sparkiionto') as { ok: boolean; error: { code: string; message: string; reason: string } };
+    expect(denied).toMatchObject({ ok: false, error: { code: 'CONNECTOR_DENIED', reason: 'unauthorized' } });
+    expect(denied.error.message).toMatch(/凭据/);
+
+    serve(ontoInfo, new Response('{"code":403,"message":"action denied"}', { status: 403, headers: { 'content-type': 'application/json' } }));
+    const forbidden = await list(null, 'sparkiionto') as { ok: boolean; error: { code: string; message: string; reason: string } };
+    expect(forbidden).toMatchObject({ ok: false, error: { code: 'CONNECTOR_DENIED', reason: 'forbidden' } });
+    expect(forbidden.error.message).toMatch(/权限/);
+    expect(forbidden.error.message).not.toBe(denied.error.message);
+
+    serve(() => new Response(JSON.stringify({ product: 'SparkiiRAG', api_version: 'v1' }), { status: 200, headers: { 'content-type': 'application/json' } }));
+    const mismatch = await list(null, 'sparkiionto') as { ok: boolean; error: { code: string; reason: string } };
+    expect(mismatch).toMatchObject({ ok: false, error: { code: 'CONNECTOR_UNSUPPORTED', reason: 'unsupported' } });
+
+    const unknown = await list(null, 'bm25') as { ok: boolean; error: { reason: string } };
+    expect(unknown).toMatchObject({ ok: false, error: { reason: 'invalid_config' } });
+  });
+
+  it('keeps testRagConnection as a thin sparkiirag wrapper', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL) => {
+      const path = new URL(String(url)).pathname;
+      if (path === '/api/v1/system/healthz') {
+        return new Response('{"status":"ok"}', { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (path === '/api/v1/datasets') {
+        return new Response('{"code":0,"data":[{"id":"law","name":"法规"}]}', { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      throw new Error(`unexpected request ${url}`);
+    }));
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      knowledgeToken: async (backend) => (backend === 'sparkiirag' ? 'rag-tok' : null),
+    });
+
+    const handlers = await registeredHandlers();
+    const ok = await handlers.get('sparkii:testRagConnection')!(null, null) as { ok: boolean; datasets?: Array<{ id: string; name: string }> };
+    expect(ok).toEqual({ ok: true, datasets: [{ id: 'law', name: '法规' }] });
+  });
+
+  it('testRagConnection keeps the legacy "no key" wording', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await makeRuntime({ dataDir, piAgentDir, client: { send: async () => ({ success: true }) } });
+
+    const handlers = await registeredHandlers();
+    const missing = await handlers.get('sparkii:testRagConnection')!(null, null) as { ok: boolean; error?: string };
+    expect(missing).toEqual({ ok: false, error: '未配置 API Key' });
+  });
+
   it('empty saveRagSettings apiKey keeps the keyring value', async () => {
     const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
     dirs.push(dataDir);

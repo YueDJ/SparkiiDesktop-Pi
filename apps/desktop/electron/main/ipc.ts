@@ -18,8 +18,15 @@ import {
   isKnowledgeBackendId,
   knowledgeBackendSettings,
   patchKnowledgeSettings,
+  type KnowledgeBackendId,
   type KnowledgeSettingsPartial,
 } from './knowledge-settings.js';
+import {
+  invalidBackendProbeResult,
+  probeKnowledgeBackend,
+  type KnowledgeProbeOverride,
+  type KnowledgeProbeResult,
+} from './knowledge-probe.js';
 import { documentParseFromSettings, saveDocumentParseSettings } from './document-parse-settings.js';
 import {
   DOWNLOAD_UNREACHABLE,
@@ -60,24 +67,33 @@ import {
 } from './skill-library.js';
 import type { AgentRuntime } from './agent-registry.js';
 
+/** 按后端探活：读该后端自己的配置块与凭据，再交给 `knowledge-probe`。 */
+async function probeKnowledgeConnection(
+  rt: Runtime,
+  backend: KnowledgeBackendId,
+  override?: KnowledgeProbeOverride,
+): Promise<KnowledgeProbeResult> {
+  const settings = await loadSettings(rt.dataDir);
+  return probeKnowledgeBackend(backend, {
+    baseUrl: knowledgeBackendSettings(backend, settings).baseUrl,
+    credential: await rt.knowledgeToken(backend),
+    override,
+  });
+}
+
+/** 旧 IPC 的薄封装（renderer 兼容）：只改实现，不改返回形状与文案。 */
 async function probeRag(
   rt: Runtime,
   apiKeyOverride?: string | null,
 ): Promise<{ ok: boolean; datasets?: Array<{ id: string; name: string }>; error?: string }> {
-  const rag = ragFromSettings(await loadSettings(rt.dataDir));
-  const apiKey = (typeof apiKeyOverride === 'string' && apiKeyOverride.trim())
-    ? apiKeyOverride
-    : await rt.keyFor('sparkiirag');
-  if (!apiKey) return { ok: false, error: '未配置 API Key' };
-  try {
-    const client = new SparkiiRagClient({ baseUrl: rag.baseUrl, apiKey });
-    const health = await client.health();
-    if (!health.ok) return { ok: false, error: 'SparkiiRAG 不可达' };
-    const datasets = await client.listDatasets();
-    return { ok: true, datasets };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : String(e) };
-  }
+  const result = await probeKnowledgeConnection(
+    rt,
+    'sparkiirag',
+    apiKeyOverride ? { apiKey: apiKeyOverride } : undefined,
+  );
+  return result.ok
+    ? { ok: true, datasets: result.datasets ?? [] }
+    : { ok: false, error: result.error?.message ?? '连接失败' };
 }
 
 function parseSessionInputs(raw: string | null | undefined): { path: string; name?: string; missing?: boolean }[] | undefined {
@@ -1426,6 +1442,14 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   });
   ipcMain.handle('sparkii:listRagDatasets', async (_e, apiKey?: string | null) => {
     return probeRag(rt, apiKey);
+  });
+  ipcMain.handle('sparkii:testKnowledgeConnection', async (_e, backend: string, override?: KnowledgeProbeOverride) => {
+    if (!isKnowledgeBackendId(backend)) return invalidBackendProbeResult(backend);
+    return probeKnowledgeConnection(rt, backend, override);
+  });
+  ipcMain.handle('sparkii:listKnowledgeDatasets', async (_e, backend: string, override?: KnowledgeProbeOverride) => {
+    if (!isKnowledgeBackendId(backend)) return invalidBackendProbeResult(backend);
+    return probeKnowledgeConnection(rt, backend, override);
   });
   ipcMain.handle('sparkii:openRagDocument', async (_e, args: { datasetId: string; documentId: string; fileName?: string }) => {
     const cached = await cacheRagFile({

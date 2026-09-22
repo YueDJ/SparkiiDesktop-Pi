@@ -13,6 +13,8 @@ import { SettingsKnowledgePane } from './SettingsKnowledgePane.js';
 import { SettingsDocumentParsePane } from './SettingsDocumentParsePane.js';
 import type {
   KnowledgeBackendId,
+  KnowledgeProbeOverride,
+  KnowledgeProbeResult,
   KnowledgeSettingsPartial,
 } from '../../electron/preload/api-types.js';
 
@@ -46,6 +48,8 @@ export interface SettingsApi {
   saveKnowledgeSettings?(backend: KnowledgeBackendId, partial: KnowledgeSettingsPartial): Promise<{ ok: boolean; error?: string }>;
   testRagConnection?(apiKey?: string | null): Promise<{ ok: boolean; datasets?: Array<{ id: string; name: string }>; error?: string }>;
   listRagDatasets?(apiKey?: string | null): Promise<{ ok: boolean; datasets?: Array<{ id: string; name: string }>; error?: string }>;
+  testKnowledgeConnection?(backend: KnowledgeBackendId, override?: KnowledgeProbeOverride): Promise<KnowledgeProbeResult>;
+  listKnowledgeDatasets?(backend: KnowledgeBackendId, override?: KnowledgeProbeOverride): Promise<KnowledgeProbeResult>;
   listAgents?(): Promise<Array<{ id: string; name: string; displayName?: string; knowledge?: { enabled?: boolean } }>>;
   getApiKey?(provider: string): Promise<string | null>;
   listProviders?(): Promise<ProviderEntry[]>;

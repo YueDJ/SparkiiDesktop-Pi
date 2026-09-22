@@ -69,6 +69,8 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
     downloadDocumentParseModule: (id) => invoke('downloadDocumentParseModule', id) as Promise<{ ok: boolean; error?: string }>,
     testRagConnection: (apiKey) => invoke('testRagConnection', apiKey) as Promise<{ ok: boolean; datasets?: Array<{ id: string; name: string }>; error?: string }>,
     listRagDatasets: (apiKey) => invoke('listRagDatasets', apiKey) as Promise<{ ok: boolean; datasets?: Array<{ id: string; name: string }>; error?: string }>,
+    testKnowledgeConnection: (backend, override) => invoke('testKnowledgeConnection', backend, override) as ReturnType<SparkiiApi['testKnowledgeConnection']>,
+    listKnowledgeDatasets: (backend, override) => invoke('listKnowledgeDatasets', backend, override) as ReturnType<SparkiiApi['listKnowledgeDatasets']>,
     setSessionKnowledge: (sessionId, selection) => invoke('setSessionKnowledge', sessionId, selection) as Promise<{ ok: boolean; error?: string }>,
     openRagDocument: (args) => invoke('openRagDocument', args) as Promise<{ ok: boolean; path?: string; error?: string }>,
     getApiKey: (provider) => invoke('getApiKey', provider) as Promise<string | null>,
