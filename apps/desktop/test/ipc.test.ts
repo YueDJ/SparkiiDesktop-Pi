@@ -2614,6 +2614,122 @@ describe('ipc provider handlers', () => {
     expect(summary).not.toContain(fullText);
   });
 
+  it('connector_read rejects an ontology tool name outside the whitelist', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(
+      join(dataDir, 'settings.json'),
+      JSON.stringify({ sparkiionto: { baseUrl: 'http://127.0.0.1:9380' } }),
+      'utf8',
+    );
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's1', sessionFile: null, isStreaming: false } };
+        }
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'contract-review', model: null },
+      knowledgeToken: async (backend) => (backend === 'sparkiionto' ? 'token-onto-secret' : null),
+      profile: {
+        dir: join(dataDir, 'profiles', 'contract-review'),
+        profile: {
+          manifest: { name: 'contract-review', displayName: '合同审核' },
+          agent: { tools: ['ontology.query'], prompts: { system: 'test' } },
+        },
+        router: { resolve: () => undefined },
+      },
+    });
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:promptSession')!(null, 's1', '开始');
+    const read = (rt as any).__onConnectorRead;
+    const out = await read?.({ requestId: 'r0', toolName: 'ontology.unknown', args: {} });
+    expect(out).toMatchObject({ ok: false, error: { code: 'CONNECTOR_DENIED' } });
+  });
+
+  it('connector_read writes exactly one audit per ontology tool call and records the query text', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(
+      join(dataDir, 'settings.json'),
+      JSON.stringify({ sparkiionto: { baseUrl: 'http://127.0.0.1:9380' } }),
+      'utf8',
+    );
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      const u = String(url);
+      if (u.includes('/api/v1/info')) {
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => 'application/json' },
+          json: async () => ({
+            product: 'SparkiiOnto',
+            version: '0.6.8',
+            api_version: 'v1',
+            deployment_profile: 'single-instance',
+            retrieval: { backend: 'sql-lexical', semantic_embeddings: false },
+            capabilities: { datasets: true, graph: true },
+          }),
+        };
+      }
+      if (u.includes('/api/sparql')) {
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ rows: [] }),
+        };
+      }
+      throw new Error(`unexpected ${u}`);
+    }));
+    const auditAppend = vi.fn(async (ev) => ev);
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's1', sessionFile: null, isStreaming: false } };
+        }
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'contract-review', model: null },
+      knowledgeToken: async (backend) => (backend === 'sparkiionto' ? 'token-onto-secret' : null),
+      audit: { append: auditAppend, query: vi.fn(async () => []) },
+      profile: {
+        dir: join(dataDir, 'profiles', 'contract-review'),
+        profile: {
+          manifest: { name: 'contract-review', displayName: '合同审核' },
+          agent: { tools: ['ontology.query'], prompts: { system: 'test' } },
+        },
+        router: { resolve: () => undefined },
+      },
+    });
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:promptSession')!(null, 's1', '开始');
+    const read = (rt as any).__onConnectorRead;
+    await read?.({ requestId: 'r1', toolName: 'ontology.query', args: { query: 'SELECT ?s WHERE { ?s ?p ?o }' } });
+    const appended = auditAppend.mock.calls;
+    expect(appended).toHaveLength(1);
+    const row = JSON.stringify(appended[0]);
+    expect(row).toContain('ontology.query');
+    expect(row).toContain('SELECT ?s WHERE');
+    expect(row).not.toContain('token-');
+  });
+
   it('reports document-parse spawn failures to the error center as 文档解析', async () => {
     const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
     dirs.push(dataDir);

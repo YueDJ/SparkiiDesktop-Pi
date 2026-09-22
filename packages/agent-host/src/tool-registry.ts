@@ -7,7 +7,7 @@ import {
   createFindToolDefinition,
   type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
-import { documentConnector, knowledgeConnector, reportConnector, type ToolDef } from "@sparkii/connectors";
+import { documentConnector, knowledgeConnector, reportConnector, sparkiiOntoConnector, type ToolDef } from "@sparkii/connectors";
 import type { ProposalRequest } from "@sparkii/approval";
 import { buildPiRuntimeTools } from "./pi-runtime-tools.js";
 import { createCodingToolDefinitions } from "./coding-tools.js";
@@ -26,7 +26,7 @@ export interface RegistryContext {
 }
 
 const CONNECTOR_TOOLS = new Map<string, ToolDef>(
-  [documentConnector, knowledgeConnector, reportConnector].flatMap((c) => c.tools.map((t) => [t.name, t] as const)),
+  [documentConnector, knowledgeConnector, reportConnector, sparkiiOntoConnector].flatMap((c) => c.tools.map((t) => [t.name, t] as const)),
 );
 
 function withWorkspaceGuard(

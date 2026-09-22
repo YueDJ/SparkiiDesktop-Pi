@@ -4,9 +4,10 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm } from 'node:fs/promises';
 import { isAbsolute, join } from 'node:path';
 import { listPiSessions, readPiSessionEntries, connectorWriteProposal, type PiProviderInfo, type SessionSaddle, type ConnectorReadRequest, type ConnectorReadResult } from '@sparkii/agent-host';
-import { knowledgeConnector, SparkiiRagClient } from '@sparkii/connectors';
+import { knowledgeConnector, sparkiiOntoConnector, SparkiiRagClient } from '@sparkii/connectors';
 import { applyThinkingLevel, createBroker, modelTargetKey, resolveModelTarget, resolveSessionModel, resolveThinkingLevel, runWorkflow, selectModel } from './workflow.js';
 import { documentReadAuditSummary, executeDocumentRead } from './document-read.js';
+import { executeOntologyTool, ontologyAuditSummary } from './ontology-tools.js';
 import { getDocumentParseSupervisor } from './document-parse-supervisor.js';
 import { findCompatibleModels, type ModelCapability } from '@sparkii/model-router';
 import { sortAgents } from './agent-catalog.js';
@@ -458,6 +459,27 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         resource: 'document.read',
         sessionId,
         payloadSummary: documentReadAuditSummary(req.args, result),
+      });
+      return result;
+    }
+    if (req.toolName.startsWith('ontology.')) {
+      const ontoTool = sparkiiOntoConnector.tools.find((t) => t.name === req.toolName);
+      if (!ontoTool) {
+        return { ok: false, error: { code: 'CONNECTOR_DENIED', message: 'unhandled' } };
+      }
+      const result = await executeOntologyTool({
+        toolName: req.toolName,
+        args: req.args,
+        profileId,
+        settings: await loadSettings(rt.dataDir),
+        credential: await rt.knowledgeToken('sparkiionto'),
+      });
+      await rt.audit.append({
+        actor: rt.subject.userId,
+        action: 'tool.read',
+        resource: req.toolName,
+        sessionId,
+        payloadSummary: ontologyAuditSummary(req.toolName, req.args, result),
       });
       return result;
     }

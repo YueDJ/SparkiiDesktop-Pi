@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import type { BrowserWindow } from 'electron';
 import { LinearRunner, type ProposalDecision, type RunContext, type WorkflowDef } from '@sparkii/agent-host';
 import { computeEditDiff, connectorWriteProposal } from '@sparkii/agent-host';
-import { documentConnector, knowledgeConnector, reportConnector, type ToolDef } from '@sparkii/connectors';
+import { documentConnector, knowledgeConnector, reportConnector, sparkiiOntoConnector, type ToolDef } from '@sparkii/connectors';
 import type { ProposalRequest, ProposalSubmission } from '@sparkii/approval';
 import { toPreviewLines } from '@sparkii/approval';
 import type { ModelTask } from '@sparkii/model-router';
@@ -18,10 +18,11 @@ import { knowledgeFromManifest } from './rag-settings.js';
 import { knowledgeBackendSettings, patchKnowledgeSettings, remoteKnowledgeBackend } from './knowledge-settings.js';
 import { runMainKnowledgeSearch } from './rag-search.js';
 import { executeDocumentRead } from './document-read.js';
+import { executeOntologyTool } from './ontology-tools.js';
 import { profilePoolMeta } from './pool-meta.js';
 
 const allTools = new Map<string, ToolDef>(
-  [documentConnector, knowledgeConnector, reportConnector].flatMap((c) => c.tools.map((t) => [t.name, t] as const)),
+  [documentConnector, knowledgeConnector, reportConnector, sparkiiOntoConnector].flatMap((c) => c.tools.map((t) => [t.name, t] as const)),
 );
 
 export function createBroker(rt: Runtime, getWindow: () => BrowserWindow | null) {
@@ -286,6 +287,15 @@ export async function runTool(
           },
         });
       }
+    }
+    if (toolName.startsWith('ontology.')) {
+      return executeOntologyTool({
+        toolName,
+        args: (args ?? {}) as Record<string, unknown>,
+        profileId,
+        settings: await loadSettings(rt.dataDir),
+        credential: await rt.knowledgeToken('sparkiionto'),
+      });
     }
     return tool.handler(args as Record<string, unknown>, {
       profileId: rt.profileOf(profileId).profile.manifest.name, sessionId, actor: rt.subject?.userId ?? 'agent', requestId: randomUUID(),
