@@ -3,6 +3,7 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from 'vitest';
 import { knowledgeConnector } from '@sparkii/connectors';
+import { loadProfile } from '@sparkii/config';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
@@ -63,6 +64,33 @@ describe('knowledge-qa isolation', () => {
   it('does not import the dataset picker from StandardChat', () => {
     const src = readFileSync(join(repoRoot, 'apps', 'desktop', 'src', 'surface', 'standard-chat.tsx'), 'utf8');
     expect(src).not.toContain('KnowledgeDatasetPicker');
+  });
+});
+
+/**
+ * 新增 `sparkiionto` 后端时，现存 profile 的 `knowledge` 块必须与 `main` 逐字段一致
+ * （期望值就是 `main` 上的取值：`git show main:apps/desktop/agents/<id>/manifest.yaml`）。
+ * 这里用生产同一条解析链（`@sparkii/config` 的 `loadProfile`）读仓库里的 manifest，
+ * 不额外依赖 git 或构建产物。
+ */
+describe('shipped profiles keep the knowledge block recorded on main', () => {
+  const loadManifest = (id: string) => loadProfile(join(repoRoot, 'apps', 'desktop', 'agents', id), { allowUnsigned: true });
+
+  it('parses contract-review and procurement-review as the local bm25 backend with a hidden picker', async () => {
+    for (const id of ['contract-review', 'procurement-review']) {
+      const profile = await loadManifest(id);
+      expect(profile.manifest.knowledge, id).toEqual({ enabled: true, picker: 'hidden', backend: 'bm25' });
+    }
+  });
+
+  it('keeps knowledge-qa on SparkiiRAG with a session picker', async () => {
+    const profile = await loadManifest('knowledge-qa');
+    expect(profile.manifest.knowledge).toEqual({ enabled: true, picker: 'session', backend: 'sparkiirag' });
+  });
+
+  it('leaves general without a knowledge block', async () => {
+    const profile = await loadManifest('general');
+    expect(profile.manifest.knowledge).toBeUndefined();
   });
 });
 

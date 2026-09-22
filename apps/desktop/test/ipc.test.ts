@@ -386,6 +386,67 @@ describe('ipc provider handlers', () => {
     expect(await handlers.get('sparkii:getApiKey')!(null, 'sparkiirag')).toBeNull();
   });
 
+  it('getApiKey also hides sparkiionto and both knowledge keyring names', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const keys = new Map<string, string>([
+      ['deepseek', 'sk-ds'],
+      ['sparkiirag', 'rag-secret-please-hide'],
+      ['sparkiionto', 'onto-token-please-hide'],
+      ['apiKey:sparkiirag', 'rag-secret-please-hide'],
+      ['apiKey:sparkiionto', 'onto-token-please-hide'],
+    ]);
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      keyFor: async (id) => keys.get(id) ?? null,
+    });
+    const handlers = await registeredHandlers();
+    const getApiKey = handlers.get('sparkii:getApiKey')!;
+    expect(await getApiKey(null, 'sparkiirag')).toBeNull();
+    expect(await getApiKey(null, 'sparkiionto')).toBeNull();
+    expect(await getApiKey(null, 'apiKey:sparkiirag')).toBeNull();
+    expect(await getApiKey(null, 'apiKey:sparkiionto')).toBeNull();
+    // 守卫只认知识后端的保留名，普通服务商的 key 照旧返回。
+    expect(await getApiKey(null, 'deepseek')).toBe('sk-ds');
+  });
+
+  it('saveSettings rejects a custom provider whose id collides with a knowledge credential id', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const ollama = { id: 'ollama', name: '本地 Ollama', baseUrl: 'http://127.0.0.1:11434/v1', api: 'openai-completions' };
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({ providers: [ollama] }), 'utf8');
+    await makeRuntime({ dataDir, piAgentDir, client: { send: async () => ({ success: true }) } });
+    const handlers = await registeredHandlers();
+    const save = handlers.get('sparkii:saveSettings')!;
+
+    for (const id of ['sparkiirag', 'sparkiionto', 'apiKey:sparkiirag']) {
+      const rejected = await save(null, {
+        activeProviderId: id,
+        providers: [{ id, name: id, baseUrl: 'http://x', api: 'openai-completions' }],
+        apiKey: 'sk-x',
+      }) as { ok: boolean; error?: string };
+      expect(rejected.ok, id).toBe(false);
+      expect(rejected.error, id).toMatch(/保留名/);
+      expect(rejected.error, id).toContain(id);
+    }
+
+    // 被拒的保存没有动过既有的自定义服务商。
+    const afterReject = JSON.parse(await readFile(join(dataDir, 'settings.json'), 'utf8'));
+    expect(afterReject.providers).toEqual([ollama]);
+
+    // 不撞名的保存照旧成功，既有服务商原样保留。
+    const ok = await save(null, { activeProviderId: 'ollama', providers: [ollama], apiKey: 'sk-ollama' }) as { ok: boolean };
+    expect(ok.ok).toBe(true);
+    const afterSave = JSON.parse(await readFile(join(dataDir, 'settings.json'), 'utf8'));
+    expect(afterSave.providers).toEqual([ollama]);
+  });
+
   it('testKnowledgeConnection probes healthz → info → datasets with the onto settings and token', async () => {
     const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
     dirs.push(dataDir);
