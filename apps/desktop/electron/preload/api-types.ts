@@ -213,7 +213,7 @@ export interface SparkiiApi {
   testKnowledgeConnection(backend: KnowledgeBackendId, override?: KnowledgeProbeOverride): Promise<KnowledgeProbeResult>;
   listKnowledgeDatasets(backend: KnowledgeBackendId, override?: KnowledgeProbeOverride): Promise<KnowledgeProbeResult>;
   setSessionKnowledge(sessionId: string, selection: KnowledgeSelection): Promise<{ ok: boolean; error?: string }>;
-  openRagDocument(args: { datasetId: string; documentId: string; fileName?: string }): Promise<{ ok: boolean; path?: string; error?: string }>;
+  openRagDocument(args: { backend?: KnowledgeBackendId; datasetId: string; documentId: string; fileName?: string }): Promise<{ ok: boolean; path?: string; error?: string }>;
   getApiKey(provider: string): Promise<string | null>;
   listProviders(): Promise<ProviderEntryInfo[]>;
   listModels(provider: string, apiKey?: string | null): Promise<{ ok: boolean; models?: string[]; httpStatus?: number; reason?: string; error?: string }>;

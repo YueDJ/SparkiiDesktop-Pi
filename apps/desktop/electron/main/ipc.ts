@@ -399,14 +399,23 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     await patchKnowledgeSettings(rt.dataDir, backend, { bindings });
   }
 
-  async function cacheRagFile(args: { datasetId: string; documentId: string; fileName?: string }): Promise<{ ok: true; path: string } | { ok: false; error: { code: string; message: string } }> {
-    const rag = ragFromSettings(await loadSettings(rt.dataDir));
-    const apiKey = await rt.keyFor('sparkiirag');
-    if (!apiKey) return { ok: false, error: { code: 'CONNECTOR_DENIED', message: '未配置 API Key' } };
+  /** 原文落盘：按后端取该后端的地址/凭据/客户端（`knowledge.fetch_document` 与"打开原文"共用）。 */
+  async function cacheRagFile(
+    args: { datasetId: string; documentId: string; fileName?: string },
+    backend: KnowledgeBackendId,
+  ): Promise<{ ok: true; path: string } | { ok: false; error: { code: string; message: string } }> {
+    const rag = knowledgeBackendSettings(backend, await loadSettings(rt.dataDir));
+    const credential = await rt.knowledgeToken(backend);
+    const client = knowledgeClientFor(backend, rag, credential);
+    if (!client) {
+      const label = backend === 'sparkiionto' ? 'API Token' : 'API Key';
+      return { ok: false, error: { code: 'CONNECTOR_DENIED', message: `未配置 ${label}` } };
+    }
     try {
       const cached = await fetchAndCacheDocument({
-        client: new SparkiiRagClient({ baseUrl: rag.baseUrl, apiKey }),
+        client,
         cacheDir: join(rt.dataDir, 'rag-cache'),
+        backend,
         datasetId: args.datasetId,
         documentId: args.documentId,
         fileName: args.fileName,
@@ -426,7 +435,11 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       const datasetId = String(req.args.datasetId ?? '');
       const documentId = String(req.args.documentId ?? '');
       const fileName = typeof req.args.fileName === 'string' ? req.args.fileName : undefined;
-      const cached = await cacheRagFile({ datasetId, documentId, fileName });
+      // 模型自己取原文时同样按 manifest 的后端路由（`bm25` 沿既有 RAG 行为）。
+      const fetchBackend = remoteKnowledgeBackend(
+        knowledgeFromManifest(rt.profileOf(profileId).profile.manifest).backend,
+      );
+      const cached = await cacheRagFile({ datasetId, documentId, fileName }, fetchBackend);
       if (!cached.ok) return { ok: false, error: cached.error };
       return { ok: true, data: { path: cached.path } };
     }
@@ -1474,12 +1487,17 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     if (!isKnowledgeBackendId(backend)) return invalidBackendProbeResult(backend);
     return probeKnowledgeConnection(rt, backend, override);
   });
-  ipcMain.handle('sparkii:openRagDocument', async (_e, args: { datasetId: string; documentId: string; fileName?: string }) => {
+  ipcMain.handle('sparkii:openRagDocument', async (
+    _e,
+    args: { backend?: string; datasetId: string; documentId: string; fileName?: string },
+  ) => {
+    // `backend` 缺省 = sparkiirag（既有 renderer 行为不变），仍然只把 path 回给 renderer。
+    const backend: KnowledgeBackendId = isKnowledgeBackendId(args?.backend) ? args.backend : 'sparkiirag';
     const cached = await cacheRagFile({
       datasetId: String(args?.datasetId ?? ''),
       documentId: String(args?.documentId ?? ''),
       fileName: args?.fileName,
-    });
+    }, backend);
     if (!cached.ok) return { ok: false, error: cached.error.message };
     const error = await shell.openPath(cached.path);
     if (error) return { ok: false, error };

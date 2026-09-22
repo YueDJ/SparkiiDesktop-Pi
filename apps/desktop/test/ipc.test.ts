@@ -1171,6 +1171,97 @@ describe('ipc provider handlers', () => {
     expect(turn?.data?.citations?.[0]).toMatchObject({ documentId: 'doc-1', backend: 'sparkiionto' });
   });
 
+  it('fetches and opens an Onto source document under the backend cache segment', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({
+      sparkiionto: { baseUrl: 'http://onto.example:9380' },
+    }), 'utf8');
+    vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL) => {
+      const path = new URL(String(url)).pathname;
+      if (path === '/api/v1/info') {
+        return new Response(JSON.stringify({
+          product: 'SparkiiOnto', version: '0.6.8', api_version: 'v1', deployment_profile: 'single-instance',
+          retrieval: { backend: 'sql-lexical', semantic_embeddings: false }, capabilities: { datasets: true },
+        }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
+      if (path === '/api/v1/datasets') {
+        return new Response('{"code":0,"data":[{"id":"d264d494","name":"水泥工艺知识域"}]}', {
+          status: 200, headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (path === '/api/v1/datasets/d264d494/documents/doc-1') {
+        return new Response(new Uint8Array([104, 105]), {
+          status: 200, headers: { 'content-type': 'application/octet-stream' },
+        });
+      }
+      throw new Error(`unexpected request ${url}`);
+    }));
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's-onto', sessionFile: null, isStreaming: false } };
+        }
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      knowledgeToken: async (backend) => (backend === 'sparkiionto' ? 'tok-onto' : null),
+      profile: {
+        dir: join(dataDir, 'profiles', 'onto-agent'),
+        profile: {
+          manifest: { name: 'onto-agent', knowledge: { enabled: true, picker: 'hidden', backend: 'sparkiionto' } },
+          agent: { tools: ['knowledge.search', 'knowledge.fetch_document'], prompts: { system: 'test' } },
+        },
+        router: { resolve: () => undefined },
+      },
+    });
+    const sessions = new Map<string, { id: string; profileId: string }>();
+    (rt as any).chatSessions.create = (rec: { id: string; profileId: string }) => { sessions.set(rec.id, rec); };
+    (rt as any).chatSessions.get = (id: string) => sessions.get(id) ?? null;
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:promptSession')!(null, null, '你好', undefined, undefined, { profileId: 'onto-agent' });
+
+    // 模型自己取原文：必须走 Onto，而不是硬编码的 RAG。
+    const read = (rt as any).__onConnectorRead;
+    const fetched = await read?.({
+      requestId: 'r1', toolName: 'knowledge.fetch_document',
+      args: { datasetId: 'd264d494', documentId: 'doc-1', fileName: '水泥工艺.md' },
+    }) as { ok: boolean; data?: { path: string }; error?: { code: string } };
+    expect(fetched.ok).toBe(true);
+    const cachedPath = String(fetched.data?.path ?? '');
+    expect(cachedPath.replace(/\\/g, '/')).toMatch(/\/rag-cache\/sparkiionto\/d264d494\/doc-1\.md$/);
+    expect((await readFile(cachedPath)).toString()).toBe('hi');
+
+    const electron = await import('electron') as unknown as { shell: { openPath: ReturnType<typeof vi.fn> } };
+    electron.shell.openPath.mockClear();
+    const opened = await handlers.get('sparkii:openRagDocument')!(null, {
+      backend: 'sparkiionto', datasetId: 'd264d494', documentId: 'doc-1', fileName: '水泥工艺.md',
+    }) as { ok: boolean; path?: string };
+    expect(opened.ok).toBe(true);
+    expect(opened.path).toBe(cachedPath);
+    expect(electron.shell.openPath).toHaveBeenCalledTimes(1);
+    expect(electron.shell.openPath).toHaveBeenCalledWith(cachedPath);
+  });
+
+  it('openRagDocument defaults to sparkiirag and returns a bounded error when the credential is missing', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await makeRuntime({ dataDir, piAgentDir, client: { send: async () => ({ success: true }) } });
+    const handlers = await registeredHandlers();
+    const out = await handlers.get('sparkii:openRagDocument')!(null, {
+      datasetId: 'law', documentId: 'd1',
+    }) as { ok: boolean; error?: string };
+    expect(out).toEqual({ ok: false, error: '未配置 API Key' });
+  });
 
   it('setSessionKnowledge rejects invalid payload', async () => {
     const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
