@@ -182,7 +182,7 @@ export interface SparkiiApi {
     id: string;
     name: string;
     surfaceType?: string;
-    knowledge?: { enabled: boolean; picker: 'hidden' | 'session'; backend: 'bm25' | 'sparkiirag' | 'sparkiionto' };
+    knowledge?: { enabled: boolean; picker: 'hidden' | 'session'; backend: 'bm25' | 'sparkiirag' };
   }>>;
   listPendingApprovals(): Promise<unknown[]>;
   decideApproval(id: string, approved: boolean, note?: string): Promise<unknown>;

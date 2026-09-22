@@ -11,6 +11,8 @@ import {
 } from '../electron/main/knowledge-settings.js';
 import { loadSettings } from '../electron/main/settings.js';
 import { registerIpc } from '../electron/main/ipc.js';
+import { parseProfileManifest } from '@sparkii/config';
+import { knowledgeClientFor } from '../electron/main/rag-search.js';
 
 vi.mock('electron', () => {
   const handlers = new Map<string, (...args: unknown[]) => unknown>();
@@ -339,5 +341,23 @@ describe('knowledge settings over ipc', () => {
     await handlers.get('sparkii:saveSettings')!(null, { activeProviderId: 'deepseek', apiKey: 'sk', sparkiionto: { baseUrl: 'http://evil.example' } });
     const settings = await loadSettings(dataDir);
     expect(settings.sparkiionto).toEqual({ baseUrl: 'http://onto.example', bindings: [] });
+  });
+});
+
+describe('knowledge.search drops the ontology backend', () => {
+  it('rejects a manifest whose knowledge backend is sparkiionto', () => {
+    const manifest = {
+      name: 'test',
+      version: '1.0.0',
+      modelRouting: { tasks: {} },
+      knowledge: { enabled: true, picker: 'hidden', backend: 'sparkiionto' },
+    };
+    expect(() => parseProfileManifest(manifest)).toThrow();
+  });
+
+  it('keeps the ontology branch in knowledgeClientFor for fetch_document / openRagDocument', () => {
+    const rag = { baseUrl: 'http://127.0.0.1:9380', similarityThreshold: 0.2, vectorSimilarityWeight: 0.3, bindings: [] };
+    expect(knowledgeClientFor('sparkiirag', rag, 'k')).not.toBeNull();
+    expect(knowledgeClientFor('sparkiionto', rag, 'k')).not.toBeNull();
   });
 });

@@ -1,7 +1,7 @@
 export type AgentKnowledge = {
   enabled: boolean;
   picker: 'hidden' | 'session';
-  backend: 'bm25' | 'sparkiirag' | 'sparkiionto';
+  backend: 'bm25' | 'sparkiirag';
 };
 
 export interface AgentCatalogEntry {
