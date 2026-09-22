@@ -26,3 +26,43 @@ export type SparkiiOntoInfo = {
 
 /** Desktop 侧消费的 dataset（= Onto 的知识域）列表项。 */
 export type SparkiiOntoDataset = { id: string; name: string };
+
+/** 图节点（裁剪后的业务形状，不含服务端信封字段如 valid_from/valid_until）。 */
+export type OntoGraphNode = {
+  id: string;
+  type: string;
+  content?: string;
+  properties?: Record<string, unknown>;
+};
+
+/** 图边（裁剪后的业务形状）。 */
+export type OntoGraphEdge = {
+  source: string;
+  target: string;
+  type: string;
+  weight?: number;
+};
+
+/** 图谱规模自检。 */
+export type OntoGraphSummary = {
+  nodeCount: number;
+  edgeCount: number;
+  nodeTypes: Record<string, number>;
+  edgeTypes: Record<string, number>;
+};
+
+/** 两节点间路径；无路径时为 null（不是错误）。 */
+export type OntoPathResult = {
+  nodes: string[];
+  hopCount: number;
+  weight?: number;
+} | null;
+
+/** 决策记录（裁剪后：decision_id→id、timestamp→createdAt，其余字段透传）。 */
+export type OntoDecision = {
+  id: string;
+  category?: string;
+  title?: string;
+  createdAt?: string;
+  [k: string]: unknown;
+};

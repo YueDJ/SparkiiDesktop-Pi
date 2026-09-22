@@ -112,7 +112,7 @@ export class SparkiiOntoClient {
   private readonly baseUrl: string;
   private readonly apiKey: string;
   private readonly fetchImpl: typeof fetch;
-  private readonly timeoutMs: number;
+  private readonly timeoutMsValue: number;
   private infoPromise: Promise<SparkiiOntoInfo> | null = null;
 
   constructor(opts: { baseUrl: string; apiKey: string; fetch?: typeof fetch; timeoutMs?: number }) {
@@ -123,12 +123,17 @@ export class SparkiiOntoClient {
     this.baseUrl = parsed.baseUrl;
     this.apiKey = opts.apiKey;
     this.fetchImpl = opts.fetch ?? fetch;
-    this.timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.timeoutMsValue = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   }
 
   /** 归一化后的服务地址（无尾斜杠）。 */
   get address(): string {
     return this.baseUrl;
+  }
+
+  /** 默认单次调用超时（子类可用 budgetMs 覆盖单次预算）。 */
+  protected get timeoutMs(): number {
+    return this.timeoutMsValue;
   }
 
   /**
@@ -234,21 +239,21 @@ export class SparkiiOntoClient {
     return info;
   }
 
-  private authHeaders(): Record<string, string> {
+  protected authHeaders(): Record<string, string> {
     return { Authorization: `Bearer ${this.apiKey}` };
   }
 
-  private async requestJson(url: string, init: RequestInit): Promise<unknown> {
-    const res = await this.send(url, init);
+  protected async requestJson(url: string, init: RequestInit, budgetMs?: number): Promise<unknown> {
+    const res = await this.send(url, init, budgetMs);
     const payload = await this.parseJson(res);
     if (!res.ok) throw this.httpError(res.status, payload);
     const code = asRecord(payload).code;
-    if (code != null && Number(code) !== 0) throw this.httpError(Number(code), payload);
+    if (typeof code === 'number' && code !== 0) throw this.httpError(code, payload);
     return payload;
   }
 
   /** 只按 HTTP 状态码分类（Starlette 路由级错误不经产品 handler，响应体形状不可依赖）。 */
-  private httpError(status: number, payload: unknown): ConnectorError {
+  protected httpError(status: number, payload: unknown): ConnectorError {
     if (status === 401) {
       return new SparkiiOntoHttpError(401, 'CONNECTOR_DENIED', withDetail('SparkiiOnto 凭据无效或已过期（HTTP 401）', payload));
     }
@@ -270,15 +275,15 @@ export class SparkiiOntoClient {
     return new SparkiiOntoHttpError(status, 'CONNECTOR_IO', withDetail(`SparkiiOnto 请求失败（HTTP ${status}）`, payload));
   }
 
-  private async send(url: string, init: RequestInit): Promise<Response> {
+  protected async send(url: string, init: RequestInit, budgetMs?: number): Promise<Response> {
     try {
-      return await this.fetchImpl(url, { ...init, signal: AbortSignal.timeout(this.timeoutMs) });
+      return await this.fetchImpl(url, { ...init, signal: AbortSignal.timeout(budgetMs ?? this.timeoutMs) });
     } catch (error) {
       throw new ConnectorError('CONNECTOR_IO', error instanceof Error ? error.message : String(error));
     }
   }
 
-  private async parseJson(res: Response): Promise<unknown> {
+  protected async parseJson(res: Response): Promise<unknown> {
     try {
       return await res.json();
     } catch (error) {
@@ -290,7 +295,7 @@ export class SparkiiOntoClient {
    * 宽容解析：只用于给 401/403 补全文案。响应体形状不可依赖（可能是代理/网关生成的，
    * 也可能根本没有 JSON 正文），读不到就只按状态码给文案，绝不因此改变错误分类。
    */
-  private async bodyIfJson(res: Response): Promise<unknown> {
+  protected async bodyIfJson(res: Response): Promise<unknown> {
     const type = res.headers.get('content-type') ?? '';
     if (!type.includes('application/json')) return undefined;
     try {
