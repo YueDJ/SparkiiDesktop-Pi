@@ -173,11 +173,11 @@ describe('SparkiiOntoGraph request shape', () => {
     expect(Object.keys(requestBody)).not.toContain('apply_to_graph');
   });
 
-  it('distanceMatrix 映射 nodes 与 matrix', async () => {
+  it('distanceMatrix 映射 nodes 与 matrix（不可达对为 null）', async () => {
     const { graph } = graphWith({
-      '/api/graph/distance-matrix': () => jsonValue({ nodes: ['a', 'b'], metric: 'hops', matrix: [[0, 1], [1, 0]], unreachable_pairs: [], computation_time_ms: 1.2 }),
+      '/api/graph/distance-matrix': () => jsonValue({ nodes: ['a', 'b'], metric: 'hops', matrix: [[0, null], [null, 0]], unreachable_pairs: [['a', 'b']], computation_time_ms: 1.2 }),
     });
-    await expect(graph.distanceMatrix({ nodeIds: ['a', 'b'] })).resolves.toEqual({ nodes: ['a', 'b'], matrix: [[0, 1], [1, 0]] });
+    await expect(graph.distanceMatrix({ nodeIds: ['a', 'b'] })).resolves.toEqual({ nodes: ['a', 'b'], matrix: [[0, null], [null, 0]] });
   });
 
   it('query 返回结果行', async () => {
@@ -185,5 +185,46 @@ describe('SparkiiOntoGraph request shape', () => {
       '/api/sparql': () => jsonValue({ columns: ['s'], rows: [{ s: 'a' }], total: 1, truncated: false }),
     });
     await expect(graph.query({ query: 'SELECT ?s WHERE { ?s ?p ?o }' })).resolves.toEqual([{ s: 'a' }]);
+  });
+});
+
+describe('SparkiiOntoGraph graphSummary', () => {
+  it('graphSummary 合并产品面 summary 与 Explorer stats（fixture）', async () => {
+    const { graph } = graphWith({
+      '/api/v1/onto/graph/summary': () => json('graph-summary'),
+      '/api/graph/stats': () => json('graph-stats'),
+    });
+    await expect(graph.graphSummary()).resolves.toEqual({
+      nodeCount: 6,
+      edgeCount: 5,
+      nodeTypes: { document: 1, document_chunk: 5 },
+      edgeTypes: { contains: 5 },
+    });
+  });
+
+  it('graphSummary 在两端点不一致时以产品面 summary 为权威', async () => {
+    const { graph } = graphWith({
+      '/api/v1/onto/graph/summary': () => jsonValue({ node_count: 6, edge_count: 5, node_types: { document: 1, document_chunk: 5 }, edge_types: { contains: 5 } }),
+      '/api/graph/stats': () => jsonValue({ node_count: 99, edge_count: 99, node_types: { document: 9 }, edge_types: { other: 9 } }),
+    });
+    await expect(graph.graphSummary()).resolves.toEqual({
+      nodeCount: 6,
+      edgeCount: 5,
+      nodeTypes: { document: 1, document_chunk: 5 },
+      edgeTypes: { contains: 5 },
+    });
+  });
+
+  it('graphSummary 在 summary 缺失字段时用 stats 补齐', async () => {
+    const { graph } = graphWith({
+      '/api/v1/onto/graph/summary': () => jsonValue({ node_count: 6 }),
+      '/api/graph/stats': () => jsonValue({ edge_count: 5, node_types: { document: 1 }, edge_types: { contains: 5 } }),
+    });
+    await expect(graph.graphSummary()).resolves.toEqual({
+      nodeCount: 6,
+      edgeCount: 5,
+      nodeTypes: { document: 1 },
+      edgeTypes: { contains: 5 },
+    });
   });
 });

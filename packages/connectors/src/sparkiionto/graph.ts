@@ -1,6 +1,6 @@
 import { ConnectorError } from '../types.js';
 import { SparkiiOntoClient, SparkiiOntoHttpError } from './client.js';
-import type { OntoDecision, OntoGraphNode, OntoPathResult } from './types.js';
+import type { OntoDecision, OntoGraphNode, OntoGraphSummary, OntoPathResult } from './types.js';
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -10,6 +10,20 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/** 把服务端 `{name: count}` 形状裁剪为只含数值计数的记录。 */
+function asNumberMap(value: unknown): Record<string, number> {
+  const rec = asRecord(value);
+  const out: Record<string, number> = {};
+  for (const [key, item] of Object.entries(rec)) {
+    if (typeof item === 'number') out[key] = item;
+  }
+  return out;
 }
 
 /** 把服务端节点裁剪为业务形状：只保留 id/type/content/properties，丢弃 valid_from/valid_until 等信封字段。 */
@@ -131,8 +145,8 @@ export class SparkiiOntoGraph extends SparkiiOntoClient {
     }
   }
 
-  /** 给一组节点返回两两距离矩阵。 */
-  async distanceMatrix(input: { nodeIds: string[]; metric?: 'hops' | 'weighted' | 'semantic' }): Promise<{ nodes: string[]; matrix: number[][] }> {
+  /** 给一组节点返回两两距离矩阵；不可达对映射为 null（NaN 不是合法 JSON 数值）。 */
+  async distanceMatrix(input: { nodeIds: string[]; metric?: 'hops' | 'weighted' | 'semantic' }): Promise<{ nodes: string[]; matrix: Array<Array<number | null>> }> {
     await this.ensureGraph();
     const payload = await this.requestJson(`${this.address}/api/graph/distance-matrix`, {
       method: 'POST',
@@ -142,9 +156,32 @@ export class SparkiiOntoGraph extends SparkiiOntoClient {
     const rec = asRecord(payload);
     const nodes = Array.isArray(rec.nodes) ? rec.nodes.map(String) : [];
     const matrix = Array.isArray(rec.matrix)
-      ? rec.matrix.map((row) => (Array.isArray(row) ? row.map((value) => (typeof value === 'number' ? value : Number.NaN)) : []))
+      ? rec.matrix.map((row) => (Array.isArray(row) ? row.map((value) => (typeof value === 'number' ? value : null)) : []))
       : [];
     return { nodes, matrix };
+  }
+
+  /** 图谱规模自检：合并产品面 summary（持久化存储，权威）与 Explorer stats（仅补齐缺失字段）。 */
+  async graphSummary(): Promise<OntoGraphSummary> {
+    await this.ensureGraph();
+    const [summary, stats] = await Promise.all([
+      this.requestJson(`${this.address}/api/v1/onto/graph/summary`, { method: 'GET', headers: this.authHeaders() }),
+      this.requestJson(`${this.address}/api/graph/stats`, { method: 'GET', headers: this.authHeaders() }),
+    ]);
+    const summaryRec = asRecord(summary);
+    const statsRec = asRecord(stats);
+    const summaryNodeTypes = summaryRec.node_types;
+    const summaryEdgeTypes = summaryRec.edge_types;
+    return {
+      nodeCount: typeof summaryRec.node_count === 'number'
+        ? summaryRec.node_count
+        : (typeof statsRec.node_count === 'number' ? statsRec.node_count : 0),
+      edgeCount: typeof summaryRec.edge_count === 'number'
+        ? summaryRec.edge_count
+        : (typeof statsRec.edge_count === 'number' ? statsRec.edge_count : 0),
+      nodeTypes: isPlainObject(summaryNodeTypes) ? asNumberMap(summaryNodeTypes) : asNumberMap(statsRec.node_types),
+      edgeTypes: isPlainObject(summaryEdgeTypes) ? asNumberMap(summaryEdgeTypes) : asNumberMap(statsRec.edge_types),
+    };
   }
 
   /** 列出决策记录（可按类别过滤）。 */
