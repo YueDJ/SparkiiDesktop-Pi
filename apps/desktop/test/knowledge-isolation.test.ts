@@ -65,6 +65,17 @@ describe('knowledge-qa isolation', () => {
     const src = readFileSync(join(repoRoot, 'apps', 'desktop', 'src', 'surface', 'standard-chat.tsx'), 'utf8');
     expect(src).not.toContain('KnowledgeDatasetPicker');
   });
+
+  // 出处归属（spec Decision 9）：气泡把命中的 `backend` 透传给 Main，Main 才能按后端取原文。
+  // 这里做的是"接线守卫"（源码级）；完整的渲染断言随新智能体的 surface 一期补齐。
+  it('forwards the citation backend when opening a source document', () => {
+    const src = readFileSync(
+      join(repoRoot, 'apps', 'desktop', 'agents', 'knowledge-qa', 'surface', 'index.tsx'),
+      'utf8',
+    );
+    const call = src.slice(src.indexOf('api.openRagDocument?.(', src.indexOf('onOpenDocument')));
+    expect(call).toContain('backend: doc.backend,');
+  });
 });
 
 /**

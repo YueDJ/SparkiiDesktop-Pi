@@ -151,6 +151,7 @@ export default function KnowledgeQaSurface(props: StandardChatProps) {
               citations={turn.citations}
               onOpenDocument={(doc) => {
                 void api.openRagDocument?.({
+                  backend: doc.backend,
                   datasetId: doc.datasetId,
                   documentId: doc.documentId,
                   fileName: doc.documentName,
