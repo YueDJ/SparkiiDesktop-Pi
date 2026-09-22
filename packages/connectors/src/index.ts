@@ -5,3 +5,5 @@ export * from './report/index.js';
 export * from './sparkiirag/client.js';
 export * from './sparkiirag/map.js';
 export * from './sparkiirag/types.js';
+export * from './sparkiionto/client.js';
+export * from './sparkiionto/types.js';
