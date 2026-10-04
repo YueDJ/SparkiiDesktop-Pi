@@ -88,6 +88,7 @@ export function sessionStateSnapshot(session: {
   getContextUsage?: () => unknown;
   getSteeringMessages?: () => readonly string[];
   getFollowUpMessages?: () => readonly string[];
+  getActiveToolNames?: () => readonly string[];
 }): Record<string, unknown> {
   return {
     streaming: session.isStreaming,
@@ -99,6 +100,7 @@ export function sessionStateSnapshot(session: {
     steeringMode: session.steeringMode,
     followUpMode: session.followUpMode,
     pendingMessageCount: session.pendingMessageCount,
+    activeToolNames: [...(session.getActiveToolNames?.() ?? [])],
     streamingMessage: session.agent?.state?.streamingMessage ?? null,
     ...readQueueSnapshot(session),
   };
@@ -145,8 +147,10 @@ function systemPromptExtensionFactory(
   getSystemPrompt: () => string | undefined,
   getSaddle: () => SessionSaddle | null,
   syncTools: (pi: ExtensionAPI) => void,
+  onApi: (pi: ExtensionAPI) => void,
 ) {
   return (pi: ExtensionAPI) => {
+    onApi(pi);
     pi.on("before_agent_start", (event: BeforeAgentStartEvent) => {
       // Pi 1.0 的模型可见工具集由会话内部的「工具注册表 + loadout」推导：
       // 每次 prompt 前 `_preparePromptAndToolLoadout()` 会用注册表过滤一次并回写
@@ -171,6 +175,8 @@ export async function createPiSdkSessionHost(
   let liveSession: any = null;
   // 上一次真正写进 Pi 工具注册表的鞍对象；同一个鞍重复 prompt 不重复注册。
   let appliedSaddle: SessionSaddle | null = null;
+  // 当前会话对应的 ExtensionAPI（会话每次重建都会由扩展工厂重新给出）。
+  let extensionApi: ExtensionAPI | null = null;
   const pendingProposals = new Map<
     string,
     { resolve: (decision: ProposalDecision) => void; reject: (error: Error) => void }
@@ -229,18 +235,76 @@ export async function createPiSdkSessionHost(
     });
 
   /**
-   * 会话中途换鞍（进程池槽位复用）：把新鞍的工具补进注册表并重置激活集合。
-   * `registerTool` 同名覆盖，旧鞍的工具会因不在激活集合里而不再声明给模型（不泄漏）。
+   * 把一批工具定义写进当前会话的注册表，并把激活集合**精确**设成这批工具。
    * Pi 1.0 的 `ExtensionAPI.registerTool()` 内部会调用 `refreshTools()` 重建注册表，
-   * 因此不需要触碰任何私有字段。
+   * 因此不需要触碰任何私有字段；`setActiveTools` 负责把旧鞍的工具从模型声明里撤下。
    */
-  const syncSaddleTools = (pi: ExtensionAPI): void => {
-    const saddle = pendingSaddle;
-    if (!saddle || saddle === appliedSaddle) return;
-    const definitions = buildSaddleTools(saddle);
+  const registerSaddleTools = (
+    pi: ExtensionAPI,
+    saddle: SessionSaddle,
+    definitions: ToolDefinition[],
+  ): void => {
     for (const definition of definitions) pi.registerTool(definition);
     pi.setActiveTools(definitions.map((definition) => definition.name));
     appliedSaddle = saddle;
+  };
+
+  /**
+   * prompt 路径上的兜底同步（`before_agent_start` 里调用）：换鞍时**立即**同步（不等第一个 prompt），
+   * 这样 `get_state` 在 prompt 之前就能反映真实工具面，也不依赖 prompt 路径的时序。
+   * 会话重建后 `extensionApi` 会被新的工厂实例替换；若此刻 API 已失效（会话被替换/重载），
+   * 退回由下一次 `before_agent_start` 同步。
+   *
+   * fail closed：鞍里的工具名解析失败（`resolveToolDefinitions` 抛 unknown tool）时，
+   * 先把激活集合清空再抛错，绝不把上一个 profile 的工具留在模型可见面上。
+   */
+  const syncSaddleToolsNow = (): void => {
+    if (!extensionApi || !runtime) return;
+    const saddle = pendingSaddle;
+    if (!saddle) {
+      try {
+        extensionApi.setActiveTools([]);
+      } catch {
+        appliedSaddle = null;
+      }
+      return;
+    }
+    if (saddle === appliedSaddle) return;
+    let definitions: ToolDefinition[];
+    try {
+      definitions = buildSaddleTools(saddle);
+    } catch (error) {
+      appliedSaddle = null;
+      try {
+        extensionApi.setActiveTools([]);
+      } catch {
+        // API 已失效：交给下一次 before_agent_start 重新同步
+      }
+      throw error;
+    }
+    try {
+      registerSaddleTools(extensionApi, saddle, definitions);
+    } catch {
+      appliedSaddle = null;
+    }
+  };
+
+  /**
+   * 会话被替换（newSession/switchSession/configureSaddle）后，重新把当前鞍的工具装进新会话。
+   * 必须先清空 `appliedSaddle`：新会话的注册表是空的、激活集合为空，
+   * 若沿用"同鞍跳过"的判断，第一个 prompt 就会带着零工具发出去。
+   */
+  const applySaddleToCurrentSession = (): void => {
+    appliedSaddle = null;
+    adaptSession();
+    syncSaddleToolsNow();
+  };
+
+  /** prompt 前的最后一次核对（`before_agent_start`）：只在该鞍还没生效时才重装。 */
+  const syncSaddleToolsOnPrompt = (pi: ExtensionAPI): void => {
+    const saddle = pendingSaddle;
+    if (!saddle || saddle === appliedSaddle) return;
+    registerSaddleTools(pi, saddle, buildSaddleTools(saddle));
   };
 
   const modelRuntime = await ModelRuntime.create({
@@ -264,10 +328,12 @@ export async function createPiSdkSessionHost(
     sessionStartEvent,
   }) => {
     const saddle = pendingSaddle;
-    // 1.0：鞍工具必须在会话创建期进注册表（customTools）+ 用 tools 限定允许/激活集合。
-    // 只传 customTools 不传 tools 会让 `usesDefaultTools` 为真，把内置 read/bash/edit/write 一并激活。
+    // 1.0：鞍工具必须在会话创建期进注册表（customTools）。这里**不能**用 `tools` 限定集合：
+    // `tools` 会在创建时冻结 `_allowedToolNames`（`agent-session.js` 构造后无更新点），
+    // 而工具注册表按它过滤 ⇒ 换鞍时新增的工具名会被静默丢弃、甚至整盘为空。
+    // `noTools: "builtin"` 才是正确口径：关掉默认内置工具（read/bash/edit/write）的自动激活，
+    // 同时不设白名单，让扩展/自定义工具可注册，激活集合完全由 `setActiveTools()` 决定。
     const saddleTools = saddle ? buildSaddleTools(saddle) : [];
-    const saddleToolNames = saddleTools.map((definition) => definition.name);
     const services = await createAgentSessionServices({
       cwd: effectiveCwd,
       modelRuntime,
@@ -278,7 +344,10 @@ export async function createPiSdkSessionHost(
           systemPromptExtensionFactory(
             () => pendingSaddle?.systemPrompt,
             () => pendingSaddle,
-            syncSaddleTools,
+            syncSaddleToolsOnPrompt,
+            (api) => {
+              extensionApi = api;
+            },
           ),
         ],
       },
@@ -298,9 +367,8 @@ export async function createPiSdkSessionHost(
       model: initialModel,
       thinkingLevel: saddle?.thinkingLevel as any,
       customTools: saddleTools,
-      tools: saddleToolNames,
+      noTools: "builtin",
     });
-    appliedSaddle = saddle;
     return {
       ...result,
       services,
@@ -424,17 +492,16 @@ export async function createPiSdkSessionHost(
     current: () => adaptSession(),
     newSession: async () => {
       await runtime.newSession();
-      adaptSession();
+      applySaddleToCurrentSession();
     },
     switchSession: async (sessionPath: string) => {
       await runtime.switchSession(sessionPath);
-      adaptSession();
+      applySaddleToCurrentSession();
     },
     configureSaddle: async (saddle: SessionSaddle | null) => {
       pendingSaddle = saddle;
-      // 换鞍后下一次 prompt 由扩展把新工具同步进注册表（旧的留在注册表但不再激活）。
-      appliedSaddle = null;
-      adaptSession();
+      // 换鞍后先做一次立即同步（旧鞍工具留在注册表但不再激活）；`before_agent_start` 还会再核一次。
+      applySaddleToCurrentSession();
     },
   };
 }

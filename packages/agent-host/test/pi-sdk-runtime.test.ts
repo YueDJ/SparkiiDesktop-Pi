@@ -58,12 +58,15 @@ describe("pi-sdk-runtime skill loader options", () => {
     expect(src).toMatch(/connectorRead:/);
     expect(src).toMatch(/connectorReadEnvelope/);
     expect(src).toMatch(/promptWorkingDirectory/);
-    expect(src).toMatch(/systemPromptExtensionFactory\(\s*\(\) => pendingSaddle\?\.systemPrompt,\s*\(\) => pendingSaddle,\s*syncSaddleTools,/);
+    expect(src).toMatch(/systemPromptExtensionFactory\(\s*\(\) => pendingSaddle\?\.systemPrompt,\s*\(\) => pendingSaddle,\s*syncSaddleToolsOnPrompt,/);
     // Pi 1.0：工具必须进会话注册表，禁止再直接写 agent.state.tools（会在 prompt 被 loadout 覆盖）
     expect(src).not.toMatch(/agent\.state\.tools\s*=/);
     expect(src).toMatch(/customTools:\s*saddleTools/);
-    expect(src).toMatch(/tools:\s*saddleToolNames/);
-    expect(src).toMatch(/registry/);
+    // `tools:` 会在创建时冻结白名单，换鞍时新增的工具名会被静默丢弃；必须用 noTools 关默认工具
+    expect(src).toMatch(/noTools:\s*"builtin"/);
+    expect(src).not.toMatch(/tools:\s*saddleToolNames/);
+    expect(src).toMatch(/registerSaddleTools/);
+    expect(src).toMatch(/setActiveTools/);
   });
 
   it("does not enable Pi 1.0 prompt cache warming (per-call billing)", async () => {
