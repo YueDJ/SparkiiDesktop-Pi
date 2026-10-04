@@ -14,7 +14,8 @@
 
 ## 2. 官方事实依据
 
-仓库内安装的 Pi SDK（`@earendil-works/pi-coding-agent@0.84.x`）源码确认：
+仓库内安装的 Pi SDK（`@earendil-works/pi-coding-agent`，写就时为 0.84.x；1.0.2 复核：`getShellConfig`/`getPowerShellConfig`
+与「bash / powershell 两个独立工具」的结论不变）源码确认：
 
 - `bash` 与 `powershell` 是**两个相互独立、平级的一等工具**，各自带系统提示（"Execute bash commands" / "Execute PowerShell commands"），Pi 不会自动在两者间降级切换。
 - `bash` 工具在 Windows 上的解析顺序（`utils/shell.ts` 的 `getShellConfig`）：用户 `shellPath` → Git Bash 已知安装路径 → PATH 上的 `bash`。**没有 cmd.exe 兜底。**

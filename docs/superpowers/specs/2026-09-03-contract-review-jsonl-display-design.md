@@ -24,7 +24,8 @@
 10. 通用聊天的架构、设计和运行路径这次完全不动。
 11. 原文 PDF 预览放到下一阶段统一规划，本次不动。
 
-## SDK Facts (verified against `@earendil-works/pi-coding-agent@0.84.4`)
+## SDK Facts (verified against `@earendil-works/pi-coding-agent@0.84.4`；2026-10-04 升级 1.0.2 后复核：
+`appendCustomEntry` 只 `_appendEntry`、`pi.appendEntry` 带 `_emit({ type: "entry_appended", entry })` 两条事实不变)
 
 | 事实 | 含义 |
 | --- | --- |

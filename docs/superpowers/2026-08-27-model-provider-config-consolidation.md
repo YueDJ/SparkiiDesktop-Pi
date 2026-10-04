@@ -86,7 +86,8 @@
 
 ## 十一、实现完成记录（2026-08-27）
 
-第九节核对结果（实施时用当前 SDK @earendil-works/pi-coding-agent 0.84.3 最小验证）：
+第九节核对结果（实施时用当前 SDK @earendil-works/pi-coding-agent 0.84.3 最小验证）。
+**历史记录**：本文件是 2026-08-27 的实施记录，当时 SDK 为 0.84.3；2026-10-04 已升级到 1.0.2，本节按原样保留、未回改。
 
 1. `list_providers` 由 `packages/agent-host` 暴露，主进程通过探针 slot 读取 SDK 内置目录，再与 `models.json` 自定义项合并；显示名/认证状态走 SDK 返回结构。
 2. **本地无 key provider 结论：`models.json` 保持只写 `{ baseUrl, api }`，不写 `apiKey`。** 实测 `composeModelProvider` 对无内置 base、无 apiKey、无 oauth 的自定义 provider 不会抛 `no authentication method configured`，`openai-completions` 与 `anthropic-messages` 两种 api 类型均正常组成；而写 `apiKey: ""` 会被 `ModelConfig` schema 拒绝（`must not have fewer than 1 characters`），导致整个 models.json 失效。因此本地端点无需注入空 key（无鉴权时不带 Authorization 头），有 key 的 provider 仍走 `setRuntimeApiKey`。

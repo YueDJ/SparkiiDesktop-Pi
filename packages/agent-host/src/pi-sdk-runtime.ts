@@ -5,6 +5,7 @@ import {
   getAgentDir,
   ModelRuntime,
   SessionManager,
+  SettingsManager,
   type BeforeAgentStartEvent,
   type CreateAgentSessionRuntimeFactory,
   type ExtensionAPI,
@@ -23,6 +24,7 @@ import {
   type ConnectorReadResult,
   type ProposalDecision,
 } from "./pi-runtime-transport.js";
+import type { ProposalRequest } from "@sparkii/approval";
 import type { ImageContent, SessionSaddle } from "./types.js";
 import type {
   PiRuntimeChildTransport,
@@ -45,6 +47,18 @@ export function buildSkillLoaderOptions(skillsDir?: string): { additionalSkillPa
 
 export function resolveAgentDir(explicit?: string): string {
   return explicit ?? process.env.PI_CODING_AGENT_DIR ?? getAgentDir();
+}
+
+/**
+ * Pi 1.0 默认开启 prompt cache warming（`settings.cacheWarming` 缺省 `"streaming"`，见
+ * `settings-manager.js` 的 `getCacheWarmingMode()`），会在长 prompt 的 run 期间对 provider
+ * 额外发一次计费请求，并往会话 JSONL 追加 `usage/cache_warm` 条目。
+ * 本产品口径是「升级不改变既有行为」，因此在这里显式关闭（幂等，只在需要时落盘一次）。
+ */
+export function createPiSettingsManager(cwd: string, agentDir: string): SettingsManager {
+  const settingsManager = SettingsManager.create(cwd, agentDir);
+  if (settingsManager.getCacheWarmingMode() !== "off") settingsManager.setCacheWarmingMode("off");
+  return settingsManager;
 }
 
 export function readQueueSnapshot(session: {
@@ -74,6 +88,7 @@ export function sessionStateSnapshot(session: {
   getContextUsage?: () => unknown;
   getSteeringMessages?: () => readonly string[];
   getFollowUpMessages?: () => readonly string[];
+  getActiveToolNames?: () => readonly string[];
 }): Record<string, unknown> {
   return {
     streaming: session.isStreaming,
@@ -85,6 +100,7 @@ export function sessionStateSnapshot(session: {
     steeringMode: session.steeringMode,
     followUpMode: session.followUpMode,
     pendingMessageCount: session.pendingMessageCount,
+    activeToolNames: [...(session.getActiveToolNames?.() ?? [])],
     streamingMessage: session.agent?.state?.streamingMessage ?? null,
     ...readQueueSnapshot(session),
   };
@@ -130,18 +146,25 @@ export function appendCustomEntryAndEmit(
 function systemPromptExtensionFactory(
   getSystemPrompt: () => string | undefined,
   getSaddle: () => SessionSaddle | null,
+  syncTools: (pi: ExtensionAPI) => void,
+  onApi: (pi: ExtensionAPI) => void,
 ) {
   return (pi: ExtensionAPI) => {
-    pi.on("before_agent_start", (event: BeforeAgentStartEvent) =>
-      applySaddleSystemPrompt(getSystemPrompt(), {
+    onApi(pi);
+    pi.on("before_agent_start", (event: BeforeAgentStartEvent) => {
+      // Pi 1.0 的模型可见工具集由会话内部的「工具注册表 + loadout」推导：
+      // 每次 prompt 前 `_preparePromptAndToolLoadout()` 会用注册表过滤一次并回写
+      // `agent.state.tools`，所以鞍里的工具必须真的进注册表（0.84.x 可直接赋值 state.tools）。
+      syncTools(pi);
+      return applySaddleSystemPrompt(getSystemPrompt(), {
         ...event,
         systemPromptOptions: {
           ...event.systemPromptOptions,
           cwd: promptWorkingDirectory(getSaddle(), event.systemPromptOptions?.cwd),
           workspaceRoot: getSaddle()?.workspaceRoot,
         },
-      }),
-    );
+      });
+    });
   };
 }
 
@@ -149,6 +172,11 @@ export async function createPiSdkSessionHost(
   options: PiSdkRuntimeOptions,
 ): Promise<PiRuntimeSessionHost> {
   let pendingSaddle: SessionSaddle | null = null;
+  let liveSession: any = null;
+  // 上一次真正写进 Pi 工具注册表的鞍对象；同一个鞍重复 prompt 不重复注册。
+  let appliedSaddle: SessionSaddle | null = null;
+  // 当前会话对应的 ExtensionAPI（会话每次重建都会由扩展工厂重新给出）。
+  let extensionApi: ExtensionAPI | null = null;
   const pendingProposals = new Map<
     string,
     { resolve: (decision: ProposalDecision) => void; reject: (error: Error) => void }
@@ -177,6 +205,114 @@ export async function createPiSdkSessionHost(
   const fallbackWorkspaceRoot = options.workspaceRoot ?? process.env.SPARKII_WORKSPACE_ROOT ?? fallbackCwd;
   const agentDir = resolveAgentDir(options.agentDir);
   const sessionDir = join(agentDir, "sessions");
+
+  const proposeFromTool = (request: ProposalRequest & { requestId: string }) =>
+    new Promise<ProposalDecision>((resolve, reject) => {
+      pendingProposals.set(request.requestId, { resolve, reject });
+      options.transport.postMessage(proposalEnvelope(request));
+    });
+
+  const connectorReadFromTool = (request: Parameters<typeof connectorReadEnvelope>[0]) =>
+    new Promise<ConnectorReadResult>((resolve, reject) => {
+      pendingConnectorReads.set(request.requestId, { resolve, reject });
+      options.transport.postMessage(connectorReadEnvelope(request));
+    });
+
+  /**
+   * 按鞍装配工具定义。Pi 1.0 起工具必须经会话注册表（`customTools` / 扩展 `registerTool`）进入，
+   * 直接写 `session.agent.state.tools` 会在下一个 prompt 被 loadout 过滤掉。
+   */
+  const buildSaddleTools = (saddle: SessionSaddle): ToolDefinition[] =>
+    resolveToolDefinitions(saddle.tools, {
+      cwd: saddle.cwd ?? fallbackCwd,
+      workspaceRoot: saddle.workspaceRoot ?? fallbackWorkspaceRoot,
+      skillsDir: saddle.skillsDir,
+      propose: proposeFromTool,
+      connectorRead: connectorReadFromTool,
+      recordSessionEntry: (customType, data) => {
+        if (liveSession) appendCustomEntryAndEmit(liveSession, customType, data);
+      },
+    });
+
+  /**
+   * 把一批工具定义写进当前会话的注册表，并把激活集合**精确**设成这批工具。
+   * Pi 1.0 的 `ExtensionAPI.registerTool()` 内部会调用 `refreshTools()` 重建注册表，
+   * 因此不需要触碰任何私有字段；`setActiveTools` 负责把旧鞍的工具从模型声明里撤下。
+   */
+  const registerSaddleTools = (
+    pi: ExtensionAPI,
+    saddle: SessionSaddle,
+    definitions: ToolDefinition[],
+  ): void => {
+    for (const definition of definitions) pi.registerTool(definition);
+    pi.setActiveTools(definitions.map((definition) => definition.name));
+    appliedSaddle = saddle;
+  };
+
+  /**
+   * prompt 路径上的兜底同步（`before_agent_start` 里调用）：换鞍时**立即**同步（不等第一个 prompt），
+   * 这样 `get_state` 在 prompt 之前就能反映真实工具面，也不依赖 prompt 路径的时序。
+   * 会话重建后 `extensionApi` 会被新的工厂实例替换；若此刻 API 已失效（会话被替换/重载），
+   * 退回由下一次 `before_agent_start` 同步。
+   *
+   * fail closed：鞍里的工具名解析失败（`resolveToolDefinitions` 抛 unknown tool）时，
+   * 先把激活集合清空再抛错，绝不把上一个 profile 的工具留在模型可见面上。
+   */
+  const syncSaddleToolsNow = (): void => {
+    if (!extensionApi || !runtime) return;
+    const saddle = pendingSaddle;
+    if (!saddle) {
+      appliedSaddle = null;
+      clearExposedTools();
+      return;
+    }
+    if (saddle === appliedSaddle) return;
+    let definitions: ToolDefinition[];
+    try {
+      definitions = buildSaddleTools(saddle);
+    } catch (error) {
+      appliedSaddle = null;
+      clearExposedTools();
+      throw error;
+    }
+    try {
+      registerSaddleTools(extensionApi, saddle, definitions);
+    } catch (error) {
+      // 装不上就必须响：宁可让 configure_session 失败（进程池会摘掉这个槽位），
+      // 也不能让会话停在"配置成功但模型看不到工具/还留着上一条会话的工具"的状态。
+      appliedSaddle = null;
+      clearExposedTools();
+      throw error;
+    }
+  };
+
+  /** 尽力把模型可见工具清空；API 已失效时交给下一次 `before_agent_start` 重新同步。 */
+  const clearExposedTools = (): void => {
+    try {
+      extensionApi?.setActiveTools([]);
+    } catch {
+      // stale API：下一次 before_agent_start 会重建
+    }
+  };
+
+  /**
+   * 会话被替换（newSession/switchSession/configureSaddle）后，重新把当前鞍的工具装进新会话。
+   * 必须先清空 `appliedSaddle`：新会话的注册表是空的、激活集合为空，
+   * 若沿用"同鞍跳过"的判断，第一个 prompt 就会带着零工具发出去。
+   */
+  const applySaddleToCurrentSession = (): void => {
+    appliedSaddle = null;
+    adaptSession();
+    syncSaddleToolsNow();
+  };
+
+  /** prompt 前的最后一次核对（`before_agent_start`）：只在该鞍还没生效时才重装。 */
+  const syncSaddleToolsOnPrompt = (pi: ExtensionAPI): void => {
+    const saddle = pendingSaddle;
+    if (!saddle || saddle === appliedSaddle) return;
+    registerSaddleTools(pi, saddle, buildSaddleTools(saddle));
+  };
+
   const modelRuntime = await ModelRuntime.create({
     authPath: join(agentDir, "auth.json"),
     modelsPath: join(agentDir, "models.json"),
@@ -198,12 +334,28 @@ export async function createPiSdkSessionHost(
     sessionStartEvent,
   }) => {
     const saddle = pendingSaddle;
+    // 1.0：鞍工具必须在会话创建期进注册表（customTools）。这里**不能**用 `tools` 限定集合：
+    // `tools` 会在创建时冻结 `_allowedToolNames`（`agent-session.js` 构造后无更新点），
+    // 而工具注册表按它过滤 ⇒ 换鞍时新增的工具名会被静默丢弃、甚至整盘为空。
+    // `noTools: "builtin"` 才是正确口径：关掉默认内置工具（read/bash/edit/write）的自动激活，
+    // 同时不设白名单，让扩展/自定义工具可注册，激活集合完全由 `setActiveTools()` 决定。
+    const saddleTools = saddle ? buildSaddleTools(saddle) : [];
     const services = await createAgentSessionServices({
       cwd: effectiveCwd,
       modelRuntime,
+      settingsManager: createPiSettingsManager(effectiveCwd, agentDir),
       resourceLoaderOptions: {
         additionalSkillPaths: saddle?.skillsDir ? [saddle.skillsDir] : options.skillsDir ? [options.skillsDir] : [],
-        extensionFactories: [systemPromptExtensionFactory(() => pendingSaddle?.systemPrompt, () => pendingSaddle)],
+        extensionFactories: [
+          systemPromptExtensionFactory(
+            () => pendingSaddle?.systemPrompt,
+            () => pendingSaddle,
+            syncSaddleToolsOnPrompt,
+            (api) => {
+              extensionApi = api;
+            },
+          ),
+        ],
       },
     });
     let initialModel;
@@ -220,6 +372,8 @@ export async function createPiSdkSessionHost(
       sessionStartEvent,
       model: initialModel,
       thinkingLevel: saddle?.thinkingLevel as any,
+      customTools: saddleTools,
+      noTools: "builtin",
     });
     return {
       ...result,
@@ -236,28 +390,8 @@ export async function createPiSdkSessionHost(
 
   function adaptSession(): PiRuntimeSession {
     const session: any = runtime.session;
+    liveSession = session;
     const runtimeErrorListeners = new Set<(error: { message: string; command?: string; stack?: string }) => void>();
-    const sessionCwd = pendingSaddle?.cwd ?? fallbackCwd;
-    const workspaceRoot = pendingSaddle?.workspaceRoot ?? fallbackWorkspaceRoot;
-    const saddleTools: ToolDefinition[] = pendingSaddle
-      ? resolveToolDefinitions(pendingSaddle.tools, {
-          cwd: sessionCwd,
-          workspaceRoot,
-          skillsDir: pendingSaddle.skillsDir,
-          propose: async (request) =>
-            new Promise<ProposalDecision>((resolve, reject) => {
-              pendingProposals.set(request.requestId, { resolve, reject });
-              options.transport.postMessage(proposalEnvelope(request));
-            }),
-          connectorRead: async (request) =>
-            new Promise<ConnectorReadResult>((resolve, reject) => {
-              pendingConnectorReads.set(request.requestId, { resolve, reject });
-              options.transport.postMessage(connectorReadEnvelope(request));
-            }),
-          recordSessionEntry: (customType, data) => appendCustomEntryAndEmit(session, customType, data),
-        })
-      : [];
-    session.agent.state.tools = saddleTools;
     return {
       prompt: (text, promptOptions) => startPromptWithoutBlocking(
         session,
@@ -364,15 +498,16 @@ export async function createPiSdkSessionHost(
     current: () => adaptSession(),
     newSession: async () => {
       await runtime.newSession();
-      adaptSession();
+      applySaddleToCurrentSession();
     },
     switchSession: async (sessionPath: string) => {
       await runtime.switchSession(sessionPath);
-      adaptSession();
+      applySaddleToCurrentSession();
     },
     configureSaddle: async (saddle: SessionSaddle | null) => {
       pendingSaddle = saddle;
-      adaptSession();
+      // 换鞍后先做一次立即同步（旧鞍工具留在注册表但不再激活）；`before_agent_start` 还会再核一次。
+      applySaddleToCurrentSession();
     },
   };
 }

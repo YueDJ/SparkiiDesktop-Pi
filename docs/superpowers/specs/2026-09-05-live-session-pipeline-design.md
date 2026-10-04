@@ -12,7 +12,7 @@
 
 合同审核「必须等跑完、切走再回来才看到结果」，是这条管道把 Pi 事件压扁、且没把未落盘的 in-flight 算进起步的症状，不是某个 Agent 自己的进度 IPC 缺失。
 
-## Pi Facts（`@earendil-works/pi-coding-agent@0.84.4`）
+## Pi Facts（`@earendil-works/pi-coding-agent`；写就时 0.84.4，2026-10-04 在 1.0.2 上复核并更正下表中过时的一行）
 
 | 名字 | 实际是什么 |
 | --- | --- |
@@ -21,7 +21,7 @@
 | `buildContextEntries()` | 同一条 path，若有 compaction 则切掉 `firstKeptEntryId` 之前的前缀。TUI 起步用这个当「给模型看的工作上下文」 |
 | RPC `get_messages` | `session.messages` = `agent.state.messages`：喂给模型的线性对话。**不含**正在生成的 assistant，也**不含** `custom` 步骤行 |
 | in-flight | `session.agent.state.streamingMessage`。`message_start` / `message_update` 覆盖全文；`message_end` 先清空它，再 `messages.push`，然后 `appendMessage` 入树 |
-| JSONL | `fileEntries` 落盘。第一条 assistant 之前可能还不写文件；文件含 header 与废枝 |
+| JSONL | `fileEntries` 落盘。0.84.x 门槛是**第一条 assistant**；1.0.2 放宽为**首条 user 或 assistant**（`_hasConversation()`），即用户一发消息就建文件。文件含 header 与废枝 |
 | `entry_appended` | `appendCustomEntry` 之后需 `_emit` 才会进 subscribe（`pi.appendEntry` / 我们的 `appendCustomEntryAndEmit`）。`appendMessage` **不**发这条 |
 | `message_end` vs 入树 | 事件先于 `appendMessage`。TUI 注释：此时树上可能还没有这句 |
 

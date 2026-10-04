@@ -62,6 +62,41 @@ describe("PiRuntimePool", () => {
     expect(sent).toBeTruthy();
   });
 
+  it("retires a slot whose new_session fails instead of reusing it", async () => {
+    class FailingNewSessionHandle extends FakeHandle {
+      postMessage(e: PiRuntimeEnvelope) {
+        this.sent.push(e);
+        if ("command" in e) {
+          const command = (e as { command: { type: string } }).command;
+          this.emit(responseEnvelope(e.id, {
+            id: e.id,
+            type: "response",
+            command: command.type as never,
+            success: command.type !== "new_session",
+          }));
+        }
+      }
+    }
+    const handles: FakeHandle[] = [];
+    const pool = new PiRuntimePool({
+      maxAgents: 1,
+      makeSupervisor: () => {
+        const handle = new FailingNewSessionHandle();
+        handles.push(handle);
+        return handle;
+      },
+    });
+    await pool.acquire("a");
+    handles[0].ready();
+    await pool.release("a");
+
+    // 会话没能重置 ⇒ 槽位必须被摘掉（不能带着上一条会话的状态回池）
+    expect(pool.activeCount()).toBe(0);
+    const b = await pool.acquire("b");
+    expect(handles.length).toBe(2);
+    expect(pool.get("b")).toBe(b.client);
+  });
+
   it("reports the live session id through getSessionId", async () => {
     const handle = new FakeHandle();
     const pool = new PiRuntimePool({ maxAgents: 1, makeSupervisor: () => handle });
