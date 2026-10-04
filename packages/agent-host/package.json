@@ -3,11 +3,13 @@
   "version": "0.1.0",
   "type": "module",
   "main": "src/index.ts",
-  "scripts": { "test": "vitest run" },
+  "scripts": {
+    "test": "vitest run"
+  },
   "dependencies": {
+    "@earendil-works/pi-coding-agent": "^1.0.2",
     "@sparkii/approval": "workspace:*",
-    "@sparkii/connectors": "workspace:*",
-    "@earendil-works/pi-coding-agent": "^0.84.4"
+    "@sparkii/connectors": "workspace:*"
   },
   "devDependencies": {
     "@sparkii/config": "workspace:*",
