@@ -14,7 +14,7 @@
 
 成熟 agent 产品 Hermes 的本地数据目录里打包了：
 
-- `@earendil-works/pi-coding-agent@0.84.4`（Pi coding agent，与 Sparkii 同版本）
+- `@earendil-works/pi-coding-agent`（Pi coding agent；本文件写就时为 0.84.4，Sparkii 已于 2026-10-04 升级到 1.0.2）
 - Node.js 运行时（`node.exe` + `npm`/`pnpm`/`npx`）
 - `uv`（Python 工具链管理器）+ 一个预建的 Python `venv`
 - Portable Git for Windows（`bash.exe` / `git.exe` / `mingw64` / `usr`）
