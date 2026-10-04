@@ -262,11 +262,8 @@ export async function createPiSdkSessionHost(
     if (!extensionApi || !runtime) return;
     const saddle = pendingSaddle;
     if (!saddle) {
-      try {
-        extensionApi.setActiveTools([]);
-      } catch {
-        appliedSaddle = null;
-      }
+      appliedSaddle = null;
+      clearExposedTools();
       return;
     }
     if (saddle === appliedSaddle) return;
@@ -275,17 +272,26 @@ export async function createPiSdkSessionHost(
       definitions = buildSaddleTools(saddle);
     } catch (error) {
       appliedSaddle = null;
-      try {
-        extensionApi.setActiveTools([]);
-      } catch {
-        // API 已失效：交给下一次 before_agent_start 重新同步
-      }
+      clearExposedTools();
       throw error;
     }
     try {
       registerSaddleTools(extensionApi, saddle, definitions);
-    } catch {
+    } catch (error) {
+      // 装不上就必须响：宁可让 configure_session 失败（进程池会摘掉这个槽位），
+      // 也不能让会话停在"配置成功但模型看不到工具/还留着上一条会话的工具"的状态。
       appliedSaddle = null;
+      clearExposedTools();
+      throw error;
+    }
+  };
+
+  /** 尽力把模型可见工具清空；API 已失效时交给下一次 `before_agent_start` 重新同步。 */
+  const clearExposedTools = (): void => {
+    try {
+      extensionApi?.setActiveTools([]);
+    } catch {
+      // stale API：下一次 before_agent_start 会重建
     }
   };
 

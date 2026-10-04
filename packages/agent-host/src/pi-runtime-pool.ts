@@ -210,7 +210,10 @@ export class PiRuntimePool {
     slot.sessionId = null;
     let dead = false;
     try {
-      await slot.client.send({ type: "new_session" });
+      const response = await slot.client.send({ type: "new_session" });
+      // 子进程活着但会话没能重置（例如换鞍后再也装不上工具）：这个槽位不能带回池复用，
+      // 否则下一次 acquire 会绑到一个"清理失败"的会话上。
+      if (!response.success) dead = true;
     } catch {
       // 子进程已退出：不能把死槽放回空闲列表，否则下次 acquire 会一直绑到它上面失败。
       dead = true;
