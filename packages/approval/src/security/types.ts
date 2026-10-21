@@ -84,6 +84,8 @@ export interface WorkspacePathInfo {
   nearestExistingAncestor: string;
   isDirectory: boolean;
   isReparsePoint: boolean;
+  /** False only when the requested target itself does not exist yet. */
+  exists?: boolean;
 }
 
 export interface WorkspacePathProbe {
