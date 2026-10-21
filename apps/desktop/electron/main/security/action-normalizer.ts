@@ -117,9 +117,9 @@ function pathSegments(value: string): string[] {
   return value.replace(/\\/g, '/').split('/').filter(Boolean).map((part) => part.toLowerCase());
 }
 
-function isTrustAnchor(
+export function isTrustAnchorPath(
   value: string,
-  extraNames: string[],
+  extraNames: string[] = [],
 ): boolean {
   const segments = pathSegments(value);
   const names = new Set([
@@ -178,6 +178,7 @@ async function classifyPath(
   }
 
   const canonical = inspected.canonicalPath;
+  const parent = await options.probe.inspect(dirname(canonical));
   let critical = isSameOrParent(canonical, grant.workspaceRoot);
   if (!critical) {
     for (const root of options.protectedRoots) {
@@ -214,8 +215,9 @@ async function classifyPath(
     kind: 'path',
     value: canonical,
     identity: inspected.identity,
+    parentIdentity: parent.identity,
     scope,
-    ...(scope !== 'critical' && isTrustAnchor(canonical, options.trustAnchors ?? [])
+    ...(scope !== 'critical' && isTrustAnchorPath(canonical, options.trustAnchors ?? [])
       ? { trustAnchor: true }
       : {}),
   };

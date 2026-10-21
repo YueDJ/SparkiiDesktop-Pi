@@ -16,6 +16,7 @@ export interface ResourceRef {
   kind: ResourceKind;
   value: string;
   identity?: string;
+  parentIdentity?: string;
   scope: ResourceScope;
   /** Main-derived flag; Runtime payloads cannot set this. */
   trustAnchor?: boolean;
