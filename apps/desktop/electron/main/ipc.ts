@@ -2,7 +2,7 @@ import { ipcMain, dialog, app, shell, type BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm } from 'node:fs/promises';
-import { isAbsolute, join } from 'node:path';
+import { dirname, isAbsolute, join } from 'node:path';
 import { listPiSessions, readPiSessionEntries, connectorWriteProposal, type PiProviderInfo, type SessionSaddle, type ConnectorReadRequest, type ConnectorReadResult } from '@sparkii/agent-host';
 import { knowledgeConnector, sparkiiOntoConnector, SparkiiRagClient } from '@sparkii/connectors';
 import { applyThinkingLevel, createBroker, modelTargetKey, resolveModelTarget, resolveSessionModel, resolveThinkingLevel, runWorkflow, selectModel } from './workflow.js';
@@ -68,6 +68,9 @@ import {
   uninstallUserSkill,
 } from './skill-library.js';
 import type { AgentRuntime } from './agent-registry.js';
+import type { SecurityAction, TaskGrant } from '@sparkii/approval';
+import { createTaskGrant } from './security/task-grant-factory.js';
+import { createRuntimeActionRouter } from './security/runtime-action-router.js';
 
 /** 按后端探活：读该后端自己的配置块与凭据，再交给 `knowledge-probe`。 */
 async function probeKnowledgeConnection(
@@ -175,6 +178,135 @@ function userLibraryAgent(rt: Runtime): AgentRuntime | null {
 
 export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, logger: Logger) {
   const broker = createBroker(rt, getWindow);
+  const actionRouter = rt.security
+    ? createRuntimeActionRouter({
+      lifecycle: rt.security.taskLifecycle,
+      normalizer: rt.security.actionNormalizer,
+      profilePolicyOf: (profileId) =>
+        rt.security?.profilePolicies.get(profileId)
+        ?? { mode: 'strict', requireApproval: [] },
+      platformReady: (action) =>
+        Boolean(
+          rt.security
+          && rt.security.profilePolicies.has(action.profileId)
+          && rt.security.platformReadyFor(action),
+        ),
+      async execute(action, grant) {
+        if (!rt.security) throw new Error('platform security unavailable');
+        if (action.capability !== 'fs.write') {
+          throw new Error(`execution backend unavailable for ${action.capability}`);
+        }
+        return {
+          result: await rt.security.workspaceExecutor.execute(action, grant),
+        };
+      },
+      async requestApproval(action) {
+        const decision = await broker.request({
+          requestId: action.id,
+          toolName: action.toolName,
+          targetSystem: `platform:${action.capability}`,
+          summary: action.reason,
+          preview: {
+            kind: 'text',
+            lines: action.resources.map((resource) =>
+              `${resource.scope}: ${resource.value}`),
+          },
+          payload: action.payload,
+          risk: action.risk,
+          executionMode: 'caller',
+        }, {
+          sessionId: action.sessionId,
+          profileId: action.profileId,
+        });
+        return { approved: decision.approved };
+      },
+      async revalidate(action, grant) {
+        if (!rt.security) return false;
+        try {
+          for (const resource of action.resources) {
+            if (resource.kind !== 'path') continue;
+            const inspected = await rt.security.pathProbe.inspect(resource.value);
+            if (resource.identity && inspected.identity !== resource.identity) {
+              return false;
+            }
+            if (resource.parentIdentity) {
+              const parent = await rt.security.pathProbe.inspect(
+                dirname(inspected.canonicalPath),
+              );
+              if (parent.identity !== resource.parentIdentity) return false;
+            }
+          }
+          const root = await rt.security.pathProbe.inspect(grant.workspaceRoot);
+          const liveTask = rt.security.taskLifecycle.assertActive(
+            grant.sessionId,
+            grant.taskId,
+          );
+          const expectedIdentity = rt.security.workspaceExecutor
+            .liveWorkspaceIdentity(grant.taskId)
+            ?? liveTask.workspaceIdentity;
+          return root.identity === expectedIdentity
+            || root.exists === false;
+        } catch {
+          return false;
+        }
+      },
+      audit: rt.audit,
+      actor: () => rt.subject?.userId ?? 'agent',
+    })
+    : null;
+
+  const bindRuntimeActions = (
+    slot: Awaited<ReturnType<typeof rt.pool.acquire>>,
+    sessionId: string,
+  ): void => {
+    if (typeof slot.supervisor.onAction !== 'function') return;
+    slot.supervisor.onAction(async (request) => {
+      if (!actionRouter) {
+        return {
+          requestId: request.requestId,
+          status: 'denied' as const,
+          decision: {
+            decision: 'deny' as const,
+            ruleId: 'platform.security-unavailable',
+            reason: 'Main security layer is unavailable',
+          },
+        };
+      }
+      return actionRouter.route(request, sessionId);
+    });
+  };
+
+  const startSessionTask = async (
+    sessionId: string,
+    profileId: string,
+    replace: boolean,
+  ): Promise<void> => {
+    const security = rt.security;
+    if (!security) return;
+    if (!replace && security.taskLifecycle.active(sessionId)) return;
+    const rec = rt.chatSessions.get(sessionId);
+    if (!rec) throw new Error('session not found');
+    const workspacePath = rec?.workspacePath;
+    if (!workspacePath) throw new Error('session workspace missing');
+    const policy = security.profilePolicies.get(profileId);
+    if (!policy) throw new Error(`no security policy for profile ${profileId}`);
+    const inputs = parseSessionInputs(rec?.inputs).flatMap((input) =>
+      typeof input?.path === 'string' && input.path.length > 0
+        ? [input.path]
+        : [],
+    );
+    await security.taskLifecycle.start(() => createTaskGrant({
+      sessionId,
+      agentId: profileId,
+      profileId,
+      mode: policy.mode ?? 'standard',
+      workspacePath,
+      scratchParent: security.scratchParent,
+      inputRoots: inputs,
+      protectedRoots: security.protectedRoots,
+      probe: security.pathProbe,
+    }));
+  };
   const win = getWindow();
   if (win) {
     win.on('maximize', () => {
@@ -334,6 +466,9 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       if (!sessionId) return;
       getWindow()?.webContents.send('sparkii:event:chat-event', { ...ev, sessionId });
       if (ev.type === 'agent_settled') {
+        void rt.security?.taskLifecycle
+          .end(sessionId, 'session-ended')
+          .catch(() => {});
         void persistHitTurn(sessionId);
         if (!inFlightWorkflowRuns.has(sessionId)) {
           scheduleIdleRelease(sessionId);
@@ -345,6 +480,9 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       const sessionId = slot.getSessionId();
       void logger.log({ level: 'error', msg: 'pi runtime exited', ctx: { sessionId, code } });
       if (!sessionId) return;
+      void rt.security?.taskLifecycle
+        .end(sessionId, 'runtime-released')
+        .catch(() => {});
       // 子进程没了就问不到 sessionFile，也不去抢救 streamingMessage：JSONL 是唯一的账。
       cancelIdleRelease(sessionId);
       openSessions.delete(sessionId);
@@ -629,6 +767,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       const open = await ensureOpenSession(sessionId);
       ensureProcessPipe(open.slot);
       open.slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId: open.profileId }));
+      bindRuntimeActions(open.slot, sessionId);
       open.slot.supervisor.onConnectorRead?.((req) => handleConnectorRead(req, open.profileId, sessionId));
       const rec = rt.chatSessions.get(sessionId);
       const target = rec?.model
@@ -686,6 +825,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       openSessions.set(createdSessionId, entry);
       ensureProcessPipe(slot);
       slot.supervisor.onProposal((req) => broker.route(req, { sessionId: createdSessionId!, profileId }));
+      bindRuntimeActions(slot, createdSessionId!);
       slot.supervisor.onConnectorRead?.((req) => handleConnectorRead(req, profileId, createdSessionId!));
       await mkdir(anchorDir(createdSessionId), { recursive: true });
       rt.chatSessions.create({
@@ -838,6 +978,11 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     const state = chatStateData(stateResp.data);
     const isStreaming = state.isStreaming ?? state.streaming ?? false;
     const behavior = options?.behavior ?? (isStreaming ? 'followUp' : 'prompt');
+    await startSessionTask(
+      resolvedSessionId,
+      open.profileId,
+      behavior === 'prompt',
+    );
 
     if (behavior === 'steer') {
       const resp = await open.slot.client.send(images.length
@@ -871,6 +1016,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   });
 
   ipcMain.handle('sparkii:abortChat', async (_e, sessionId: string) => {
+    await rt.security?.taskLifecycle.end(sessionId, 'user');
     await getDocumentParseSupervisor().failSession(sessionId);
     const open = await ensureOpenSession(sessionId);
     ensureProcessPipe(open.slot);
@@ -1025,6 +1171,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   ipcMain.handle('sparkii:setChatWorkspace', async (_e, sessionId: string, path: string | null) => {
     const rec = rt.chatSessions.get(sessionId);
     if (!rec) throw new Error('session not found');
+    await rt.security?.taskLifecycle.end(sessionId, 'workspace-changed');
     if (path) {
       rt.chatSessions.update(sessionId, { workspaceKind: 'user', workspacePath: path });
     } else {
@@ -1205,6 +1352,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   });
 
   ipcMain.handle('sparkii:deleteChatSession', async (_e, sessionId: string) => {
+    await rt.security?.taskLifecycle.end(sessionId, 'session-ended');
     cancelIdleRelease(sessionId);
     const open = openSessions.get(sessionId);
     if (open) {
@@ -1306,6 +1454,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   });
 
   async function releaseSessionSlotInternal(sessionId: string): Promise<void> {
+    await rt.security?.taskLifecycle.end(sessionId, 'runtime-released');
     await getDocumentParseSupervisor().failSession(sessionId);
     if (!rt.pool.get(sessionId)) throw new Error('session is not occupying a runtime slot');
     cancelIdleRelease(sessionId);
@@ -1395,7 +1544,11 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   ipcMain.handle('sparkii:decideApproval', async (_e, id: string, approved: boolean, note?: string) => {
     let out = await rt.gate.decide(id, rt.subject, approved, note);
     let result: unknown;
-    if (out.status === 'approved' && out.toolName !== 'workflow.approval') {
+    if (
+      out.status === 'approved'
+      && out.executionMode !== 'caller'
+      && out.toolName !== 'workflow.approval'
+    ) {
       if (out.toolName === 'report.export') {
         const payload = (out.payload ?? {}) as Record<string, unknown>;
         const suggested = typeof payload.path === 'string' && payload.path.trim() ? payload.path : undefined;
@@ -1607,6 +1760,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       meta: profilePoolMeta(rt, profileId),
     });
     slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId }));
+    bindRuntimeActions(slot, sessionId);
     slot.supervisor.onConnectorRead?.((req) => handleConnectorRead(req, profileId, sessionId));
     try {
       await selectModel(rt, 'chat', sessionId);
@@ -1624,6 +1778,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         });
       });
     } finally {
+      await rt.security?.taskLifecycle.end(sessionId, 'session-ended');
       await rt.pool.release(sessionId);
     }
     return { ok: true };
@@ -1639,14 +1794,17 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       workspacePath,
       workspaceKind: input.workspaceKind === 'user' ? 'user' : 'auto',
     }, broker, profileId, {
-      onReady(id, slot) {
+      async onReady(id, slot) {
         inFlightWorkflowRuns.add(id);
         const entry = { slot, profileId };
         openSessions.set(id, entry);
         ensureProcessPipe(slot);
+        bindRuntimeActions(slot, id);
+        await startSessionTask(id, profileId, true);
       },
       logger,
       async beforeRelease(id) {
+        await rt.security?.taskLifecycle.end(id, 'session-ended');
         // workflow 跑完由 workflow.ts 调 pool.release；这里先让窗口停转圈，管子留给下一条会话。
         inFlightWorkflowRuns.delete(id);
         if (!openSessions.has(id)) return;

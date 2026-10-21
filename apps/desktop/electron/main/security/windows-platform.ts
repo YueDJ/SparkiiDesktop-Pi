@@ -2,7 +2,6 @@ import {
   lstat,
   realpath,
   stat,
-  type Stats,
 } from 'node:fs/promises';
 import { win32 } from 'node:path';
 import type {
@@ -69,10 +68,18 @@ export function windowsPathKey(value: string): string {
   return normalized.replace(/\/+$/, normalized.endsWith('/') ? '/' : '').toLowerCase();
 }
 
-function objectIdentity(stats: Stats): string {
-  const big = stats as Stats & { dev?: bigint; ino?: bigint };
-  if (big.ino && big.ino !== 0n) return `win-object:${big.dev ?? 0}:${big.ino}`;
-  return `win-stat:${stats.mode}:${stats.size}:${stats.mtimeMs}`;
+interface IdentityStats {
+  dev?: number | bigint;
+  ino?: number | bigint;
+  mode: number | bigint;
+  size: number | bigint;
+  mtimeMs: number | bigint;
+}
+
+function objectIdentity(stats: IdentityStats): string {
+  const ino = BigInt(stats.ino ?? 0);
+  if (ino !== 0n) return `win-object:${String(stats.dev ?? 0)}:${ino}`;
+  return `win-stat:${String(stats.mode)}:${String(stats.size)}:${String(stats.mtimeMs)}`;
 }
 
 async function nearestExisting(target: string): Promise<{

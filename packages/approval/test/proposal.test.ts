@@ -43,4 +43,21 @@ describe('proposal', () => {
     expect(p.requestId).toBe('r42');
     expect(p.payloadHash).toBe(hashPayload(payload));
   });
+
+  it('defaults execution to the proposal executor and supports caller execution', () => {
+    const base = {
+      requestId: 'r1',
+      toolName: 'write',
+      targetSystem: 'platform',
+      summary: 'write',
+      payload: { path: 'a' },
+      risk: 'write' as const,
+    };
+    expect(createProposal(base, { profileId: 'p', sessionId: 's' }).executionMode)
+      .toBe('proposal');
+    expect(createProposal(
+      { ...base, executionMode: 'caller' },
+      { profileId: 'p', sessionId: 's' },
+    ).executionMode).toBe('caller');
+  });
 });

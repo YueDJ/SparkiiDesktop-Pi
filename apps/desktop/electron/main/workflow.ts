@@ -330,7 +330,10 @@ export function resolveWorkflowTemplates(def: WorkflowDef): WorkflowDef {
 }
 
 export interface WorkflowRunHooks {
-  onReady?: (sessionId: string, slot: Awaited<ReturnType<Runtime['pool']['acquire']>>) => void;
+  onReady?: (
+    sessionId: string,
+    slot: Awaited<ReturnType<Runtime['pool']['acquire']>>,
+  ) => void | Promise<void>;
   beforeRelease?: (sessionId: string) => void | Promise<void>;
   logger?: Pick<Logger, 'log'>;
 }
@@ -397,7 +400,7 @@ export async function runWorkflow(
       piSessionFile: sessionFile ?? null,
     });
     slot.supervisor.onProposal((req) => broker.route(req, { sessionId: sessionId!, profileId }));
-    opts?.onReady?.(sessionId, slot);
+    await opts?.onReady?.(sessionId, slot);
   } catch (err) {
     if (sessionId) await opts?.beforeRelease?.(sessionId);
     await rt.pool.release(sessionId ?? tempKey);

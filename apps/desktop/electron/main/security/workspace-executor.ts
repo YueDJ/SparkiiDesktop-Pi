@@ -62,6 +62,7 @@ export interface WorkspaceExecutor {
     action: SecurityAction,
     grant: TaskGrant,
   ): Promise<WorkspaceExecutionResult>;
+  liveWorkspaceIdentity(taskId: string): string | undefined;
 }
 
 function pathKey(value: string): string {
@@ -323,6 +324,7 @@ export function createWorkspaceExecutor(opts: {
   };
 
   return {
+    liveWorkspaceIdentity: (taskId) => liveWorkspaceIdentity.get(taskId),
     async execute(action, grant) {
       if (action.capability !== 'fs.write') {
         throw new WorkspaceExecutionError(

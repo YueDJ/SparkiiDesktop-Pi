@@ -60,5 +60,6 @@ export function decisionStatus(
   executed = false,
 ): ActionExecutionStatus {
   if (executed) return 'executed';
-  return decision === 'allow' ? 'allowed' : decision;
+  if (decision === 'allow') return 'allowed';
+  return decision === 'deny' ? 'denied' : 'ask';
 }

@@ -1,11 +1,18 @@
 import { delimiter, dirname, join } from "node:path";
 import { existsSync } from "node:fs";
-import { userInfo } from "node:os";
+import { homedir, userInfo } from "node:os";
 import { fileURLToPath } from "node:url";
 import { loadProfile } from "@sparkii/config";
 import { ModelRouter, normalizeRouting } from "@sparkii/model-router";
 import { Rbac, type Subject } from "@sparkii/identity";
-import { ApprovalGate, ConnectorExecutor, AuditStore } from "@sparkii/approval";
+import {
+  ApprovalGate,
+  ConnectorExecutor,
+  AuditStore,
+  TaskGrantRegistry,
+  type PlatformProfilePolicy,
+  type SecurityAction,
+} from "@sparkii/approval";
 import { PiRuntimePool } from "@sparkii/agent-host";
 import { knowledgeConnector } from "@sparkii/connectors";
 import { createUtilityHostHandle, createForkHostHandle } from "../pi-runtime/transports.js";
@@ -19,6 +26,21 @@ import { registerGeneralExecutor } from "./general-executor.js";
 import { resolveRuntimeToolsDir } from "./runtime-layout.js";
 import { loadAgentRuntimes, type AgentRuntime } from "./agent-registry.js";
 import type { KnowledgeBackendId } from "./knowledge-settings.js";
+import {
+  DEFAULT_TOOL_DESCRIPTORS,
+  createActionNormalizer,
+  type ActionNormalizer,
+} from "./security/action-normalizer.js";
+import {
+  createWindowsPathProbe,
+  windowsProtectedRoots,
+} from "./security/windows-platform.js";
+import {
+  createWorkspaceExecutor,
+  type WorkspaceExecutor,
+} from "./security/workspace-executor.js";
+import { normalizeProfilePolicy } from "./security/profile-policy.js";
+import { TaskLifecycle } from "./security/task-lifecycle.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -41,6 +63,19 @@ export interface Runtime {
   setKey(providerId: string, key: string): Promise<void>;
   knowledgeToken(backend: KnowledgeBackendId): Promise<string | null>;
   setKnowledgeToken(backend: KnowledgeBackendId, token: string): Promise<void>;
+  security?: RuntimeSecurity;
+}
+
+export interface RuntimeSecurity {
+  pathProbe: ReturnType<typeof createWindowsPathProbe>;
+  protectedRoots: ReturnType<typeof windowsProtectedRoots>;
+  actionNormalizer: ActionNormalizer;
+  workspaceExecutor: WorkspaceExecutor;
+  taskGrants: TaskGrantRegistry;
+  taskLifecycle: TaskLifecycle;
+  profilePolicies: Map<string, PlatformProfilePolicy>;
+  scratchParent: string;
+  platformReadyFor(action: SecurityAction): boolean;
 }
 
 export interface KeyStore {
@@ -141,8 +176,13 @@ export async function assemble(opts: {
   }), { dataDir: opts.dataDir });
   const audit = new AuditStore(join(opts.dataDir, "audit.db"));
   const gate = new ApprovalGate({ audit });
+  const profilePolicies = new Map<string, PlatformProfilePolicy>();
   for (const [id, pr] of profiles) {
     gate.configureProfile(id, { policy: pr.profile.security.approval, rbac: pr.rbac });
+    profilePolicies.set(
+      id,
+      normalizeProfilePolicy(pr.profile.security.approval, DEFAULT_TOOL_DESCRIPTORS),
+    );
   }
   const executor = new ConnectorExecutor(audit);
   const installedTools = new Set([...agents.values()].flatMap((agent) => agent.tools));
@@ -180,6 +220,48 @@ export async function assemble(opts: {
   });
   const keyStore = createKeyStore(keyring);
   const knowledgeSecrets = createKnowledgeSecretStore(keyring, keyStore);
+  let security: RuntimeSecurity | undefined;
+  if (process.platform === 'win32') {
+    const home = homedir();
+    const localAppData = process.env.LOCALAPPDATA
+      ?? join(home, 'AppData', 'Local');
+    const appData = process.env.APPDATA
+      ?? join(home, 'AppData', 'Roaming');
+    const volumes = [...new Set([
+      process.env.SystemDrive ? `${process.env.SystemDrive}/` : 'C:/',
+    ])];
+    const options = {
+      home,
+      windowsDir: process.env.SystemRoot ?? 'C:/Windows',
+      programFiles: process.env.ProgramFiles ?? 'C:/Program Files',
+      programFilesX86: process.env['ProgramFiles(x86)'],
+      programData: process.env.ProgramData ?? 'C:/ProgramData',
+      appData,
+      localAppData,
+      dataDir: opts.dataDir,
+      volumes,
+    };
+    const pathProbe = createWindowsPathProbe(options);
+    const protectedRoots = windowsProtectedRoots(options);
+    const taskGrants = new TaskGrantRegistry();
+    security = {
+      pathProbe,
+      protectedRoots,
+      actionNormalizer: createActionNormalizer({
+        descriptors: DEFAULT_TOOL_DESCRIPTORS,
+        protectedRoots,
+        probe: pathProbe,
+      }),
+      workspaceExecutor: createWorkspaceExecutor({ probe: pathProbe }),
+      taskGrants,
+      taskLifecycle: new TaskLifecycle(taskGrants),
+      profilePolicies,
+      scratchParent: join(opts.dataDir, 'tasks'),
+      platformReadyFor: (action) =>
+        action.capability === 'fs.read'
+        || action.capability === 'fs.write',
+    };
+  }
   return {
     profiles, agents, gate, executor, audit, pool,
     subject: { userId: userInfo().username, roles: ["admin", "reviewer"] },
@@ -198,5 +280,6 @@ export async function assemble(opts: {
     setKey: keyStore.setKey,
     knowledgeToken: knowledgeSecrets.knowledgeToken,
     setKnowledgeToken: knowledgeSecrets.setKnowledgeToken,
+    security,
   };
 }

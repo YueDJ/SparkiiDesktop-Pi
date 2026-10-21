@@ -27,7 +27,7 @@ export interface RuntimeActionRouterOptions {
   lifecycle: TaskLifecycle;
   normalizer: ActionNormalizer;
   profilePolicyOf(profileId: string): PlatformProfilePolicy;
-  platformReady(): boolean;
+  platformReady(action: SecurityAction): boolean;
   execute(
     action: SecurityAction,
     grant: TaskGrant,
@@ -109,7 +109,7 @@ export function createRuntimeActionRouter(
         action,
         grant,
         profilePolicy: options.profilePolicyOf(grant.profileId),
-        platformReady: options.platformReady(),
+        platformReady: options.platformReady(action),
         now: options.now?.() ?? Date.now(),
       });
 
