@@ -655,7 +655,7 @@ describe('runWorkflow session id and JSONL', () => {
 });
 
 describe('broker presentation contract', () => {
-  it('fills edit/write preview from the computed diff and does not override an existing one', async () => {
+  it('does not revive proposal-first edit/write semantics from Runtime requests', async () => {
     const { rt, getWindow } = makeHarness({ steps: [] });
     const submitted: any[] = [];
     rt.gate.submit = async (req: any) => {
@@ -666,7 +666,7 @@ describe('broker presentation contract', () => {
     const file = join(rt.dataDir, 'a.txt');
     await writeFile(file, 'old\n');
 
-    const first = broker.route({
+    const first = await broker.route({
       requestId: 'r1',
       toolName: 'edit',
       targetSystem: 'general',
@@ -674,16 +674,9 @@ describe('broker presentation contract', () => {
       payload: { path: file, content: 'new\n' },
       risk: 'write',
     }, { sessionId: 's1', profileId: 'contract-review' });
-    await waitUntil(() => submitted.length === 1);
-    expect(submitted[0].preview.kind).toBe('diff');
-    expect(submitted[0].preview.lines).toEqual(expect.arrayContaining([expect.stringMatching(/^[+-]/)]));
-    expect(submitted[0].payload.diff).toEqual(expect.any(String));
-    expect(submitted[0].payload.diff).toContain('+new');
-    broker.decide('p1', { approved: false, status: 'denied' });
-    await first;
+    expect(first).toMatchObject({ approved: false, status: 'denied' });
 
-    submitted.length = 0;
-    const second = broker.route({
+    const second = await broker.route({
       requestId: 'r2',
       toolName: 'write',
       targetSystem: 'general',
@@ -692,10 +685,8 @@ describe('broker presentation contract', () => {
       payload: { path: file, content: 'other\n' },
       risk: 'write',
     }, { sessionId: 's1', profileId: 'contract-review' });
-    await waitUntil(() => submitted.length === 1);
-    expect(submitted[0].preview).toEqual({ kind: 'diff', lines: ['custom'] });
-    broker.decide('p1', { approved: false, status: 'denied' });
-    await second;
+    expect(second).toMatchObject({ approved: false, status: 'denied' });
+    expect(submitted).toEqual([]);
   });
 
   it('does not scan payload.diff to invent preview for other tools', async () => {

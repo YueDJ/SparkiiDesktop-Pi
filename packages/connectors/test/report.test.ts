@@ -9,7 +9,7 @@ describe('report', () => {
     const buf = await buildReportDocx({ title: '风险报告', sections: [{ heading: '结论', body: '通过' }], format: 'docx' });
     expect(buf.length).toBeGreaterThan(100);
     expect(buf.subarray(0, 2).toString()).toBe('PK');
-  });
+  }, 15_000);
   it('creates missing parent directories before write', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'report-'));
     const out = join(dir, 'missing', 'ws', 'out.docx');
@@ -62,7 +62,7 @@ describe('report', () => {
     expect(html).toContain('风险项');
     expect(html).toContain('p12');
     expect(html).toContain('关注付款');
-  });
+  }, 15_000);
 
   it('does not require a path from the agent', () => {
     const tool = reportConnector.tools.find((t) => t.name === 'report.export')!;

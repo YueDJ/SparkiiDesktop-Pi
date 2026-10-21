@@ -15,12 +15,13 @@ import {
   relative,
   resolve,
 } from 'node:path';
-import type {
-  ResourceRef,
-  SecurityAction,
-  TaskGrant,
-  WorkspacePathInfo,
-  WorkspacePathProbe,
+import {
+  hashPayload,
+  type ResourceRef,
+  type SecurityAction,
+  type TaskGrant,
+  type WorkspacePathInfo,
+  type WorkspacePathProbe,
 } from '@sparkii/approval';
 import { isTrustAnchorPath } from './action-normalizer.js';
 
@@ -30,6 +31,7 @@ export type WorkspaceExecutionCode =
   | 'CRITICAL_TARGET'
   | 'TRUST_ANCHOR'
   | 'TARGET_CHANGED'
+  | 'PAYLOAD_CHANGED'
   | 'PARENT_CHANGED'
   | 'REPARSE_POINT'
   | 'HARDLINK_ALIAS'
@@ -340,6 +342,12 @@ export function createWorkspaceExecutor(opts: {
         throw new WorkspaceExecutionError(
           'UNSUPPORTED_TOOL',
           `workspace executor cannot perform ${action.capability}`,
+        );
+      }
+      if (hashPayload(action.payload) !== action.payloadHash) {
+        throw new WorkspaceExecutionError(
+          'PAYLOAD_CHANGED',
+          'action payload changed after normalization',
         );
       }
       await verifyWorkspaceRoot(grant);

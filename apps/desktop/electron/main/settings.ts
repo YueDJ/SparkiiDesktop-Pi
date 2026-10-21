@@ -30,8 +30,8 @@ export interface AppSettings {
     bindings?: Array<{ agentId: string; defaultDatasetId: string }>;
   };
   documentParse?: {
-    idleMinutes: number;
-    keepResident: boolean;
+    idleMinutes?: number;
+    keepResident?: boolean;
   };
 }
 

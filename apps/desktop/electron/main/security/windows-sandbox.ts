@@ -12,7 +12,6 @@ import {
 } from 'node:fs/promises';
 import { existsSync, readdirSync } from 'node:fs';
 import {
-  basename,
   dirname,
   join,
   relative,

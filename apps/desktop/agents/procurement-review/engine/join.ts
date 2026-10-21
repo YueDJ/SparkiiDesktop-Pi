@@ -31,7 +31,11 @@ function resolveQty(
   field: 'stock' | 'usage',
   conflicts: Conflict[],
 ): { value: number | null; pull: number | null; upload: number | null } {
-  const { pull, upload } = sumBySource(rows, code, (r) => r.qty);
+  const { pull, upload } = sumBySource(
+    rows as Array<{ code: string; source: SourceKind; qty: number }>,
+    code,
+    (r) => r.qty,
+  );
   if (pull !== null && upload !== null && pull !== upload) {
     conflicts.push({ code, field, pull, upload });
   }

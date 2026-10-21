@@ -25,7 +25,6 @@ import {
   type ProposalDecision,
 } from "./pi-runtime-transport.js";
 import {
-  actionResultEnvelope,
   runtimeActionEnvelope,
   type ActionExecutionResult,
   type RuntimeActionRequest,

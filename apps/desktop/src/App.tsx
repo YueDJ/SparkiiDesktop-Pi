@@ -436,7 +436,6 @@ function AppShell() {
   useEffect(() => {
     if (!agents.length) return;
     for (const a of agents) refreshSessions(a.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agents]);
 
   const derivedAgents = agents.map((a) => {

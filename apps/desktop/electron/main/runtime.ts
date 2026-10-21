@@ -25,7 +25,7 @@ import { ErrorStore } from "./error-store.js";
 import { Keyring } from "./keyring.js";
 import { loadSettings } from "./settings.js";
 import { loadApiKey, saveApiKey } from "./settings.js";
-import { resolveRuntimeToolsDir } from "./runtime-layout.js";
+import { resolveRuntimePaths, resolveRuntimeToolsDir } from "./runtime-layout.js";
 import { loadAgentRuntimes, type AgentRuntime } from "./agent-registry.js";
 import type { KnowledgeBackendId } from "./knowledge-settings.js";
 import {

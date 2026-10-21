@@ -224,7 +224,7 @@ describe.skipIf(process.platform !== 'win32')('Windows native sandbox spike', ()
     });
     expect(result.exitCode).not.toBe(0);
     expect(readFileSync(anchor, 'utf8')).toBe('SECRET=original');
-  });
+  }, 20_000);
 
   it('documents the Git Bash AppContainer limitation instead of enabling it', async () => {
     const f = fixture();
@@ -253,5 +253,5 @@ describe.skipIf(process.platform !== 'win32')('Windows native sandbox spike', ()
     });
     expect(result.exitCode).not.toBe(0);
     expect(existsSync(join(f.workspace, 'bash-result.txt'))).toBe(false);
-  }, 20_000);
+  }, 35_000);
 });

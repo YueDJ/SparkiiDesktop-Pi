@@ -330,11 +330,11 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     if (!workspacePath) throw new Error('session workspace missing');
     const policy = security.profilePolicies.get(profileId);
     if (!policy) throw new Error(`no security policy for profile ${profileId}`);
-    const inputs = parseSessionInputs(rec?.inputs).flatMap((input) =>
-      typeof input?.path === 'string' && input.path.length > 0
-        ? [input.path]
-        : [],
-    );
+    const rawInputs = rec?.inputs;
+    const inputs = (parseSessionInputs(rawInputs ?? undefined) ?? []).flatMap((input) => {
+      const path = input?.path;
+      return typeof path === 'string' && path.length > 0 ? [path] : [];
+    });
     const grant = await security.taskLifecycle.start(() => createTaskGrant({
       sessionId,
       agentId: profileId,
@@ -1644,9 +1644,11 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       }
       if (out.execution?.error !== 'export path canceled') {
         if (rt.security) {
+          let grant: TaskGrant | undefined;
+          let action: SecurityAction | undefined;
           try {
-            const grant = rt.security.taskLifecycle.assertActive(out.sessionId);
-            const action: SecurityAction = {
+            grant = rt.security.taskLifecycle.assertActive(out.sessionId);
+            action = {
               id: out.id,
               taskId: grant.taskId,
               sessionId: out.sessionId,
@@ -1697,11 +1699,11 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
               resource: out.toolName,
               payloadSummary: message,
               sessionId: out.sessionId,
-              taskId: grant.taskId,
-              actionId: action.id,
+              taskId: grant?.taskId,
+              actionId: action?.id,
               ruleId: 'gateway.execution-blocked',
-              capability: action.capability,
-              payloadHash: action.payloadHash,
+              capability: action?.capability,
+              payloadHash: action?.payloadHash,
               platform: rt.security.sandboxReport.platform,
               sandboxVersion: rt.security.sandboxReport.version,
               decision: 'failed',

@@ -39,10 +39,19 @@ export type StandardChatProps = AgentSurfaceProps & {
   hideToolNames?: string[];
   composerSkills?: Array<{ name: string; description: string }> | null;
   renderAssistantMessage?(args: {
-    entry: Extract<ChatEntry, { kind: 'message'; role: 'assistant' }>;
+    entry: AssistantChatEntry;
     following: CustomSessionEntry[];
   }): ReactNode;
   renderCustomEntry?(entry: CustomSessionEntry): ReactNode | null;
+};
+
+export type AssistantChatEntry = {
+  kind: 'message';
+  id: string;
+  role: 'assistant';
+  text: string;
+  thinking?: string;
+  streaming: boolean;
 };
 
 function isChatEntry(e: SessionEntry): e is ChatEntry {
@@ -59,14 +68,16 @@ function followingCustomsUntilMessage(entries: SessionEntry[], start: number): C
   }
   let lo = 0;
   for (let j = start - 1; j >= 0; j--) {
-    if (entries[j].kind === 'message' && entries[j].role === 'user') {
+    const candidate = entries[j];
+    if (candidate?.kind === 'message' && candidate.role === 'user') {
       lo = j + 1;
       break;
     }
   }
   let hi = entries.length;
   for (let j = start + 1; j < entries.length; j++) {
-    if (entries[j].kind === 'message' && entries[j].role === 'user') {
+    const candidate = entries[j];
+    if (candidate?.kind === 'message' && candidate.role === 'user') {
       hi = j;
       break;
     }
@@ -715,7 +726,7 @@ export function StandardChatSurface(props: StandardChatProps) {
         for (const custom of following) foldedCustomIds.add(custom.id);
       }
       const rendered = renderAssistantMessage
-        ? renderAssistantMessage({ entry, following })
+        ? renderAssistantMessage({ entry: entry as AssistantChatEntry, following })
         : <ChatMessage role="assistant" text={entry.text} thinking={entry.thinking} streaming={entry.streaming}><Markdown text={entry.text} /></ChatMessage>;
       timeline.push(
         isValidElement(rendered)

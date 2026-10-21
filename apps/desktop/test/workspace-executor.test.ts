@@ -188,6 +188,18 @@ describe('WorkspaceExecutor', () => {
     )).rejects.toMatchObject({ code: 'PARENT_CHANGED' });
   });
 
+  it('rejects a payload whose hash no longer matches the normalized action', async () => {
+    const s = setup();
+    const target = join(s.workspace, 'a.txt');
+    writeFileSync(target, 'old');
+    const executor = createWorkspaceExecutor({ probe: probe() });
+    await expect(executor.execute({
+      ...action('write', { path: target, content: 'new' }, [resource(target)]),
+      payloadHash: 'not-the-payload-hash',
+    }, s.grant)).rejects.toMatchObject({ code: 'PAYLOAD_CHANGED' });
+    expect(readFileSync(target, 'utf8')).toBe('old');
+  });
+
   it('rejects reparse targets and trust-anchor paths', async () => {
     const s = setup();
     const target = join(s.workspace, 'link.txt');

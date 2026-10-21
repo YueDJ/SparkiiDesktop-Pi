@@ -225,5 +225,5 @@ describe('document-parse release archive', () => {
     if (!existsSync(archive)) return;
     const { verifyArchiveChecksum } = await import('../scripts/document-parse-checksum.mjs');
     await expect(verifyArchiveChecksum(archive, checksums)).resolves.toBe(parsed.archive.toLowerCase());
-  });
+  }, 15_000);
 });

@@ -21,9 +21,9 @@ vi.mock('@sparkii/agent-host', async (importOriginal) => {
   };
 });
 
-vi.mock('electron', () => {
-  const { join } = require('node:path') as typeof import('node:path');
-  const { tmpdir } = require('node:os') as typeof import('node:os');
+vi.mock('electron', async () => {
+  const { join } = await import('node:path');
+  const { tmpdir } = await import('node:os');
   const handlers = new Map<string, (...args: unknown[]) => unknown>();
   return {
     getHandlers: () => handlers,
