@@ -192,6 +192,8 @@ export function parseFactTable(
 ): FactTables[typeof kind];
 ```
 
+`parsePlanTable` 行 id 为 `plan-${n}`（1-based），不因编码重复而碰撞。Hit id 为 `h-{dim}-{line.id}-{suffix}`。
+
 `query`：`policyKb === null` 为 `""`；否则用各行 `name`、`qty * unitPrice`、`applicant` 拼一句，≤200 字。
 
 默认 `rules.yaml` 与 `DEFAULT_RULES` 相同：
@@ -229,9 +231,9 @@ stockStaleDays: 7
 
 拉取与上传数字不一致 → `conflicts[]` 必有。**计算用 upload 那一侧的数**（有 upload 时）；cite.label 必须同时写出 pull 与 upload。没有 upload 才用 pull。不得丢任一侧。
 
-库存过期：用 `requestDate`（若缺则用 `pack.asOf`）对比 `stock.asOf`，超过 `stockStaleDays` 则量可跑，cite 含「库存可能不是当天」。成交最后一笔相对同一基准早于 `staleMonths`：**不出** `price.dev-high`。没有单独的 `low` 等级。
+量维 `cite.label` 必须能读出库存日期（或冲突两侧）、领用笔数、覆盖带；过期加「库存可能不是当天」。示例：`库存 2026-09-13 · 领用 1 笔 · 覆盖>4个月`。非冲突分支不写库存数量。`usage[].days` 仍不进公式。
 
-量 cite.label 必须能读出库存日期（或冲突两侧）、领用笔数、覆盖带。示例：`库存 2026-09-13 · 领用 1 笔 · 覆盖>4个月`。`usage[].days` 仍不进公式。非冲突分支不写库存数量。
+库存过期：用 `requestDate`（若缺则用 `pack.asOf`）对比 `stock.asOf`，超过 `stockStaleDays` 则量可跑，cite 含「库存可能不是当天」。成交最后一笔相对同一基准早于 `staleMonths`：**不出** `price.dev-high`（`|dev| > midPct` 时降为 `price.dev-mid`）。没有单独的 `low` 等级。
 
 ### 3.2 规则命中
 
