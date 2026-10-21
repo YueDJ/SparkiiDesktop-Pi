@@ -2,6 +2,8 @@ import { Fragment, cloneElement, isValidElement, useEffect, useLayoutEffect, use
 import type { WheelEvent as ReactWheelEvent } from 'react';
 import type { AgentSurfaceProps, CustomSessionEntry, SessionEntry } from './contract.js';
 import type { ChatAttachment, SparkiiApi } from '../types/sparkii-api.js';
+import type { TaskCapabilityStatus as TaskCapabilityStatusValue } from '../types/sparkii-api.js';
+import { TaskCapabilityStatus } from '../trust/TaskCapabilityStatus.js';
 import {
   Button,
   ChatMessage,
@@ -273,12 +275,30 @@ export function StandardChatSurface(props: StandardChatProps) {
   const [isCompacting, setIsCompacting] = useState(false);
   const [detailLevel, setDetailLevel] = useState<ChatDetailLevel>(DEFAULT_CHAT_DETAIL_LEVEL);
   const [skills, setSkills] = useState<Array<{ name: string; description: string }> | null>(null);
+  const [capabilityStatus, setCapabilityStatus] = useState<TaskCapabilityStatusValue>({ active: false });
+  const [revokingCapabilities, setRevokingCapabilities] = useState(false);
   const modelRef = useRef(model);
   const sessionIdRef = useRef(sessionId);
   const isBusy = busy || session.streaming;
 
   useEffect(() => { modelRef.current = model; }, [model]);
   useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
+  useEffect(() => {
+    if (!sessionId) {
+      setCapabilityStatus({ active: false });
+      return;
+    }
+    let cancelled = false;
+    void api.getTaskCapabilities?.(sessionId).then(
+      (status) => {
+        if (!cancelled) setCapabilityStatus(status);
+      },
+      () => {
+        if (!cancelled) setCapabilityStatus({ active: false });
+      },
+    );
+    return () => { cancelled = true; };
+  }, [api, sessionId, session.entries.length, session.streaming]);
   useEffect(() => {
     if (composerSkills !== undefined) return;
     if (!sessionId && !draft) return;
@@ -655,6 +675,18 @@ export function StandardChatSurface(props: StandardChatProps) {
     if (!workspacePath) return;
     void api.openWorkspace?.(workspacePath);
   };
+
+  const revokeCapabilities = () => {
+    if (!sessionId || revokingCapabilities) return;
+    setRevokingCapabilities(true);
+    void api.revokeTaskCapabilities?.(sessionId).then(
+      () => setCapabilityStatus({ active: false }),
+      (error: unknown) => reportError(
+        error instanceof Error ? error.message : String(error),
+        { source: '任务权限' },
+      ),
+    ).finally(() => setRevokingCapabilities(false));
+  };
   // The authoritative timeline is props.session.entries, normalized once by useAgentSession from
   // Pi's JSONL (live event increments and history replay produce the same ordered entries). We
   // render it directly. There is no local/optimistic timeline, so the display stays 1:1 with the
@@ -792,6 +824,11 @@ export function StandardChatSurface(props: StandardChatProps) {
       {modelWarning && (
         <div className="muted chat-model-warning" data-testid="model-warning" role="alert">{modelWarning}</div>
       )}
+      <TaskCapabilityStatus
+        status={capabilityStatus}
+        onRevoke={capabilityStatus.active ? revokeCapabilities : undefined}
+        revoking={revokingCapabilities}
+      />
       <ChatComposer
         busy={isBusy}
         stopping={stopping}

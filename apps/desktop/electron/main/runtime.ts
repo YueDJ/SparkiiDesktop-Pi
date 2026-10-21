@@ -7,6 +7,7 @@ import { ModelRouter, normalizeRouting } from "@sparkii/model-router";
 import { Rbac, type Subject } from "@sparkii/identity";
 import {
   ApprovalGate,
+  CapabilityGateway,
   ConnectorExecutor,
   AuditStore,
   TaskGrantRegistry,
@@ -80,6 +81,7 @@ export interface RuntimeSecurity {
   bashPath: string;
   sandbox: WorkspaceSandboxAdapter;
   sandboxReport: PlatformSecurityReport;
+  capabilityGateway: CapabilityGateway;
   platformReadyFor(action: SecurityAction): boolean;
 }
 
@@ -242,6 +244,7 @@ export async function assemble(opts: {
     const pathProbe = createWindowsPathProbe(options);
     const protectedRoots = windowsProtectedRoots(options);
     const taskGrants = new TaskGrantRegistry();
+    const capabilityGateway = new CapabilityGateway();
     const runtimePaths = resolveRuntimePaths();
     const sandbox = createWindowsSandboxAdapter({
       runtimeRoot: runtimePaths.portableGitDir,
@@ -259,6 +262,7 @@ export async function assemble(opts: {
       workspaceExecutor: createWorkspaceExecutor({ probe: pathProbe }),
       taskGrants,
       taskLifecycle: new TaskLifecycle(taskGrants),
+      capabilityGateway,
       profilePolicies,
       scratchParent: join(opts.dataDir, 'tasks'),
       bashPath: runtimePaths.bashPath,

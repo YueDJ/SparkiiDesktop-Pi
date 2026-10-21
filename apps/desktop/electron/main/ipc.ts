@@ -68,7 +68,11 @@ import {
   uninstallUserSkill,
 } from './skill-library.js';
 import type { AgentRuntime } from './agent-registry.js';
-import type { SecurityAction, TaskGrant } from '@sparkii/approval';
+import {
+  hashPayload,
+  type SecurityAction,
+  type TaskGrant,
+} from '@sparkii/approval';
 import { createTaskGrant } from './security/task-grant-factory.js';
 import { createRuntimeActionRouter } from './security/runtime-action-router.js';
 
@@ -286,6 +290,8 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       },
       audit: rt.audit,
       actor: () => rt.subject?.userId ?? 'agent',
+      platformName: rt.security?.sandboxReport.platform,
+      sandboxVersion: rt.security?.sandboxReport.version,
     })
     : null;
 
@@ -344,6 +350,11 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       grant.taskId,
       'workspace-sandbox',
       () => security.sandbox.terminate(grant.taskId),
+    );
+    security.taskLifecycle.registerCancellation(
+      grant.taskId,
+      'capability-gateway',
+      async () => { security.capabilityGateway.revokeTask(grant.taskId); },
     );
   };
   const win = getWindow();
@@ -1241,6 +1252,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   ipcMain.handle('sparkii:requestExportReport', async (_e, sessionId: string, summary: Record<string, unknown>) => {
     const open = await ensureOpenSession(sessionId);
     ensureProcessPipe(open.slot);
+    await startSessionTask(sessionId, open.profileId, true);
     const d = await broker.route(connectorWriteProposal('report.export', summary, {
       requestId: randomUUID(),
       risk: 'write',
@@ -1580,6 +1592,34 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     });
   });
   ipcMain.handle('sparkii:listPendingApprovals', () => rt.gate.listPending());
+  ipcMain.handle('sparkii:getTaskCapabilities', (_e, sessionId: string) => {
+    const grant = rt.security?.taskLifecycle.active(sessionId);
+    if (!grant || !rt.security) {
+      return {
+        active: false,
+        sandbox: rt.security?.sandboxReport.status ?? 'unavailable',
+      };
+    }
+    return {
+      active: true,
+      taskId: grant.taskId,
+      mode: grant.mode,
+      workspaceRoot: grant.workspaceRoot,
+      workspaceWrite: true,
+      processExec: rt.security.sandboxReport.status === 'available',
+      networkDomains: grant.networkDomains,
+      externalCapabilities: grant.externalCapabilities,
+      sandbox: rt.security.sandboxReport.status,
+      sandboxVersion: rt.security.sandboxReport.version,
+      limitations: rt.security.sandboxReport.limitations,
+      expiresAt: grant.expiresAt,
+    };
+  });
+  ipcMain.handle('sparkii:revokeTaskCapabilities', async (_e, sessionId: string) => {
+    const active = Boolean(rt.security?.taskLifecycle.active(sessionId));
+    await rt.security?.taskLifecycle.end(sessionId, 'user');
+    return { ok: true, revoked: active };
+  });
   ipcMain.handle('sparkii:decideApproval', async (_e, id: string, approved: boolean, note?: string) => {
     let out = await rt.gate.decide(id, rt.subject, approved, note);
     let result: unknown;
@@ -1596,18 +1636,89 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         );
         if (path) {
           out.payload = { ...payload, path };
-          out = await rt.executor.execute(out, { actor: rt.subject.userId });
-          result = out.execution?.result;
+          out.payloadHash = hashPayload(out.payload);
         } else {
           await rt.audit.append({ actor: rt.subject.userId, action: 'execution.blocked', resource: out.toolName });
           out.execution = { ok: false, error: 'export path canceled' };
         }
-      } else {
-        out = await rt.executor.execute(out, { actor: rt.subject.userId });
-        result = out.execution?.result;
+      }
+      if (out.execution?.error !== 'export path canceled') {
+        if (rt.security) {
+          try {
+            const grant = rt.security.taskLifecycle.assertActive(out.sessionId);
+            const action: SecurityAction = {
+              id: out.id,
+              taskId: grant.taskId,
+              sessionId: out.sessionId,
+              agentId: grant.agentId,
+              profileId: out.profileId,
+              toolName: out.toolName,
+              capability: 'connector.invoke',
+              resources: [{
+                kind: 'connector',
+                value: out.toolName,
+                scope: 'external',
+              }],
+              payload: out.payload,
+              payloadHash: out.payloadHash,
+              risk: out.risk,
+              reason: out.summary,
+              externalEffect: 'connector',
+            };
+            const lease = rt.security.capabilityGateway.issue(action, grant);
+            await rt.audit.append({
+              actor: rt.subject.userId,
+              action: 'gateway.lease-issued',
+              resource: out.toolName,
+              payloadSummary: lease.fingerprint,
+              sessionId: out.sessionId,
+              taskId: action.taskId,
+              actionId: action.id,
+              ruleId: 'gateway.lease',
+              capability: action.capability,
+              payloadHash: action.payloadHash,
+              platform: rt.security.sandboxReport.platform,
+              sandboxVersion: rt.security.sandboxReport.version,
+              decision: 'approved',
+            });
+            out = await rt.security.capabilityGateway.execute(
+              action,
+              lease.id,
+              grant,
+              async () => rt.executor.execute(out, { actor: rt.subject.userId }),
+            );
+            result = out.execution?.result;
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            out.execution = { ok: false, error: message };
+            await rt.audit.append({
+              actor: rt.subject.userId,
+              action: 'gateway.execution-blocked',
+              resource: out.toolName,
+              payloadSummary: message,
+              sessionId: out.sessionId,
+              taskId: grant.taskId,
+              actionId: action.id,
+              ruleId: 'gateway.execution-blocked',
+              capability: action.capability,
+              payloadHash: action.payloadHash,
+              platform: rt.security.sandboxReport.platform,
+              sandboxVersion: rt.security.sandboxReport.version,
+              decision: 'failed',
+            });
+          }
+        } else {
+          out = await rt.executor.execute(out, { actor: rt.subject.userId });
+          result = out.execution?.result;
+        }
       }
     }
-    broker.decide(out.id, { approved: out.status === 'approved' || out.status === 'executed', status: out.status, result });
+    const executionOk = out.execution?.ok !== false;
+    broker.decide(out.id, {
+      approved: executionOk && (out.status === 'approved' || out.status === 'executed'),
+      status: executionOk ? out.status : 'failed',
+      result,
+    });
     return out;
   });
   ipcMain.handle('sparkii:queryAudit', (_e, filter: object) => rt.audit.query(filter));

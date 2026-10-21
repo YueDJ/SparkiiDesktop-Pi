@@ -125,6 +125,8 @@ export type OntologyGraphProbeResult = {
 
 
 export interface SparkiiApi {
+  getTaskCapabilities?(sessionId: string): Promise<TaskCapabilityStatus>;
+  revokeTaskCapabilities?(sessionId: string): Promise<{ ok: boolean; revoked: boolean }>;
   getLocalSubject(): Promise<{ userId: string; roles: string[] }>;
   chooseDocument(opts?: ChooseDocumentOptions): Promise<{ path?: string }>;
   readDocumentBytes(path: string, sessionId?: string | null): Promise<ReadDocumentBytesResult>;
@@ -240,4 +242,19 @@ export interface SparkiiApi {
   windowClose(): Promise<boolean>;
   windowIsMaximized(): Promise<boolean>;
   on(channel: string, cb: (payload: unknown) => void): () => void;
+}
+
+export interface TaskCapabilityStatus {
+  active: boolean;
+  taskId?: string;
+  mode?: 'plan' | 'standard' | 'strict';
+  workspaceRoot?: string;
+  workspaceWrite?: boolean;
+  processExec?: boolean;
+  networkDomains?: string[];
+  externalCapabilities?: string[];
+  sandbox?: 'available' | 'partial' | 'unavailable';
+  sandboxVersion?: string;
+  limitations?: string[];
+  expiresAt?: number;
 }

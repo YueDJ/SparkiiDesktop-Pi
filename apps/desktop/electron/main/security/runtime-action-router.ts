@@ -20,6 +20,13 @@ interface AuditSink {
     resource?: string;
     payloadSummary?: string;
     sessionId?: string;
+    taskId?: string;
+    actionId?: string;
+    ruleId?: string;
+    capability?: string;
+    payloadHash?: string;
+    platform?: string;
+    sandboxVersion?: string;
   }): Promise<unknown>;
 }
 
@@ -43,6 +50,8 @@ export interface RuntimeActionRouterOptions {
   audit: AuditSink;
   actor?: () => string;
   now?: () => number;
+  platformName?: string;
+  sandboxVersion?: string;
 }
 
 function denied(
@@ -67,6 +76,7 @@ export function createRuntimeActionRouter(
     action: SecurityAction,
     event: string,
     detail: string,
+    ruleId: string,
   ): Promise<void> => {
     await options.audit.append({
       actor: actor(),
@@ -74,6 +84,13 @@ export function createRuntimeActionRouter(
       resource: action.toolName,
       payloadSummary: detail.slice(0, 512),
       sessionId: action.sessionId,
+      taskId: action.taskId,
+      actionId: action.id,
+      ruleId,
+      capability: action.capability,
+      payloadHash: action.payloadHash,
+      platform: options.platformName,
+      sandboxVersion: options.sandboxVersion,
     });
   };
 
@@ -118,6 +135,7 @@ export function createRuntimeActionRouter(
           action,
           'action.denied',
           `${outcome.ruleId}: ${outcome.reason}`,
+          outcome.ruleId,
         );
         return denied(
           request.requestId,
@@ -132,6 +150,7 @@ export function createRuntimeActionRouter(
           action,
           'action.ask',
           `${outcome.ruleId}: ${outcome.reason}`,
+          outcome.ruleId,
         );
         let approval: { approved: boolean };
         try {
@@ -149,6 +168,7 @@ export function createRuntimeActionRouter(
           action,
           'action.allowed',
           `${outcome.ruleId}: ${outcome.reason}`,
+          outcome.ruleId,
         );
       }
 
@@ -169,6 +189,7 @@ export function createRuntimeActionRouter(
           action,
           'action.executed',
           outcome.ruleId,
+          outcome.ruleId,
         );
         return {
           requestId: request.requestId,
@@ -178,7 +199,7 @@ export function createRuntimeActionRouter(
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        await auditDecision(action, 'action.failed', message);
+        await auditDecision(action, 'action.failed', message, 'action.execution-failed');
         return {
           requestId: request.requestId,
           status: 'failed',

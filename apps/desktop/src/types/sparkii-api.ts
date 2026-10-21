@@ -1,1 +1,5 @@
-export type { ChatAttachment, SparkiiApi } from '../../electron/preload/api-types.js';
+export type {
+  ChatAttachment,
+  SparkiiApi,
+  TaskCapabilityStatus,
+} from '../../electron/preload/api-types.js';

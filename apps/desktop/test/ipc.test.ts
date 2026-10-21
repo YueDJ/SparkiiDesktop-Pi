@@ -148,6 +148,7 @@ async function makeRuntime(opts: {
   /** 测试用：收集 ipc 订上的 `supervisor.onExit` 回调，用来模拟子进程退出。 */
   exitCbs?: Array<(code: number | null) => void>;
   logger?: { export: () => Promise<string>; log: (entry: unknown) => Promise<void> };
+  security?: unknown;
 }): Promise<Runtime> {
   // 一根进程一根管子：牌子（活 sessionId）由池子持有，acquire/release/rename 改它。
   let boundSessionId: string | null = null;
@@ -199,6 +200,7 @@ async function makeRuntime(opts: {
       updateMeta: vi.fn(() => true),
     },
     subject: { userId: 'tester', roles: ['admin'] },
+    security: opts.security,
     chatSessions: { get: () => opts.chatSession ?? null, list: vi.fn(() => []), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
     dataDir: opts.dataDir,
     keyring: null as any,
@@ -4036,6 +4038,64 @@ describe('ipc user skill library', () => {
     await handlers.get('sparkii:runWorkflow')!(null, 'contract-review', { documents: [], workspacePath: allocated });
     expect(created[0].workspacePath).toBe(allocated);
     expect(created[0].workspaceKind).toBe('auto');
+  });
+});
+
+describe('task capability IPC', () => {
+  it('reports task capabilities and supports user revocation', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-capability-'));
+    dirs.push(dataDir);
+    const grant = {
+      taskId: 'task-1',
+      sessionId: 's1',
+      agentId: 'general',
+      profileId: 'general',
+      mode: 'standard',
+      workspaceRoot: 'C:/ws',
+      workspaceIdentity: 'dir:1',
+      inputRoots: [],
+      scratchRoot: 'C:/scratch',
+      networkDomains: [],
+      externalCapabilities: [],
+      createdAt: 1,
+      expiresAt: Date.now() + 60_000,
+    };
+    const end = vi.fn(async () => {});
+    const lifecycle = {
+      active: vi.fn(() => grant),
+      end,
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir: join(dataDir, 'pi-agent'),
+      client: { send: async () => ({ success: true }) },
+      security: {
+        taskLifecycle: lifecycle,
+        sandboxReport: {
+          platform: 'windows',
+          status: 'partial',
+          version: 'appcontainer-v1',
+          limitations: ['Git Bash unavailable'],
+          capabilities: {},
+        },
+      },
+    });
+    expect(rt).toBeTruthy();
+    const handlers = await registeredHandlers();
+    const status = await handlers.get('sparkii:getTaskCapabilities')!(null, 's1') as any;
+    expect(status).toMatchObject({
+      active: true,
+      taskId: 'task-1',
+      workspaceWrite: true,
+      processExec: false,
+      sandbox: 'partial',
+      limitations: ['Git Bash unavailable'],
+    });
+    expect(await handlers.get('sparkii:revokeTaskCapabilities')!(null, 's1')).toEqual({
+      ok: true,
+      revoked: true,
+    });
+    expect(end).toHaveBeenCalledWith('s1', 'user');
   });
 });
 
