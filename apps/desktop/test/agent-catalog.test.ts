@@ -41,7 +41,7 @@ describe('sortAgents', () => {
       { id: 'contract-review', name: 'contract-review', capabilities: { tools: ['document.read', 'knowledge.search', 'report.export'] } },
       { id: 'procurement-review', name: 'procurement-review', capabilities: { tools: ['document.read', 'knowledge.search', 'report.export'] } },
       { id: 'knowledge-qa', name: 'knowledge-qa', capabilities: { tools: ['knowledge.search', 'knowledge.fetch_document'] } },
-      { id: 'general', name: 'general', capabilities: { tools: ['read', 'ls', 'grep', 'find', 'bash', 'edit', 'write'] } },
+      { id: 'general', name: 'general', capabilities: { tools: ['read', 'ls', 'grep', 'find', 'bash', 'edit', 'write', 'delete', 'move'] } },
       { id: 'onto-qa', name: 'onto-qa', capabilities: { tools: ['ontology.search_documents', 'ontology.search_nodes'] } },
     ]);
     for (const id of ['contract-review', 'procurement-review', 'knowledge-qa', 'general']) {

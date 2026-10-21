@@ -9,7 +9,7 @@ describe('repo profiles', () => {
   it('loads general profile with coding saddle tools and system prompt', async () => {
     const p = await loadProfile(join(repoRoot, 'apps/desktop/agents/general'), { allowUnsigned: true });
     expect(p.manifest.displayName).toBe('通用智能体');
-    expect(p.agent.tools).toEqual(['read', 'ls', 'grep', 'find', 'bash', 'edit', 'write']);
+    expect(p.agent.tools).toEqual(['read', 'ls', 'grep', 'find', 'bash', 'edit', 'write', 'delete', 'move']);
     expect(p.agent.tools).not.toContain('knowledge.search');
     expect(p.agent.prompts.system).toContain('通用智能体');
   });

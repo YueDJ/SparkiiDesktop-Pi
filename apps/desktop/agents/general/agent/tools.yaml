@@ -6,3 +6,5 @@ tools:
   - bash
   - edit
   - write
+  - delete
+  - move

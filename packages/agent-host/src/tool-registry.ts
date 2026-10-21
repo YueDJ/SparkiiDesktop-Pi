@@ -11,6 +11,10 @@ import { documentConnector, knowledgeConnector, reportConnector, sparkiiOntoConn
 import type { ProposalRequest } from "@sparkii/approval";
 import { buildPiRuntimeTools } from "./pi-runtime-tools.js";
 import { createCodingToolDefinitions } from "./coding-tools.js";
+import {
+  createDeleteToolDefinition,
+  createMoveToolDefinition,
+} from "./workspace-tools.js";
 import type { ProposalDecision, ConnectorReadRequest, ConnectorReadResult } from "./pi-runtime-transport.js";
 import type {
   ActionExecutionResult,
@@ -76,9 +80,25 @@ export function resolveToolDefinitions(toolNames: string[], ctx: RegistryContext
     requestAction,
     recordSessionEntry: ctx.recordSessionEntry,
   }).map((d) => [d.name, d]));
+  codingByName.set('delete', createDeleteToolDefinition({
+    cwd: pathCwd,
+    workspaceRoot: ctx.workspaceRoot ?? pathCwd,
+    requestAction,
+  }));
+  codingByName.set('move', createMoveToolDefinition({
+    cwd: pathCwd,
+    workspaceRoot: ctx.workspaceRoot ?? pathCwd,
+    requestAction,
+  }));
   const out: ToolDefinition[] = [];
   for (const name of toolNames) {
-    if (name === "bash" || name === "edit" || name === "write") {
+    if (
+      name === "bash"
+      || name === "edit"
+      || name === "write"
+      || name === "delete"
+      || name === "move"
+    ) {
       const def = codingByName.get(name);
       if (def) out.push(def);
       else throw new Error(`unknown tool in saddle: ${name}`);
