@@ -3,6 +3,7 @@ export * from "./types.js";
 export * from "./workspace-guard.js";
 export * from "./edit-diff.js";
 export * from "./pi-runtime-transport.js";
+export * from "./runtime-actions.js";
 export * from "./pi-runtime-supervisor.js";
 export * from "./pi-runtime-pool.js";
 export * from "./runtime-pool.js";
