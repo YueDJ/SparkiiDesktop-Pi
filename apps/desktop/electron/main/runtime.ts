@@ -11,7 +11,9 @@ import {
   AuditStore,
   TaskGrantRegistry,
   type PlatformProfilePolicy,
+  type PlatformSecurityReport,
   type SecurityAction,
+  type WorkspaceSandboxAdapter,
 } from "@sparkii/approval";
 import { PiRuntimePool } from "@sparkii/agent-host";
 import { knowledgeConnector } from "@sparkii/connectors";
@@ -22,7 +24,6 @@ import { ErrorStore } from "./error-store.js";
 import { Keyring } from "./keyring.js";
 import { loadSettings } from "./settings.js";
 import { loadApiKey, saveApiKey } from "./settings.js";
-import { registerGeneralExecutor } from "./general-executor.js";
 import { resolveRuntimeToolsDir } from "./runtime-layout.js";
 import { loadAgentRuntimes, type AgentRuntime } from "./agent-registry.js";
 import type { KnowledgeBackendId } from "./knowledge-settings.js";
@@ -41,6 +42,7 @@ import {
 } from "./security/workspace-executor.js";
 import { normalizeProfilePolicy } from "./security/profile-policy.js";
 import { TaskLifecycle } from "./security/task-lifecycle.js";
+import { createWindowsSandboxAdapter } from "./security/windows-sandbox.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -75,6 +77,9 @@ export interface RuntimeSecurity {
   taskLifecycle: TaskLifecycle;
   profilePolicies: Map<string, PlatformProfilePolicy>;
   scratchParent: string;
+  bashPath: string;
+  sandbox: WorkspaceSandboxAdapter;
+  sandboxReport: PlatformSecurityReport;
   platformReadyFor(action: SecurityAction): boolean;
 }
 
@@ -191,13 +196,6 @@ export async function assemble(opts: {
   const errors = new ErrorStore(join(opts.dataDir, "errors.db"));
   const keyring = new Keyring(join(opts.dataDir, "keyring"));
   const piAgentDir = join(opts.dataDir, "pi-agent");
-  registerGeneralExecutor(executor, {
-    getWorkspace: (sessionId) => {
-      const rec = chatSessions.get(sessionId);
-      return rec ? { workspacePath: rec.workspacePath } : undefined;
-    },
-    markWorkspaceCreated: () => {},
-  });
   for (const [id, pr] of profiles) {
     if (pr.profile.agent.knowledge.length) {
       await knowledgeConnector.init({ corpus: pr.profile.agent.knowledge, profileId: id });
@@ -244,6 +242,12 @@ export async function assemble(opts: {
     const pathProbe = createWindowsPathProbe(options);
     const protectedRoots = windowsProtectedRoots(options);
     const taskGrants = new TaskGrantRegistry();
+    const runtimePaths = resolveRuntimePaths();
+    const sandbox = createWindowsSandboxAdapter({
+      runtimeRoot: runtimePaths.portableGitDir,
+      resourcesPath: process.resourcesPath,
+    });
+    const sandboxReport = await sandbox.probe();
     security = {
       pathProbe,
       protectedRoots,
@@ -257,9 +261,16 @@ export async function assemble(opts: {
       taskLifecycle: new TaskLifecycle(taskGrants),
       profilePolicies,
       scratchParent: join(opts.dataDir, 'tasks'),
+      bashPath: runtimePaths.bashPath,
+      sandbox,
+      sandboxReport,
       platformReadyFor: (action) =>
         action.capability === 'fs.read'
-        || action.capability === 'fs.write',
+        || action.capability === 'fs.write'
+        || (
+          action.capability === 'process.exec'
+          && sandboxReport.status === 'available'
+        ),
     };
   }
   return {

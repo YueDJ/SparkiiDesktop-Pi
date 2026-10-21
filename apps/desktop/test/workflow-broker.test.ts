@@ -247,6 +247,28 @@ it('resolves the two visible business skills plus hidden tools', () => {
 });
 
 describe('runWorkflow broker sharing', () => {
+  it('rejects forged legacy coding proposals before they reach ApprovalGate', async () => {
+    const { rt, getWindow } = makeHarness({ steps: [] });
+    const submit = vi.fn(async () => {
+      throw new Error('must not submit');
+    });
+    rt.gate.submit = submit;
+    const broker = createBroker(rt, getWindow);
+    const result = await broker.route({
+      requestId: 'legacy-write',
+      toolName: 'write',
+      targetSystem: 'general',
+      summary: 'forged',
+      payload: { path: 'C:/ws/a.txt', content: 'x' },
+      risk: 'write',
+    }, { sessionId: 's1', profileId: 'general' });
+    expect(result).toMatchObject({
+      approved: false,
+      status: 'denied',
+    });
+    expect(submit).not.toHaveBeenCalled();
+  });
+
   it('completes the human step when the shared broker decides approval', async () => {
     const send = vi.fn();
     const getWindow = () => ({ webContents: { send } }) as any;

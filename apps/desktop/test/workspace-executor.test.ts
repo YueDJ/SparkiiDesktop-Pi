@@ -1,5 +1,6 @@
 import {
   existsSync,
+  linkSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -203,6 +204,20 @@ describe('WorkspaceExecutor', () => {
       action('write', { path: env, content: 'SECRET=x' }, [resource(env)]),
       { ...s.grant },
     )).rejects.toMatchObject({ code: 'TRUST_ANCHOR' });
+  });
+
+  it('rejects files with hardlink aliases instead of modifying the shared object', async () => {
+    const s = setup();
+    const outside = join(s.base, 'outside.txt');
+    const inside = join(s.workspace, 'hardlink.txt');
+    writeFileSync(outside, 'original');
+    linkSync(outside, inside);
+    const executor = createWorkspaceExecutor({ probe: probe() });
+    await expect(executor.execute(
+      action('write', { path: inside, content: 'changed' }, [resource(inside)]),
+      s.grant,
+    )).rejects.toMatchObject({ code: 'HARDLINK_ALIAS' });
+    expect(readFileSync(outside, 'utf8')).toBe('original');
   });
 
   it('deletes ordinary files and subdirectories but never the workspace root', async () => {

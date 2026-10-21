@@ -53,7 +53,7 @@ function grant(patch: Partial<TaskGrant> = {}): TaskGrant {
   };
 }
 
-async function harness() {
+async function harness(platformReady: (action: SecurityAction) => boolean = () => true) {
   const registry = new TaskGrantRegistry();
   const lifecycle = new TaskLifecycle(registry);
   await lifecycle.start(async () => grant());
@@ -74,7 +74,7 @@ async function harness() {
       probe,
     }),
     profilePolicyOf: () => ({ mode: 'standard' }),
-    platformReady: () => true,
+    platformReady,
     execute,
     requestApproval,
     revalidate,
@@ -188,5 +188,23 @@ describe('createRuntimeActionRouter', () => {
       status: 'failed',
       error: { code: 'ACTION_EXECUTION_FAILED', message: 'disk unavailable' },
     });
+  });
+
+  it('denies process execution when the platform sandbox is not ready', async () => {
+    const h = await harness((action) => action.capability !== 'process.exec');
+    const result = await h.router.route({
+      requestId: 'bash-1',
+      toolName: 'bash',
+      args: { command: 'pnpm test' },
+    }, 's1');
+    expect(result).toMatchObject({
+      status: 'denied',
+      decision: {
+        decision: 'deny',
+        ruleId: 'platform.not-ready',
+      },
+    });
+    expect(h.requestApproval).not.toHaveBeenCalled();
+    expect(h.execute).not.toHaveBeenCalled();
   });
 });

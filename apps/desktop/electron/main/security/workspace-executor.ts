@@ -32,6 +32,7 @@ export type WorkspaceExecutionCode =
   | 'TARGET_CHANGED'
   | 'PARENT_CHANGED'
   | 'REPARSE_POINT'
+  | 'HARDLINK_ALIAS'
   | 'TARGET_INVALID'
   | 'WORKSPACE_CHANGED'
   | 'IO_FAILED';
@@ -133,6 +134,15 @@ export function createWorkspaceExecutor(opts: {
       );
     }
     const inspected = await inspect(resource.value);
+    if (inspected.exists) {
+      const current = await lstat(inspected.canonicalPath, { bigint: true });
+      if (!current.isDirectory() && current.nlink > 1n) {
+        throw new WorkspaceExecutionError(
+          'HARDLINK_ALIAS',
+          'workspace file has multiple hard links and cannot be mutated safely',
+        );
+      }
+    }
     if (inspected.isReparsePoint) {
       throw new WorkspaceExecutionError(
         'REPARSE_POINT',

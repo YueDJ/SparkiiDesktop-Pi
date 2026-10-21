@@ -193,12 +193,46 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
         ),
       async execute(action, grant) {
         if (!rt.security) throw new Error('platform security unavailable');
-        if (action.capability !== 'fs.write') {
-          throw new Error(`execution backend unavailable for ${action.capability}`);
+        if (action.capability === 'fs.write') {
+          return {
+            result: await rt.security.workspaceExecutor.execute(action, grant),
+          };
         }
-        return {
-          result: await rt.security.workspaceExecutor.execute(action, grant),
-        };
+        if (action.capability === 'process.exec') {
+          const payload = (action.payload ?? {}) as { command?: unknown; timeout?: unknown };
+          const command = String(payload.command ?? '');
+          if (!command.trim()) {
+            throw new Error('empty shell command');
+          }
+          const requested = Number(payload.timeout ?? 60_000);
+          const timeoutMs = Number.isFinite(requested)
+            ? Math.max(1_000, Math.min(300_000, Math.floor(requested)))
+            : 60_000;
+          const result = await rt.security.sandbox.run({
+            taskId: grant.taskId,
+            workspaceRoot: grant.workspaceRoot,
+            scratchRoot: grant.scratchRoot,
+            runtimeRoot: rt.security.sandboxReport.status === 'available'
+              ? dirname(dirname(rt.security.bashPath))
+              : '',
+            executable: rt.security.bashPath,
+            cwd: grant.workspaceRoot,
+            command,
+            timeoutMs,
+          });
+          return {
+            result: {
+              exitCode: result.exitCode,
+              output: `${result.stdout}${result.stderr}`,
+              timedOut: result.timedOut,
+              sandbox: {
+                status: rt.security.sandboxReport.status,
+                version: rt.security.sandboxReport.version,
+              },
+            },
+          };
+        }
+        throw new Error(`execution backend unavailable for ${action.capability}`);
       },
       async requestApproval(action) {
         const decision = await broker.request({
@@ -295,7 +329,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
         ? [input.path]
         : [],
     );
-    await security.taskLifecycle.start(() => createTaskGrant({
+    const grant = await security.taskLifecycle.start(() => createTaskGrant({
       sessionId,
       agentId: profileId,
       profileId,
@@ -306,6 +340,11 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       protectedRoots: security.protectedRoots,
       probe: security.pathProbe,
     }));
+    security.taskLifecycle.registerCancellation(
+      grant.taskId,
+      'workspace-sandbox',
+      () => security.sandbox.terminate(grant.taskId),
+    );
   };
   const win = getWindow();
   if (win) {
