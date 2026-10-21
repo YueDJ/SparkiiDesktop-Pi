@@ -49,6 +49,36 @@ export interface ProcessController {
   terminateTree(processId: number): Promise<void>;
 }
 
+export interface PlatformAdapter {
+  platform: PlatformName;
+  pathProbe: import('./types.js').WorkspacePathProbe;
+  sandbox: WorkspaceSandboxAdapter;
+}
+
+export class PlatformAdapterRegistry {
+  private adapters = new Map<PlatformName, PlatformAdapter>();
+
+  register(adapter: PlatformAdapter): void {
+    if (this.adapters.has(adapter.platform)) {
+      throw new Error(`platform adapter already registered: ${adapter.platform}`);
+    }
+    this.adapters.set(adapter.platform, adapter);
+  }
+
+  get(platform: PlatformName): PlatformAdapter | undefined {
+    return this.adapters.get(platform);
+  }
+
+  select(platform: string): PlatformAdapter {
+    if (platform !== 'windows' && platform !== 'macos' && platform !== 'linux') {
+      throw new Error(`unsupported platform: ${platform}`);
+    }
+    const adapter = this.adapters.get(platform);
+    if (!adapter) throw new Error(`unsupported platform adapter: ${platform}`);
+    return adapter;
+  }
+}
+
 const REQUIRED_CAPABILITIES = [
   'filesystemBoundary',
   'privateScratch',
