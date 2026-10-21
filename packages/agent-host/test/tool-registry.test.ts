@@ -6,6 +6,16 @@ import { resolveToolDefinitions, WORKSPACE_NOT_CREATED } from "../src/tool-regis
 import type { ProposalDecision } from "../src/pi-runtime-transport.js";
 
 const propose = vi.fn(async () => ({ approved: false, proposalId: "x", status: "denied" }) as ProposalDecision);
+const requestAction = vi.fn(async (request: any) => ({
+  requestId: request.requestId,
+  status: "executed" as const,
+  decision: {
+    decision: "allow" as const,
+    ruleId: "workspace.write",
+    reason: "workspace",
+  },
+  result: { path: request.args.path },
+}));
 
 describe("resolveToolDefinitions", () => {
   it("resolves coding and connector tool names", () => {
@@ -17,6 +27,30 @@ describe("resolveToolDefinitions", () => {
 
   it("fails closed on unknown tool names", () => {
     expect(() => resolveToolDefinitions(["read", "nope"], { cwd: tmpdir(), propose })).toThrow(/unknown tool in saddle: nope/);
+  });
+
+  it("wires coding writes to the Runtime action requester", async () => {
+    const ws = mkdtempSync(join(tmpdir(), "ws-"));
+    const defs = resolveToolDefinitions(["write"], {
+      cwd: tmpdir(),
+      workspaceRoot: ws,
+      propose,
+      requestAction,
+    });
+    const write = defs[0] as any;
+    await write.execute(
+      "call-write",
+      { path: "a.txt", content: "x" },
+      undefined,
+      () => {},
+      {},
+    );
+    expect(requestAction).toHaveBeenCalledWith(expect.objectContaining({
+      toolName: "write",
+      toolCallId: "call-write",
+      args: { path: join(ws, "a.txt"), content: "x" },
+    }));
+    expect(propose).not.toHaveBeenCalled();
   });
 
   it("resolves the ontology connector tool surface", () => {

@@ -1,168 +1,196 @@
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { describe, it, expect, vi } from "vitest";
-import { createCodingToolDefinitions, type CodingToolsContext } from "../src/coding-tools.js";
-import type { ProposalDecision } from "../src/pi-runtime-transport.js";
+import { mkdtempSync } from 'node:fs';
+import { writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  createCodingToolDefinitions,
+  type CodingToolsContext,
+} from '../src/coding-tools.js';
+import type {
+  ActionExecutionResult,
+  RuntimeActionRequest,
+} from '../src/runtime-actions.js';
 
-const toolCtx = { sessionManager: { getSessionId: () => "test-session", getSessionFile: () => null } };
+const toolCtx = {
+  sessionManager: {
+    getSessionId: () => 'test-session',
+    getSessionFile: () => null,
+  },
+};
 
-const APPROVAL_KEYS = new Set(["requestId", "toolName", "status", "toolCallId", "proposalId"]);
+const allowDecision = {
+  decision: 'allow' as const,
+  ruleId: 'workspace.write',
+  reason: '工作区内文件修改',
+};
 
-function ctx(over: Partial<CodingToolsContext & { proposes: ReturnType<typeof vi.fn> }> = {}): CodingToolsContext & { proposes: ReturnType<typeof vi.fn>; records: Array<{ customType: string; data: Record<string, unknown> }> } {
-  const proposes = vi.fn(async () => ({ approved: true, proposalId: "p", status: "executed", result: { exitCode: 0, output: "ok" } }) as ProposalDecision);
-  const records: Array<{ customType: string; data: Record<string, unknown> }> = [];
+function executed(
+  requestId: string,
+  result: unknown,
+): ActionExecutionResult {
   return {
-    cwd: join(tmpdir(), "cwd"),
-    workspaceRoot: mkdtempSync(join(tmpdir(), "ws-")),
-    propose: proposes,
-    proposes,
-    records,
-    recordSessionEntry: (customType, data) => { records.push({ customType, data }); },
-    ...over,
+    requestId,
+    status: 'executed',
+    decision: allowDecision,
+    result,
   };
 }
 
-function expectSlim(data: Record<string, unknown>) {
-  for (const key of Object.keys(data)) expect(APPROVAL_KEYS.has(key)).toBe(true);
-  expect(data).not.toHaveProperty("payload");
-  expect(data).not.toHaveProperty("preview");
-  expect(data).not.toHaveProperty("content");
-  expect(data).not.toHaveProperty("diff");
-  expect(data).not.toHaveProperty("command");
+function harness(overrides: Partial<CodingToolsContext> = {}) {
+  const requests: RuntimeActionRequest[] = [];
+  const requestAction = vi.fn(async (request: RuntimeActionRequest) => {
+    requests.push(request);
+    return executed(request.requestId, {
+      exitCode: 0,
+      output: 'ok',
+      path: request.args.path,
+    });
+  });
+  const records: Array<{ customType: string; data: Record<string, unknown> }> = [];
+  const context: CodingToolsContext = {
+    cwd: join(tmpdir(), 'anchor'),
+    workspaceRoot: mkdtempSync(join(tmpdir(), 'ws-')),
+    requestAction,
+    recordSessionEntry: (customType, data) => records.push({ customType, data }),
+    ...overrides,
+  };
+  return { context, requestAction, requests, records };
 }
 
-describe("createCodingToolDefinitions", () => {
-  it("registers bash/edit/write with native names", () => {
-    const defs = createCodingToolDefinitions(ctx());
-    expect(defs.map((d) => d.name).sort()).toEqual(["bash", "edit", "write"]);
+describe('createCodingToolDefinitions', () => {
+  it('registers native bash/edit/write definitions', () => {
+    const { context } = harness();
+    expect(createCodingToolDefinitions(context).map((d) => d.name).sort())
+      .toEqual(['bash', 'edit', 'write']);
   });
 
-  it("bash exec proposes and streams output on approval", async () => {
-    const c = ctx();
-    const defs = createCodingToolDefinitions(c);
-    const bash = defs.find((d) => d.name === "bash")!;
-    const sessionCtx = { sessionManager: { getSessionId: () => "s1", getSessionFile: () => "/tmp/s1.jsonl" } };
-    const result = await (bash as any).execute("t1", { command: "echo hi" }, undefined, undefined, sessionCtx);
-    expect(c.proposes).toHaveBeenCalledWith(expect.objectContaining({
-      toolName: "bash",
-      summary: "echo hi",
-      preview: { kind: "text", lines: ["echo hi"] },
-    }));
-    expect((result as any).content?.[0]?.text).toContain("ok");
-  });
+  it('sends bash as a raw Runtime action and streams Main output', async () => {
+    const h = harness();
+    const bash = createCodingToolDefinitions(h.context)
+      .find((definition) => definition.name === 'bash')!;
+    const result = await (bash as any).execute(
+      'call-1',
+      { command: 'printf hello' },
+      undefined,
+      () => {},
+      toolCtx,
+    );
 
-  it("writeFile proposes with path/content and rejects on denial", async () => {
-    const propose = vi.fn(async () => ({ approved: false, proposalId: "p", status: "denied" }) as ProposalDecision);
-    const denied = ctx({ propose, proposes: propose });
-    const defs = createCodingToolDefinitions(denied);
-    const write = defs.find((d) => d.name === "write")!;
-    await expect((write as any).execute("t1", { path: join(denied.workspaceRoot, "a.txt"), content: "x" }, undefined, undefined, toolCtx)).rejects.toThrow(/未执行/);
-    expect(denied.proposes).toHaveBeenCalledWith(expect.objectContaining({
-      toolName: "write",
-      summary: "写入 a.txt",
-      payload: expect.objectContaining({ path: expect.stringContaining("a.txt") }),
-    }));
-    expect(denied.proposes.mock.calls[0][0].preview).toBeUndefined();
-  });
-
-  it("edit proposes a workspace-relative summary without preview", async () => {
-    const { writeFile } = await import("node:fs/promises");
-    const c = ctx();
-    await writeFile(join(c.workspaceRoot, "a.txt"), "old");
-    const defs = createCodingToolDefinitions(c);
-    const edit = defs.find((d) => d.name === "edit")!;
-    await (edit as any).execute("t1", {
-      path: join(c.workspaceRoot, "a.txt"),
-      edits: [{ oldText: "old", newText: "new" }],
-    }, undefined, undefined, toolCtx);
-    expect(c.proposes).toHaveBeenCalledWith(expect.objectContaining({
-      toolName: "edit",
-      summary: "修改 a.txt",
-      payload: expect.objectContaining({ path: expect.stringContaining("a.txt") }),
-    }));
-    expect(c.proposes.mock.calls[0][0].preview).toBeUndefined();
-  });
-
-  it("blocks writes outside workspace before proposing", async () => {
-    const c = ctx();
-    const defs = createCodingToolDefinitions(c);
-    const write = defs.find((d) => d.name === "write")!;
-    await expect((write as any).execute("t1", { path: join(tmpdir(), "outside.txt"), content: "x" }, undefined, undefined, toolCtx)).rejects.toThrow(/不在工作区/);
-    expect(c.proposes).not.toHaveBeenCalled();
-  });
-
-  it("resolves relative write paths against workspaceRoot instead of anchor cwd", async () => {
-    const anchor = mkdtempSync(join(tmpdir(), "anchor-"));
-    const c = ctx({ cwd: anchor });
-    const defs = createCodingToolDefinitions(c);
-    const write = defs.find((d) => d.name === "write")!;
-    await (write as any).execute("t1", { path: "a.txt", content: "x" }, undefined, undefined, toolCtx);
-    expect(c.proposes).toHaveBeenCalledWith(expect.objectContaining({
-      toolName: "write",
-      payload: expect.objectContaining({ path: join(c.workspaceRoot, "a.txt") }),
-    }));
-  });
-
-  it("summarizes bash as the first line truncated to 120 characters", async () => {
-    const c = ctx();
-    const defs = createCodingToolDefinitions(c);
-    const bash = defs.find((d) => d.name === "bash")!;
-    const first = "x".repeat(200);
-    await (bash as any).execute("t1", { command: `${first}\nsecond` }, undefined, undefined, toolCtx);
-    expect(c.proposes.mock.calls[0][0].summary).toBe(first.slice(0, 120));
-    expect(c.proposes.mock.calls[0][0].preview).toEqual({ kind: "text", lines: [first, "second"] });
-  });
-
-  it("records slim approval_required then approved resolved with the execute toolCallId", async () => {
-    const c = ctx();
-    const defs = createCodingToolDefinitions(c);
-    const write = defs.find((d) => d.name === "write")!;
-    await (write as any).execute("call_write", { path: join(c.workspaceRoot, "a.txt"), content: "x" }, undefined, undefined, toolCtx);
-    expect(c.records.map((r) => r.customType)).toEqual(["approval_required", "approval_resolved"]);
-    expect(c.records[0].data).toEqual({
+    expect(h.requestAction).toHaveBeenCalledWith({
       requestId: expect.any(String),
-      toolName: "write",
-      status: "pending",
-      toolCallId: "call_write",
+      toolCallId: 'call-1',
+      toolName: 'bash',
+      args: { command: 'printf hello' },
     });
-    expect(c.records[1].data).toEqual({
-      requestId: c.records[0].data.requestId,
-      toolName: "write",
-      status: "approved",
-      toolCallId: "call_write",
-      proposalId: "p",
+    expect((result as any).content?.[0]?.text).toContain('ok');
+    expect(h.records).toEqual([]);
+  });
+
+  it('sends write through the action protocol without approval rows', async () => {
+    const h = harness();
+    const write = createCodingToolDefinitions(h.context)
+      .find((definition) => definition.name === 'write')!;
+    await (write as any).execute(
+      'call-write',
+      { path: join(h.context.workspaceRoot, 'a.txt'), content: 'x' },
+      undefined,
+      undefined,
+      toolCtx,
+    );
+
+    expect(h.requestAction).toHaveBeenCalledWith({
+      requestId: expect.any(String),
+      toolCallId: 'call-write',
+      toolName: 'write',
+      args: {
+        path: join(h.context.workspaceRoot, 'a.txt'),
+        content: 'x',
+      },
     });
-    expectSlim(c.records[0].data);
-    expectSlim(c.records[1].data);
+    expect(h.records).toEqual([]);
   });
 
-  it("records denied resolved when the proposal is rejected", async () => {
-    const propose = vi.fn(async () => ({ approved: false, proposalId: "p", status: "denied" }) as ProposalDecision);
-    const denied = ctx({ propose, proposes: propose });
-    const defs = createCodingToolDefinitions(denied);
-    const write = defs.find((d) => d.name === "write")!;
-    await expect((write as any).execute("t1", { path: join(denied.workspaceRoot, "a.txt"), content: "x" }, undefined, undefined, toolCtx)).rejects.toThrow(/未执行/);
-    expect(denied.records.map((r) => r.customType)).toEqual(["approval_required", "approval_resolved"]);
-    expect(denied.records[1].data.status).toBe("denied");
-    expectSlim(denied.records[1].data);
+  it('sends edit content through the same Main-verified write path', async () => {
+    const h = harness();
+    await writeFile(join(h.context.workspaceRoot, 'a.txt'), 'old');
+    const edit = createCodingToolDefinitions(h.context)
+      .find((definition) => definition.name === 'edit')!;
+    await (edit as any).execute(
+      'call-edit',
+      {
+        path: join(h.context.workspaceRoot, 'a.txt'),
+        edits: [{ oldText: 'old', newText: 'new' }],
+      },
+      undefined,
+      undefined,
+      toolCtx,
+    );
+
+    expect(h.requestAction).toHaveBeenCalledWith(expect.objectContaining({
+      toolName: 'edit',
+      toolCallId: 'call-edit',
+      args: {
+        path: join(h.context.workspaceRoot, 'a.txt'),
+        content: 'new',
+      },
+    }));
+    expect(h.records).toEqual([]);
   });
 
-  it("records denied resolved when propose throws", async () => {
-    const propose = vi.fn(async () => { throw new Error("gate down"); });
-    const c = ctx({ propose, proposes: propose });
-    const defs = createCodingToolDefinitions(c);
-    const write = defs.find((d) => d.name === "write")!;
-    await expect((write as any).execute("t1", { path: join(c.workspaceRoot, "a.txt"), content: "x" }, undefined, undefined, toolCtx)).rejects.toThrow(/gate down/);
-    expect(c.records.map((r) => r.customType)).toEqual(["approval_required", "approval_resolved"]);
-    expect(c.records[1].data.status).toBe("denied");
+  it('blocks writes outside the workspace before requesting an action', async () => {
+    const h = harness();
+    const write = createCodingToolDefinitions(h.context)
+      .find((definition) => definition.name === 'write')!;
+    await expect((write as any).execute(
+      'call-outside',
+      { path: join(tmpdir(), 'outside.txt'), content: 'x' },
+      undefined,
+      undefined,
+      toolCtx,
+    )).rejects.toThrow(/不在工作区/);
+    expect(h.requestAction).not.toHaveBeenCalled();
   });
 
-  it("does not record approval rows when the path is outside the workspace", async () => {
-    const c = ctx();
-    const defs = createCodingToolDefinitions(c);
-    const write = defs.find((d) => d.name === "write")!;
-    await expect((write as any).execute("t1", { path: join(tmpdir(), "outside.txt"), content: "x" }, undefined, undefined, toolCtx)).rejects.toThrow(/不在工作区/);
-    expect(c.records).toEqual([]);
+  it('resolves relative paths against the workspace, not the process anchor', async () => {
+    const h = harness();
+    const write = createCodingToolDefinitions(h.context)
+      .find((definition) => definition.name === 'write')!;
+    await (write as any).execute(
+      'call-relative',
+      { path: 'src/a.txt', content: 'x' },
+      undefined,
+      undefined,
+      toolCtx,
+    );
+    expect(h.requestAction).toHaveBeenCalledWith(expect.objectContaining({
+      args: {
+        path: join(h.context.workspaceRoot, 'src', 'a.txt'),
+        content: 'x',
+      },
+    }));
+  });
+
+  it('fails closed when Main denies the action', async () => {
+    const h = harness();
+    h.requestAction.mockResolvedValueOnce({
+      requestId: 'denied',
+      status: 'denied',
+      decision: {
+        decision: 'deny',
+        ruleId: 'platform.critical-target',
+        reason: 'critical',
+      },
+    });
+    const write = createCodingToolDefinitions(h.context)
+      .find((definition) => definition.name === 'write')!;
+    await expect((write as any).execute(
+      'call-denied',
+      { path: join(h.context.workspaceRoot, 'a.txt'), content: 'x' },
+      undefined,
+      undefined,
+      toolCtx,
+    )).rejects.toThrow(/未执行/);
+    expect(h.records).toEqual([]);
   });
 });

@@ -10,6 +10,11 @@ import {
   type PiRuntimeHostHandle,
   type ProposalDecision,
 } from "./pi-runtime-transport.js";
+import type {
+  ActionExecutionResult,
+  RuntimeActionRequest,
+} from "./runtime-actions.js";
+import { actionResultEnvelope } from "./runtime-actions.js";
 import type { ProposalRequest } from "@sparkii/approval";
 import type { NormalizedEvent, RpcCommand, RpcResponse } from "./types.js";
 
@@ -18,11 +23,22 @@ type ProposalHandler = (
 ) => Promise<ProposalDecision>;
 
 type ConnectorReadHandler = (request: ConnectorReadRequest) => Promise<ConnectorReadResult>;
+type ActionHandler = (request: RuntimeActionRequest) => Promise<ActionExecutionResult>;
 
 const UNHANDLED_READ: ConnectorReadResult = {
   ok: false,
   error: { code: "CONNECTOR_DENIED", message: "unhandled" },
 };
+
+const UNHANDLED_ACTION = (request: RuntimeActionRequest): ActionExecutionResult => ({
+  requestId: request.requestId,
+  status: "denied",
+  decision: {
+    decision: "deny",
+    ruleId: "platform.action-handler-unavailable",
+    reason: "Main runtime action router is unavailable",
+  },
+});
 
 class PiRuntimeClientImpl implements PiRuntimeClient {
   private pending = new Map<string, {
@@ -40,6 +56,7 @@ class PiRuntimeClientImpl implements PiRuntimeClient {
     private handle: PiRuntimeHostHandle,
     private onProposal: ProposalHandler,
     private onConnectorRead: ConnectorReadHandler,
+    private onAction: ActionHandler,
     private sendTimeoutMs = 300_000,
     private readinessTimeoutMs = 60_000,
   ) {
@@ -117,6 +134,31 @@ class PiRuntimeClientImpl implements PiRuntimeClient {
       }
       return;
     }
+    if ("action" in envelope) {
+      let result: ActionExecutionResult;
+      try {
+        result = await this.onAction(envelope.action);
+      } catch (error) {
+        result = {
+          requestId: envelope.action.requestId,
+          status: "failed",
+          decision: {
+            decision: "deny",
+            ruleId: "platform.action-handler-failed",
+            reason: error instanceof Error ? error.message : String(error),
+          },
+          error: {
+            code: "ACTION_HANDLER_FAILED",
+            message: error instanceof Error ? error.message : String(error),
+          },
+        };
+      }
+      this.handle.postMessage(actionResultEnvelope(
+        envelope.action.requestId,
+        result,
+      ));
+      return;
+    }
     if ("connectorRead" in envelope) {
       try {
         const result = await this.onConnectorRead(envelope.connectorRead);
@@ -138,6 +180,7 @@ export class PiRuntimeSupervisor {
     status: "denied",
   });
   private connectorReadCb: ConnectorReadHandler = async () => UNHANDLED_READ;
+  private actionCb: ActionHandler = async (request) => UNHANDLED_ACTION(request);
 
   constructor(
     private makeHandle: () => PiRuntimeHostHandle,
@@ -152,6 +195,7 @@ export class PiRuntimeSupervisor {
       handle,
       (request) => this.proposalCb(request),
       (request) => this.connectorReadCb(request),
+      (request) => this.actionCb(request),
       this.opts.sendTimeoutMs,
       this.opts.readinessTimeoutMs,
     );
@@ -182,5 +226,9 @@ export class PiRuntimeSupervisor {
 
   onConnectorRead(cb: ConnectorReadHandler): void {
     this.connectorReadCb = cb;
+  }
+
+  onAction(cb: ActionHandler): void {
+    this.actionCb = cb;
   }
 }
