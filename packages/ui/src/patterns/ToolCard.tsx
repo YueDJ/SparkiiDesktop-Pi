@@ -27,12 +27,17 @@ export function ToolCard({
   const status = awaitingApproval ? 'approval' : result ? 'ok' : 'running';
   const statusLabel = awaitingApproval ? '等待审批' : result ? '完成' : '运行中';
   const glyph = TOOL_GLYPH[toolName] ?? '⚙';
+  const resultRec = (result ?? {}) as Record<string, unknown>;
+  const runsOnHost = toolName === 'bash' || resultRec.executionBoundary === 'host';
 
   return (
     <div className={`ui-tool-card ui-tool-card--${status}`} data-testid="tool-card">
       <div className="ui-tool-card-head">
         <span className="ui-tool-card-icon" aria-hidden="true">{glyph}</span>
         <b className="ui-tool-card-name">{toolName}</b>
+        {runsOnHost && (
+          <span className="ui-tool-card-host" data-testid="tool-card-host-badge" title="宿主执行，非沙箱">Host</span>
+        )}
         {summary && <span className="ui-tool-card-summary" title={summary}>{summary}</span>}
         <span className={`ui-tool-card-status ui-status-badge ui-status-badge--${status}`}>{statusLabel}</span>
         <button

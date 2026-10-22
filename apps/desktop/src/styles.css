@@ -115,6 +115,7 @@ table.tbl th { background: var(--color-controlBg); color: var(--color-textSecond
 .ui-approval-queue-item-title { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .ui-approval-queue-item-title b { font-weight: var(--font-weight-semibold); overflow-wrap: anywhere; }
 .ui-approval-queue-item-title span { color: var(--color-textSecondary); font-size: var(--font-size-xs); }
+.ui-approval-queue-item-subtitle { color: var(--color-textMuted); font-size: var(--font-size-xs); }
 .ui-approval-queue-item-badges { display: flex; align-items: center; gap: var(--spacing-xs); flex: none; white-space: nowrap; }
 .ui-approval-queue-session { padding: 1px 7px; border-radius: var(--radius-pill); background: var(--color-primaryBg); color: var(--color-primary); font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); }
 .ui-approval-queue-item-meta { color: var(--color-textSecondary); font-size: var(--font-size-sm); }
@@ -395,4 +396,55 @@ table.tbl th { background: var(--color-controlBg); color: var(--color-textSecond
   margin: 5px 0 0;
   color: var(--color-warn);
   line-height: 1.45;
+}
+
+.permission-mode-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+  margin: 0 var(--spacing-md) var(--spacing-xs);
+  padding: 6px 2px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--font-size-xs);
+}
+
+.permission-mode-bar-modes { display: flex; gap: 6px; }
+
+.permission-mode-bar-facts {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--color-textMuted);
+}
+
+.permission-mode-fact { white-space: nowrap; }
+.permission-mode-fact.is-positive { color: var(--color-success, var(--color-textSecondary)); }
+
+.permission-mode-chip {
+  min-height: 24px;
+  padding: 2px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-controlBg);
+  color: var(--color-textSecondary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.permission-mode-chip:hover:not(:disabled) { border-color: var(--color-primary); }
+
+.permission-mode-chip.is-active {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.permission-mode-chip:disabled { opacity: .45; cursor: default; }
+
+.permission-mode-chip:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }

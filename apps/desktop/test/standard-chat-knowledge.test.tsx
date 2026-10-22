@@ -11,6 +11,8 @@ function makeApi(over: Record<string, unknown> = {}) {
     openChatSession: vi.fn().mockResolvedValue({ entries: [], streamingMessage: null, streaming: false }),
     getChatSession: vi.fn().mockResolvedValue({ workspacePath: 'C:/ws' }),
     getChatState: vi.fn().mockResolvedValue({ streaming: false, steering: [], followUp: [] }),
+    getPermissionModeState: vi.fn().mockResolvedValue({ mode: 'ask', allowedModes: ['ask', 'auto_review'], taskActive: false, hostShellAvailable: true, reviewerAvailable: true, limitations: [] }),
+    setChatPermissionMode: vi.fn(async (_id: string, mode: string) => ({ ok: true, mode })),
     promptSession: vi.fn().mockResolvedValue({ ok: true, sessionId: 's1' }),
     abortChat: vi.fn().mockResolvedValue({ ok: true, cleared: { steering: [], followUp: [] } }),
     queueMutate: vi.fn().mockResolvedValue({ ok: true }),

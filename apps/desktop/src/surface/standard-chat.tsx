@@ -4,6 +4,7 @@ import type { AgentSurfaceProps, CustomSessionEntry, SessionEntry } from './cont
 import type { ChatAttachment, SparkiiApi } from '../types/sparkii-api.js';
 import type { TaskCapabilityStatus as TaskCapabilityStatusValue } from '../types/sparkii-api.js';
 import { TaskCapabilityStatus } from '../trust/TaskCapabilityStatus.js';
+import { usePermissionMode } from '../trust/PermissionModeBar.js';
 import {
   Button,
   ChatMessage,
@@ -282,6 +283,7 @@ export function StandardChatSurface(props: StandardChatProps) {
   const [thinkingLevel, setThinkingLevel] = useState<string | null>(null);
   const [workspacePath, setWorkspacePath] = useState<string | null>(null);
   const [workspaceKind, setWorkspaceKind] = useState<'auto' | 'user'>('auto');
+  const { state: permissionModeState } = usePermissionMode();
   const [contextUsage, setContextUsage] = useState<{ tokens?: number | null; contextWindow?: number; percent?: number | null } | null>(null);
   const [isCompacting, setIsCompacting] = useState(false);
   const [detailLevel, setDetailLevel] = useState<ChatDetailLevel>(DEFAULT_CHAT_DETAIL_LEVEL);
@@ -595,7 +597,16 @@ export function StandardChatSurface(props: StandardChatProps) {
       display,
       undefined,
       chatAttachments.length ? chatAttachments : undefined,
-      sessionId ? undefined : { profileId: agent.id, workspacePath, workspaceKind, model, thinkingLevel },
+      sessionId ? undefined : {
+        profileId: agent.id,
+        workspacePath,
+        workspaceKind,
+        model,
+        thinkingLevel,
+        // A draft has no session row yet, so the chosen mode travels with the
+        // first prompt instead of being written through IPC.
+        permissionMode: permissionModeState.mode,
+      },
     ).then((res: any) => {
       if (!res?.ok && res?.ok !== undefined) {
         reportError(String(res.error ?? '发送失败'), { source: agent.name });

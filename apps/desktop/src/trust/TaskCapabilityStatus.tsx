@@ -21,20 +21,23 @@ export function TaskCapabilityStatus({
 
   const network = status.networkDomains?.length
     ? `网络：${status.networkDomains.join('、')}`
-    : '无网络';
+    : '网络由宿主进程决定';
   const external = status.externalCapabilities?.length
     ? `外部能力：${status.externalCapabilities.join('、')}`
     : '外部系统未授权';
+  const modeLabel = status.permissionMode === 'auto_review' ? 'Auto review' : 'Ask';
 
   return (
     <div className="task-capability-status" aria-label="当前任务权限">
       <div className="task-capability-status-row">
         <span className="task-capability-badge is-positive">工作区可写</span>
         <span className={`task-capability-badge ${status.processExec ? 'is-positive' : 'is-muted'}`}>
-          {status.processExec ? '沙箱内命令' : '命令执行未启用'}
+          {status.processExec ? 'Host Git Bash' : '命令执行未启用'}
         </span>
+        <span className="task-capability-badge is-muted">宿主执行，非沙箱</span>
         <span className="task-capability-badge is-muted">{network}</span>
         <span className="task-capability-badge is-muted">{external}</span>
+        <span className="task-capability-badge is-muted">{modeLabel}</span>
         {onRevoke && (
           <button
             type="button"

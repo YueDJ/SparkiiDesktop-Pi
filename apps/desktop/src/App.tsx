@@ -7,6 +7,7 @@ import { ApprovalCenter } from './trust/ApprovalCenter.js';
 import { ApprovalDrawer } from './trust/ApprovalDrawer.js';
 import { HighRiskApprovalDialog } from './trust/HighRiskApprovalDialog.js';
 import { ApprovalInboxProvider, useApprovalInbox } from './trust/ApprovalInbox.js';
+import { PermissionModeBar, PermissionModeProvider } from './trust/PermissionModeBar.js';
 import { AuditView } from './audit/AuditView.js';
 import { HomeView } from './platform/HomeView.js';
 import { useAgentSurface } from './platform/surface-registry.js';
@@ -125,16 +126,19 @@ function AgentFrame(props: {
   return (
     <div style={{ display: active ? 'block' : 'none', height: active ? '100%' : 'auto' }}>
       {active && (
-        <Surface
-          agent={agent}
-          sessionId={sessionId}
-          mode={mode}
-          session={session}
-          actions={buildActions(agent.id, session)}
-          title={title}
-          draft={draft}
-          active
-        />
+        <PermissionModeProvider api={window.sparkii} agentId={agent.id} sessionId={sessionId}>
+          <PermissionModeBar />
+          <Surface
+            agent={agent}
+            sessionId={sessionId}
+            mode={mode}
+            session={session}
+            actions={buildActions(agent.id, session)}
+            title={title}
+            draft={draft}
+            active
+          />
+        </PermissionModeProvider>
       )}
     </div>
   );

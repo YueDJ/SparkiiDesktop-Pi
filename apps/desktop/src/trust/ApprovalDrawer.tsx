@@ -25,7 +25,7 @@ export function ApprovalDrawer({ open, currentSessionId = null, onClose }: Appro
               <section className="ui-approval-group">
                 <div className="ui-approval-group-title">当前会话</div>
                 {current.map((p) => (
-                  <ApprovalCard key={p.id} proposal={p} onDecide={(id, ok, note) => { void decide(id, ok, note); }} />
+                  <ApprovalCard key={p.id} proposal={p} onDecide={(id, ok, note, scope) => { void decide(id, ok, note, scope); }} />
                 ))}
               </section>
             )}
@@ -33,7 +33,7 @@ export function ApprovalDrawer({ open, currentSessionId = null, onClose }: Appro
               <section className="ui-approval-group">
                 <div className="ui-approval-group-title">其他会话</div>
                 {others.map((p) => (
-                  <ApprovalCard key={p.id} proposal={p} onDecide={(id, ok, note) => { void decide(id, ok, note); }} />
+                  <ApprovalCard key={p.id} proposal={p} onDecide={(id, ok, note, scope) => { void decide(id, ok, note, scope); }} />
                 ))}
               </section>
             )}

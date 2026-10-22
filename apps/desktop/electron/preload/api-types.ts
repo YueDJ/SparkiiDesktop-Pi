@@ -32,6 +32,7 @@ export interface DraftPromptContext {
   workspaceKind?: 'auto' | 'user';
   model?: string | null;
   thinkingLevel?: string | null;
+  permissionMode?: 'ask' | 'auto_review';
 }
 
 export type ChooseDocumentOptions = { extensions?: string[] };

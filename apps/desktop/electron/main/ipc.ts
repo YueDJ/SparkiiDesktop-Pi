@@ -899,7 +899,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
 
   async function openOrCreateSession(
     sessionId: string | null,
-    context: { profileId?: string; workspacePath?: string | null; workspaceKind?: 'auto' | 'user'; model?: string | null; thinkingLevel?: string | null },
+    context: { profileId?: string; workspacePath?: string | null; workspaceKind?: 'auto' | 'user'; model?: string | null; thinkingLevel?: string | null; permissionMode?: PlatformPermissionMode },
   ): Promise<{ open: Awaited<ReturnType<typeof ensureOpenSession>>; sessionId: string; workspacePath: string | undefined }> {
     if (sessionId) {
       cancelIdleRelease(sessionId);
@@ -967,6 +967,19 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       bindRuntimeActions(slot, createdSessionId!);
       slot.supervisor.onConnectorRead?.((req) => handleConnectorRead(req, profileId, createdSessionId!));
       await mkdir(anchorDir(createdSessionId), { recursive: true });
+      // A draft carries the mode the user picked before the row existed. A mode
+      // the profile does not allow silently degrades to Ask.
+      let permissionMode: PlatformPermissionMode = 'ask';
+      const policy = rt.security?.profilePolicies.get(profileId);
+      if (context.permissionMode && policy) {
+        try {
+          permissionMode = resolveSessionPermissionMode(
+            createdSessionId, profileId, policy, context.permissionMode,
+          );
+        } catch {
+          permissionMode = 'ask';
+        }
+      }
       rt.chatSessions.create({
         id: createdSessionId,
         profileId,
@@ -975,6 +988,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         model: target ? modelTargetKey(target) : null,
         thinkingLevel: context.thinkingLevel ?? null,
         piSessionFile: sessionFile ?? null,
+        permissionMode,
       });
       if (target) {
         const apiKey = await rt.keyFor(target.provider);
@@ -1068,7 +1082,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     text: string,
     options?: { behavior?: 'steer' | 'followUp' },
     attachments: ChatAttachment[] = [],
-    context: { profileId?: string; workspacePath?: string | null; workspaceKind?: 'auto' | 'user'; model?: string | null; thinkingLevel?: string | null } = {},
+    context: { profileId?: string; workspacePath?: string | null; workspaceKind?: 'auto' | 'user'; model?: string | null; thinkingLevel?: string | null; permissionMode?: PlatformPermissionMode } = {},
   ) => {
     const profileIdForGate = sessionId
       ? rt.chatSessions.get(sessionId)?.profileId

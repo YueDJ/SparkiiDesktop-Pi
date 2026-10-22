@@ -1,8 +1,10 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, renderHook, act, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { render, screen, renderHook, act, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { ApprovalInboxProvider, useSessionApprovals, useApprovalInbox } from '../src/trust/ApprovalInbox.js';
 import { InlineApprovalCard } from '../src/trust/InlineApprovalCard.js';
+
+afterEach(cleanup);
 
 function proposal(over: Record<string, unknown> = {}) {
   return {
@@ -94,5 +96,61 @@ describe('ApprovalInbox', () => {
       </ApprovalInboxProvider>,
     );
     await waitFor(() => expect(screen.getByTestId('claimed').textContent).toBe('yes'));
+  });
+
+  it('passes task scope for process.exec only', async () => {
+    const decideApproval = vi.fn(async () => ({}));
+    const api = makeApi({
+      listPendingApprovals: async () => [],
+      decideApproval,
+    });
+    render(
+      <ApprovalInboxProvider api={api as never}>
+        <InlineApprovalCard proposal={proposal({
+          toolName: 'bash',
+          targetSystem: 'platform:process.exec',
+        }) as never} />
+      </ApprovalInboxProvider>,
+    );
+    expect(await screen.findByRole('button', { name: '允许一次' })).toBeTruthy();
+    expect(screen.getByText('宿主执行，非沙箱')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '本任务允许 Shell' }));
+    await waitFor(() => expect(decideApproval)
+      .toHaveBeenCalledWith('p1', true, undefined, 'task'));
+  });
+
+  it('offers no task scope for an external write', async () => {
+    const decideApproval = vi.fn(async () => ({}));
+    const api = makeApi({
+      listPendingApprovals: async () => [],
+      decideApproval,
+    });
+    render(
+      <ApprovalInboxProvider api={api as never}>
+        <InlineApprovalCard proposal={proposal({
+          toolName: 'report.export',
+          targetSystem: 'report',
+        }) as never} />
+      </ApprovalInboxProvider>,
+    );
+    expect(await screen.findByRole('button', { name: '允许' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '本任务允许 Shell' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '允许' }));
+    await waitFor(() => expect(decideApproval).toHaveBeenCalledWith('p1', true, undefined, undefined));
+  });
+
+  it('offers no task scope for a high-risk shell command', async () => {
+    const api = makeApi({ listPendingApprovals: async () => [] });
+    render(
+      <ApprovalInboxProvider api={api as never}>
+        <InlineApprovalCard proposal={proposal({
+          toolName: 'bash',
+          targetSystem: 'platform:process.exec',
+          risk: 'high-risk',
+        }) as never} />
+      </ApprovalInboxProvider>,
+    );
+    expect(await screen.findByRole('button', { name: '拒绝' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '本任务允许 Shell' })).toBeNull();
   });
 });
