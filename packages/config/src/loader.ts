@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parse as parseYaml } from 'yaml';
-import { parseProfileManifest } from './schema.js';
+import { parseApprovalPolicy, parseProfileManifest } from './schema.js';
 import { collectSkillDirFiles, loadSkillsFromDir } from './skills.js';
 import type { ResolvedProfile } from './types.js';
 
@@ -78,6 +78,27 @@ export async function loadProfile(
     manifest,
     agent: { skills, tools: toolsCfg.tools, prompts, workflow: parseYaml(workflowRaw) as Record<string, unknown>, knowledge },
     ui: { pages: { home: JSON.parse(pagesRaw) }, theme: themeCfg },
-    security: { roles: parseYaml(rolesRaw)?.roles ?? [], approval: parseYaml(approvalRaw) },
+    security: {
+      roles: parseYaml(rolesRaw)?.roles ?? [],
+      approval: parseApproval({ approvalRaw, dir }),
+    },
   };
+}
+
+/**
+ * A profile that predates permission modes is still readable, but an approval
+ * policy that drops Ask or defaults to a mode the platform does not offer must
+ * fail at load time rather than at the first action.
+ */
+function parseApproval(input: { approvalRaw: string; dir: string }): ResolvedProfile['security']['approval'] {
+  try {
+    return parseApprovalPolicy(parseYaml(input.approvalRaw));
+  } catch (error) {
+    throw new ProfileError(
+      'PROFILE_INVALID',
+      `approval policy invalid for ${input.dir}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
 }

@@ -34,11 +34,17 @@ export type PageSchema = Record<string, unknown>;
 export interface ThemeRef { file: string; }
 
 export interface RoleConfig { name: string; pages: string[]; tools: string[]; canApprove: Array<'write' | 'high-risk'>; }
+/** The two platform permission modes; duplicated here because config cannot import approval. */
+export type PermissionModeId = 'ask' | 'auto_review';
 export interface ApprovalPolicy {
   autoApprove?: string[];
   requireApproval: string[];
   timeoutMs: number;
   highRiskDoubleConfirm: boolean;
+  defaultPermissionMode?: PermissionModeId;
+  allowedPermissionModes?: PermissionModeId[];
+  /** Legacy hint only. `strict` restricts the profile to Ask. */
+  mode?: 'standard' | 'strict';
 }
 
 export interface AgentConfig {

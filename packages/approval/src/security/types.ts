@@ -8,6 +8,12 @@ export type CapabilityKind =
 
 export type PolicyDecision = 'allow' | 'ask' | 'deny';
 export type RunMode = 'plan' | 'standard' | 'strict';
+/** The only permission modes the platform offers. There is no full-access mode. */
+export type PlatformPermissionMode = 'ask' | 'auto_review';
+export type ReviewerDecision =
+  | { decision: 'allow'; risk: 'low' | 'medium'; reason: string }
+  | { decision: 'ask'; risk: 'high'; reason: string }
+  | { decision: 'deny'; risk: 'critical'; reason: string };
 export type ResourceKind = 'path' | 'domain' | 'connector' | 'process' | 'task';
 export type ResourceScope = 'workspace' | 'input' | 'scratch' | 'external' | 'critical';
 export type SecurityRisk = 'read' | 'write' | 'high-risk';

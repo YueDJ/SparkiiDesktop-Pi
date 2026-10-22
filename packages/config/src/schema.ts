@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { ProfileManifest } from './types.js';
+import type { ApprovalPolicy, PermissionModeId, ProfileManifest } from './types.js';
 
 const modelTarget = z.object({ provider: z.string().min(1), modelId: z.string().min(1) });
 export const manifestSchema = z.object({
@@ -34,4 +34,39 @@ export const manifestSchema = z.object({
 
 export function parseProfileManifest(raw: unknown): ProfileManifest {
   return manifestSchema.parse(raw);
+}
+
+const permissionModeSchema = z.enum(['ask', 'auto_review']);
+
+export const approvalPolicySchema = z.object({
+  autoApprove: z.array(z.string()).optional(),
+  requireApproval: z.array(z.string()),
+  timeoutMs: z.number().positive(),
+  highRiskDoubleConfirm: z.boolean(),
+  defaultPermissionMode: permissionModeSchema.optional(),
+  allowedPermissionModes: z.array(permissionModeSchema).optional(),
+  mode: z.enum(['standard', 'strict']).optional(),
+});
+
+/**
+ * Normalizes an approval policy, including legacy profiles that predate
+ * permission modes: they default to Ask and keep AutoReview available unless
+ * the legacy `strict` hint restricted them.
+ */
+export function parseApprovalPolicy(raw: unknown): ApprovalPolicy {
+  const value = approvalPolicySchema.parse(raw);
+  const allowedPermissionModes: PermissionModeId[] = value.allowedPermissionModes
+    ?? (value.mode === 'strict' ? ['ask'] : ['ask', 'auto_review']);
+  const defaultPermissionMode: PermissionModeId = value.defaultPermissionMode ?? 'ask';
+  if (!allowedPermissionModes.includes('ask')) {
+    throw new Error('allowedPermissionModes must include ask');
+  }
+  if (!allowedPermissionModes.includes(defaultPermissionMode)) {
+    throw new Error('defaultPermissionMode must be allowed');
+  }
+  return {
+    ...value,
+    allowedPermissionModes,
+    defaultPermissionMode,
+  };
 }
