@@ -18,4 +18,6 @@ cl.exe /nologo /O2 /EHsc /std:c++17 /MT /Fo:"%ROOT%bin\obj\\" /Fe:"%ROOT%bin\Spa
 if errorlevel 1 exit /b 1
 cl.exe /nologo /O2 /EHsc /std:c++17 /MT /Fo:"%ROOT%bin\obj\\" /Fe:"%ROOT%bin\SandboxProbe.exe" "%ROOT%SandboxProbe.cpp" /link ws2_32.lib
 if errorlevel 1 exit /b 1
+cl.exe /nologo /O2 /EHsc /std:c++17 /MT /Fo:"%ROOT%bin\obj\\" /Fe:"%ROOT%bin\HostShellRunner.exe" "%ROOT%HostShellRunner.cpp" /link kernel32.lib
+if errorlevel 1 exit /b 1
 endlocal

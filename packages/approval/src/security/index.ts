@@ -1,5 +1,6 @@
 export * from './types.js';
 export * from './fingerprint.js';
+export * from './host-shell.js';
 export * from './permission-mode.js';
 export * from './policy.js';
 export * from './reviewer.js';
