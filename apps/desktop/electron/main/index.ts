@@ -59,7 +59,12 @@ app.whenReady().then(async () => {
     : readdirSync(profileRoot, { withFileTypes: true })
         .filter((e) => e.isDirectory() && existsSync(join(profileRoot, e.name, 'manifest.yaml')))
         .map((e) => ({ id: e.name, dir: join(profileRoot, e.name) }));
-  rt = await assemble({ profiles: profileDirs, dataDir, allowUnsigned: process.env.NODE_ENV !== 'production' });
+  rt = await assemble({ profiles: profileDirs, dataDir, allowUnsigned: process.env.NODE_ENV !== 'production', logger });
+  // The hidden reviewer worker must not outlive the app. Idempotent, and it
+  // never touches normal Agent sessions.
+  app.on('before-quit', () => {
+    void rt.security?.reviewer.dispose().catch(() => {});
+  });
   attachRecovery(rt, logger);
   win = new BrowserWindow({
     width: 1280,

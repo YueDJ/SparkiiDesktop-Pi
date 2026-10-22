@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+import type { PlatformPermissionMode } from '@sparkii/approval';
 
 export type WorkspaceKind = 'auto' | 'user';
 export type SessionKind = 'chat' | 'workflow' | 'dashboard';
@@ -22,16 +23,24 @@ export interface ChatSessionRecord {
   sortOrder: number | null;
   /** User renamed this session; agent title publishes must not overwrite. Not the title string. */
   titleLockedByUser: boolean;
+  /** Which permission mode this session runs under. Ask is the default. */
+  permissionMode: PlatformPermissionMode;
   createdAt: number;
   updatedAt: number;
 }
 
 type Row = ChatSessionRecord;
 
-const SELECT_COLS = 'id, profile_id AS profileId, kind, current_step AS currentStep, workspace_kind AS workspaceKind, workspace_path AS workspacePath, model, thinking_level AS thinkingLevel, pi_session_file AS piSessionFile, inputs, pinned, archived, sort_order AS sortOrder, title_locked_by_user AS titleLockedByUser, created_at AS createdAt, updated_at AS updatedAt';
+const SELECT_COLS = 'id, profile_id AS profileId, kind, current_step AS currentStep, workspace_kind AS workspaceKind, workspace_path AS workspacePath, model, thinking_level AS thinkingLevel, pi_session_file AS piSessionFile, inputs, pinned, archived, sort_order AS sortOrder, title_locked_by_user AS titleLockedByUser, permission_mode AS permissionMode, created_at AS createdAt, updated_at AS updatedAt';
 
 function toRecord(row: Row): ChatSessionRecord {
-  return { ...row, pinned: !!row.pinned, archived: !!row.archived, titleLockedByUser: !!row.titleLockedByUser };
+  return {
+    ...row,
+    pinned: !!row.pinned,
+    archived: !!row.archived,
+    titleLockedByUser: !!row.titleLockedByUser,
+    permissionMode: row.permissionMode === 'auto_review' ? 'auto_review' : 'ask',
+  };
 }
 
 export class ChatSessionStore {
@@ -56,6 +65,7 @@ export class ChatSessionStore {
         archived INTEGER NOT NULL DEFAULT 0,
         sort_order REAL,
         title_locked_by_user INTEGER NOT NULL DEFAULT 0,
+        permission_mode TEXT NOT NULL DEFAULT 'ask',
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
       );
@@ -92,9 +102,12 @@ export class ChatSessionStore {
     if (!columns.some((c) => c.name === 'title_locked_by_user')) {
       this.db.exec('ALTER TABLE chat_sessions ADD COLUMN title_locked_by_user INTEGER NOT NULL DEFAULT 0');
     }
+    if (!columns.some((c) => c.name === 'permission_mode')) {
+      this.db.exec("ALTER TABLE chat_sessions ADD COLUMN permission_mode TEXT NOT NULL DEFAULT 'ask'");
+    }
   }
 
-  create(rec: { id: string; profileId: string; kind?: SessionKind; currentStep?: string | null; workspaceKind: WorkspaceKind; workspacePath: string; model?: string | null; thinkingLevel?: string | null; piSessionFile?: string | null; inputs?: string | null; pinned?: boolean; archived?: boolean; sortOrder?: number | null; titleLockedByUser?: boolean }): ChatSessionRecord {
+  create(rec: { id: string; profileId: string; kind?: SessionKind; currentStep?: string | null; workspaceKind: WorkspaceKind; workspacePath: string; model?: string | null; thinkingLevel?: string | null; piSessionFile?: string | null; inputs?: string | null; pinned?: boolean; archived?: boolean; sortOrder?: number | null; titleLockedByUser?: boolean; permissionMode?: PlatformPermissionMode }): ChatSessionRecord {
     const now = Date.now();
     const row: Row = {
       id: rec.id, profileId: rec.profileId,
@@ -104,11 +117,12 @@ export class ChatSessionStore {
       inputs: rec.inputs ?? null,
       pinned: rec.pinned ?? false, archived: rec.archived ?? false, sortOrder: rec.sortOrder ?? null,
       titleLockedByUser: rec.titleLockedByUser ?? false,
+      permissionMode: rec.permissionMode ?? 'ask',
       createdAt: now, updatedAt: now,
     };
     this.db.prepare(
-      `INSERT INTO chat_sessions (id, profile_id, kind, current_step, workspace_kind, workspace_path, model, thinking_level, pi_session_file, inputs, pinned, archived, sort_order, title_locked_by_user, created_at, updated_at)
-       VALUES (@id, @profileId, @kind, @currentStep, @workspaceKind, @workspacePath, @model, @thinkingLevel, @piSessionFile, @inputs, @pinned, @archived, @sortOrder, @titleLockedByUser, @createdAt, @updatedAt)`,
+      `INSERT INTO chat_sessions (id, profile_id, kind, current_step, workspace_kind, workspace_path, model, thinking_level, pi_session_file, inputs, pinned, archived, sort_order, title_locked_by_user, permission_mode, created_at, updated_at)
+       VALUES (@id, @profileId, @kind, @currentStep, @workspaceKind, @workspacePath, @model, @thinkingLevel, @piSessionFile, @inputs, @pinned, @archived, @sortOrder, @titleLockedByUser, @permissionMode, @createdAt, @updatedAt)`,
     ).run({ ...row, pinned: row.pinned ? 1 : 0, archived: row.archived ? 1 : 0, titleLockedByUser: row.titleLockedByUser ? 1 : 0 });
     return row;
   }
@@ -128,12 +142,12 @@ export class ChatSessionStore {
     return row ? toRecord(row) : undefined;
   }
 
-  update(id: string, patch: Partial<Pick<ChatSessionRecord, 'kind' | 'currentStep' | 'model' | 'thinkingLevel' | 'workspaceKind' | 'workspacePath' | 'piSessionFile' | 'inputs' | 'pinned' | 'archived' | 'sortOrder' | 'titleLockedByUser'>>): ChatSessionRecord | undefined {
+  update(id: string, patch: Partial<Pick<ChatSessionRecord, 'kind' | 'currentStep' | 'model' | 'thinkingLevel' | 'workspaceKind' | 'workspacePath' | 'piSessionFile' | 'inputs' | 'pinned' | 'archived' | 'sortOrder' | 'titleLockedByUser' | 'permissionMode'>>): ChatSessionRecord | undefined {
     const cur = this.get(id);
     if (!cur) return undefined;
     const next: Row = { ...cur, ...patch, updatedAt: Date.now() };
     this.db.prepare(
-      `UPDATE chat_sessions SET kind=@kind, current_step=@currentStep, workspace_kind=@workspaceKind, workspace_path=@workspacePath, model=@model, thinking_level=@thinkingLevel, pi_session_file=@piSessionFile, inputs=@inputs, pinned=@pinned, archived=@archived, sort_order=@sortOrder, title_locked_by_user=@titleLockedByUser, updated_at=@updatedAt WHERE id=@id`,
+      `UPDATE chat_sessions SET kind=@kind, current_step=@currentStep, workspace_kind=@workspaceKind, workspace_path=@workspacePath, model=@model, thinking_level=@thinkingLevel, pi_session_file=@piSessionFile, inputs=@inputs, pinned=@pinned, archived=@archived, sort_order=@sortOrder, title_locked_by_user=@titleLockedByUser, permission_mode=@permissionMode, updated_at=@updatedAt WHERE id=@id`,
     ).run({ ...next, pinned: next.pinned ? 1 : 0, archived: next.archived ? 1 : 0, titleLockedByUser: next.titleLockedByUser ? 1 : 0 });
     return next;
   }

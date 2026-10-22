@@ -71,16 +71,15 @@ import type { AgentRuntime } from './agent-registry.js';
 import {
   hashPayload,
   resolvePermissionMode,
+  type PlatformPermissionMode,
   type SecurityAction,
   type TaskGrant,
 } from '@sparkii/approval';
 import { createTaskGrant } from './security/task-grant-factory.js';
 import { createRuntimeActionRouter } from './security/runtime-action-router.js';
 import { ShellGrantStore } from './security/shell-grant-store.js';
-import {
-  SHELL_REVIEWER_POLICY_VERSION,
-  REVIEWER_USER_TASK_LIMIT,
-} from './security/reviewer-policy.js';
+import { resolveSessionPermissionMode } from './security/session-permission-mode.js';
+import { REVIEWER_USER_TASK_LIMIT } from './security/reviewer-policy.js';
 
 /** 按后端探活：读该后端自己的配置块与凭据，再交给 `knowledge-probe`。 */
 async function probeKnowledgeConnection(
@@ -191,18 +190,53 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   const shellGrants = new ShellGrantStore();
   /** The prompt text of the live Task, trimmed, for the Reviewer only. */
   const userTaskBySession = new Map<string, string>();
+  /** Only "can the platform still review?" and the last verdict leave Main. */
+  let reviewerUnavailable = false;
+  const lastReviewBySession = new Map<string, {
+    decision: 'allow' | 'ask' | 'deny';
+    risk: string;
+    reason: string;
+  }>();
   const actionRouter = rt.security
     ? createRuntimeActionRouter({
       lifecycle: rt.security.taskLifecycle,
       normalizer: rt.security.actionNormalizer,
       shellGrants,
-      reviewerModel: 'unconfigured',
-      reviewerPolicyVersion: SHELL_REVIEWER_POLICY_VERSION,
+      reviewerModel: rt.security.reviewerModel,
+      reviewerPolicyVersion: rt.security.reviewerPolicyVersion,
       userTaskOf: (sessionId) => userTaskBySession.get(sessionId) ?? '',
-      async reviewShell() {
-        // Task 6 installs the hidden Pi worker; until then AutoReview is
-        // unavailable and every Shell falls back to a human decision.
-        throw new Error('Reviewer unavailable');
+      async reviewShell(input) {
+        const reviewer = rt.security?.reviewer;
+        if (!reviewer) throw new Error('Reviewer unavailable');
+        try {
+          const reviewed = await reviewer.review(input);
+          reviewerUnavailable = false;
+          lastReviewBySession.set(input.sessionId, {
+            decision: reviewed.decision,
+            risk: reviewed.risk,
+            reason: reviewed.reason,
+          });
+          getWindow()?.webContents.send('sparkii:event:permission-event', {
+            sessionId: input.sessionId,
+            taskId: input.taskId,
+            decision: reviewed.decision,
+            risk: reviewed.risk,
+            reason: reviewed.reason,
+          });
+          return reviewed;
+        } catch (error) {
+          reviewerUnavailable = true;
+          void logger.log({
+            level: 'warn',
+            msg: 'reviewer.availability.changed',
+            ctx: {
+              available: false,
+              sessionId: input.sessionId,
+              error: error instanceof Error ? error.message : String(error),
+            },
+          });
+          throw error;
+        }
       },
       profilePolicyOf: (profileId) =>
         rt.security?.profilePolicies.get(profileId)
@@ -242,15 +276,10 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
           const timeoutMs = Number.isFinite(requested)
             ? Math.max(1_000, Math.min(300_000, Math.floor(requested)))
             : 60_000;
-          const result = await rt.security.sandbox.run({
+          const result = await rt.security.hostShell.run({
             taskId: grant.taskId,
             workspaceRoot: grant.workspaceRoot,
             scratchRoot: grant.scratchRoot,
-            runtimeRoot: rt.security.sandboxReport.status === 'available'
-              ? dirname(dirname(rt.security.bashPath))
-              : '',
-            executable: rt.security.bashPath,
-            cwd: grant.workspaceRoot,
             command,
             timeoutMs,
           });
@@ -259,10 +288,10 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
               exitCode: result.exitCode,
               output: `${result.stdout}${result.stderr}`,
               timedOut: result.timedOut,
-              sandbox: {
-                status: rt.security.sandboxReport.status,
-                version: rt.security.sandboxReport.version,
-              },
+              // The host runs the command; Workspace is only the working directory.
+              executionBoundary: 'host',
+              backend: rt.security.hostShellReport.backend,
+              truncated: result.truncated,
             },
           };
         }
@@ -321,8 +350,8 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       },
       audit: rt.audit,
       actor: () => rt.subject?.userId ?? 'agent',
-      platformName: rt.security?.sandboxReport.platform,
-      sandboxVersion: rt.security?.sandboxReport.version,
+      platformName: process.platform,
+      sandboxVersion: rt.security?.hostShellReport.version,
     })
     : null;
 
@@ -383,6 +412,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       permissionMode: resolvePermissionMode({
         sessionId,
         profileId,
+        sessionMode: rec.permissionMode,
         profileDefaultMode: policy.defaultPermissionMode,
         allowedModes: policy.allowedPermissionModes,
       }),
@@ -394,8 +424,16 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     }));
     security.taskLifecycle.registerCancellation(
       grant.taskId,
-      'workspace-sandbox',
-      () => security.sandbox.terminate(grant.taskId),
+      'host-shell',
+      async () => {
+        await security.hostShell.terminate(grant.taskId);
+        await rm(grant.scratchRoot, { recursive: true, force: true }).catch(() => {});
+      },
+    );
+    security.taskLifecycle.registerCancellation(
+      grant.taskId,
+      'reviewer',
+      () => security.reviewer.cancel(grant.taskId),
     );
     security.taskLifecycle.registerCancellation(
       grant.taskId,
@@ -1653,7 +1691,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     if (!grant || !rt.security) {
       return {
         active: false,
-        sandbox: rt.security?.sandboxReport.status ?? 'unavailable',
+        hostShell: rt.security?.hostShellReport.status ?? 'unavailable',
       };
     }
     return {
@@ -1663,12 +1701,12 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       permissionMode: grant.permissionMode,
       workspaceRoot: grant.workspaceRoot,
       workspaceWrite: true,
-      processExec: rt.security.sandboxReport.status === 'available',
+      processExec: rt.security.hostShellReport.status === 'available',
       networkDomains: grant.networkDomains,
       externalCapabilities: grant.externalCapabilities,
-      sandbox: rt.security.sandboxReport.status,
-      sandboxVersion: rt.security.sandboxReport.version,
-      limitations: rt.security.sandboxReport.limitations,
+      hostShell: rt.security.hostShellReport.status,
+      hostShellVersion: rt.security.hostShellReport.version,
+      limitations: rt.security.hostShellReport.limitations,
       expiresAt: grant.expiresAt,
     };
   });
@@ -1676,6 +1714,69 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     const active = Boolean(rt.security?.taskLifecycle.active(sessionId));
     await rt.security?.taskLifecycle.end(sessionId, 'user');
     return { ok: true, revoked: active };
+  });
+  ipcMain.handle('sparkii:getPermissionModeState', (_e, agentId: string, sessionId?: string | null) => {
+    const policy = rt.security?.profilePolicies.get(agentId);
+    const rec = sessionId ? rt.chatSessions.get(sessionId) : null;
+    const allowedModes = policy?.allowedPermissionModes ?? ['ask', 'auto_review'];
+    let mode: PlatformPermissionMode = 'ask';
+    try {
+      mode = resolvePermissionMode({
+        sessionId: sessionId ?? '',
+        profileId: agentId,
+        sessionMode: rec?.permissionMode,
+        profileDefaultMode: policy?.defaultPermissionMode,
+        allowedModes,
+      });
+    } catch {
+      mode = 'ask';
+    }
+    return {
+      mode,
+      allowedModes,
+      taskActive: Boolean(sessionId && rt.security?.taskLifecycle.active(sessionId)),
+      hostShellAvailable: rt.security?.hostShellReport.status === 'available',
+      reviewerAvailable: Boolean(rt.security?.reviewer) && !reviewerUnavailable,
+      limitations: rt.security?.hostShellReport.limitations ?? ['平台安全层不可用'],
+      ...(sessionId ? { lastReview: lastReviewBySession.get(sessionId) } : {}),
+    };
+  });
+  ipcMain.handle('sparkii:setChatPermissionMode', async (
+    _e,
+    sessionId: string,
+    mode: PlatformPermissionMode,
+  ) => {
+    const rec = rt.chatSessions.get(sessionId);
+    if (!rec) return { ok: false, error: 'session not found' };
+    const policy = rt.security?.profilePolicies.get(rec.profileId);
+    if (!policy) return { ok: false, error: 'no security policy for this profile' };
+    let resolved: PlatformPermissionMode;
+    try {
+      resolved = resolveSessionPermissionMode(sessionId, rec.profileId, policy, mode);
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+    const previous = rec.permissionMode;
+    // A mode change never retroactively cancels executed work, but the running
+    // Task and its shell grant must not carry the old privilege level.
+    const activeTask = rt.security?.taskLifecycle.active(sessionId);
+    await rt.security?.taskLifecycle.end(sessionId, 'permission-mode-changed');
+    if (activeTask) rt.security?.shellGrants.revoke(activeTask.taskId);
+    rt.chatSessions.update(sessionId, { permissionMode: resolved });
+    await rt.audit.append({
+      actor: rt.subject?.userId ?? 'agent',
+      action: 'permission-mode.changed',
+      resource: 'permission-mode',
+      payloadSummary: JSON.stringify({
+        from: previous,
+        to: resolved,
+        policyVersion: rt.security?.reviewerPolicyVersion,
+      }).slice(0, 512),
+      sessionId,
+      taskId: activeTask?.taskId,
+      ruleId: 'permission-mode.changed',
+    });
+    return { ok: true, mode: resolved };
   });
   ipcMain.handle('sparkii:decideApproval', async (
     _e,
@@ -1744,8 +1845,8 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
               ruleId: 'gateway.lease',
               capability: action.capability,
               payloadHash: action.payloadHash,
-              platform: rt.security.sandboxReport.platform,
-              sandboxVersion: rt.security.sandboxReport.version,
+              platform: process.platform,
+              sandboxVersion: rt.security.hostShellReport.version,
               decision: 'approved',
             });
             out = await rt.security.capabilityGateway.execute(
@@ -1769,8 +1870,8 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
               ruleId: 'gateway.execution-blocked',
               capability: action?.capability,
               payloadHash: action?.payloadHash,
-              platform: rt.security.sandboxReport.platform,
-              sandboxVersion: rt.security.sandboxReport.version,
+              platform: process.platform,
+              sandboxVersion: rt.security.hostShellReport.version,
               decision: 'failed',
             });
           }

@@ -11,20 +11,19 @@ import {
   ConnectorExecutor,
   AuditStore,
   TaskGrantRegistry,
+  type HostShellAdapter,
+  type HostShellProbeReport,
   type PlatformProfilePolicy,
-  type PlatformSecurityReport,
   type SecurityAction,
   type WorkspaceSandboxAdapter,
 } from "@sparkii/approval";
-import { PiRuntimePool } from "@sparkii/agent-host";
+import { PiRuntimePool, PiRuntimeSupervisor } from "@sparkii/agent-host";
 import { knowledgeConnector } from "@sparkii/connectors";
 import { createUtilityHostHandle, createForkHostHandle } from "../pi-runtime/transports.js";
 import { registerConnectorHandlers } from "./connector-registry.js";
 import { ChatSessionStore } from "./chat-session-store.js";
 import { ErrorStore } from "./error-store.js";
 import { Keyring } from "./keyring.js";
-import { loadSettings } from "./settings.js";
-import { loadApiKey, saveApiKey } from "./settings.js";
 import { resolveRuntimePaths, resolveRuntimeToolsDir } from "./runtime-layout.js";
 import { loadAgentRuntimes, type AgentRuntime } from "./agent-registry.js";
 import type { KnowledgeBackendId } from "./knowledge-settings.js";
@@ -44,6 +43,12 @@ import {
 import { normalizeProfilePolicy } from "./security/profile-policy.js";
 import { TaskLifecycle } from "./security/task-lifecycle.js";
 import { createWindowsSandboxAdapter } from "./security/windows-sandbox.js";
+import { createHostShellAdapter, resolveHelperPath } from "./security/host-shell.js";
+import { ShellGrantStore } from "./security/shell-grant-store.js";
+import { createPiShellReviewer, type ShellReviewer } from "./security/shell-reviewer.js";
+import { resolveReviewerConfig } from "./settings.js";
+import { loadSettings, loadApiKey, saveApiKey } from "./settings.js";
+import type { Logger } from "./logger.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -79,8 +84,16 @@ export interface RuntimeSecurity {
   profilePolicies: Map<string, PlatformProfilePolicy>;
   scratchParent: string;
   bashPath: string;
-  sandbox: WorkspaceSandboxAdapter;
-  sandboxReport: PlatformSecurityReport;
+  /** Windows Shell main path: host Git Bash under a Job Object. Not a sandbox. */
+  hostShell: HostShellAdapter;
+  hostShellReport: HostShellProbeReport;
+  shellGrants: ShellGrantStore;
+  /** Platform-owned, hidden, tool-less Pi worker. Never an Agent, never in the pool. */
+  reviewer: ShellReviewer;
+  reviewerModel: string;
+  reviewerPolicyVersion: string;
+  /** AppContainer prototype kept for research only; the main path never runs it. */
+  researchSandbox: WorkspaceSandboxAdapter;
   capabilityGateway: CapabilityGateway;
   platformReadyFor(action: SecurityAction): boolean;
 }
@@ -150,6 +163,7 @@ function resolvePiRuntimeEntry(): string {
 export async function assemble(opts: {
   profiles: Array<{ id: string; dir: string }>;
   dataDir: string; publicKey?: string; allowUnsigned?: boolean;
+  logger?: Logger;
 }): Promise<Runtime> {
   const profiles = new Map<string, ProfileRuntime>();
   for (const { id, dir } of opts.profiles) {
@@ -246,11 +260,31 @@ export async function assemble(opts: {
     const taskGrants = new TaskGrantRegistry();
     const capabilityGateway = new CapabilityGateway();
     const runtimePaths = resolveRuntimePaths();
-    const sandbox = createWindowsSandboxAdapter({
-      runtimeRoot: runtimePaths.portableGitDir,
-      resourcesPath: process.resourcesPath,
+    const hostShell = createHostShellAdapter({
+      bashPath: runtimePaths.bashPath,
+      helperPath: resolveHelperPath({ resourcesPath: process.resourcesPath }),
     });
-    const sandboxReport = await sandbox.probe();
+    const hostShellReport = await hostShell.probe();
+    const reviewerConfig = resolveReviewerConfig(settings);
+    const reviewerLogger = opts.logger ?? { log: async () => {} };
+    const reviewer = createPiShellReviewer({
+      provider: reviewerConfig.provider,
+      modelId: reviewerConfig.modelId,
+      timeoutMs: reviewerConfig.timeoutMs,
+      idleMs: reviewerConfig.idleMs,
+      keyFor: keyStore.keyFor,
+      logger: reviewerLogger,
+      makeClient: async () => {
+        const supervisor = new PiRuntimeSupervisor(
+          () => createUtilityHostHandle(entry, env),
+        );
+        const client = await supervisor.start();
+        return {
+          send: (command) => client.send(command as never),
+          stop: () => supervisor.stop(),
+        };
+      },
+    });
     security = {
       pathProbe,
       protectedRoots,
@@ -266,14 +300,24 @@ export async function assemble(opts: {
       profilePolicies,
       scratchParent: join(opts.dataDir, 'tasks'),
       bashPath: runtimePaths.bashPath,
-      sandbox,
-      sandboxReport,
+      hostShell,
+      hostShellReport,
+      shellGrants: new ShellGrantStore(),
+      reviewer,
+      reviewerModel: reviewerConfig.modelId,
+      reviewerPolicyVersion: reviewerConfig.policyVersion,
+      // Research prototype only. Probing or running AppContainer is never a
+      // prerequisite for process.exec any more.
+      researchSandbox: createWindowsSandboxAdapter({
+        runtimeRoot: runtimePaths.portableGitDir,
+        resourcesPath: process.resourcesPath,
+      }),
       platformReadyFor: (action) =>
         action.capability === 'fs.read'
         || action.capability === 'fs.write'
         || (
           action.capability === 'process.exec'
-          && sandboxReport.status === 'available'
+          && hostShellReport.status === 'available'
         ),
     };
   }

@@ -127,6 +127,11 @@ export type OntologyGraphProbeResult = {
 export interface SparkiiApi {
   getTaskCapabilities?(sessionId: string): Promise<TaskCapabilityStatus>;
   revokeTaskCapabilities?(sessionId: string): Promise<{ ok: boolean; revoked: boolean }>;
+  getPermissionModeState(agentId: string, sessionId?: string | null): Promise<PermissionModeState>;
+  setChatPermissionMode(
+    sessionId: string,
+    mode: 'ask' | 'auto_review',
+  ): Promise<{ ok: boolean; mode?: 'ask' | 'auto_review'; error?: string }>;
   getLocalSubject(): Promise<{ userId: string; roles: string[] }>;
   chooseDocument(opts?: ChooseDocumentOptions): Promise<{ path?: string }>;
   readDocumentBytes(path: string, sessionId?: string | null): Promise<ReadDocumentBytesResult>;
@@ -254,8 +259,22 @@ export interface TaskCapabilityStatus {
   processExec?: boolean;
   networkDomains?: string[];
   externalCapabilities?: string[];
-  sandbox?: 'available' | 'partial' | 'unavailable';
-  sandboxVersion?: string;
+  hostShell?: 'available' | 'unavailable';
+  hostShellVersion?: string;
   limitations?: string[];
   expiresAt?: number;
+}
+
+export interface PermissionModeState {
+  mode: 'ask' | 'auto_review';
+  allowedModes: Array<'ask' | 'auto_review'>;
+  taskActive: boolean;
+  hostShellAvailable: boolean;
+  reviewerAvailable: boolean;
+  limitations: string[];
+  lastReview?: {
+    decision: 'allow' | 'ask' | 'deny';
+    risk: string;
+    reason: string;
+  };
 }

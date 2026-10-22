@@ -13,6 +13,8 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
   return {
     getTaskCapabilities: (sessionId) => invoke('getTaskCapabilities', sessionId) as ReturnType<NonNullable<SparkiiApi['getTaskCapabilities']>>,
     revokeTaskCapabilities: (sessionId) => invoke('revokeTaskCapabilities', sessionId) as ReturnType<NonNullable<SparkiiApi['revokeTaskCapabilities']>>,
+    getPermissionModeState: (agentId, sessionId) => invoke('getPermissionModeState', agentId, sessionId) as ReturnType<SparkiiApi['getPermissionModeState']>,
+    setChatPermissionMode: (sessionId, mode) => invoke('setChatPermissionMode', sessionId, mode) as ReturnType<SparkiiApi['setChatPermissionMode']>,
     getLocalSubject: () => invoke('getLocalSubject') as Promise<{ userId: string; roles: string[] }>,
     chooseDocument: (opts) => invoke('chooseDocument', opts) as Promise<{ path?: string }>,
     readDocumentBytes: (path, sessionId) => invoke('readDocumentBytes', path, sessionId) as Promise<import('./api-types.js').ReadDocumentBytesResult>,
