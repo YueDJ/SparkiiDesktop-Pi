@@ -38,7 +38,10 @@ const grant: TaskGrant = {
   sessionId: 's1',
   agentId: 'general',
   profileId: 'general',
-  mode: 'standard',
+  actorId: 'u1',
+  unattended: false,
+  planMode: 'execute',
+  permissionMode: 'ask',
   workspaceRoot: 'C:/ws',
   workspaceIdentity: 'object:c:/ws',
   inputRoots: [{ path: 'C:/input', identity: 'object:c:/input' }],
@@ -83,11 +86,13 @@ describe('ActionNormalizer', () => {
     );
     expect(action).toMatchObject({
       taskId: 't1',
+      subjectId: 'u1',
       sessionId: 's1',
       agentId: 'general',
       profileId: 'general',
       toolName: 'write',
       capability: 'fs.write',
+      approvalClass: 'auto',
       risk: 'write',
       payloadHash: expect.any(String),
       resources: [{
@@ -98,6 +103,14 @@ describe('ActionNormalizer', () => {
       }],
     });
     expect(action.reason).not.toBe('harmless');
+  });
+
+  it('derives the subject from the grant, not from Runtime arguments', async () => {
+    const action = await normalizer().normalize(
+      write({ path: 'C:/ws/a.txt', content: 'x', subjectId: 'attacker' }),
+      grant,
+    );
+    expect(action.subjectId).toBe('u1');
   });
 
   it('marks out-of-workspace and scratch scopes without trusting Runtime scope', async () => {
@@ -172,20 +185,77 @@ describe('ActionNormalizer', () => {
     ]);
   });
 
-  it('normalizes process execution as a workspace process without parsing shell text', async () => {
+  it('normalizes ordinary process execution as a reviewable host shell action', async () => {
     const action = await normalizer().normalize({
       requestId: 'r3',
       toolName: 'bash',
-      args: { command: 'rm -rf C:/Windows', risk: 'read' },
+      args: { command: 'pnpm test', risk: 'read' },
     }, grant);
     expect(action).toMatchObject({
       capability: 'process.exec',
-      risk: 'high-risk',
+      approvalClass: 'shell',
+      risk: 'write',
       resources: [{
         kind: 'process',
         value: 'bash',
         scope: 'workspace',
       }],
     });
+    expect(action.hardDenyRule).toBeUndefined();
+  });
+
+  it('hard-denies a recursive delete aimed at an OS, home or drive root', async () => {
+    for (const command of [
+      'rm -rf /',
+      'rm -rf /*',
+      'rm -rf ~/',
+      'rm -rf C:/',
+      'rm -rf "C:\\"',
+      'rm -rf $HOME',
+      'mkfs.ext4 /dev/sda1',
+    ]) {
+      const action = await normalizer().normalize({
+        requestId: 'r4',
+        toolName: 'bash',
+        args: { command },
+      }, grant);
+      expect(action.hardDenyRule, command).toBe('platform.catastrophic-target');
+      expect(action.risk, command).toBe('high-risk');
+    }
+  });
+
+  it('leaves a relative workspace delete reviewable rather than catastrophic', async () => {
+    const action = await normalizer().normalize({
+      requestId: 'r5',
+      toolName: 'bash',
+      args: { command: 'rm -rf src/' },
+    }, grant);
+    expect(action.hardDenyRule).toBeUndefined();
+    expect(action.approvalClass).toBe('shell');
+  });
+
+  it('treats a remote Git push as a human-only external write', async () => {
+    for (const command of ['git push origin main', 'git -C . push --force', 'pnpm test && git push']) {
+      const action = await normalizer().normalize({
+        requestId: 'r6',
+        toolName: 'bash',
+        args: { command },
+      }, grant);
+      expect(action.approvalClass, command).toBe('human_required');
+    }
+    const pull = await normalizer().normalize({
+      requestId: 'r7',
+      toolName: 'bash',
+      args: { command: 'git pull --rebase' },
+    }, grant);
+    expect(pull.approvalClass).toBe('shell');
+  });
+
+  it('classifies report export as a human-only write', async () => {
+    const action = await normalizer().normalize(
+      write({ path: 'C:/ws/report.docx' }, 'report.export'),
+      grant,
+    );
+    expect(action.approvalClass).toBe('human_required');
   });
 });

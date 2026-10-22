@@ -4050,7 +4050,10 @@ describe('task capability IPC', () => {
       sessionId: 's1',
       agentId: 'general',
       profileId: 'general',
-      mode: 'standard',
+      actorId: 'u1',
+      unattended: false,
+      planMode: 'execute',
+      permissionMode: 'ask',
       workspaceRoot: 'C:/ws',
       workspaceIdentity: 'dir:1',
       inputRoots: [],
@@ -4086,11 +4089,14 @@ describe('task capability IPC', () => {
     expect(status).toMatchObject({
       active: true,
       taskId: 'task-1',
+      planMode: 'execute',
+      permissionMode: 'ask',
       workspaceWrite: true,
       processExec: false,
       sandbox: 'partial',
       limitations: ['Git Bash unavailable'],
     });
+    expect(status).not.toHaveProperty('mode');
     expect(await handlers.get('sparkii:revokeTaskCapabilities')!(null, 's1')).toEqual({
       ok: true,
       revoked: true,

@@ -2,8 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import {
   admitWorkspace,
+  type PlatformPermissionMode,
+  type PlanMode,
   type ProtectedRoot,
-  type RunMode,
   type TaskGrant,
   type WorkspaceAdmissionResult,
   type WorkspacePathProbe,
@@ -27,7 +28,10 @@ export interface CreateTaskGrantInput {
   sessionId: string;
   agentId: string;
   profileId: string;
-  mode: RunMode;
+  actorId: string;
+  unattended: boolean;
+  planMode: PlanMode;
+  permissionMode: PlatformPermissionMode;
   workspacePath: string;
   scratchParent: string;
   inputRoots?: string[];
@@ -125,7 +129,10 @@ export async function createTaskGrant(
     sessionId: input.sessionId,
     agentId: input.agentId,
     profileId: input.profileId,
-    mode: input.mode,
+    actorId: input.actorId,
+    unattended: input.unattended,
+    planMode: input.planMode,
+    permissionMode: input.permissionMode,
     workspaceRoot: admission.canonicalPath,
     workspaceIdentity: admission.identity,
     inputRoots,

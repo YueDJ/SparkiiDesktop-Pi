@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   evaluatePolicy,
+  type PlatformProfilePolicy,
   type PolicyInput,
   type SecurityAction,
   type TaskGrant,
@@ -13,7 +14,10 @@ const grant: TaskGrant = {
   sessionId: 's1',
   agentId: 'general',
   profileId: 'general',
-  mode: 'standard',
+  actorId: 'u1',
+  unattended: false,
+  planMode: 'execute',
+  permissionMode: 'ask',
   workspaceRoot: 'C:/ws',
   workspaceIdentity: 'dir:1',
   inputRoots: [],
@@ -26,12 +30,14 @@ const grant: TaskGrant = {
 
 const workspaceWrite: SecurityAction = {
   id: 'a1',
+  subjectId: 'u1',
   taskId: 't1',
   sessionId: 's1',
   agentId: 'general',
   profileId: 'general',
   toolName: 'write',
   capability: 'fs.write',
+  approvalClass: 'auto',
   resources: [
     {
       kind: 'path',
@@ -46,11 +52,32 @@ const workspaceWrite: SecurityAction = {
   reason: '工作区内文件修改',
 };
 
+const shellAction = (patch: Partial<SecurityAction> = {}): SecurityAction => ({
+  ...workspaceWrite,
+  toolName: 'bash',
+  capability: 'process.exec',
+  approvalClass: 'shell',
+  resources: [{
+    kind: 'process',
+    value: 'bash',
+    identity: 'host',
+    scope: 'workspace',
+  }],
+  ...patch,
+});
+
+const profilePolicy: PlatformProfilePolicy = {
+  defaultPermissionMode: 'ask',
+  allowedPermissionModes: ['ask', 'auto_review'],
+  requireApproval: ['fs.write'],
+  autoApprove: [],
+};
+
 function evaluate(patch: Partial<PolicyInput> = {}) {
   return evaluatePolicy({
     action: workspaceWrite,
     grant,
-    profilePolicy: { mode: 'standard' },
+    profilePolicy,
     platformReady: true,
     now,
     ...patch,
@@ -58,17 +85,14 @@ function evaluate(patch: Partial<PolicyInput> = {}) {
 }
 
 describe('evaluatePolicy', () => {
-  it('allows ordinary workspace writes in standard mode', () => {
-    expect(evaluate()).toMatchObject({
-      decision: 'allow',
-      ruleId: 'workspace.write',
-    });
+  it('allows workspace CRUD in both modes before requireApproval', () => {
+    expect(evaluate()).toMatchObject({ decision: 'allow', ruleId: 'workspace.crud' });
+    expect(evaluate({
+      grant: { ...grant, permissionMode: 'auto_review' },
+    })).toMatchObject({ decision: 'allow', ruleId: 'workspace.crud' });
   });
 
-  it('allows workspace reads, scratch, and sandboxed process execution', () => {
-    expect(evaluate({
-      action: { ...workspaceWrite, capability: 'fs.read', risk: 'read' },
-    }).decision).toBe('allow');
+  it('allows scratch CRUD and bound input reads', () => {
     expect(evaluate({
       action: {
         ...workspaceWrite,
@@ -79,35 +103,72 @@ describe('evaluatePolicy', () => {
           scope: 'scratch',
         }],
       },
-    }).decision).toBe('allow');
+    })).toMatchObject({ decision: 'allow', ruleId: 'workspace.crud' });
     expect(evaluate({
       action: {
         ...workspaceWrite,
-        capability: 'process.exec',
+        capability: 'fs.read',
+        risk: 'read',
         resources: [{
-          kind: 'process',
-          value: 'bash',
-          identity: 'bash:1',
-          scope: 'workspace',
+          kind: 'path',
+          value: 'C:/input/a.pdf',
+          identity: 'file:input',
+          scope: 'input',
         }],
       },
     }).decision).toBe('allow');
   });
 
-  it('hard-denies a critical target before profile auto approval', () => {
+  it('denies a structured write outside the workspace instead of asking', () => {
+    expect(evaluate({
+      action: {
+        ...workspaceWrite,
+        resources: [{
+          kind: 'path',
+          value: 'C:/outside/a.txt',
+          identity: 'file:2',
+          scope: 'external',
+        }],
+      },
+    })).toMatchObject({
+      decision: 'deny',
+      ruleId: 'workspace.write-outside',
+    });
+  });
+
+  it('keeps shell as base ask and never uses autoApprove as allow', () => {
+    expect(evaluate({
+      action: shellAction(),
+      grant: { ...grant, permissionMode: 'auto_review' },
+      profilePolicy: { ...profilePolicy, autoApprove: ['process.exec'] },
+    })).toMatchObject({ decision: 'ask', ruleId: 'platform.base-ask' });
+    expect(evaluate({
+      action: shellAction(),
+      profilePolicy: { ...profilePolicy, autoApprove: ['process.exec'] },
+    })).toMatchObject({ decision: 'ask', ruleId: 'platform.base-ask' });
+  });
+
+  it('keeps external writes on the human approval path in both modes', () => {
+    const exportAction: SecurityAction = {
+      ...workspaceWrite,
+      toolName: 'report.export',
+      approvalClass: 'human_required',
+      resources: [{ kind: 'connector', value: 'report.export', scope: 'external' }],
+      externalEffect: 'connector',
+    };
+    expect(evaluate({
+      action: exportAction,
+      grant: { ...grant, permissionMode: 'auto_review' },
+    })).toMatchObject({ decision: 'ask', ruleId: 'platform.human-required' });
+  });
+
+  it('hard-denies critical targets, trust anchors and derived hard deny rules', () => {
     expect(evaluate({
       action: {
         ...workspaceWrite,
         resources: [{ kind: 'path', value: 'C:/', identity: 'dir:root', scope: 'critical' }],
       },
-      profilePolicy: { autoApprove: ['fs.write'] },
-    })).toMatchObject({
-      decision: 'deny',
-      ruleId: 'platform.critical-target',
-    });
-  });
-
-  it('hard-denies a trust anchor even when the target is inside the workspace', () => {
+    })).toMatchObject({ decision: 'deny', ruleId: 'platform.critical-target' });
     expect(evaluate({
       action: {
         ...workspaceWrite,
@@ -119,20 +180,23 @@ describe('evaluatePolicy', () => {
           trustAnchor: true,
         }],
       },
-      profilePolicy: { autoApprove: ['fs.write'] },
+    })).toMatchObject({ decision: 'deny', ruleId: 'platform.trust-anchor' });
+    expect(evaluate({
+      action: shellAction({ hardDenyRule: 'platform.catastrophic-target' }),
+      grant: { ...grant, permissionMode: 'auto_review' },
     })).toMatchObject({
       decision: 'deny',
-      ruleId: 'platform.trust-anchor',
+      ruleId: 'platform.catastrophic-target',
     });
   });
 
-  it('denies a grant for another task or principal', () => {
-    expect(evaluate({
-      action: { ...workspaceWrite, taskId: 'other' },
-    })).toMatchObject({ decision: 'deny', ruleId: 'task-grant.identity' });
-    expect(evaluate({
-      action: { ...workspaceWrite, agentId: 'other' },
-    })).toMatchObject({ decision: 'deny', ruleId: 'task-grant.identity' });
+  it('denies an action that does not belong to the granted principal or task', () => {
+    expect(evaluate({ action: { ...workspaceWrite, taskId: 'other' } }))
+      .toMatchObject({ decision: 'deny', ruleId: 'task-grant.identity' });
+    expect(evaluate({ action: { ...workspaceWrite, agentId: 'other' } }))
+      .toMatchObject({ decision: 'deny', ruleId: 'task-grant.identity' });
+    expect(evaluate({ action: { ...workspaceWrite, subjectId: 'attacker' } }))
+      .toMatchObject({ decision: 'deny', ruleId: 'task-grant.identity' });
   });
 
   it('denies expired grants and an unavailable platform', () => {
@@ -146,68 +210,55 @@ describe('evaluatePolicy', () => {
     });
   });
 
-  it('blocks writes and processes in plan mode but allows workspace reads', () => {
+  it('restricts plan mode to reads without touching permission mode', () => {
     expect(evaluate({
-      grant: { ...grant, mode: 'plan' },
-      profilePolicy: { mode: 'plan' },
+      grant: { ...grant, planMode: 'plan', permissionMode: 'auto_review' },
     })).toMatchObject({ decision: 'deny', ruleId: 'plan-mode.read-only' });
-    expect(evaluate({
-      action: { ...workspaceWrite, capability: 'fs.read', risk: 'read' },
-      grant: { ...grant, mode: 'plan' },
-      profilePolicy: { mode: 'plan' },
-    }).decision).toBe('allow');
-  });
-
-  it('asks for workspace writes and processes in strict mode', () => {
-    expect(evaluate({
-      grant: { ...grant, mode: 'strict' },
-      profilePolicy: { mode: 'strict' },
-    })).toMatchObject({ decision: 'ask', ruleId: 'strict-mode.confirmation' });
-  });
-
-  it('uses requireApproval to elevate a grant-native action', () => {
-    expect(evaluate({
-      profilePolicy: { mode: 'standard', requireApproval: ['fs.write'] },
-    })).toMatchObject({ decision: 'ask', ruleId: 'profile.require-approval' });
-  });
-
-  it('uses autoApprove only after hard checks and an ask-worthy capability', () => {
-    const network: SecurityAction = {
-      ...workspaceWrite,
-      capability: 'net.connect',
-      resources: [{
-        kind: 'domain',
-        value: 'registry.npmjs.org',
-        scope: 'external',
-      }],
-      risk: 'write',
-      externalEffect: 'network',
-    };
-    expect(evaluate({
-      action: network,
-      profilePolicy: { autoApprove: ['net.connect'] },
-    })).toMatchObject({
-      decision: 'allow',
-      ruleId: 'profile.auto-approve',
-      autoApproved: true,
-    });
-  });
-
-  it('asks when a supported capability is outside the task grant', () => {
     expect(evaluate({
       action: {
         ...workspaceWrite,
         capability: 'fs.read',
-        resources: [{
-          kind: 'path',
-          value: 'C:/outside/secret.txt',
-          identity: 'file:2',
-          scope: 'external',
-        }],
+        approvalClass: 'auto',
+        risk: 'read',
       },
-    })).toMatchObject({
-      decision: 'ask',
-      ruleId: 'platform.capability-expansion',
-    });
+      grant: { ...grant, planMode: 'plan' },
+    }).decision).toBe('allow');
+  });
+
+  it('asks for profile-required capabilities and for unbound expansion', () => {
+    expect(evaluate({
+      action: {
+        ...workspaceWrite,
+        capability: 'fs.read',
+        approvalClass: 'auto',
+        risk: 'read',
+        resources: [{ kind: 'path', value: 'C:/outside/x.txt', identity: 'f', scope: 'external' }],
+      },
+      profilePolicy: { ...profilePolicy, requireApproval: ['fs.read'] },
+    })).toMatchObject({ decision: 'ask', ruleId: 'profile.require-approval' });
+    expect(evaluate({
+      action: {
+        ...workspaceWrite,
+        capability: 'fs.read',
+        approvalClass: 'auto',
+        risk: 'read',
+        resources: [{ kind: 'path', value: 'C:/outside/x.txt', identity: 'f', scope: 'external' }],
+      },
+      profilePolicy: { ...profilePolicy, requireApproval: [] },
+    })).toMatchObject({ decision: 'ask', ruleId: 'platform.capability-expansion' });
+  });
+
+  it('allows a connector call that the task grant already binds', () => {
+    expect(evaluate({
+      action: {
+        ...workspaceWrite,
+        capability: 'connector.invoke',
+        approvalClass: 'auto',
+        resources: [{ kind: 'connector', value: 'report.export', scope: 'external' }],
+        externalEffect: 'connector',
+      },
+      grant: { ...grant, externalCapabilities: ['report.export'] },
+      profilePolicy: { ...profilePolicy, requireApproval: [] },
+    })).toMatchObject({ decision: 'allow', ruleId: 'task-grant' });
   });
 });

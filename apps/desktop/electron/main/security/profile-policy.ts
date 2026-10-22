@@ -1,8 +1,8 @@
 import type { ApprovalPolicy } from '@sparkii/config';
 import type {
   CapabilityKind,
+  PlatformPermissionMode,
   PlatformProfilePolicy,
-  RunMode,
 } from '@sparkii/approval';
 import type { NormalizedToolDescriptor } from './action-normalizer.js';
 
@@ -47,7 +47,7 @@ function normalizeEntries(
 }
 
 export function normalizeProfilePolicy(
-  policy: ApprovalPolicy & { mode?: RunMode },
+  policy: ApprovalPolicy & { mode?: string },
   descriptors: NormalizedToolDescriptor[],
 ): PlatformProfilePolicy {
   if (!Number.isFinite(policy.timeoutMs) || policy.timeoutMs <= 0) {
@@ -59,8 +59,18 @@ export function normalizeProfilePolicy(
       descriptor.toolName,
     ]),
   );
+  const allowedPermissionModes: PlatformPermissionMode[] = policy.allowedPermissionModes
+    ?? (policy.mode === 'strict' ? ['ask'] : ['ask', 'auto_review']);
+  const defaultPermissionMode: PlatformPermissionMode = policy.defaultPermissionMode ?? 'ask';
+  if (!allowedPermissionModes.includes('ask')) {
+    throw new ProfilePolicyError('allowedPermissionModes must include ask');
+  }
+  if (!allowedPermissionModes.includes(defaultPermissionMode)) {
+    throw new ProfilePolicyError('defaultPermissionMode must be an allowed mode');
+  }
   return {
-    mode: policy.mode ?? 'standard',
+    defaultPermissionMode,
+    allowedPermissionModes,
     requireApproval: normalizeEntries(
       policy.requireApproval,
       'requireApproval',

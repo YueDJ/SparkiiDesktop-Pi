@@ -3,12 +3,14 @@ import { actionFingerprint, type SecurityAction } from '../src/security/index.js
 
 const action = (patch: Partial<SecurityAction> = {}): SecurityAction => ({
   id: 'a1',
+  subjectId: 'u1',
   taskId: 't1',
   sessionId: 's1',
   agentId: 'general',
   profileId: 'general',
   toolName: 'write',
   capability: 'fs.write',
+  approvalClass: 'auto',
   resources: [{ kind: 'path', value: 'C:/ws/a.txt', identity: 'file:1', scope: 'workspace' }],
   payload: { content: 'x' },
   payloadHash: 'h',

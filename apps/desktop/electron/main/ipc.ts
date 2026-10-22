@@ -70,6 +70,7 @@ import {
 import type { AgentRuntime } from './agent-registry.js';
 import {
   hashPayload,
+  resolvePermissionMode,
   type SecurityAction,
   type TaskGrant,
 } from '@sparkii/approval';
@@ -188,7 +189,19 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       normalizer: rt.security.actionNormalizer,
       profilePolicyOf: (profileId) =>
         rt.security?.profilePolicies.get(profileId)
-        ?? { mode: 'strict', requireApproval: [] },
+        ?? {
+          // Unknown profiles fail closed: Ask only, everything needs approval.
+          defaultPermissionMode: 'ask',
+          allowedPermissionModes: ['ask'],
+          requireApproval: [
+            'fs.read',
+            'fs.write',
+            'process.exec',
+            'net.connect',
+            'connector.invoke',
+            'task.delegate',
+          ],
+        },
       platformReady: (action) =>
         Boolean(
           rt.security
@@ -339,7 +352,15 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       sessionId,
       agentId: profileId,
       profileId,
-      mode: policy.mode ?? 'standard',
+      actorId: rt.subject.userId,
+      unattended: false,
+      planMode: 'execute',
+      permissionMode: resolvePermissionMode({
+        sessionId,
+        profileId,
+        profileDefaultMode: policy.defaultPermissionMode,
+        allowedModes: policy.allowedPermissionModes,
+      }),
       workspacePath,
       scratchParent: security.scratchParent,
       inputRoots: inputs,
@@ -1603,7 +1624,8 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     return {
       active: true,
       taskId: grant.taskId,
-      mode: grant.mode,
+      planMode: grant.planMode,
+      permissionMode: grant.permissionMode,
       workspaceRoot: grant.workspaceRoot,
       workspaceWrite: true,
       processExec: rt.security.sandboxReport.status === 'available',
@@ -1650,12 +1672,14 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
             grant = rt.security.taskLifecycle.assertActive(out.sessionId);
             action = {
               id: out.id,
+              subjectId: rt.subject.userId,
               taskId: grant.taskId,
               sessionId: out.sessionId,
               agentId: grant.agentId,
               profileId: out.profileId,
               toolName: out.toolName,
               capability: 'connector.invoke',
+              approvalClass: 'human_required',
               resources: [{
                 kind: 'connector',
                 value: out.toolName,

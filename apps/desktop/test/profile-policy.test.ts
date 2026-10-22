@@ -6,13 +6,14 @@ import {
 } from '../electron/main/security/profile-policy.js';
 
 describe('normalizeProfilePolicy', () => {
-  it('preserves the general profile as standard with no extra approval', () => {
+  it('preserves the general profile as Ask with both platform modes', () => {
     expect(normalizeProfilePolicy({
       requireApproval: [],
       timeoutMs: 300_000,
       highRiskDoubleConfirm: true,
     }, DEFAULT_TOOL_DESCRIPTORS)).toEqual({
-      mode: 'standard',
+      defaultPermissionMode: 'ask',
+      allowedPermissionModes: ['ask', 'auto_review'],
       requireApproval: [],
       autoApprove: [],
       timeoutMs: 300_000,
@@ -38,12 +39,42 @@ describe('normalizeProfilePolicy', () => {
       timeoutMs: 10_000,
       highRiskDoubleConfirm: true,
     }, DEFAULT_TOOL_DESCRIPTORS)).toEqual({
-      mode: 'strict',
+      defaultPermissionMode: 'ask',
+      allowedPermissionModes: ['ask'],
       requireApproval: ['fs.write', 'net.connect'],
       autoApprove: ['connector.invoke'],
       timeoutMs: 10_000,
       highRiskDoubleConfirm: true,
     });
+  });
+
+  it('honours an explicit Ask-only default', () => {
+    expect(normalizeProfilePolicy({
+      requireApproval: [],
+      timeoutMs: 10_000,
+      highRiskDoubleConfirm: true,
+      defaultPermissionMode: 'ask',
+      allowedPermissionModes: ['ask'],
+    }, DEFAULT_TOOL_DESCRIPTORS)).toMatchObject({
+      defaultPermissionMode: 'ask',
+      allowedPermissionModes: ['ask'],
+    });
+  });
+
+  it('refuses a policy that removes Ask or defaults to a disallowed mode', () => {
+    expect(() => normalizeProfilePolicy({
+      requireApproval: [],
+      timeoutMs: 10_000,
+      highRiskDoubleConfirm: true,
+      allowedPermissionModes: ['auto_review'],
+    }, DEFAULT_TOOL_DESCRIPTORS)).toThrow(/must include ask/);
+    expect(() => normalizeProfilePolicy({
+      requireApproval: [],
+      timeoutMs: 10_000,
+      highRiskDoubleConfirm: true,
+      allowedPermissionModes: ['ask'],
+      defaultPermissionMode: 'auto_review',
+    }, DEFAULT_TOOL_DESCRIPTORS)).toThrow(/must be an allowed mode/);
   });
 
   it('fails closed on unknown approval entries', () => {

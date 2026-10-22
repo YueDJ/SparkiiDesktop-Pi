@@ -7,7 +7,10 @@ export type CapabilityKind =
   | 'task.delegate';
 
 export type PolicyDecision = 'allow' | 'ask' | 'deny';
-export type RunMode = 'plan' | 'standard' | 'strict';
+/** Whether a Task may mutate anything at all. Independent from the permission mode. */
+export type PlanMode = 'plan' | 'execute';
+/** How the platform obtained permission: automatic, reviewable, or human only. */
+export type ActionApprovalClass = 'auto' | 'shell' | 'human_required';
 /** The only permission modes the platform offers. There is no full-access mode. */
 export type PlatformPermissionMode = 'ask' | 'auto_review';
 export type ReviewerDecision =
@@ -31,18 +34,23 @@ export interface ResourceRef {
 /** The authoritative action produced by Main, never by Runtime. */
 export interface SecurityAction {
   id: string;
+  /** The authenticated principal this action is attributed to. */
+  subjectId: string;
   taskId: string;
   sessionId: string;
   agentId: string;
   profileId: string;
   toolName: string;
   capability: CapabilityKind;
+  approvalClass: ActionApprovalClass;
   resources: ResourceRef[];
   payload: unknown;
   payloadHash: string;
   risk: SecurityRisk;
   reason: string;
   externalEffect?: string;
+  /** Set by Main when a deterministic rule forbids the action outright. */
+  hardDenyRule?: string;
 }
 
 export interface TaskGrant {
@@ -50,7 +58,10 @@ export interface TaskGrant {
   sessionId: string;
   agentId: string;
   profileId: string;
-  mode: RunMode;
+  actorId: string;
+  unattended: boolean;
+  planMode: PlanMode;
+  permissionMode: PlatformPermissionMode;
   workspaceRoot: string;
   workspaceIdentity: string;
   inputRoots: Array<{ path: string; identity: string }>;
@@ -62,7 +73,8 @@ export interface TaskGrant {
 }
 
 export interface PlatformProfilePolicy {
-  mode?: RunMode;
+  defaultPermissionMode: PlatformPermissionMode;
+  allowedPermissionModes: PlatformPermissionMode[];
   requireApproval?: string[];
   autoApprove?: string[];
   timeoutMs?: number;
@@ -81,7 +93,6 @@ export interface PolicyOutcome {
   decision: PolicyDecision;
   ruleId: string;
   reason: string;
-  autoApproved?: boolean;
 }
 
 export interface WorkspacePathInfo {

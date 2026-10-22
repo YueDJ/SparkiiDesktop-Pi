@@ -1,15 +1,9 @@
 import type {
-  CapabilityKind,
   PolicyInput,
   PolicyOutcome,
   SecurityAction,
   TaskGrant,
 } from './types.js';
-
-const WORKSPACE_WRITE_CAPABILITIES = new Set<CapabilityKind>([
-  'fs.write',
-  'process.exec',
-]);
 
 function matchesPolicyEntry(
   entries: string[] | undefined,
@@ -20,6 +14,10 @@ function matchesPolicyEntry(
   ) ?? false;
 }
 
+/**
+ * Structural containment only. Process execution is never "inside" a grant: a
+ * Shell action always needs a human decision or an independent review.
+ */
 function withinGrant(grant: TaskGrant, action: SecurityAction): boolean {
   if (action.resources.length === 0) return false;
   return action.resources.every((resource) => {
@@ -32,7 +30,7 @@ function withinGrant(grant: TaskGrant, action: SecurityAction): boolean {
         return resource.kind === 'path'
           && ['workspace', 'scratch'].includes(resource.scope);
       case 'process.exec':
-        return ['workspace', 'scratch', 'input'].includes(resource.scope);
+        return false;
       case 'net.connect':
         return resource.kind === 'domain'
           && resource.scope === 'external'
@@ -49,26 +47,12 @@ function withinGrant(grant: TaskGrant, action: SecurityAction): boolean {
   });
 }
 
-function allowRule(action: SecurityAction): PolicyOutcome {
+function grantNativeRule(action: SecurityAction): PolicyOutcome {
   if (action.capability === 'fs.read') {
     return {
       decision: 'allow',
       ruleId: 'workspace.read',
       reason: '目标属于当前任务的只读范围',
-    };
-  }
-  if (action.capability === 'fs.write') {
-    return {
-      decision: 'allow',
-      ruleId: 'workspace.write',
-      reason: '目标属于当前任务的可写工作区或私有 scratch',
-    };
-  }
-  if (action.capability === 'process.exec') {
-    return {
-      decision: 'allow',
-      ruleId: 'workspace.process',
-      reason: '工作区进程属于当前任务授权',
     };
   }
   return {
@@ -80,28 +64,16 @@ function allowRule(action: SecurityAction): PolicyOutcome {
 
 /**
  * Deterministic policy evaluation. This function is platform-neutral and only
- * consumes Main-normalized actions; it does not inspect Runtime metadata.
+ * consumes Main-normalized actions; it does not inspect Runtime metadata and it
+ * never delegates a decision to a model.
  */
 export function evaluatePolicy(input: PolicyInput): PolicyOutcome {
   const { action, grant, profilePolicy, platformReady } = input;
   const now = input.now ?? Date.now();
 
-  if (action.resources.some((resource) => resource.scope === 'critical')) {
-    return {
-      decision: 'deny',
-      ruleId: 'platform.critical-target',
-      reason: '目标属于不可覆盖的灾难范围',
-    };
-  }
-  if (action.resources.some((resource) => resource.trustAnchor)) {
-    return {
-      decision: 'deny',
-      ruleId: 'platform.trust-anchor',
-      reason: '目标属于不可由普通任务修改的信任锚',
-    };
-  }
   if (
-    action.taskId !== grant.taskId
+    action.subjectId !== grant.actorId
+    || action.taskId !== grant.taskId
     || action.sessionId !== grant.sessionId
     || action.agentId !== grant.agentId
     || action.profileId !== grant.profileId
@@ -119,34 +91,72 @@ export function evaluatePolicy(input: PolicyInput): PolicyOutcome {
       reason: '任务授权已过期',
     };
   }
+  if (action.resources.some((resource) => resource.scope === 'critical')) {
+    return {
+      decision: 'deny',
+      ruleId: 'platform.critical-target',
+      reason: '目标属于不可覆盖的灾难范围',
+    };
+  }
+  if (action.resources.some((resource) => resource.trustAnchor)) {
+    return {
+      decision: 'deny',
+      ruleId: 'platform.trust-anchor',
+      reason: '目标属于不可由普通任务修改的信任锚',
+    };
+  }
+  if (action.hardDenyRule) {
+    return {
+      decision: 'deny',
+      ruleId: action.hardDenyRule,
+      reason: '命中确定性硬拒绝规则',
+    };
+  }
+  if (grant.planMode === 'plan' && action.capability !== 'fs.read') {
+    return {
+      decision: 'deny',
+      ruleId: 'plan-mode.read-only',
+      reason: '计划模式只允许读取',
+    };
+  }
   if (!platformReady) {
     return {
       decision: 'deny',
       ruleId: 'platform.not-ready',
-      reason: '平台无法证明所需的沙箱与执行边界',
-    };
-  }
-  if (
-    grant.mode === 'plan'
-    && WORKSPACE_WRITE_CAPABILITIES.has(action.capability)
-  ) {
-    return {
-      decision: 'deny',
-      ruleId: 'plan-mode.read-only',
-      reason: '计划模式不允许修改工作区或执行进程',
+      reason: '平台无法证明所需的执行边界',
     };
   }
 
-  const native = withinGrant(grant, action);
-  if (
-    native
-    && grant.mode === 'strict'
-    && WORKSPACE_WRITE_CAPABILITIES.has(action.capability)
-  ) {
+  if (action.approvalClass === 'auto') {
+    if (withinGrant(grant, action)) {
+      return action.capability === 'fs.write'
+        ? {
+            decision: 'allow',
+            ruleId: 'workspace.crud',
+            reason: 'Workspace 内普通文件操作无需审批',
+          }
+        : grantNativeRule(action);
+    }
+    if (action.capability === 'fs.write') {
+      return {
+        decision: 'deny',
+        ruleId: 'workspace.write-outside',
+        reason: '结构化写工具不能扩大 Workspace 边界',
+      };
+    }
+  }
+  if (action.approvalClass === 'human_required') {
     return {
       decision: 'ask',
-      ruleId: 'strict-mode.confirmation',
-      reason: '严格模式要求人工确认写操作或进程执行',
+      ruleId: 'platform.human-required',
+      reason: '该动作只能人工审批',
+    };
+  }
+  if (action.capability === 'process.exec') {
+    return {
+      decision: 'ask',
+      ruleId: 'platform.base-ask',
+      reason: 'Shell 需要审批或独立审查',
     };
   }
   if (matchesPolicyEntry(profilePolicy.requireApproval, action)) {
@@ -156,19 +166,7 @@ export function evaluatePolicy(input: PolicyInput): PolicyOutcome {
       reason: '当前 Profile 要求人工确认此能力',
     };
   }
-  if (native) return allowRule(action);
-
-  if (
-    action.risk !== 'high-risk'
-    && matchesPolicyEntry(profilePolicy.autoApprove, action)
-  ) {
-    return {
-      decision: 'allow',
-      ruleId: 'profile.auto-approve',
-      reason: '命中受控 Profile 自动通过规则',
-      autoApproved: true,
-    };
-  }
+  if (withinGrant(grant, action)) return grantNativeRule(action);
 
   return {
     decision: 'ask',

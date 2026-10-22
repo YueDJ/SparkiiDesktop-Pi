@@ -8,7 +8,8 @@ describe('TaskCapabilityStatus', () => {
       <TaskCapabilityStatus
         status={{
           active: true,
-          mode: 'standard',
+          planMode: 'execute',
+          permissionMode: 'ask',
           workspaceRoot: 'C:/work/project',
           workspaceWrite: true,
           processExec: false,

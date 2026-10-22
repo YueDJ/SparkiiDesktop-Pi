@@ -12,7 +12,10 @@ const grant: TaskGrant = {
   sessionId: 's1',
   agentId: 'general',
   profileId: 'general',
-  mode: 'standard',
+  actorId: 'u1',
+  unattended: false,
+  planMode: 'execute',
+  permissionMode: 'ask',
   workspaceRoot: 'C:/ws',
   workspaceIdentity: 'dir:1',
   inputRoots: [],
@@ -25,12 +28,14 @@ const grant: TaskGrant = {
 
 const action = (patch: Partial<SecurityAction> = {}): SecurityAction => ({
   id: 'a1',
+  subjectId: 'u1',
   taskId: 't1',
   sessionId: 's1',
   agentId: 'general',
   profileId: 'general',
   toolName: 'report.export',
   capability: 'connector.invoke',
+  approvalClass: 'human_required',
   resources: [{
     kind: 'connector',
     value: 'report.export',

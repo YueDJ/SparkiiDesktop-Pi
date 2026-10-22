@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { dirname, isAbsolute, resolve } from 'node:path';
 import {
   hashPayload,
+  type ActionApprovalClass,
   type CapabilityKind,
   type ProtectedRoot,
   type ResourceRef,
@@ -15,6 +16,8 @@ import type { RuntimeActionRequest } from '@sparkii/agent-host';
 export interface NormalizedToolDescriptor {
   toolName: string;
   capability: CapabilityKind;
+  /** Trusted classification of how permission must be obtained for this tool. */
+  approvalClass: ActionApprovalClass;
   risk: SecurityRisk | ((args: Record<string, unknown>) => SecurityRisk);
   /** Path arguments selected by the trusted descriptor, never by Runtime metadata. */
   pathArgs?: string[];
@@ -46,6 +49,54 @@ export class ActionNormalizationError extends Error {
 const HIGH_RISK_PROCESS =
   /\brm\s+-rf\b|\bgit\s+reset\s+--hard\b|\bdrop\s+(table|database)\b|\bmkfs\b|\bformat\s+/i;
 
+/** A recursive-destructive `rm` invocation, for example `rm -rf`, `rm -fr`, `rm -r -f`. */
+const RECURSIVE_FORCE_RM =
+  /(^|[\s;|&])rm\s+(?:-[^\s|]*\s+)*-{1,2}[A-Za-z]*(?:[rR][A-Za-z]*[fF]|[fF][A-Za-z]*[rR])[A-Za-z]*(\s|$)/;
+
+/** Deterministic disk destruction, independent of the target path. */
+const DISK_DESTRUCTION =
+  /(^|[\s;|&])mkfs(?:\.\w+)?(\s|$)|(^|[\s;|&])format\s+[A-Za-z]:(\s|$)|(^|[\s;|&])dd\s[^\n|;&]*\bof=\/dev\//i;
+
+/** Any Git command that writes to a remote is a typed external write. */
+const GIT_REMOTE_WRITE = /(^|[\s;|&])git\b[^\n]*\bpush\b/;
+
+export const CATASTROPHIC_TARGET_RULE = 'platform.catastrophic-target';
+export const HARD_DENY_POLICY_VERSION = 'hard-deny-v1';
+
+/**
+ * Matches a whole argument that names an OS root, a home root or a drive root.
+ * Anchored on argument boundaries so `rm -rf src/` stays an ordinary workspace
+ * delete while `rm -rf /`, `rm -rf ~/` and `rm -rf C:/` are recognised.
+ */
+const ROOT_ARGUMENT = new RegExp(
+  '(?:^|[\\s"\'`])'
+  + '(?:/\\*?|~/|~|\\$\\{?HOME\\}?|%USERPROFILE%|[A-Za-z]:[\\\\/]{0,2})'
+  + '(?=$|[\\s"\'`;&|])',
+);
+
+/**
+ * Deterministic Shell classification. This only ever *tightens* a decision: an
+ * unrecognised command stays reviewable instead of being treated as safe.
+ */
+export function classifyShellCommand(command: string): {
+  approvalClass: ActionApprovalClass;
+  risk: SecurityRisk;
+  hardDenyRule?: string;
+} {
+  const catastrophic = DISK_DESTRUCTION.test(command)
+    || (RECURSIVE_FORCE_RM.test(command) && ROOT_ARGUMENT.test(command));
+  if (catastrophic) {
+    return { approvalClass: 'shell', risk: 'high-risk', hardDenyRule: CATASTROPHIC_TARGET_RULE };
+  }
+  if (GIT_REMOTE_WRITE.test(command)) {
+    return { approvalClass: 'human_required', risk: 'high-risk' };
+  }
+  return {
+    approvalClass: 'shell',
+    risk: HIGH_RISK_PROCESS.test(command) ? 'high-risk' : 'write',
+  };
+}
+
 const DEFAULT_TRUST_ANCHOR_NAMES = new Set([
   '.env',
   '.git-credentials',
@@ -65,6 +116,7 @@ export const DEFAULT_TOOL_DESCRIPTORS: NormalizedToolDescriptor[] = [
   {
     toolName: 'write',
     capability: 'fs.write',
+    approvalClass: 'auto',
     risk: 'write',
     pathArgs: ['path'],
     reason: '工作区内文件写入',
@@ -72,6 +124,7 @@ export const DEFAULT_TOOL_DESCRIPTORS: NormalizedToolDescriptor[] = [
   {
     toolName: 'edit',
     capability: 'fs.write',
+    approvalClass: 'auto',
     risk: 'write',
     pathArgs: ['path'],
     reason: '工作区内文件修改',
@@ -79,6 +132,7 @@ export const DEFAULT_TOOL_DESCRIPTORS: NormalizedToolDescriptor[] = [
   {
     toolName: 'delete',
     capability: 'fs.write',
+    approvalClass: 'auto',
     risk: 'write',
     pathArgs: ['path'],
     reason: '工作区内文件或目录删除',
@@ -86,6 +140,7 @@ export const DEFAULT_TOOL_DESCRIPTORS: NormalizedToolDescriptor[] = [
   {
     toolName: 'move',
     capability: 'fs.write',
+    approvalClass: 'auto',
     risk: 'write',
     pathArgs: ['from', 'to'],
     reason: '工作区内文件移动或重命名',
@@ -93,16 +148,16 @@ export const DEFAULT_TOOL_DESCRIPTORS: NormalizedToolDescriptor[] = [
   {
     toolName: 'bash',
     capability: 'process.exec',
-    risk: (args) => HIGH_RISK_PROCESS.test(String(args.command ?? ''))
-      ? 'high-risk'
-      : 'write',
+    approvalClass: 'shell',
+    risk: (args) => classifyShellCommand(String(args.command ?? '')).risk,
     processName: 'bash',
     externalEffect: 'local-process',
-    reason: '在任务沙箱内执行本地进程',
+    reason: '以宿主 Git Bash 执行本地命令',
   },
   {
     toolName: 'report.export',
     capability: 'fs.write',
+    approvalClass: 'human_required',
     risk: 'write',
     pathArgs: ['path'],
     reason: '导出报告文件',
@@ -264,11 +319,16 @@ export function createActionNormalizer(
         }
         resources.push(await classifyPath(value, grant, options));
       }
+      let approvalClass = descriptor.approvalClass;
+      let hardDenyRule: string | undefined;
       if (descriptor.capability === 'process.exec') {
+        const shell = classifyShellCommand(String(args.command ?? ''));
+        approvalClass = shell.approvalClass;
+        hardDenyRule = shell.hardDenyRule;
         resources.push({
           kind: 'process',
           value: descriptor.processName ?? descriptor.toolName,
-          identity: `${descriptor.processName ?? descriptor.toolName}:sandbox`,
+          identity: `${descriptor.processName ?? descriptor.toolName}:host`,
           scope: 'workspace',
         });
       }
@@ -278,12 +338,14 @@ export function createActionNormalizer(
         : descriptor.risk;
       return {
         id: randomUUID(),
+        subjectId: grant.actorId,
         taskId: grant.taskId,
         sessionId: grant.sessionId,
         agentId: grant.agentId,
         profileId: grant.profileId,
         toolName: descriptor.toolName,
         capability: descriptor.capability,
+        approvalClass,
         resources,
         payload: freezePayload(args),
         payloadHash: hashPayload(args),
@@ -292,6 +354,7 @@ export function createActionNormalizer(
         ...(descriptor.externalEffect
           ? { externalEffect: descriptor.externalEffect }
           : {}),
+        ...(hardDenyRule ? { hardDenyRule } : {}),
       };
     },
   };

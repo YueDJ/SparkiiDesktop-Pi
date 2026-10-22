@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   TaskGrantRegistry,
+  type PlatformProfilePolicy,
   type SecurityAction,
   type TaskGrant,
   type WorkspacePathProbe,
@@ -40,7 +41,10 @@ function grant(patch: Partial<TaskGrant> = {}): TaskGrant {
     sessionId: 's1',
     agentId: 'general',
     profileId: 'general',
-    mode: 'standard',
+    actorId: 'u1',
+    unattended: false,
+    planMode: 'execute',
+    permissionMode: 'ask',
     workspaceRoot: 'C:/ws',
     workspaceIdentity: 'object:c:/ws',
     inputRoots: [],
@@ -53,7 +57,10 @@ function grant(patch: Partial<TaskGrant> = {}): TaskGrant {
   };
 }
 
-async function harness(platformReady: (action: SecurityAction) => boolean = () => true) {
+async function harness(
+  platformReady: (action: SecurityAction) => boolean = () => true,
+  profilePolicy: Partial<PlatformProfilePolicy> = {},
+) {
   const registry = new TaskGrantRegistry();
   const lifecycle = new TaskLifecycle(registry);
   await lifecycle.start(async () => grant());
@@ -73,7 +80,11 @@ async function harness(platformReady: (action: SecurityAction) => boolean = () =
       ],
       probe,
     }),
-    profilePolicyOf: () => ({ mode: 'standard' }),
+    profilePolicyOf: () => ({
+      defaultPermissionMode: 'ask',
+      allowedPermissionModes: ['ask', 'auto_review'],
+      ...profilePolicy,
+    }),
     platformReady,
     execute,
     requestApproval,
@@ -87,10 +98,10 @@ async function harness(platformReady: (action: SecurityAction) => boolean = () =
   return { registry, lifecycle, router, execute, requestApproval, revalidate, auditEvents };
 }
 
-const write = (args: Record<string, unknown>) => ({
+const write = (args: Record<string, unknown>, toolName = 'write') => ({
   requestId: 'r1',
   toolCallId: 'call-1',
-  toolName: 'write',
+  toolName,
   args,
 });
 
@@ -103,12 +114,13 @@ describe('createRuntimeActionRouter', () => {
     );
     expect(result).toMatchObject({
       status: 'executed',
-      decision: { decision: 'allow', ruleId: 'workspace.write' },
+      decision: { decision: 'allow', ruleId: 'workspace.crud' },
       result: { ok: true },
     });
     expect(h.requestApproval).not.toHaveBeenCalled();
     expect(h.execute).toHaveBeenCalledWith(expect.objectContaining({
       capability: 'fs.write',
+      approvalClass: 'auto',
       risk: 'write',
       resources: [expect.objectContaining({ scope: 'workspace' })],
     }), expect.objectContaining({ taskId: 't1' }));
@@ -118,18 +130,74 @@ describe('createRuntimeActionRouter', () => {
     ]);
   });
 
-  it('requests one capability approval for an out-of-workspace target', async () => {
+  it('denies a structured write outside the workspace without asking', async () => {
     const h = await harness();
     const result = await h.router.route(
       write({ path: 'C:/outside/a.txt', content: 'x' }),
       's1',
     );
     expect(result).toMatchObject({
+      status: 'denied',
+      decision: { decision: 'deny', ruleId: 'workspace.write-outside' },
+    });
+    expect(h.requestApproval).not.toHaveBeenCalled();
+    expect(h.execute).not.toHaveBeenCalled();
+  });
+
+  it('asks a human for an external write even in auto_review', async () => {
+    const h = await harness(() => true, { defaultPermissionMode: 'auto_review' });
+    const result = await h.router.route(
+      write({ path: 'C:/ws/report.docx' }, 'report.export'),
+      's1',
+    );
+    expect(result).toMatchObject({
       status: 'executed',
-      decision: { decision: 'ask', ruleId: 'platform.capability-expansion' },
+      decision: { decision: 'ask', ruleId: 'platform.human-required' },
     });
     expect(h.requestApproval).toHaveBeenCalledTimes(1);
-    expect(h.execute).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks a human for shell in ask mode and never auto-approves it', async () => {
+    const h = await harness(() => true, { autoApprove: ['process.exec'] });
+    const result = await h.router.route({
+      requestId: 'bash-1',
+      toolName: 'bash',
+      args: { command: 'pnpm test' },
+    }, 's1');
+    expect(result).toMatchObject({
+      status: 'executed',
+      decision: { decision: 'ask', ruleId: 'platform.base-ask' },
+    });
+    expect(h.requestApproval).toHaveBeenCalledTimes(1);
+  });
+
+  it('hard-denies a catastrophic shell target before approval', async () => {
+    const h = await harness();
+    const result = await h.router.route({
+      requestId: 'bash-2',
+      toolName: 'bash',
+      args: { command: 'rm -rf /' },
+    }, 's1');
+    expect(result).toMatchObject({
+      status: 'denied',
+      decision: { decision: 'deny', ruleId: 'platform.catastrophic-target' },
+    });
+    expect(h.requestApproval).not.toHaveBeenCalled();
+    expect(h.execute).not.toHaveBeenCalled();
+  });
+
+  it('keeps git push on the human approval path', async () => {
+    const h = await harness();
+    const result = await h.router.route({
+      requestId: 'bash-3',
+      toolName: 'bash',
+      args: { command: 'git push origin main' },
+    }, 's1');
+    expect(result).toMatchObject({
+      status: 'executed',
+      decision: { decision: 'ask', ruleId: 'platform.human-required' },
+    });
+    expect(h.requestApproval).toHaveBeenCalledTimes(1);
   });
 
   it('hard-denies critical targets before approval or execution', async () => {
@@ -153,7 +221,7 @@ describe('createRuntimeActionRouter', () => {
       return { approved: true };
     });
     const result = await h.router.route(
-      write({ path: 'C:/outside/a.txt', content: 'x' }),
+      write({ path: 'C:/ws/report.docx' }, 'report.export'),
       's1',
     );
     expect(result).toMatchObject({
@@ -167,7 +235,7 @@ describe('createRuntimeActionRouter', () => {
     const h = await harness();
     h.revalidate.mockResolvedValueOnce(false);
     const result = await h.router.route(
-      write({ path: 'C:/outside/a.txt', content: 'x' }),
+      write({ path: 'C:/ws/report.docx' }, 'report.export'),
       's1',
     );
     expect(result).toMatchObject({

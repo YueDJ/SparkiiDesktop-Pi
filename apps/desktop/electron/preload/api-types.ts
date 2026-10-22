@@ -247,7 +247,8 @@ export interface SparkiiApi {
 export interface TaskCapabilityStatus {
   active: boolean;
   taskId?: string;
-  mode?: 'plan' | 'standard' | 'strict';
+  planMode?: 'plan' | 'execute';
+  permissionMode?: 'ask' | 'auto_review';
   workspaceRoot?: string;
   workspaceWrite?: boolean;
   processExec?: boolean;
