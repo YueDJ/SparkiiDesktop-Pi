@@ -213,6 +213,7 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
     fallback: PolicyOutcome,
     ruleId: string,
     reason: string,
+    riskOverride?: SecurityRisk,
   ): Promise<{ deniedResult: ActionExecutionResult } | { outcome: PolicyOutcome }> => {
     if (approval.choice === 'deny') {
       await auditDecision(action, 'action.denied', 'user denied', 'user.denied', 'denied');
@@ -224,7 +225,7 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
       ) };
     }
     if (approval.choice === 'task') {
-      if (!isOrdinaryShell(action)) {
+      if (!isOrdinaryShell(action) || riskOverride === 'high-risk') {
         return { deniedResult: denied(
           requestId,
           fallback,
@@ -251,6 +252,29 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
     fallback: PolicyOutcome,
     riskOverride?: SecurityRisk,
   ): Promise<{ deniedResult?: ActionExecutionResult; outcome?: PolicyOutcome }> => {
+    try {
+      options.lifecycle.assertActive(action.sessionId, action.taskId);
+    } catch {
+      await auditDecision(action, 'action.denied',
+        'task grant revoked before human approval', 'task-grant.revoked', 'denied');
+      return { deniedResult: denied(
+        requestId,
+        fallback,
+        'TASK_REVOKED',
+        'Task grant is no longer active',
+      ) };
+    }
+    if (grant.unattended) {
+      await auditDecision(action, 'action.denied',
+        'human approval is unavailable for an unattended task',
+        'human-approval.unavailable', 'denied');
+      return { deniedResult: denied(
+        requestId,
+        fallback,
+        'HUMAN_APPROVAL_UNAVAILABLE',
+        'Human approval is unavailable for an unattended task',
+      ) };
+    }
     let approval: ApprovalResolution;
     try {
       approval = await options.requestApproval(action, grant, riskOverride);
@@ -266,6 +290,7 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
       fallback,
       'user.approved',
       '用户已批准',
+      riskOverride,
     );
     return 'deniedResult' in settled ? settled : { outcome: settled.outcome };
   };
@@ -281,6 +306,19 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
     try {
       reviewed = await options.reviewShell(buildReviewInput(action, grant));
     } catch (error) {
+      try {
+        options.lifecycle.assertActive(action.sessionId, action.taskId);
+      } catch {
+        await auditDecision(action, 'action.denied',
+          'task grant revoked while reviewer was running',
+          'task-grant.revoked', 'denied');
+        return { deniedResult: denied(
+          requestId,
+          fallback,
+          'TASK_REVOKED',
+          'Task grant was revoked during review',
+        ) };
+      }
       const message = error instanceof Error ? error.message : String(error);
       await auditReviewer(action, REVIEWER_LOG_EVENTS.fallback, {
         policyVersion: options.reviewerPolicyVersion,

@@ -29,4 +29,26 @@ describe('ApprovalGate', () => {
     const p = await gate.submit({ requestId: 'r1', toolName: 'report.export', targetSystem: 'report', summary: 'x', payload: {}, risk: 'write' }, { profileId: 'p', sessionId: 's', actor: 'agent' });
     await expect(gate.decide(p.id, { userId: 'u2', roles: ['viewer'] }, true)).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
   });
+
+  it('cancels only the pending proposals for one session', async () => {
+    const audit = new AuditStore(join(mkdtempSync(join(tmpdir(), 'g-')), 'a.db'));
+    stores.push(audit);
+    const gate = new ApprovalGate({ policy, rbac, audit });
+    const first = await gate.submit(
+      { requestId: 'r1', toolName: 'report.export', targetSystem: 'report', summary: 'one', payload: {}, risk: 'write' },
+      { profileId: 'p', sessionId: 's1', actor: 'agent' },
+    );
+    const second = await gate.submit(
+      { requestId: 'r2', toolName: 'report.export', targetSystem: 'report', summary: 'two', payload: {}, risk: 'write' },
+      { profileId: 'p', sessionId: 's2', actor: 'agent' },
+    );
+
+    const cancelled = await gate.cancelSession('s1', 'task-revoked');
+    expect(cancelled).toEqual([
+      expect.objectContaining({ id: first.id, sessionId: 's1', status: 'denied' }),
+    ]);
+    expect(gate.get(second.id)?.status).toBe('pending');
+    expect((await audit.query({ sessionId: 's1' })).map((e) => e.action))
+      .toContain('proposal.cancelled');
+  });
 });

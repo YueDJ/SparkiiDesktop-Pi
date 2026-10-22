@@ -841,4 +841,22 @@ describe('broker approval timeout vs long-running execution', () => {
     broker.decide('p1', { approved: true, status: 'approved' });
     await expect(scoped).resolves.toEqual({ approved: true, proposalId: 'p1', status: 'approved' });
   });
+
+  it('cancels pending broker waits for one session', async () => {
+    const { broker } = gateHarness(30_000);
+    const pending = broker.request({
+      requestId: 'r7',
+      toolName: 'bash',
+      targetSystem: 'platform:process.exec',
+      summary: 'pnpm test',
+      payload: { command: 'pnpm test' },
+      risk: 'write',
+    }, { sessionId: 's1', profileId: 'general' });
+    await sleep(5);
+    broker.cancelSession('s1', 'task-revoked');
+    await expect(pending).resolves.toMatchObject({
+      approved: false,
+      status: 'denied',
+    });
+  });
 });

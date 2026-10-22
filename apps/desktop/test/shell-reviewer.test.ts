@@ -201,6 +201,47 @@ describe('createPiShellReviewer', () => {
     await reviewer.dispose();
   });
 
+  it('includes slow worker startup in the review timeout', async () => {
+    const reviewer = createPiShellReviewer({
+      provider: 'deepseek',
+      modelId: 'deepseek-v4-flash',
+      timeoutMs: 20,
+      idleMs: 300_000,
+      keyFor: async () => 'test-key',
+      logger: { log: async () => {} },
+      makeClient: () => new Promise(() => {}),
+    });
+    await expect(reviewer.review(input())).rejects.toThrow(/timed out/i);
+    await reviewer.dispose();
+  });
+
+  it('cancels immediately while the worker is still starting', async () => {
+    let started!: () => void;
+    const makeStarted = new Promise<void>((resolve) => { started = resolve; });
+    const reviewer = createPiShellReviewer({
+      provider: 'deepseek',
+      modelId: 'deepseek-v4-flash',
+      timeoutMs: 10_000,
+      idleMs: 300_000,
+      keyFor: async () => 'test-key',
+      logger: { log: async () => {} },
+      makeClient: () => {
+        started();
+        return new Promise(() => {});
+      },
+    });
+    const pending = reviewer.review(input());
+    await makeStarted;
+    await reviewer.cancel('t1');
+    await expect(Promise.race([
+      pending,
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('cancel waited for startup')), 100);
+      }),
+    ])).rejects.toThrow(/canceled/i);
+    await reviewer.dispose();
+  });
+
   it('stops the idle worker and logs at the expected levels', async () => {
     vi.useFakeTimers();
     const client = fakeClient();

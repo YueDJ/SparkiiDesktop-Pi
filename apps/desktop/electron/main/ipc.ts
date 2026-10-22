@@ -443,6 +443,11 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     );
     security.taskLifecycle.registerCancellation(
       grant.taskId,
+      'pending-approval',
+      () => broker.cancelSession(sessionId, 'task-revoked'),
+    );
+    security.taskLifecycle.registerCancellation(
+      grant.taskId,
       'user-task',
       async () => { userTaskBySession.delete(sessionId); },
     );

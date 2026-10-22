@@ -23,7 +23,11 @@ const allTools = new Map<string, ToolDef>(
 );
 
 export function createBroker(rt: Runtime, getWindow: () => BrowserWindow | null) {
-  const resolvers = new Map<string, { resolve: (d: ProposalDecision) => void; timer: ReturnType<typeof setTimeout> }>();
+  const resolvers = new Map<string, {
+    resolve: (d: ProposalDecision) => void;
+    timer: ReturnType<typeof setTimeout>;
+    sessionId: string;
+  }>();
   return {
     async request(req: ProposalSubmission, meta: { sessionId: string; profileId: string }): Promise<ProposalDecision> {
       const p = await rt.gate.submit(req, { profileId: meta.profileId, sessionId: meta.sessionId, actor: rt.subject?.userId ?? 'agent' });
@@ -52,7 +56,7 @@ export function createBroker(rt: Runtime, getWindow: () => BrowserWindow | null)
             // 等 decideApproval 完成由 broker.decide 回真实结果。
           });
         }, rt.profileOf(meta.profileId).profile.security.approval.timeoutMs);
-        resolvers.set(p.id, { resolve, timer });
+        resolvers.set(p.id, { resolve, timer, sessionId: meta.sessionId });
       });
     },
     route(req: ProposalSubmission, meta: { sessionId: string; profileId: string }): Promise<ProposalDecision> {
@@ -75,6 +79,20 @@ export function createBroker(rt: Runtime, getWindow: () => BrowserWindow | null)
     decide(id: string, decision: Omit<ProposalDecision, 'proposalId'>) {
       const entry = resolvers.get(id);
       if (entry) { clearTimeout(entry.timer); entry.resolve({ ...decision, proposalId: id }); resolvers.delete(id); }
+    },
+    async cancelSession(sessionId: string, reason: string): Promise<void> {
+      const cancelled = typeof rt.gate.cancelSession === 'function'
+        ? await rt.gate.cancelSession(sessionId, reason)
+        : [];
+      for (const proposal of cancelled) {
+        getWindow()?.webContents.send('sparkii:event:approval', proposal);
+      }
+      for (const [id, entry] of [...resolvers.entries()]) {
+        if (entry.sessionId !== sessionId) continue;
+        clearTimeout(entry.timer);
+        entry.resolve({ approved: false, proposalId: id, status: 'denied' });
+        resolvers.delete(id);
+      }
     },
   };
 }

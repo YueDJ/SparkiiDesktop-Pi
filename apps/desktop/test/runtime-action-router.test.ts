@@ -266,6 +266,17 @@ describe('ask mode', () => {
     expect(ask.review).not.toHaveBeenCalled();
   });
 
+  it('denies Ask mode shell when no human can approve', async () => {
+    const ask = await harness({ unattended: true });
+    const result = await ask.router.route(bash('bash-1', 'pnpm test'), 's1');
+    expect(result).toMatchObject({
+      status: 'denied',
+      error: { code: 'HUMAN_APPROVAL_UNAVAILABLE' },
+    });
+    expect(ask.requestApproval).not.toHaveBeenCalled();
+    expect(ask.review).not.toHaveBeenCalled();
+  });
+
   it('asks a human for an external write', async () => {
     const result = await h.router.route(
       write({ path: 'C:/ws/report.docx' }, 'report.export'),
@@ -416,6 +427,20 @@ describe('auto_review mode', () => {
     );
   });
 
+  it('rejects task scope when Reviewer requested high-risk confirmation', async () => {
+    const auto = await harness({
+      permissionMode: 'auto_review',
+      approval: { choice: 'task' },
+      review: { decision: 'ask', risk: 'high', reason: '上下文不足' },
+    });
+    const result = await auto.router.route(bash('r1', 'pnpm test'), 's1');
+    expect(result).toMatchObject({
+      status: 'denied',
+      error: { code: 'INVALID_APPROVAL_SCOPE' },
+    });
+    expect(auto.execute).not.toHaveBeenCalled();
+  });
+
   it('does not execute on a reviewer deny', async () => {
     const auto = await harness({
       permissionMode: 'auto_review',
@@ -500,6 +525,38 @@ describe('auto_review mode', () => {
     expect(result).toMatchObject({
       status: 'denied',
       error: { message: 'Reviewer unavailable for unattended task' },
+    });
+    expect(auto.requestApproval).not.toHaveBeenCalled();
+  });
+
+  it('denies an unattended Reviewer ask instead of opening human approval', async () => {
+    const auto = await harness({
+      permissionMode: 'auto_review',
+      unattended: true,
+      review: { decision: 'ask', risk: 'high', reason: '需要人工判断' },
+    });
+    const result = await auto.router.route(bash('r1', 'pnpm build'), 's1');
+    expect(result).toMatchObject({
+      status: 'denied',
+      error: { code: 'HUMAN_APPROVAL_UNAVAILABLE' },
+    });
+    expect(auto.requestApproval).not.toHaveBeenCalled();
+  });
+
+  it('does not fall back to approval when the Reviewer is canceled by Task revoke', async () => {
+    const auto = await harness({ permissionMode: 'auto_review' });
+    let rejectReview!: (error: Error) => void;
+    auto.review.mockImplementationOnce(() => new Promise((_, reject) => {
+      rejectReview = reject;
+    }));
+    const routing = auto.router.route(bash('r1', 'pnpm test'), 's1');
+    await new Promise((done) => setTimeout(done, 0));
+    await auto.lifecycle.end('s1', 'user');
+    rejectReview(new Error('Reviewer canceled'));
+    const result = await routing;
+    expect(result).toMatchObject({
+      status: 'denied',
+      error: { code: 'TASK_REVOKED' },
     });
     expect(auto.requestApproval).not.toHaveBeenCalled();
   });

@@ -45,6 +45,8 @@ export function createPiShellReviewer(options: ShellReviewerOptions) {
   let startFailures = 0;
   let disposed = false;
   const cancelledTasks = new Set<string>();
+  const scheduledTasks = new Set<string>();
+  const cancelWaiters = new Map<string, (error: ReviewerCanceled) => void>();
 
   const log = (entry: {
     level: 'debug' | 'info' | 'warn' | 'error';
@@ -129,22 +131,36 @@ export function createPiShellReviewer(options: ShellReviewerOptions) {
 
   return {
     review(input: ShellReviewInput): Promise<ReviewerDecision> {
+      scheduledTasks.add(input.taskId);
+      const cancelPromise = new Promise<never>((_, reject) => {
+        cancelWaiters.set(input.taskId, reject);
+      });
       const run = async (): Promise<ReviewerDecision> => {
         stopIdleTimer();
         if (cancelledTasks.delete(input.taskId)) throw new ReviewerCanceled();
         const started = Date.now();
-        const worker = await ensure();
         currentTaskId = input.taskId;
         let timer: ReturnType<typeof setTimeout> | undefined;
         try {
-          const response = await Promise.race([
-            worker.send({
+          const operation = (async () => {
+            const worker = await ensure();
+            if (cancelledTasks.delete(input.taskId)) {
+              if (client) await reset('task-revoked-during-start');
+              throw new ReviewerCanceled();
+            }
+            return worker.send({
               type: 'complete',
               provider: options.provider,
               modelId: options.modelId,
               system: SHELL_REVIEWER_SYSTEM_PROMPT,
               text: JSON.stringify(input),
-            }),
+            });
+          })().finally(() => {
+            // A timeout/cancel can fire while startup is still in flight.
+            cancelledTasks.delete(input.taskId);
+          });
+          const response = await Promise.race([
+            operation,
             new Promise<never>((_, reject) => {
               timer = setTimeout(() => reject(new Error('Reviewer timed out')), options.timeoutMs);
             }),
@@ -176,14 +192,10 @@ export function createPiShellReviewer(options: ShellReviewerOptions) {
           return reviewed;
         } catch (error) {
           if (error instanceof ReviewerCanceled) {
-            await log({
-              level: 'warn',
-              msg: REVIEWER_LOG_EVENTS.canceled,
-              ctx: { taskId: input.taskId, sessionId: input.sessionId },
-            });
             throw error;
           }
           const timedOut = error instanceof Error && /timed out/.test(error.message);
+          if (timedOut) cancelledTasks.add(input.taskId);
           await log({
             level: 'warn',
             msg: timedOut ? REVIEWER_LOG_EVENTS.timeout : REVIEWER_LOG_EVENTS.failed,
@@ -199,17 +211,32 @@ export function createPiShellReviewer(options: ShellReviewerOptions) {
           throw error;
         } finally {
           if (timer) clearTimeout(timer);
+          scheduledTasks.delete(input.taskId);
+          cancelWaiters.delete(input.taskId);
           if (currentTaskId === input.taskId) currentTaskId = null;
         }
       };
-      const result = queue.then(run, run);
-      queue = result.then(() => undefined, () => undefined);
-      return result;
+      const queued = queue.then(run, run);
+      queue = queued.then(() => undefined, () => undefined);
+      return Promise.race([queued, cancelPromise]).catch(async (error) => {
+        if (error instanceof ReviewerCanceled) {
+          await log({
+            level: 'warn',
+            msg: REVIEWER_LOG_EVENTS.canceled,
+            ctx: { taskId: input.taskId, sessionId: input.sessionId },
+          });
+        }
+        throw error;
+      });
     },
 
     async cancel(taskId: string): Promise<void> {
+      if (!scheduledTasks.has(taskId) && currentTaskId !== taskId) return;
       cancelledTasks.add(taskId);
-      if (currentTaskId === taskId) await reset('task-revoked');
+      cancelWaiters.get(taskId)?.(new ReviewerCanceled());
+      if (currentTaskId === taskId) {
+        await reset('task-revoked');
+      }
     },
 
     async dispose(): Promise<void> {
