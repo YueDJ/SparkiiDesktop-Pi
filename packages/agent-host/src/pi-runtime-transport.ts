@@ -10,6 +10,8 @@ export interface ProposalDecision {
   proposalId: string;
   status: string;
   result?: unknown;
+  /** How far the user meant the approval to reach. Absent means a single action. */
+  approvalScope?: 'once' | 'task';
 }
 
 export type ConnectorReadRequest = {

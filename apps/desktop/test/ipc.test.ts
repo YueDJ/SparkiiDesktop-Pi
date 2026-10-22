@@ -4074,6 +4074,7 @@ describe('task capability IPC', () => {
       client: { send: async () => ({ success: true }) },
       security: {
         taskLifecycle: lifecycle,
+        taskGrants: { onRevoke: () => () => {} },
         sandboxReport: {
           platform: 'windows',
           status: 'partial',

@@ -817,4 +817,28 @@ describe('broker approval timeout vs long-running execution', () => {
     broker.decide('p1', { approved: true, status: 'executed', result: { exitCode: 0 } });
     await expect(decision).resolves.toEqual({ approved: true, proposalId: 'p1', status: 'executed', result: { exitCode: 0 } });
   });
+
+  it('carries the approval scope back to the awaiting action router', async () => {
+    const { broker } = gateHarness(30_000);
+
+    const decision = broker.request({
+      requestId: 'r5', toolName: 'bash', targetSystem: 'platform:process.exec', summary: 'pnpm test',
+      payload: { command: 'pnpm test' }, risk: 'write',
+    }, { sessionId: 's1', profileId: 'general' });
+
+    // request() registers its resolver only after the gate submit resolves.
+    await sleep(5);
+    broker.decide('p1', { approved: true, status: 'approved', approvalScope: 'task' });
+    await expect(decision).resolves.toEqual({
+      approved: true, proposalId: 'p1', status: 'approved', approvalScope: 'task',
+    });
+
+    const scoped = broker.request({
+      requestId: 'r6', toolName: 'bash', targetSystem: 'platform:process.exec', summary: 'pnpm lint',
+      payload: { command: 'pnpm lint' }, risk: 'write',
+    }, { sessionId: 's1', profileId: 'general' });
+    await sleep(5);
+    broker.decide('p1', { approved: true, status: 'approved' });
+    await expect(scoped).resolves.toEqual({ approved: true, proposalId: 'p1', status: 'approved' });
+  });
 });

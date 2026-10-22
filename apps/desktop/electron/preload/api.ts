@@ -59,7 +59,8 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
     listAgents: () => invoke('listAgents') as ReturnType<SparkiiApi['listAgents']>,
     probeOntologyGraph: () => invoke('probeOntologyGraph') as ReturnType<SparkiiApi['probeOntologyGraph']>,
     listPendingApprovals: () => invoke('listPendingApprovals') as Promise<unknown[]>,
-    decideApproval: (id, approved, note) => invoke('decideApproval', id, approved, note),
+    decideApproval: (id, approved, note, approvalScope) =>
+      invoke('decideApproval', id, approved, note, approvalScope),
     queryAudit: (filter) => invoke('queryAudit', filter) as Promise<unknown[]>,
     getSettings: () => invoke('getSettings'),
     saveSettings: (settings) => invoke('saveSettings', settings),

@@ -76,6 +76,11 @@ import {
 } from '@sparkii/approval';
 import { createTaskGrant } from './security/task-grant-factory.js';
 import { createRuntimeActionRouter } from './security/runtime-action-router.js';
+import { ShellGrantStore } from './security/shell-grant-store.js';
+import {
+  SHELL_REVIEWER_POLICY_VERSION,
+  REVIEWER_USER_TASK_LIMIT,
+} from './security/reviewer-policy.js';
 
 /** 按后端探活：读该后端自己的配置块与凭据，再交给 `knowledge-probe`。 */
 async function probeKnowledgeConnection(
@@ -183,10 +188,22 @@ function userLibraryAgent(rt: Runtime): AgentRuntime | null {
 
 export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, logger: Logger) {
   const broker = createBroker(rt, getWindow);
+  const shellGrants = new ShellGrantStore();
+  /** The prompt text of the live Task, trimmed, for the Reviewer only. */
+  const userTaskBySession = new Map<string, string>();
   const actionRouter = rt.security
     ? createRuntimeActionRouter({
       lifecycle: rt.security.taskLifecycle,
       normalizer: rt.security.actionNormalizer,
+      shellGrants,
+      reviewerModel: 'unconfigured',
+      reviewerPolicyVersion: SHELL_REVIEWER_POLICY_VERSION,
+      userTaskOf: (sessionId) => userTaskBySession.get(sessionId) ?? '',
+      async reviewShell() {
+        // Task 6 installs the hidden Pi worker; until then AutoReview is
+        // unavailable and every Shell falls back to a human decision.
+        throw new Error('Reviewer unavailable');
+      },
       profilePolicyOf: (profileId) =>
         rt.security?.profilePolicies.get(profileId)
         ?? {
@@ -251,7 +268,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
         }
         throw new Error(`execution backend unavailable for ${action.capability}`);
       },
-      async requestApproval(action) {
+      async requestApproval(action, _grant, riskOverride) {
         const decision = await broker.request({
           requestId: action.id,
           toolName: action.toolName,
@@ -263,13 +280,14 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
               `${resource.scope}: ${resource.value}`),
           },
           payload: action.payload,
-          risk: action.risk,
+          risk: riskOverride ?? action.risk,
           executionMode: 'caller',
         }, {
           sessionId: action.sessionId,
           profileId: action.profileId,
         });
-        return { approved: decision.approved };
+        if (!decision.approved) return { choice: 'deny' as const };
+        return { choice: decision.approvalScope === 'task' ? 'task' as const : 'once' as const };
       },
       async revalidate(action, grant) {
         if (!rt.security) return false;
@@ -307,6 +325,13 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       sandboxVersion: rt.security?.sandboxReport.version,
     })
     : null;
+
+  // A Task that ends takes its routing state with it: no shell grant, no
+  // evidence, no denial memory. A new Task starts from zero.
+  rt.security?.taskGrants.onRevoke((taskId) => {
+    shellGrants.revoke(taskId);
+    actionRouter?.clearTask(taskId);
+  });
 
   const bindRuntimeActions = (
     slot: Awaited<ReturnType<typeof rt.pool.acquire>>,
@@ -376,6 +401,11 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       grant.taskId,
       'capability-gateway',
       async () => { security.capabilityGateway.revokeTask(grant.taskId); },
+    );
+    security.taskLifecycle.registerCancellation(
+      grant.taskId,
+      'user-task',
+      async () => { userTaskBySession.delete(sessionId); },
     );
   };
   const win = getWindow();
@@ -1054,6 +1084,11 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       open.profileId,
       behavior === 'prompt',
     );
+    // A new prompt starts a new Task, so the Reviewer only ever sees the prompt
+    // that owns the current Task. steer/followUp keep the existing one.
+    if (behavior === 'prompt') {
+      userTaskBySession.set(resolvedSessionId, text.slice(0, REVIEWER_USER_TASK_LIMIT));
+    }
 
     if (behavior === 'steer') {
       const resp = await open.slot.client.send(images.length
@@ -1642,7 +1677,13 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     await rt.security?.taskLifecycle.end(sessionId, 'user');
     return { ok: true, revoked: active };
   });
-  ipcMain.handle('sparkii:decideApproval', async (_e, id: string, approved: boolean, note?: string) => {
+  ipcMain.handle('sparkii:decideApproval', async (
+    _e,
+    id: string,
+    approved: boolean,
+    note?: string,
+    approvalScope?: 'once' | 'task',
+  ) => {
     let out = await rt.gate.decide(id, rt.subject, approved, note);
     let result: unknown;
     if (
@@ -1744,6 +1785,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       approved: executionOk && (out.status === 'approved' || out.status === 'executed'),
       status: executionOk ? out.status : 'failed',
       result,
+      ...(approvalScope ? { approvalScope } : {}),
     });
     return out;
   });

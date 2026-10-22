@@ -198,7 +198,7 @@ export interface SparkiiApi {
   }>>;
   probeOntologyGraph(): Promise<OntologyGraphProbeResult>;
   listPendingApprovals(): Promise<unknown[]>;
-  decideApproval(id: string, approved: boolean, note?: string): Promise<unknown>;
+  decideApproval(id: string, approved: boolean, note?: string, approvalScope?: 'once' | 'task'): Promise<unknown>;
   queryAudit(filter: object): Promise<unknown[]>;
   getSettings(): Promise<unknown>;
   saveSettings(settings: unknown): Promise<unknown>;
