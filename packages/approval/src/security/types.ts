@@ -104,6 +104,8 @@ export interface WorkspacePathInfo {
   isReparsePoint: boolean;
   /** False only when the requested target itself does not exist yet. */
   exists?: boolean;
+  /** Present for existing filesystem objects; used to fail closed on hard-link aliases. */
+  linkCount?: number;
 }
 
 export interface WorkspacePathProbe {

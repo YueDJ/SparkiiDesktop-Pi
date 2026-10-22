@@ -139,6 +139,7 @@ export function createWindowsPathProbe(
       isDirectory: exists ? nearestStats.isDirectory() : false,
       isReparsePoint: nearestLink.isSymbolicLink(),
       exists,
+      linkCount: exists ? Number(nearestStats.nlink) : undefined,
     };
   };
 

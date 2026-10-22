@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { dirname, isAbsolute, resolve } from 'node:path';
 import {
   hashPayload,
+  isTrustAnchorPath,
   type ActionApprovalClass,
   type CapabilityKind,
   type ProtectedRoot,
@@ -97,22 +98,39 @@ export function classifyShellCommand(command: string): {
   };
 }
 
-const DEFAULT_TRUST_ANCHOR_NAMES = new Set([
-  '.env',
-  '.git-credentials',
-  '.netrc',
-  '.npmrc',
-  '.pypirc',
-  '.bashrc',
-  '.profile',
-  '.zshrc',
-  '.mcp.json',
-  'mcp.json',
-  'id_rsa',
-  'id_ed25519',
-]);
-
 export const DEFAULT_TOOL_DESCRIPTORS: NormalizedToolDescriptor[] = [
+  {
+    toolName: 'read',
+    capability: 'fs.read',
+    approvalClass: 'auto',
+    risk: 'read',
+    pathArgs: ['path'],
+    reason: '读取工作区或已绑定输入',
+  },
+  {
+    toolName: 'ls',
+    capability: 'fs.read',
+    approvalClass: 'auto',
+    risk: 'read',
+    pathArgs: ['path'],
+    reason: '列出工作区或已绑定输入',
+  },
+  {
+    toolName: 'grep',
+    capability: 'fs.read',
+    approvalClass: 'auto',
+    risk: 'read',
+    pathArgs: ['path'],
+    reason: '搜索工作区或已绑定输入',
+  },
+  {
+    toolName: 'find',
+    capability: 'fs.read',
+    approvalClass: 'auto',
+    risk: 'read',
+    pathArgs: ['path'],
+    reason: '查找工作区或已绑定输入',
+  },
   {
     toolName: 'write',
     capability: 'fs.write',
@@ -166,35 +184,6 @@ export const DEFAULT_TOOL_DESCRIPTORS: NormalizedToolDescriptor[] = [
 
 function pathKey(value: string): string {
   return value.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
-}
-
-function pathSegments(value: string): string[] {
-  return value.replace(/\\/g, '/').split('/').filter(Boolean).map((part) => part.toLowerCase());
-}
-
-export function isTrustAnchorPath(
-  value: string,
-  extraNames: string[] = [],
-): boolean {
-  const segments = pathSegments(value);
-  const names = new Set([
-    ...DEFAULT_TRUST_ANCHOR_NAMES,
-    ...extraNames.map((entry) => entry.toLowerCase()),
-  ]);
-  for (let index = 0; index < segments.length; index += 1) {
-    const segment = segments[index];
-    if (names.has(segment) || segment.startsWith('.env.')) return true;
-    if (segment === '.git') {
-      const child = segments[index + 1];
-      if (child === 'hooks' || child === 'config') return true;
-    }
-    if (
-      segment === '.codex'
-      || segment === '.cursor'
-      || segment === '.claude'
-    ) return true;
-  }
-  return false;
 }
 
 function freezePayload(value: unknown): unknown {
@@ -272,7 +261,14 @@ async function classifyPath(
     identity: inspected.identity,
     parentIdentity: parent.identity,
     scope,
-    ...(scope !== 'critical' && isTrustAnchorPath(canonical, options.trustAnchors ?? [])
+    ...(scope !== 'critical' && (
+      isTrustAnchorPath(canonical, options.trustAnchors ?? [])
+      || (
+        inspected.exists === true
+        && inspected.isDirectory === false
+        && (inspected.linkCount ?? 0) > 1
+      )
+    )
       ? { trustAnchor: true }
       : {}),
   };
@@ -283,6 +279,7 @@ export interface ActionNormalizer {
     request: RuntimeActionRequest,
     grant: TaskGrant,
   ): Promise<SecurityAction>;
+  authorizeRead(target: string, grant: TaskGrant): Promise<ResourceRef>;
 }
 
 export function createActionNormalizer(
@@ -295,6 +292,9 @@ export function createActionNormalizer(
     ]),
   );
   return {
+    authorizeRead(target, grant) {
+      return classifyPath(target, grant, options);
+    },
     async normalize(request, grant) {
       const descriptor = descriptors.get(request.toolName.toLowerCase());
       if (!descriptor) {

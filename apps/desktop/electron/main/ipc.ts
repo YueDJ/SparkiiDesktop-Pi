@@ -77,6 +77,7 @@ import {
 } from '@sparkii/approval';
 import { createTaskGrant } from './security/task-grant-factory.js';
 import { createRuntimeActionRouter } from './security/runtime-action-router.js';
+import { authorizeDocumentReadPaths } from './security/document-access.js';
 import { ShellGrantStore } from './security/shell-grant-store.js';
 import { resolveSessionPermissionMode } from './security/session-permission-mode.js';
 import { REVIEWER_USER_TASK_LIMIT } from './security/reviewer-policy.js';
@@ -264,6 +265,15 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
         if (action.capability === 'fs.write') {
           return {
             result: await rt.security.workspaceExecutor.execute(action, grant),
+          };
+        }
+        if (action.capability === 'fs.read') {
+          const target = action.resources.find((resource) => resource.kind === 'path');
+          return {
+            result: {
+              authorized: true,
+              canonicalPath: target?.value,
+            },
           };
         }
         if (action.capability === 'process.exec') {
@@ -729,7 +739,39 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     }
     if (req.toolName === 'document.read') {
       const displayName = rt.profileOf(profileId)?.profile?.manifest?.displayName ?? profileId;
-      const result = await executeDocumentRead(req.args, {
+      let args = req.args;
+      if (rt.security) {
+        const grant = rt.security.taskLifecycle.active(sessionId);
+        if (!grant) {
+          return {
+            ok: false,
+            error: { code: 'CONNECTOR_DENIED', message: 'Task grant is not active' },
+          };
+        }
+        const requested = Array.isArray(req.args.documents)
+          ? req.args.documents.map((value) => String(value ?? ''))
+          : [];
+        const authorized = await authorizeDocumentReadPaths(
+          requested,
+          grant,
+          rt.security.actionNormalizer,
+        );
+        if (!authorized.ok) {
+          await rt.audit.append({
+            actor: rt.subject.userId,
+            action: 'tool.read.denied',
+            resource: 'document.read',
+            sessionId,
+            payloadSummary: authorized.message,
+          });
+          return {
+            ok: false,
+            error: { code: 'CONNECTOR_DENIED', message: authorized.message },
+          };
+        }
+        args = { ...req.args, documents: authorized.paths };
+      }
+      const result = await executeDocumentRead(args, {
         profileId,
         sessionId,
         actor: rt.subject.userId,

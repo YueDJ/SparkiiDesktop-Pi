@@ -17,13 +17,13 @@ import {
 } from 'node:path';
 import {
   hashPayload,
+  isTrustAnchorPath,
   type ResourceRef,
   type SecurityAction,
   type TaskGrant,
   type WorkspacePathInfo,
   type WorkspacePathProbe,
 } from '@sparkii/approval';
-import { isTrustAnchorPath } from './action-normalizer.js';
 
 export type WorkspaceExecutionCode =
   | 'UNSUPPORTED_TOOL'

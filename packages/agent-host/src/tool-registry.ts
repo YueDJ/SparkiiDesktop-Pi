@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import {
   createReadToolDefinition,
@@ -20,7 +21,7 @@ import type {
   ActionExecutionResult,
   RuntimeActionRequest,
 } from "./runtime-actions.js";
-import { isPathInside } from "./workspace-guard.js";
+import { isPathInside, resolveGuardedReadPath } from "./workspace-guard.js";
 
 export const WORKSPACE_NOT_CREATED = "工作区尚未创建（尚无写操作）。请先让智能体创建文件，或在输入框上方指定工作区。";
 
@@ -43,22 +44,62 @@ function withWorkspaceGuard(
   root: string,
   pathCwd: string,
   skillsDir?: string,
+  requestAction?: RegistryContext["requestAction"],
 ): ToolDefinition {
   const original = def.execute.bind(def);
   return {
     ...def,
     execute: async (toolCallId: string, params: any, signal: any, onUpdate: any, ctx: any) => {
       const path: unknown = params?.path;
-      if (typeof path === "string" && skillsDir && isPathInside(skillsDir, resolve(pathCwd, path))) {
-        return original(toolCallId, params, signal, onUpdate, ctx);
-      }
-      if (!existsSync(root)) {
+      const absolute = resolve(pathCwd, typeof path === "string" ? path : ".");
+      const skillPath = Boolean(
+        typeof path === "string"
+        && skillsDir
+        && isPathInside(skillsDir, absolute),
+      );
+      if (!existsSync(root) && !skillPath) {
         return { content: [{ type: "text", text: WORKSPACE_NOT_CREATED }], details: {} };
       }
-      if (typeof path === "string" && !isPathInside(root, resolve(pathCwd, path))) {
-        return { content: [{ type: "text", text: `拒绝访问:${path} 不在工作区内` }], details: {} };
+      if (!skillPath && requestAction) {
+        const result = await requestAction({
+          requestId: randomUUID(),
+          toolCallId,
+          toolName: def.name,
+          args: { ...params, path: absolute },
+        });
+        if (result.status !== "executed") {
+          const reason = result.error?.message ?? result.decision.reason;
+          return { content: [{ type: "text", text: `拒绝访问:${path} ${reason}` }], details: {} };
+        }
+        const authorized = result.result as { canonicalPath?: unknown } | undefined;
+        const canonicalPath = typeof authorized?.canonicalPath === "string"
+          ? authorized.canonicalPath
+          : absolute;
+        return original(
+          toolCallId,
+          { ...params, path: canonicalPath },
+          signal,
+          onUpdate,
+          ctx,
+        );
       }
-      return original(toolCallId, params, signal, onUpdate, ctx);
+      const guarded = await resolveGuardedReadPath(root, absolute, skillsDir);
+      if (!guarded.ok) {
+        const detail = guarded.code === 'OUTSIDE_WORKSPACE'
+          ? '不在工作区内'
+          : guarded.message;
+        return {
+          content: [{ type: "text", text: `拒绝访问:${path ?? absolute} ${detail}` }],
+          details: {},
+        };
+      }
+      return original(
+        toolCallId,
+        { ...params, path: guarded.canonicalPath },
+        signal,
+        onUpdate,
+        ctx,
+      );
     },
   };
 }
@@ -106,13 +147,13 @@ export function resolveToolDefinitions(toolNames: string[], ctx: RegistryContext
     }
     if (name === "read") {
       const def = createReadToolDefinition(pathCwd, { autoResizeImages: false }) as ToolDefinition;
-      out.push(ctx.workspaceRoot ? withWorkspaceGuard(def, ctx.workspaceRoot, pathCwd, ctx.skillsDir) : def);
+      out.push(ctx.workspaceRoot ? withWorkspaceGuard(def, ctx.workspaceRoot, pathCwd, ctx.skillsDir, ctx.requestAction) : def);
       continue;
     }
     if (name === "ls" || name === "grep" || name === "find") {
       const factory = { ls: createLsToolDefinition, grep: createGrepToolDefinition, find: createFindToolDefinition }[name];
       const def = factory(pathCwd) as ToolDefinition;
-      out.push(ctx.workspaceRoot ? withWorkspaceGuard(def, ctx.workspaceRoot, pathCwd, ctx.skillsDir) : def);
+      out.push(ctx.workspaceRoot ? withWorkspaceGuard(def, ctx.workspaceRoot, pathCwd, ctx.skillsDir, ctx.requestAction) : def);
       continue;
     }
     const connector = CONNECTOR_TOOLS.get(name);

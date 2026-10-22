@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { linkSync, mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it, expect, vi } from "vitest";
@@ -139,6 +139,98 @@ describe("resolveToolDefinitions", () => {
     const otherPath = join(otherSkills, "secret", "SKILL.md");
     const result = await (defs[0] as any).execute("t1", { path: otherPath }, undefined, undefined, {});
     expect((result as any).content?.[0]?.text).toBe(`拒绝访问:${otherPath} 不在工作区内`);
+  });
+
+  it("denies trust-anchor reads even when the file is inside the workspace", async () => {
+    const ws = mkdtempSync(join(tmpdir(), "ws-"));
+    writeFileSync(join(ws, ".env"), "SECRET=value", "utf8");
+    const defs = resolveToolDefinitions(["read"], {
+      cwd: tmpdir(), workspaceRoot: ws, propose,
+    });
+    const result = await (defs[0] as any).execute(
+      "t1",
+      { path: ".env" },
+      undefined,
+      undefined,
+      {},
+    );
+    expect((result as any).content?.[0]?.text).toMatch(/信任锚|拒绝访问/);
+    expect((result as any).content?.[0]?.text).not.toContain("SECRET=value");
+  });
+
+  it("denies symlink escapes from the workspace", async () => {
+    const outside = mkdtempSync(join(tmpdir(), "outside-"));
+    const ws = mkdtempSync(join(tmpdir(), "ws-"));
+    writeFileSync(join(outside, "secret.txt"), "outside-secret", "utf8");
+    symlinkSync(outside, join(ws, "escape"), process.platform === "win32" ? "junction" : "dir");
+    const defs = resolveToolDefinitions(["read"], {
+      cwd: tmpdir(), workspaceRoot: ws, propose,
+    });
+    const result = await (defs[0] as any).execute(
+      "t1",
+      { path: "escape/secret.txt" },
+      undefined,
+      undefined,
+      {},
+    );
+    expect((result as any).content?.[0]?.text).toMatch(/拒绝访问/);
+    expect((result as any).content?.[0]?.text).not.toContain("outside-secret");
+  });
+
+  it("denies directly reading a hard-linked file", async () => {
+    const root = mkdtempSync(join(tmpdir(), "hardlink-"));
+    const ws = join(root, "ws");
+    mkdirSync(ws);
+    const outside = join(root, "outside.txt");
+    writeFileSync(outside, "shared-secret", "utf8");
+    linkSync(outside, join(ws, "shared.txt"));
+    const defs = resolveToolDefinitions(["read"], {
+      cwd: tmpdir(), workspaceRoot: ws, propose,
+    });
+    const result = await (defs[0] as any).execute(
+      "t1",
+      { path: "shared.txt" },
+      undefined,
+      undefined,
+      {},
+    );
+    expect((result as any).content?.[0]?.text).toMatch(/hard|拒绝访问/);
+    expect((result as any).content?.[0]?.text).not.toContain("shared-secret");
+  });
+
+  it("asks Main before reading a workspace file", async () => {
+    const ws = mkdtempSync(join(tmpdir(), "ws-"));
+    const target = join(ws, "a.txt");
+    writeFileSync(target, "authorized-content", "utf8");
+    const actionRequests: any[] = [];
+    const defs = resolveToolDefinitions(["read"], {
+      cwd: tmpdir(),
+      workspaceRoot: ws,
+      propose,
+      requestAction: async (request) => {
+        actionRequests.push(request);
+        return {
+          requestId: request.requestId,
+          status: "executed",
+          decision: { decision: "allow", ruleId: "workspace.read", reason: "main approved" },
+          result: { authorized: true, canonicalPath: target },
+        };
+      },
+    });
+    const result = await (defs[0] as any).execute(
+      "t1",
+      { path: "a.txt" },
+      undefined,
+      undefined,
+      {},
+    );
+    expect((result as any).content?.[0]?.text).toContain("authorized-content");
+    expect(actionRequests).toHaveLength(1);
+    expect(actionRequests[0]).toMatchObject({
+      toolName: "read",
+      toolCallId: "t1",
+      args: { path: target },
+    });
   });
 
   it("still returns WORKSPACE_NOT_CREATED for workspace paths when workspace is missing", async () => {

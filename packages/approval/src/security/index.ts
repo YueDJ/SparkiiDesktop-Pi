@@ -5,6 +5,7 @@ export * from './permission-mode.js';
 export * from './policy.js';
 export * from './reviewer.js';
 export * from './task-grant-registry.js';
+export * from './trust-anchor.js';
 export * from './workspace-admission.js';
 export * from './sandbox.js';
 export * from './capability-gateway.js';
