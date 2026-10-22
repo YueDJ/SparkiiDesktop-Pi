@@ -361,6 +361,13 @@ describe('ask mode', () => {
     );
     expect(result).toMatchObject({ status: 'denied', error: { code: 'TARGET_CHANGED' } });
     expect(h.execute).not.toHaveBeenCalled();
+    expect(h.auditEvents).not.toContainEqual(expect.objectContaining({
+      action: 'action.allowed',
+    }));
+    expect(h.auditEvents).toContainEqual(expect.objectContaining({
+      action: 'action.denied',
+      ruleId: 'target.changed',
+    }));
   });
 });
 
@@ -513,6 +520,17 @@ describe('auto_review mode', () => {
       action: 'reviewer.fallback',
       decision: 'ask',
     }));
+  });
+
+  it('does not send an oversized command to the Reviewer', async () => {
+    const auto = await harness({ permissionMode: 'auto_review' });
+    const result = await auto.router.route(
+      bash('r-large', `echo ${'x'.repeat(70_000)}`),
+      's1',
+    );
+    expect(result.status).toBe('executed');
+    expect(auto.review).not.toHaveBeenCalled();
+    expect(auto.requestApproval).toHaveBeenCalledTimes(1);
   });
 
   it('denies an unattended task when the Reviewer is unavailable', async () => {

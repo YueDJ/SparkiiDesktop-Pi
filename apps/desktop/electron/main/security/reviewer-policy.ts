@@ -64,6 +64,7 @@ export function redactReviewerCommand(command: string): string {
 }
 
 export const REVIEWER_COMMAND_SUMMARY_LIMIT = 256;
+export const REVIEWER_COMMAND_INPUT_LIMIT = 64 * 1024;
 export const REVIEWER_USER_TASK_LIMIT = 4_000;
 export const REVIEWER_EVIDENCE_LIMIT = 4;
 export const REVIEWER_SUMMARY_LIMIT = 256;

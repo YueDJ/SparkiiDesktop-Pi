@@ -15,6 +15,7 @@ import type {
 } from '@sparkii/agent-host';
 import {
   REVIEWER_EVIDENCE_LIMIT,
+  REVIEWER_COMMAND_INPUT_LIMIT,
   REVIEWER_LOG_EVENTS,
   REVIEWER_SUMMARY_LIMIT,
   REVIEWER_USER_TASK_LIMIT,
@@ -180,6 +181,10 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
     grant: TaskGrant,
   ): ShellReviewInput => {
     const payload = (action.payload ?? {}) as { command?: unknown };
+    const command = String(payload.command ?? '');
+    if (Buffer.byteLength(command, 'utf8') > REVIEWER_COMMAND_INPUT_LIMIT) {
+      throw new Error('Shell command is too large for independent review');
+    }
     return {
       taskId: grant.taskId,
       sessionId: grant.sessionId,
@@ -188,7 +193,7 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
       toolName: action.toolName,
       capability: action.capability,
       risk: action.risk,
-      command: String(payload.command ?? ''),
+      command,
       cwd: grant.workspaceRoot,
       workspaceRoot: grant.workspaceRoot,
       targets: action.resources.map((resource) => resource.value),
@@ -472,20 +477,24 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
         }
       }
 
-      await auditDecision(action, 'action.allowed',
-        `${outcome.ruleId}: ${outcome.reason}`, outcome.ruleId);
-
       try {
         options.lifecycle.assertActive(sessionId, action.taskId);
       } catch {
+        await auditDecision(action, 'action.denied',
+          'task grant revoked before execution', 'task-grant.revoked', 'denied');
         return denied(request.requestId, outcome, 'TASK_REVOKED',
           'Task grant was revoked before execution');
       }
       if (!await options.revalidate(action, grant)) {
+        await auditDecision(action, 'action.denied',
+          'target identity or parent chain changed after normalization',
+          'target.changed', 'denied');
         return denied(request.requestId, outcome, 'TARGET_CHANGED',
           'Target identity or parent chain changed after normalization');
       }
 
+      await auditDecision(action, 'action.allowed',
+        `${outcome.ruleId}: ${outcome.reason}`, outcome.ruleId);
       try {
         const execution = await options.execute(action, grant);
         recordEvidence(
