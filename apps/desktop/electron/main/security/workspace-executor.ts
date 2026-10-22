@@ -65,6 +65,7 @@ export interface WorkspaceExecutor {
     action: SecurityAction,
     grant: TaskGrant,
   ): Promise<WorkspaceExecutionResult>;
+  ensureWorkspace(grant: TaskGrant): Promise<WorkspacePathInfo>;
   liveWorkspaceIdentity(taskId: string): string | undefined;
 }
 
@@ -337,6 +338,10 @@ export function createWorkspaceExecutor(opts: {
 
   return {
     liveWorkspaceIdentity: (taskId) => liveWorkspaceIdentity.get(taskId),
+    async ensureWorkspace(grant) {
+      await ensureRoot(grant, 'workspace');
+      return inspect(grant.workspaceRoot);
+    },
     async execute(action, grant) {
       if (action.capability !== 'fs.write') {
         throw new WorkspaceExecutionError(

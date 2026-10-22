@@ -4285,13 +4285,29 @@ describe('permission mode IPC', () => {
       isSameObject: async (left: string, right: string) => key(left) === key(right),
     };
 
-    const run = vi.fn(async () => ({
-      exitCode: 0,
-      timedOut: false,
-      stdout: 'host-ok',
-      stderr: '',
-      truncated: { stdout: false, stderr: false },
-    }));
+    const executionOrder: string[] = [];
+    const ensureWorkspace = vi.fn(async () => {
+      executionOrder.push('ensure-workspace');
+      return {
+        displayPath: 'C:/ws',
+        canonicalPath: 'C:/ws',
+        identity: 'object:c:/ws',
+        nearestExistingAncestor: 'C:/ws',
+        isDirectory: true,
+        isReparsePoint: false,
+        exists: true,
+      };
+    });
+    const run = vi.fn(async () => {
+      executionOrder.push('shell-run');
+      return {
+        exitCode: 0,
+        timedOut: false,
+        stdout: 'host-ok',
+        stderr: '',
+        truncated: { stdout: false, stderr: false },
+      };
+    });
     let liveGrant: { taskId: string; sessionId: string; workspaceIdentity: string } | undefined;
     const review = vi.fn(async () => ({ decision: 'allow', risk: 'low', reason: '普通测试命令' }));
     const auditEvents: Array<Record<string, unknown>> = [];
@@ -4307,6 +4323,7 @@ describe('permission mode IPC', () => {
       }),
       workspaceExecutor: {
         execute: vi.fn(async () => ({ path: 'C:/ws/a.txt', changes: [] })),
+        ensureWorkspace,
         liveWorkspaceIdentity: () => undefined,
       },
       capabilityGateway: { revokeTask: vi.fn(), issue: vi.fn(), execute: vi.fn() },
@@ -4417,6 +4434,7 @@ describe('permission mode IPC', () => {
       workspaceRoot: 'C:/ws',
       command: 'pnpm test',
     }));
+    expect(executionOrder).toEqual(['ensure-workspace', 'shell-run']);
     expect(auditEvents).toContainEqual(expect.objectContaining({ action: 'reviewer.decision' }));
     expect(auditEvents).toContainEqual(expect.objectContaining({ action: 'action.executed' }));
     expect(JSON.stringify(result)).not.toMatch(/沙箱|sandbox/);

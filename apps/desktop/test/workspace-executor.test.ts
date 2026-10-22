@@ -140,6 +140,22 @@ describe('WorkspaceExecutor', () => {
     expect(readFileSync(target, 'utf8')).toBe('x');
   });
 
+  it('can create and register a missing workspace before shell execution', async () => {
+    const s = setup();
+    const missingWorkspace = join(s.base, 'shell-workspace');
+    const grant = {
+      ...s.grant,
+      workspaceRoot: missingWorkspace,
+      workspaceIdentity: `mock:${key(missingWorkspace)}`,
+    };
+    const executor = createWorkspaceExecutor({ probe: probe() });
+    const created = await executor.ensureWorkspace(grant);
+    expect(created.canonicalPath).toBe(missingWorkspace);
+    expect(existsSync(missingWorkspace)).toBe(true);
+    expect(executor.liveWorkspaceIdentity(grant.taskId))
+      .toBe(`mock:${key(missingWorkspace)}`);
+  });
+
   it('replaces existing content without writing a partial file', async () => {
     const s = setup();
     const target = join(s.workspace, 'a.txt');

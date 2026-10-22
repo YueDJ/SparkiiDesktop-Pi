@@ -43,11 +43,11 @@ function scratch() {
   return { workspaceRoot, scratchRoot };
 }
 
-async function waitForFile(dir: string, timeoutMs = 20_000): Promise<boolean> {
+async function waitForFile(dir: string, timeoutMs = 20_000, fileName = 'ready'): Promise<boolean> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
-      if (readdirSync(dir).some((name) => name.startsWith('ready'))) return true;
+      if (readdirSync(dir).some((name) => name.startsWith(fileName))) return true;
     } catch {
       // Directory may not exist yet.
     }
@@ -86,6 +86,21 @@ describe.skipIf(!enabled)('host shell integration on Windows', () => {
     const lines = result.stdout.split('\n');
     expect(lines[0]).toBe('host-ok');
     expect(normalizePath(lines[1] ?? '')).toBe(normalizePath(workspaceRoot));
+  });
+
+  it('exposes discovered Node and pnpm toolchain commands', async () => {
+    const { workspaceRoot, scratchRoot } = scratch();
+    const result = await adapter.run({
+      taskId: 'task-toolchain',
+      workspaceRoot,
+      scratchRoot,
+      command: 'node --version; pnpm --version; git --version',
+      timeoutMs: 30_000,
+    });
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toMatch(/^v\d+\./m);
+    expect(result.stdout).toMatch(/^\d+\.\d+\.\d+/m);
+    expect(result.stdout).toMatch(/^git version/m);
   });
 
   it('keeps stdout and stderr separate', async () => {
@@ -193,4 +208,28 @@ describe.skipIf(!enabled)('host shell integration on Windows', () => {
     expect(result.timedOut).toBe(false);
     expect(result.exitCode).not.toBe(0);
   });
+
+  it('terminates every concurrent command owned by the same task', async () => {
+    const { workspaceRoot, scratchRoot } = scratch();
+    const first = adapter.run({
+      taskId: 'task-multi-cancel',
+      workspaceRoot,
+      scratchRoot,
+      command: 'touch ready-one.flag; sleep 30',
+      timeoutMs: 60_000,
+    });
+    const second = adapter.run({
+      taskId: 'task-multi-cancel',
+      workspaceRoot,
+      scratchRoot,
+      command: 'touch ready-two.flag; sleep 30',
+      timeoutMs: 60_000,
+    });
+    expect(await waitForFile(workspaceRoot, 20_000, 'ready-one.flag')).toBe(true);
+    expect(await waitForFile(workspaceRoot, 20_000, 'ready-two.flag')).toBe(true);
+    await adapter.terminate('task-multi-cancel');
+    const [a, b] = await Promise.all([first, second]);
+    expect(a.exitCode).not.toBe(0);
+    expect(b.exitCode).not.toBe(0);
+  }, 40_000);
 });

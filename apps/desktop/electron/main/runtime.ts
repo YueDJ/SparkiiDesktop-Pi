@@ -262,7 +262,10 @@ export async function assemble(opts: {
     const runtimePaths = resolveRuntimePaths();
     const hostShell = createHostShellAdapter({
       bashPath: runtimePaths.bashPath,
-      helperPath: resolveHelperPath({ resourcesPath: process.resourcesPath }),
+      helperPath: resolveHelperPath({
+        resourcesPath: process.resourcesPath,
+        cwd: process.cwd(),
+      }),
     });
     const hostShellReport = await hostShell.probe();
     const reviewerConfig = resolveReviewerConfig(settings);

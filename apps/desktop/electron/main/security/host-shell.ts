@@ -39,7 +39,7 @@ const DEFAULT_SYSTEM_ROOT = 'C:/Windows';
 
 function sub(root: string, ...parts: string[]): string {
   const base = root.replace(/[\\/]+$/, '');
-  return [base, ...parts].join('/');
+  return [base, ...parts].join('/').replace(/\\/g, '/');
 }
 
 function sanitize(value: string): string {
@@ -51,18 +51,70 @@ export function gitRootOf(bashPath: string): string {
   return dirname(dirname(bashPath));
 }
 
-export function resolveHelperPath(opts: { resourcesPath?: string }): string {
-  return join(opts.resourcesPath ?? '', 'windows-sandbox', 'HostShellRunner.exe');
+export function resolveHelperPath(opts: {
+  resourcesPath?: string;
+  cwd?: string;
+}): string {
+  const packaged = join(opts.resourcesPath ?? '', 'windows-sandbox', 'HostShellRunner.exe');
+  if (existsSync(packaged)) return packaged;
+  const cwd = opts.cwd ?? process.cwd();
+  const candidates = [
+    join(cwd, 'native', 'windows-sandbox', 'bin', 'HostShellRunner.exe'),
+    join(cwd, 'apps', 'desktop', 'native', 'windows-sandbox', 'bin', 'HostShellRunner.exe'),
+  ];
+  return candidates.find(existsSync) ?? packaged;
+}
+
+const TOOLCHAIN_EXECUTABLES = [
+  'node.exe',
+  'pnpm.exe',
+  'pnpm.cmd',
+  'npm.exe',
+  'npm.cmd',
+] as const;
+
+/**
+ * Keep the host PATH scrubbed while exposing executables needed by ordinary
+ * project workflows. Only directories that actually contain a known Node
+ * toolchain executable are admitted; unrelated user PATH entries stay hidden.
+ */
+export function discoverToolchainPaths(
+  parentPath: string | undefined,
+  workspaceRoot?: string,
+): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const add = (path: string): void => {
+    const normalized = path.replace(/[\\/]+$/, '').replace(/\\/g, '/');
+    const key = normalized.toLowerCase();
+    if (!normalized || seen.has(key)) return;
+    seen.add(key);
+    out.push(normalized);
+  };
+  if (workspaceRoot) {
+    const localBin = join(workspaceRoot, 'node_modules', '.bin');
+    if (existsSync(localBin)) add(localBin);
+  }
+  for (const entry of (parentPath ?? '').split(delimiter).filter(Boolean)) {
+    if (
+      TOOLCHAIN_EXECUTABLES.some((name) => existsSync(join(entry, name)))
+    ) {
+      add(entry);
+    }
+  }
+  return out;
 }
 
 export function buildHostShellEnvironment(
   parentEnv: Record<string, string | undefined>,
   gitRoot: string,
   scratchRoot: string,
+  workspaceRoot?: string,
 ): Record<string, string> {
   const systemRoot = sanitize(parentEnv.SystemRoot ?? DEFAULT_SYSTEM_ROOT);
   const binPath = [
     sub(scratchRoot, 'bin'),
+    ...discoverToolchainPaths(parentEnv.PATH, workspaceRoot),
     sub(gitRoot, 'bin'),
     sub(gitRoot, 'cmd'),
     `${systemRoot}/system32`,
@@ -117,9 +169,9 @@ export function createHostShellAdapter(opts: {
   const platform = opts.platform ?? process.platform;
   const parentEnv = opts.parentEnv ?? process.env;
   const graceMs = opts.graceMs ?? DEFAULT_GRACE_MS;
-  const children = new Map<string, ReturnType<typeof spawn>>();
-  const running = new Set<string>();
-  const terminated = new Set<string>();
+  type Child = ReturnType<typeof spawn>;
+  const children = new Map<string, Set<Child>>();
+  const revokedTasks = new Set<string>();
 
   const helperMissing = () => !existsSync(opts.helperPath) || !existsSync(opts.bashPath);
 
@@ -150,12 +202,13 @@ export function createHostShellAdapter(opts: {
     if (helperMissing()) {
       return { ...empty, stderr: HOST_SHELL_UNAVAILABLE };
     }
+    if (revokedTasks.has(request.taskId)) {
+      return { ...empty, stderr: 'task revoked before shell start' };
+    }
     const requested = Number(request.timeoutMs);
     const timeoutMs = Number.isFinite(requested)
       ? Math.max(1_000, Math.min(300_000, Math.floor(requested)))
       : 60_000;
-    running.add(request.taskId);
-
     const shellDir = join(request.scratchRoot, 'shell');
     await mkdir(shellDir, { recursive: true });
     for (const dir of ['home', 'tmp', 'appdata', 'localappdata', 'bin']) {
@@ -170,7 +223,12 @@ export function createHostShellAdapter(opts: {
     await writeFile(
       envPath,
       serializeEnvBlock(
-        buildHostShellEnvironment(parentEnv, gitRootOf(opts.bashPath), request.scratchRoot),
+        buildHostShellEnvironment(
+          parentEnv,
+          gitRootOf(opts.bashPath),
+          request.scratchRoot,
+          request.workspaceRoot,
+        ),
       ),
       'utf8',
     );
@@ -184,9 +242,11 @@ export function createHostShellAdapter(opts: {
       '--err', errPath,
       '--timeout', String(timeoutMs),
     ], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
-    children.set(request.taskId, child);
+    const owned = children.get(request.taskId) ?? new Set<Child>();
+    owned.add(child);
+    children.set(request.taskId, owned);
     // A revoke that landed while the scratch files were still being written.
-    if (terminated.has(request.taskId)) child.kill('SIGKILL');
+    if (revokedTasks.has(request.taskId)) child.kill('SIGKILL');
 
     let report = '';
     let helperError = '';
@@ -213,8 +273,8 @@ export function createHostShellAdapter(opts: {
       hardTimeout,
     ]);
     if (hardTimer) clearTimeout(hardTimer);
-    children.delete(request.taskId);
-    running.delete(request.taskId);
+    owned.delete(child);
+    if (owned.size === 0) children.delete(request.taskId);
 
     const readStream = async (path: string) => {
       try {
@@ -234,7 +294,7 @@ export function createHostShellAdapter(opts: {
         parsed = null;
       }
     }
-    const wasTerminated = terminated.delete(request.taskId);
+    const wasTerminated = revokedTasks.has(request.taskId);
     if (exit === 'hard' || wasTerminated) {
       return {
         exitCode: parsed?.exitCode ?? null,
@@ -267,19 +327,26 @@ export function createHostShellAdapter(opts: {
     probe,
     run,
     async terminate(taskId) {
-      // Only remember the intent when a run is actually in flight, so a revoke
-      // for an idle task cannot leave state behind.
-      if (!running.has(taskId)) {
-        children.get(taskId)?.kill('SIGKILL');
-        return;
+      // A tombstone closes the small race between Main's final Task check and
+      // CreateProcess. Keep it because Task ids are unique for the app lifetime.
+      revokedTasks.add(taskId);
+      const owned = [...(children.get(taskId) ?? [])];
+      for (const child of owned) {
+        // Killing the helper closes its Job Object handle, and
+        // KILL_ON_JOB_CLOSE takes the whole Bash tree with it.
+        child.kill('SIGKILL');
       }
-      terminated.add(taskId);
-      running.delete(taskId);
-      const child = children.get(taskId);
-      if (!child) return;
-      // Killing the helper closes its Job Object handle, and KILL_ON_JOB_CLOSE
-      // takes the whole Bash tree with it.
-      child.kill('SIGKILL');
+      await Promise.all(owned.map((child) => new Promise<void>((resolve) => {
+        if (child.exitCode !== null) {
+          resolve();
+          return;
+        }
+        const timer = setTimeout(resolve, graceMs);
+        child.once('close', () => {
+          clearTimeout(timer);
+          resolve();
+        });
+      })));
     },
   };
 }

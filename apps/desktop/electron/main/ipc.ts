@@ -272,6 +272,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
           if (!command.trim()) {
             throw new Error('empty shell command');
           }
+          await rt.security.workspaceExecutor.ensureWorkspace(grant);
           const requested = Number(payload.timeout ?? 60_000);
           const timeoutMs = Number.isFinite(requested)
             ? Math.max(1_000, Math.min(300_000, Math.floor(requested)))

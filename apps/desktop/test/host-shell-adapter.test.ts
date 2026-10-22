@@ -1,6 +1,6 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { delimiter, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   HOST_SHELL_ENV_ALLOWLIST,
@@ -55,6 +55,31 @@ describe('buildHostShellEnvironment', () => {
     expect(env.SystemRoot).toBe('C:/Windows');
     expect(env.PATH).toContain('C:/task/scratch/bin');
   });
+
+  it('adds only discovered Node toolchain directories and workspace binaries', () => {
+    const root = mkdtempSync(join(tmpdir(), 'host-toolchain-'));
+    const nodeDir = join(root, 'node');
+    const pnpmDir = join(root, 'pnpm');
+    const unrelated = join(root, 'untrusted');
+    const workspace = join(root, 'workspace');
+    mkdirSync(nodeDir);
+    mkdirSync(pnpmDir);
+    mkdirSync(unrelated);
+    mkdirSync(join(workspace, 'node_modules', '.bin'), { recursive: true });
+    writeFileSync(join(nodeDir, 'node.exe'), 'stub');
+    writeFileSync(join(pnpmDir, 'pnpm.cmd'), 'stub');
+    writeFileSync(join(unrelated, 'unrelated.exe'), 'stub');
+
+    const env = buildHostShellEnvironment({
+      SystemRoot: 'C:/Windows',
+      PATH: [nodeDir, pnpmDir, unrelated].join(delimiter),
+    }, 'C:/portable-git', join(root, 'scratch'), workspace);
+
+    expect(env.PATH).toContain(nodeDir.replace(/\\/g, '/'));
+    expect(env.PATH).toContain(pnpmDir.replace(/\\/g, '/'));
+    expect(env.PATH).toContain(join(workspace, 'node_modules', '.bin').replace(/\\/g, '/'));
+    expect(env.PATH).not.toContain(unrelated.replace(/\\/g, '/'));
+  });
 });
 
 describe('createHostShellAdapter probe', () => {
@@ -105,7 +130,22 @@ describe('createHostShellAdapter probe', () => {
   });
 
   it('resolves the packaged helper under the resources path', () => {
-    expect(resolveHelperPath({ resourcesPath: 'C:/pkg/Sparkii/resources' }))
-      .toBe(join('C:/pkg/Sparkii/resources', 'windows-sandbox', 'HostShellRunner.exe'));
+    const resources = join(mkdtempSync(join(tmpdir(), 'host-helper-pkg-')), 'resources');
+    const helper = join(resources, 'windows-sandbox', 'HostShellRunner.exe');
+    mkdirSync(join(resources, 'windows-sandbox'), { recursive: true });
+    writeFileSync(helper, 'stub');
+    expect(resolveHelperPath({ resourcesPath: resources })).toBe(helper);
+  });
+
+  it('falls back to the development helper when resources do not contain it', () => {
+    const root = mkdtempSync(join(tmpdir(), 'host-helper-dev-'));
+    const appRoot = join(root, 'apps', 'desktop');
+    const helper = join(appRoot, 'native', 'windows-sandbox', 'bin', 'HostShellRunner.exe');
+    mkdirSync(join(appRoot, 'native', 'windows-sandbox', 'bin'), { recursive: true });
+    writeFileSync(helper, 'stub');
+    expect(resolveHelperPath({
+      resourcesPath: join(root, 'missing-resources'),
+      cwd: appRoot,
+    })).toBe(helper);
   });
 });
