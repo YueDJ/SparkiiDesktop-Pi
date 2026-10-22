@@ -42,7 +42,7 @@ export type RpcCommand =
   | { type: 'set_session_name'; name: string }
   | { type: 'set_api_key'; provider: string; apiKey: string }
   | { type: 'remove_api_key'; provider: string }
-  | { type: 'complete'; provider: string; modelId: string; text: string }
+  | { type: 'complete'; provider: string; modelId: string; text: string; system?: string }
   | { type: 'list_models'; provider?: string }
   | { type: 'set_thinking_level'; level: string }
   | { type: 'get_thinking_level' }

@@ -456,11 +456,12 @@ export async function createPiSdkSessionHost(
       },
       getThinkingLevel: () => session.thinkingLevel,
       getAvailableThinkingLevels: () => session.getAvailableThinkingLevels(),
-      complete: async (provider, modelId, text) => {
+      complete: async (provider, modelId, text, system) => {
         await syncModelConfig(provider);
         const model = modelRuntime.getModel(provider, modelId);
         if (!model) throw new Error(`unknown model ${provider}/${modelId}`);
         const out = await modelRuntime.completeSimple(model, {
+          ...(system ? { systemPrompt: system } : {}),
           messages: [{ role: "user", content: text, timestamp: Date.now() }],
         });
         return out.content
