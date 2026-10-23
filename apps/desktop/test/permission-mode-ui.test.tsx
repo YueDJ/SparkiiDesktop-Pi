@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import {
-  PermissionModeBar,
+  PermissionModeSelect,
   PermissionModeProvider,
-} from '../src/trust/PermissionModeBar.js';
+} from '../src/trust/PermissionModeSelect.js';
 
 afterEach(cleanup);
 
@@ -31,28 +31,28 @@ function makeApi(over: Record<string, unknown> = {}) {
 function renderBar(api: ReturnType<typeof makeApi>, sessionId: string | null = 's1') {
   return render(
     <PermissionModeProvider api={api as never} agentId="general" sessionId={sessionId}>
-      <PermissionModeBar />
+      <PermissionModeSelect />
     </PermissionModeProvider>,
   );
 }
 
-describe('PermissionModeBar', () => {
-  it('offers only Ask and Auto review and shows Host semantics', async () => {
+describe('PermissionModeSelect', () => {
+  it('shows the selected mode in one trigger and switches from its menu', async () => {
     const api = makeApi();
     renderBar(api);
-    expect(await screen.findByRole('button', { name: 'Ask' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Auto review' })).toBeTruthy();
-    expect(screen.queryByText(/Full access/i)).toBeNull();
-    expect(screen.queryByText(/yolo/i)).toBeNull();
-    expect(screen.getByText(/Host Git Bash/)).toBeTruthy();
-    expect(screen.getByText(/非沙箱/)).toBeTruthy();
-    expect(screen.getByText(/网络由宿主进程决定/)).toBeTruthy();
+    const trigger = await screen.findByTestId('permission-mode-trigger');
+    expect(trigger.textContent).toContain('每次询问');
+    expect(screen.queryByRole('button', { name: '自动审查' })).toBeNull();
+    expect(screen.queryByText(/Host Git Bash/)).toBeNull();
+    expect(screen.queryByText(/网络由宿主进程决定/)).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Auto review' }));
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole('menuitem', { name: /自动审查/ }));
     await waitFor(() => expect(api.setChatPermissionMode).toHaveBeenCalledWith('s1', 'auto_review'));
+    await waitFor(() => expect(screen.getByTestId('permission-mode-trigger').textContent).toContain('自动审查'));
   });
 
-  it('marks the active mode and never shows reviewer internals', async () => {
+  it('marks the active mode in the menu and never shows reviewer internals', async () => {
     const api = makeApi({
       getPermissionModeState: vi.fn(async () => state({
         mode: 'auto_review',
@@ -60,10 +60,11 @@ describe('PermissionModeBar', () => {
       })),
     });
     renderBar(api);
-    const auto = await screen.findByRole('button', { name: 'Auto review' });
-    expect(auto.getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByRole('button', { name: 'Ask' }).getAttribute('aria-pressed')).toBe('false');
-    expect(screen.getByText(/最近审查：allow \/ low \/ 普通测试命令/)).toBeTruthy();
+    const trigger = await screen.findByTestId('permission-mode-trigger');
+    expect(trigger.textContent).toContain('自动审查');
+    fireEvent.click(trigger);
+    expect(screen.getByRole('menuitem', { name: /自动审查/ }).getAttribute('data-current')).toBe('true');
+    expect(screen.queryByText(/普通测试命令/)).toBeNull();
     expect(document.body.textContent).not.toMatch(/pid|worker|queue|模型请求/i);
   });
 
@@ -72,33 +73,18 @@ describe('PermissionModeBar', () => {
       getPermissionModeState: vi.fn(async () => state({ allowedModes: ['ask'] })),
     });
     renderBar(api);
-    const auto = await screen.findByRole('button', { name: 'Auto review' });
+    fireEvent.click(await screen.findByTestId('permission-mode-trigger'));
+    const auto = screen.getByRole('menuitem', { name: /自动审查/ });
     expect((auto as HTMLButtonElement).disabled).toBe(true);
     expect(api.setChatPermissionMode).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Ask' }).getAttribute('aria-pressed')).toBe('true');
-  });
-
-  it('reports a missing host shell and an unavailable reviewer honestly', async () => {
-    const api = makeApi({
-      getPermissionModeState: vi.fn(async () => state({
-        mode: 'auto_review',
-        hostShellAvailable: false,
-        reviewerAvailable: false,
-      })),
-    });
-    renderBar(api);
-    expect(await screen.findByText(/命令执行未启用/)).toBeTruthy();
-    expect(screen.getByText(/已回退到人工审批/)).toBeTruthy();
-    expect(screen.queryByText(/无网络/)).toBeNull();
-    expect(screen.queryByText(/沙箱内/)).toBeNull();
   });
 
   it('keeps a draft choice local until the first prompt', async () => {
     const api = makeApi();
     renderBar(api, null);
-    fireEvent.click(await screen.findByRole('button', { name: 'Auto review' }));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Auto review' })
-      .getAttribute('aria-pressed')).toBe('true'));
+    fireEvent.click(await screen.findByTestId('permission-mode-trigger'));
+    fireEvent.click(screen.getByRole('menuitem', { name: /自动审查/ }));
+    await waitFor(() => expect(screen.getByTestId('permission-mode-trigger').textContent).toContain('自动审查'));
     expect(api.setChatPermissionMode).not.toHaveBeenCalled();
   });
 
@@ -107,8 +93,8 @@ describe('PermissionModeBar', () => {
       setChatPermissionMode: vi.fn(async () => ({ ok: false, error: 'permission mode auto_review is not allowed' })),
     });
     renderBar(api);
-    fireEvent.click(await screen.findByRole('button', { name: 'Auto review' }));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Ask' })
-      .getAttribute('aria-pressed')).toBe('true'));
+    fireEvent.click(await screen.findByTestId('permission-mode-trigger'));
+    fireEvent.click(screen.getByRole('menuitem', { name: /自动审查/ }));
+    await waitFor(() => expect(screen.getByTestId('permission-mode-trigger').textContent).toContain('每次询问'));
   });
 });

@@ -126,8 +126,6 @@ export type OntologyGraphProbeResult = {
 
 
 export interface SparkiiApi {
-  getTaskCapabilities?(sessionId: string): Promise<TaskCapabilityStatus>;
-  revokeTaskCapabilities?(sessionId: string): Promise<{ ok: boolean; revoked: boolean }>;
   getPermissionModeState(agentId: string, sessionId?: string | null): Promise<PermissionModeState>;
   setChatPermissionMode(
     sessionId: string,
@@ -248,22 +246,6 @@ export interface SparkiiApi {
   windowClose(): Promise<boolean>;
   windowIsMaximized(): Promise<boolean>;
   on(channel: string, cb: (payload: unknown) => void): () => void;
-}
-
-export interface TaskCapabilityStatus {
-  active: boolean;
-  taskId?: string;
-  planMode?: 'plan' | 'execute';
-  permissionMode?: 'ask' | 'auto_review';
-  workspaceRoot?: string;
-  workspaceWrite?: boolean;
-  processExec?: boolean;
-  networkDomains?: string[];
-  externalCapabilities?: string[];
-  hostShell?: 'available' | 'unavailable';
-  hostShellVersion?: string;
-  limitations?: string[];
-  expiresAt?: number;
 }
 
 export interface PermissionModeState {

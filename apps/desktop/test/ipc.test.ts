@@ -4049,39 +4049,15 @@ describe('ipc user skill library', () => {
   });
 });
 
-describe('task capability IPC', () => {
-  it('reports task capabilities and supports user revocation', async () => {
+describe('retired task capability IPC', () => {
+  it('does not expose task capability or user revocation handlers', async () => {
     const dataDir = await mkdtemp(join(tmpdir(), 'ipc-capability-'));
     dirs.push(dataDir);
-    const grant = {
-      taskId: 'task-1',
-      sessionId: 's1',
-      agentId: 'general',
-      profileId: 'general',
-      actorId: 'u1',
-      unattended: false,
-      planMode: 'execute',
-      permissionMode: 'ask',
-      workspaceRoot: 'C:/ws',
-      workspaceIdentity: 'dir:1',
-      inputRoots: [],
-      scratchRoot: 'C:/scratch',
-      networkDomains: [],
-      externalCapabilities: [],
-      createdAt: 1,
-      expiresAt: Date.now() + 60_000,
-    };
-    const end = vi.fn(async () => {});
-    const lifecycle = {
-      active: vi.fn(() => grant),
-      end,
-    };
     const rt = await makeRuntime({
       dataDir,
       piAgentDir: join(dataDir, 'pi-agent'),
       client: { send: async () => ({ success: true }) },
       security: {
-        taskLifecycle: lifecycle,
         taskGrants: { onRevoke: () => () => {} },
         hostShellReport: {
           backend: 'host-git-bash',
@@ -4094,25 +4070,8 @@ describe('task capability IPC', () => {
     });
     expect(rt).toBeTruthy();
     const handlers = await registeredHandlers();
-    const status = await handlers.get('sparkii:getTaskCapabilities')!(null, 's1') as any;
-    expect(status).toMatchObject({
-      active: true,
-      taskId: 'task-1',
-      planMode: 'execute',
-      permissionMode: 'ask',
-      workspaceWrite: true,
-      processExec: false,
-      hostShell: 'unavailable',
-      hostShellVersion: 'host-job-v1',
-      limitations: ['Git Bash unavailable'],
-    });
-    expect(status).not.toHaveProperty('mode');
-    expect(status).not.toHaveProperty('sandbox');
-    expect(await handlers.get('sparkii:revokeTaskCapabilities')!(null, 's1')).toEqual({
-      ok: true,
-      revoked: true,
-    });
-    expect(end).toHaveBeenCalledWith('s1', 'user');
+    expect(handlers.has('sparkii:getTaskCapabilities')).toBe(false);
+    expect(handlers.has('sparkii:revokeTaskCapabilities')).toBe(false);
   });
 });
 

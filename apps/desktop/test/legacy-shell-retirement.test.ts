@@ -84,10 +84,4 @@ describe('product copy states host semantics', () => {
     }
   });
 
-  it('states the host boundary where shell capability is surfaced', () => {
-    const status = source('apps/desktop/src/trust/TaskCapabilityStatus.tsx');
-    expect(status).toContain('Host Git Bash');
-    expect(status).toContain('宿主执行，非沙箱');
-    expect(status).toContain('网络由宿主进程决定');
-  });
 });

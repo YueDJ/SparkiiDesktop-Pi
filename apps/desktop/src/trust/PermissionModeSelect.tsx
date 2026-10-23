@@ -4,16 +4,18 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
+import { ChevronDownIcon, Menu, MenuItem, ShieldIcon } from '@sparkii/ui';
 import type { PermissionModeState, SparkiiApi } from '../types/sparkii-api.js';
 
 type PermissionMode = PermissionModeState['mode'];
 
 const MODES: Array<{ id: PermissionMode; label: string; hint: string }> = [
-  { id: 'ask', label: 'Ask', hint: '需要我确认有风险的操作' },
-  { id: 'auto_review', label: 'Auto review', hint: '让平台单独审查有风险的操作' },
+  { id: 'ask', label: '每次询问', hint: '需要时停下来确认' },
+  { id: 'auto_review', label: '自动审查', hint: '外部写入仍需确认' },
 ];
 
 const DEFAULT_STATE: PermissionModeState = {
@@ -115,48 +117,52 @@ export function usePermissionMode(): PermissionModeValue {
   return useContext(Context);
 }
 
-export function PermissionModeBar() {
+export function PermissionModeSelect() {
   const { state, setMode } = usePermissionMode();
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const current = MODES.find((entry) => entry.id === state.mode) ?? MODES[0];
+  const close = () => setOpen(false);
+
   return (
-    <div className="permission-mode-bar" aria-label="平台权限模式">
-      <div className="permission-mode-bar-modes" role="group" aria-label="权限模式">
-        {MODES.map((entry) => {
-          const active = state.mode === entry.id;
-          const allowed = state.allowedModes.includes(entry.id);
-          return (
-            <button
-              key={entry.id}
-              type="button"
-              className={`permission-mode-chip${active ? ' is-active' : ''}`}
-              aria-pressed={active}
-              disabled={!allowed}
-              title={allowed ? entry.hint : '当前智能体不提供此模式'}
-              onClick={() => { void setMode(entry.id); }}
-            >
-              {entry.label}
-            </button>
-          );
-        })}
-      </div>
-      <div className="permission-mode-bar-facts">
-        <span className="permission-mode-fact">Host Git Bash · 宿主执行，非沙箱</span>
-        <span className="permission-mode-fact">网络由宿主进程决定</span>
-        <span className={`permission-mode-fact${state.hostShellAvailable ? ' is-positive' : ' is-muted'}`}>
-          {state.hostShellAvailable ? '命令执行可用' : '命令执行未启用'}
-        </span>
-        <span className={`permission-mode-fact${state.reviewerAvailable ? ' is-positive' : ' is-muted'}`}>
-          {state.reviewerAvailable
-            ? 'Reviewer 可用'
-            : (state.mode === 'auto_review'
-              ? 'Reviewer 不可用，已回退到人工审批'
-              : 'Reviewer 不可用')}
-        </span>
-        {state.lastReview && (
-          <span className="permission-mode-fact">
-            {`最近审查：${state.lastReview.decision} / ${state.lastReview.risk} / ${state.lastReview.reason}`}
-          </span>
-        )}
-      </div>
+    <div ref={wrapperRef} className="permission-mode-select">
+      <button
+        type="button"
+        role="combobox"
+        className="permission-mode-select-trigger"
+        data-testid="permission-mode-trigger"
+        aria-label={`审批方式：${current.label}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title={current.hint}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <ShieldIcon />
+        <span className="permission-mode-select-label">{current.label}</span>
+        <ChevronDownIcon />
+      </button>
+      {open && (
+        <Menu open onClose={close} containerRef={wrapperRef} placement="top" align="start">
+          {MODES.map((entry) => {
+            const active = state.mode === entry.id;
+            const allowed = state.allowedModes.includes(entry.id);
+            return (
+              <MenuItem
+                key={entry.id}
+                label={entry.label}
+                hint={entry.hint}
+                trailing={active ? '✓' : ''}
+                current={active}
+                disabled={!allowed}
+                onSelect={() => {
+                  close();
+                  void setMode(entry.id);
+                }}
+              />
+            );
+          })}
+        </Menu>
+      )}
     </div>
   );
 }

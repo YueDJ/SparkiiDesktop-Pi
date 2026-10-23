@@ -84,6 +84,18 @@ describe('StandardChatSurface (contract)', () => {
     expect(screen.getByTestId('composer-input')).toBeTruthy();
   });
 
+  it('keeps permission selection in the composer without task capability details', async () => {
+    const getTaskCapabilities = vi.fn().mockResolvedValue({ active: true, workspaceWrite: true });
+    const { api } = makeApi({ getTaskCapabilities });
+    render(<StandardChatSurface {...baseProps('s1', { api })} />);
+
+    expect(await screen.findByTestId('permission-mode-trigger')).toBeTruthy();
+    expect(screen.queryByText('工作区可写')).toBeNull();
+    expect(screen.queryByText('Host Git Bash')).toBeNull();
+    expect(screen.queryByText('撤销本任务权限')).toBeNull();
+    expect(getTaskCapabilities).not.toHaveBeenCalled();
+  });
+
   it('allocates a workspace path for a new draft and chooses from that folder', async () => {
     const allocateAutoWorkspace = vi.fn().mockResolvedValue({
       workspacePath: 'C:/Users/x/Documents/Sparkii/workspaces/general/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',

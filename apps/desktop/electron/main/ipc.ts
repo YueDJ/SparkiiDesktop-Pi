@@ -1748,35 +1748,6 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     });
   });
   ipcMain.handle('sparkii:listPendingApprovals', () => rt.gate.listPending());
-  ipcMain.handle('sparkii:getTaskCapabilities', (_e, sessionId: string) => {
-    const grant = rt.security?.taskLifecycle.active(sessionId);
-    if (!grant || !rt.security) {
-      return {
-        active: false,
-        hostShell: rt.security?.hostShellReport.status ?? 'unavailable',
-      };
-    }
-    return {
-      active: true,
-      taskId: grant.taskId,
-      planMode: grant.planMode,
-      permissionMode: grant.permissionMode,
-      workspaceRoot: grant.workspaceRoot,
-      workspaceWrite: true,
-      processExec: rt.security.hostShellReport.status === 'available',
-      networkDomains: grant.networkDomains,
-      externalCapabilities: grant.externalCapabilities,
-      hostShell: rt.security.hostShellReport.status,
-      hostShellVersion: rt.security.hostShellReport.version,
-      limitations: rt.security.hostShellReport.limitations,
-      expiresAt: grant.expiresAt,
-    };
-  });
-  ipcMain.handle('sparkii:revokeTaskCapabilities', async (_e, sessionId: string) => {
-    const active = Boolean(rt.security?.taskLifecycle.active(sessionId));
-    await rt.security?.taskLifecycle.end(sessionId, 'user');
-    return { ok: true, revoked: active };
-  });
   ipcMain.handle('sparkii:getPermissionModeState', (_e, agentId: string, sessionId?: string | null) => {
     const policy = rt.security?.profilePolicies.get(agentId);
     const rec = sessionId ? rt.chatSessions.get(sessionId) : null;

@@ -11,8 +11,6 @@ export type IpcLike = {
 export function buildApi(ipc: IpcLike): SparkiiApi {
   const invoke = (name: string, ...args: unknown[]) => ipc.invoke(`sparkii:${name}`, ...args);
   return {
-    getTaskCapabilities: (sessionId) => invoke('getTaskCapabilities', sessionId) as ReturnType<NonNullable<SparkiiApi['getTaskCapabilities']>>,
-    revokeTaskCapabilities: (sessionId) => invoke('revokeTaskCapabilities', sessionId) as ReturnType<NonNullable<SparkiiApi['revokeTaskCapabilities']>>,
     getPermissionModeState: (agentId, sessionId) => invoke('getPermissionModeState', agentId, sessionId) as ReturnType<SparkiiApi['getPermissionModeState']>,
     setChatPermissionMode: (sessionId, mode) => invoke('setChatPermissionMode', sessionId, mode) as ReturnType<SparkiiApi['setChatPermissionMode']>,
     getLocalSubject: () => invoke('getLocalSubject') as Promise<{ userId: string; roles: string[] }>,
