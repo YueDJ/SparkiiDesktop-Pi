@@ -1,5 +1,7 @@
 appId: com.sparkii.desktop
 productName: Sparkii
+copyright: "Copyright © 2026 深圳宇岳向上科技有限公司"
+artifactName: "Sparkii-${version}-win-${arch}.${ext}"
 directories:
   output: out
 files:
@@ -29,13 +31,11 @@ win:
   icon: build/icon.ico
   target:
     - nsis
-    - appx
-appx:
-  identityName: com.sparkii.desktop
-  applicationId: SparkiiDesktop
 nsis:
-  oneClick: false
-  allowToChangeInstallationDirectory: true
+  oneClick: true
+  perMachine: false
+  deleteAppDataOnUninstall: false
   include: build/installer.nsh
 extraMetadata:
+  name: sparkii-desktop
   main: dist-electron/main/index.js

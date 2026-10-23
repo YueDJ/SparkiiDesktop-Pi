@@ -1,14 +1,13 @@
 // 下载 Portable Git 自解压包，并解压到 %LOCALAPPDATA%\SparkiiDesktop\runtime\portable-git。
 // 同时下载 fd/rg 到 apps/desktop/runtime/tools，并预置到运行时 runtime/tools。
 import { spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
 import { copyFileSync, createWriteStream, existsSync, mkdirSync, rmSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { URL as NodeURL, fileURLToPath } from 'node:url';
 import https from 'node:https';
+import { PORTABLE_GIT_ARCHIVE_SHA256, verifySha256File } from './runtime-checksums.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const desktopRoot = join(__dirname, '..');
@@ -73,16 +72,9 @@ function download(url, dest) {
   });
 }
 
-async function verifySha256(dest, expectedSha256) {
-  const actual = createHash('sha256').update(await readFile(dest)).digest('hex');
-  if (actual !== expectedSha256) {
-    throw new Error(`checksum mismatch for ${basename(dest)}: ${actual}`);
-  }
-}
-
 async function downloadVerified(url, dest, expectedSha256) {
   await download(url, dest);
-  await verifySha256(dest, expectedSha256);
+  await verifySha256File(dest, expectedSha256);
 }
 
 function extract(archive, dest) {
@@ -111,7 +103,7 @@ async function ensureSearchTools() {
         console.log(`downloading ${tool.url}`);
         await downloadVerified(tool.url, archive, tool.sha256);
       }
-      await verifySha256(archive, tool.sha256);
+      await verifySha256File(archive, tool.sha256);
       const extractDir = join(archiveDir, `.extract-${tool.name}`);
       rmSync(extractDir, { recursive: true, force: true });
       extractZip(archive, extractDir);
@@ -137,6 +129,8 @@ if (!hasArchive) {
   console.log(`downloading ${URL}`);
   await download(URL, archivePath);
 }
+
+await verifySha256File(archivePath, PORTABLE_GIT_ARCHIVE_SHA256);
 
 if (!hasRuntime) {
   console.log(`extracting to ${portableGitDir}`);
