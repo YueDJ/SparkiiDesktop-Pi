@@ -11,6 +11,7 @@ import { AuditView } from '../audit/AuditView.js';
 import { SettingsSkillsPane, type SkillsPaneApi } from './SettingsSkillsPane.js';
 import { SettingsKnowledgePane } from './SettingsKnowledgePane.js';
 import { SettingsDocumentParsePane } from './SettingsDocumentParsePane.js';
+import { COMPANY_NAME, PRODUCT_NAME, RELEASE_CHANNEL } from '../branding.js';
 import type {
   KnowledgeBackendId,
   KnowledgeProbeOverride,
@@ -82,10 +83,10 @@ export interface SettingsApi {
 
 export interface SettingsViewProps { api?: SettingsApi; onExportAudit?(jsonl: string): void; }
 
-const PANES = ['llm', 'knowledge', 'documentParse', 'data', 'runtime', 'skills', 'approval', 'appearance', 'audit'] as const;
+const PANES = ['llm', 'knowledge', 'documentParse', 'data', 'runtime', 'skills', 'approval', 'appearance', 'audit', 'about'] as const;
 type Pane = (typeof PANES)[number];
 const PANE_LABELS: Record<Pane, string> = {
-  llm: '大模型连接', knowledge: '知识库', documentParse: '文档解析', data: '数据与隐私', runtime: '智能体与运行', skills: '技能', approval: '审批与安全', appearance: '外观与语言', audit: '审计',
+  llm: '大模型连接', knowledge: '知识库', documentParse: '文档解析', data: '数据与隐私', runtime: '智能体与运行', skills: '技能', approval: '审批与安全', appearance: '外观与语言', audit: '审计', about: '关于',
 };
 
 const ROUTE_TASKS = [
@@ -464,6 +465,17 @@ export function SettingsView(props: SettingsViewProps) {
               ? <AuditView api={{ queryAudit }} onExport={onExportAudit} />
               : <div className="ui-muted">审计接口不可用</div>;
           })()}
+        </>
+      )}
+      {pane === 'about' && (
+        <>
+          <h3 className="settings-section-title">关于</h3>
+          <SettingsRow label="产品"><span className="ui-kv">{PRODUCT_NAME}</span></SettingsRow>
+          <SettingsRow label="公司"><span className="ui-kv">{COMPANY_NAME}</span></SettingsRow>
+          <SettingsRow label="发布渠道"><span className="ui-kv">{RELEASE_CHANNEL}</span></SettingsRow>
+          <div className="ui-muted settings-hint">
+            当前安装包未购买代码签名证书；首次运行时 Windows SmartScreen 可能提示未知发布者。
+          </div>
         </>
       )}
     </SettingsLayout>

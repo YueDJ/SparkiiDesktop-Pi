@@ -6,9 +6,9 @@ SparkiiDesktop-Pi 面向可私有化部署场景：应用本体、Pi Agent 运�
 
 一个完整的离线包包含三部分：
 
-1. **应用安装包**：electron-builder 产出的 Windows NSIS（`.exe`）与 MSIX（`.appx`）安装包。
-   - NSIS：`oneClick: false`，支持自定义安装目录，适合内网手工安装。
-   - MSIX/AppX：对接 Intune/SCCM 等企业分发；正式对外分发需企业签名。
+1. **应用安装包**：electron-builder 产出的 Windows x64 NSIS（`.exe`）安装包。
+   - 当前使用 per-user one-click 安装，不要求管理员权限。
+   - 当前内部试用版仅发布 Windows x64 NSIS 安装包。MSIX、代码签名和自动更新均不包含在首版范围内。
 2. **Pi 运行时**：`pi` 可执行文件（`--mode rpc`，JSONL over stdio）随应用内置分发；应用通过 `PI_BIN`/`PiProcessSupervisor` 配置定位，无外网依赖。
 3. **本地模型运行时（可选）**：Ollama 安装包离线分发，内置到离线包中供用户一并安装。
 
@@ -33,7 +33,7 @@ SparkiiDesktop-Pi 面向可私有化部署场景：应用本体、Pi Agent 运�
 
 ## 安装步骤（离线）
 
-1. 安装应用（NSIS 双击安装，或经 Intune/SCCM 推送 MSIX）。
+1. 安装应用（NSIS 双击安装）。
 2. 确认 Pi 运行时已随应用放置并可执行。
 3. 如需本地模型：安装 Ollama，导入/拷贝模型权重，启动 `ollama serve`。
 4. 首次启动使用 `admin` / 初始化密码登录（本地账号，MVP 内置 seed）。

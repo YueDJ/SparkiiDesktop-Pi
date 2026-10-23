@@ -139,7 +139,7 @@ export function Shell(props: ShellProps) {
     return new Set((pool.sessions ?? []).filter((s) => isRunningStatus(s.status)).map((s) => s.sessionId));
   }, [runtimePool, fallbackRuntimePool]);
 
-  // 按智能体分组会话历史；保证每个智能体都有一组（便于按智能体新建会话）
+  // 按智能体分组会话历史；没有历史记录的智能体不显示分组
   const groups = useMemo<SessionGroup[]>(() => {
     const agentIds = [...agents.map((a) => a.id), ...Object.keys(sessions).filter((id) => !agents.some((a) => a.id === id))];
     return agentIds
@@ -157,7 +157,8 @@ export function Shell(props: ShellProps) {
           sortOrder: s.sortOrder,
         }));
         return { agentId, agentName: agent?.name ?? agentId, sessions: list };
-      });
+      })
+      .filter((group) => group.sessions.length > 0);
   }, [agents, sessions, runningSessionIds]);
 
   const toggleTheme = () => {
@@ -234,44 +235,48 @@ export function Shell(props: ShellProps) {
           <nav className="ui-rail-group" aria-label="智能体">
             <AgentNav agents={agents} active={active} onNavigate={(id) => startNewSession(id)} />
           </nav>
-          <div className="ui-rail-section-row">
-            <span className="ui-rail-section-label">会话历史</span>
-            <IconButton label="搜索会话" size="sm" onClick={() => {
-              if (searchOpen) { setSearch(''); setSearchOpen(false); }
-              else setSearchOpen(true);
-            }}><SearchIcon /></IconButton>
-          </div>
-          {searchOpen && (
-            <div className="ui-rail-search-field">
-              <TextField
-                autoFocus
-                value={search}
-                placeholder="搜索会话…"
-                onChange={(e) => setSearch(e.target.value)}
-                onBlur={() => { if (!search.trim()) setSearchOpen(false); }}
-                onKeyDown={(e) => { if (e.key === 'Escape') { setSearch(''); setSearchOpen(false); } }}
-              />
-            </div>
+          {groups.length > 0 && (
+            <>
+              <div className="ui-rail-section-row">
+                <span className="ui-rail-section-label">会话历史</span>
+                <IconButton label="搜索会话" size="sm" onClick={() => {
+                  if (searchOpen) { setSearch(''); setSearchOpen(false); }
+                  else setSearchOpen(true);
+                }}><SearchIcon /></IconButton>
+              </div>
+              {searchOpen && (
+                <div className="ui-rail-search-field">
+                  <TextField
+                    autoFocus
+                    value={search}
+                    placeholder="搜索会话…"
+                    onChange={(e) => setSearch(e.target.value)}
+                    onBlur={() => { if (!search.trim()) setSearchOpen(false); }}
+                    onKeyDown={(e) => { if (e.key === 'Escape') { setSearch(''); setSearchOpen(false); } }}
+                  />
+                </div>
+              )}
+              <div className="ui-rail-sessions">
+                <SessionList
+                  groups={groups}
+                  filter={search}
+                  onOpen={(agentId, id) => (onOpenSession ? onOpenSession(agentId, id) : onNavigate(agentId))}
+                  onRename={props.onRenameSession ? (agentId, id) => startRename(agentId, id) : undefined}
+                  onDelete={props.onDeleteSession ? (agentId, id) => props.onDeleteSession!(agentId, id) : undefined}
+                  onPin={props.onPinSession ? (agentId, id, pinned) => props.onPinSession!(agentId, id, pinned) : undefined}
+                  onArchive={props.onArchiveSession ? (agentId, id, archived) => props.onArchiveSession!(agentId, id, archived) : undefined}
+                  onReorder={props.onReorderSession ? (agentId, ids) => props.onReorderSession!(agentId, ids) : undefined}
+                  onStop={props.onStopSession ? (id) => props.onStopSession!(id) : undefined}
+                  onRelease={props.onReleaseSession ? (id) => props.onReleaseSession!(id) : undefined}
+                  renaming={renaming}
+                  renameDraft={renameDraft}
+                  onRenameChange={setRenameDraft}
+                  onRenameCommit={commitRename}
+                  onRenameCancel={() => setRenaming(null)}
+                />
+              </div>
+            </>
           )}
-          <div className="ui-rail-sessions">
-            <SessionList
-              groups={groups}
-              filter={search}
-              onOpen={(agentId, id) => (onOpenSession ? onOpenSession(agentId, id) : onNavigate(agentId))}
-              onRename={props.onRenameSession ? (agentId, id) => startRename(agentId, id) : undefined}
-              onDelete={props.onDeleteSession ? (agentId, id) => props.onDeleteSession!(agentId, id) : undefined}
-              onPin={props.onPinSession ? (agentId, id, pinned) => props.onPinSession!(agentId, id, pinned) : undefined}
-              onArchive={props.onArchiveSession ? (agentId, id, archived) => props.onArchiveSession!(agentId, id, archived) : undefined}
-              onReorder={props.onReorderSession ? (agentId, ids) => props.onReorderSession!(agentId, ids) : undefined}
-              onStop={props.onStopSession ? (id) => props.onStopSession!(id) : undefined}
-              onRelease={props.onReleaseSession ? (id) => props.onReleaseSession!(id) : undefined}
-              renaming={renaming}
-              renameDraft={renameDraft}
-              onRenameChange={setRenameDraft}
-              onRenameCommit={commitRename}
-              onRenameCancel={() => setRenaming(null)}
-            />
-          </div>
         </aside>
         <main className="ui-surface">
           <div className="ui-surface-body">{children}</div>

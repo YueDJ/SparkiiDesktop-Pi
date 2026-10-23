@@ -276,3 +276,15 @@ describe('SettingsView skills pane', () => {
     expect((screen.getByText('打开技能文件夹') as HTMLButtonElement).disabled).toBe(true);
   });
 });
+
+describe('SettingsView about pane', () => {
+  it('shows the company and unsigned internal release status', async () => {
+    render(<SettingsView api={makeApi()} />);
+    await screen.findByText('已加载本机配置');
+    fireEvent.click(screen.getByText('关于'));
+
+    expect(screen.getByText('深圳宇岳向上科技有限公司')).toBeTruthy();
+    expect(screen.getByText('内部试用版（未签名）')).toBeTruthy();
+    expect(screen.getByText(/SmartScreen/)).toBeTruthy();
+  });
+});

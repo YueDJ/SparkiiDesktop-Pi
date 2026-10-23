@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, within } from '@testing-library/react';
 import { Shell, type ShellProps } from '../src/shell/Shell.js';
 
 afterEach(() => {
@@ -82,6 +82,26 @@ describe('Shell', () => {
     expect(screen.getByText('会话#1')).toBeTruthy();
     // 右侧抽屉不再存在
     expect(document.querySelector('.ui-drawer')).toBeNull();
+  });
+
+  it('hides agents without session history from the session history groups', () => {
+    render(<Shell {...makeProps()} />);
+    const sessionHistory = within(document.querySelector('.ui-rail-sessions') as HTMLElement);
+
+    expect(sessionHistory.getByText('合同审核')).toBeTruthy();
+    expect(sessionHistory.getByText('法规问答')).toBeTruthy();
+    expect(sessionHistory.queryByText('舆情监控')).toBeNull();
+  });
+
+  it('renders no session history chrome when there are no sessions', () => {
+    const props = makeProps();
+    props.sessions = {};
+    render(<Shell {...props} />);
+
+    expect(screen.getByTestId('agent-nav-contract')).toBeTruthy();
+    expect(screen.queryByText('会话历史')).toBeNull();
+    expect(screen.queryByText('暂无会话')).toBeNull();
+    expect(screen.queryByTitle('搜索会话')).toBeNull();
   });
 
   it('filters session history by the search query', () => {
