@@ -560,6 +560,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   }
 
 const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
+  'deepseek-flash': ['chat', 'vision', 'toolCall'],
   'deepseek-v4-pro': ['chat', 'reasoning', 'longContext', 'toolCall', 'thinking'],
   'deepseek-v4-flash': ['chat', 'fast', 'toolCall'],
   'deepseek-vision': ['chat', 'vision'],
@@ -1543,7 +1544,11 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       provider: providerId,
       modelId: m.modelId,
       capabilities: MODEL_CAPABILITY_DEFAULTS[m.modelId]
-        ?? (m.supportsImages ? ['chat', 'vision'] : ['chat', 'toolCall']) as ModelCapability[],
+        ?? ([
+          'chat',
+          'toolCall',
+          ...(m.supportsImages ? ['vision' as const] : []),
+        ] as ModelCapability[]),
     }));
     const compatible = findCompatibleModels(descriptors, requirements);
     const compatibleSet = new Set(compatible.map((m) => m.modelId));

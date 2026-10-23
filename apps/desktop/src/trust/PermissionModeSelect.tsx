@@ -8,14 +8,20 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { ChevronDownIcon, Menu, MenuItem, ShieldIcon } from '@sparkii/ui';
+import { ChevronDownIcon, Menu, MenuItem, ShieldIcon, UserIcon } from '@sparkii/ui';
 import type { PermissionModeState, SparkiiApi } from '../types/sparkii-api.js';
 
 type PermissionMode = PermissionModeState['mode'];
 
-const MODES: Array<{ id: PermissionMode; label: string; hint: string }> = [
-  { id: 'ask', label: '每次询问', hint: '需要时停下来确认' },
-  { id: 'auto_review', label: '自动审查', hint: '外部写入仍需确认' },
+const MODES: Array<{
+  id: PermissionMode;
+  label: string;
+  hint: string;
+  Icon: typeof UserIcon;
+  iconName: 'user' | 'shield';
+}> = [
+  { id: 'ask', label: '每次询问', hint: '需要时停下来确认', Icon: UserIcon, iconName: 'user' },
+  { id: 'auto_review', label: '自动审查', hint: '外部写入仍需确认', Icon: ShieldIcon, iconName: 'shield' },
 ];
 
 const DEFAULT_STATE: PermissionModeState = {
@@ -122,6 +128,7 @@ export function PermissionModeSelect() {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const [open, setOpen] = useState(false);
   const current = MODES.find((entry) => entry.id === state.mode) ?? MODES[0];
+  const CurrentIcon = current.Icon;
   const close = () => setOpen(false);
 
   return (
@@ -137,7 +144,7 @@ export function PermissionModeSelect() {
         title={current.hint}
         onClick={() => setOpen((value) => !value)}
       >
-        <ShieldIcon />
+        <CurrentIcon data-permission-icon={current.iconName} />
         <span className="permission-mode-select-label">{current.label}</span>
         <ChevronDownIcon />
       </button>
@@ -151,6 +158,7 @@ export function PermissionModeSelect() {
                 key={entry.id}
                 label={entry.label}
                 hint={entry.hint}
+                leading={<entry.Icon data-permission-icon={entry.iconName} />}
                 trailing={active ? '✓' : ''}
                 current={active}
                 disabled={!allowed}

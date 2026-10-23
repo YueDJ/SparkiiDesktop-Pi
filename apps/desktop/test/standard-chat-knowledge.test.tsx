@@ -70,6 +70,19 @@ describe('StandardChat knowledge slots', () => {
     expect(screen.queryByTestId('knowledge-dataset-select')).toBeNull();
   });
 
+  it('orders the knowledge picker before permission selection', async () => {
+    render(<StandardChatSurface {...chatProps({
+      hideWorkspace: true,
+      toolbarExtra: <button type="button" data-testid="knowledge-dataset-select">知识库</button>,
+    })} />);
+
+    expect(await screen.findByTestId('permission-mode-trigger')).toBeTruthy();
+    const toolbar = document.querySelector('.ui-composer-toolbar-left');
+    expect(toolbar?.children[0]).toBe(screen.getByRole('button', { name: '上传文件' }));
+    expect(toolbar?.children[1]).toBe(screen.getByTestId('knowledge-dataset-select'));
+    expect(toolbar?.children[2].querySelector('[data-testid="permission-mode-trigger"]')).toBeTruthy();
+  });
+
   it('calls onBeforeSend before promptSession', async () => {
     const order: string[] = [];
     const api = makeApi({

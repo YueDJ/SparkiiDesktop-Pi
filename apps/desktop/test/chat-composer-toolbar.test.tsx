@@ -25,11 +25,20 @@ function composerProps(over: Partial<ChatComposerProps> = {}): ChatComposerProps
   };
 }
 
-describe('ChatComposer toolbarExtra', () => {
-  it('renders toolbarExtra as the first left-toolbar child', () => {
+describe('ChatComposer toolbar', () => {
+  it('uses the shared icon-button layout for upload', () => {
+    render(<ChatComposer {...composerProps()} />);
+    const upload = screen.getByRole('button', { name: '上传文件' });
+    expect(upload.classList.contains('ui-btn')).toBe(true);
+    expect(upload.classList.contains('ui-icon-btn')).toBe(true);
+  });
+
+  it('orders upload, workspace, then toolbarExtra', () => {
     render(<ChatComposer {...composerProps()} toolbarExtra={<span data-testid="extra">库</span>} />);
     const left = document.querySelector('.ui-composer-toolbar-left');
-    expect(left?.firstElementChild?.getAttribute('data-testid')).toBe('extra');
+    expect(left?.children[0]).toBe(screen.getByRole('button', { name: '上传文件' }));
+    expect(left?.children[1].querySelector('[data-testid="composer-workspace"]')).toBeTruthy();
+    expect(left?.children[2]).toBe(screen.getByTestId('extra'));
   });
 
   it('hides workspace when hideWorkspace is set', () => {

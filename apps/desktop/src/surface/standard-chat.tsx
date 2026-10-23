@@ -824,8 +824,8 @@ export function StandardChatSurface(props: StandardChatProps) {
         onOpenWorkspace={openWorkspace}
         toolbarExtra={(
           <>
-            <PermissionModeSelect />
             {toolbarExtra}
+            <PermissionModeSelect />
           </>
         )}
         hideWorkspace={hideWorkspace}

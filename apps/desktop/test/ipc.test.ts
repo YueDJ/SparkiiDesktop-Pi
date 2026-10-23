@@ -3018,6 +3018,55 @@ describe('ipc provider handlers', () => {
     expect(result).toMatchObject({ modelRequirements: { requires: ['chat'] } });
   });
 
+  it('classifies current DeepSeek models with orthogonal capabilities', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-model-capabilities-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: {
+        send: async (command: any) => command.type === 'list_models'
+          ? {
+              success: true,
+              data: [
+                { modelId: 'deepseek-flash', supportsImages: true },
+                { modelId: 'future-vision-chat', supportsImages: true },
+                { modelId: 'deepseek-vision', supportsImages: true },
+              ],
+            }
+          : { success: true },
+      },
+      agentOf: () => ({
+        id: 'general',
+        tools: [],
+        dir: join(dataDir, 'profiles', 'general'),
+        systemPrompt: 'test',
+        manifest: {
+          id: 'general',
+          version: '1.0.0',
+          surface: { type: 'chat' },
+          capabilities: { tools: [] },
+          modelRequirements: { requires: ['chat', 'toolCall'] },
+        },
+      }),
+    });
+
+    const handlers = await registeredHandlers();
+    const result = await handlers.get('sparkii:getModelOptions')!(null, 'general') as {
+      compatibleModels: string[];
+      incompatibleModels: string[];
+    };
+
+    expect(result.compatibleModels).toEqual([
+      'deepseek-flash',
+      'future-vision-chat',
+    ]);
+    expect(result.incompatibleModels).toEqual(['deepseek-vision']);
+  });
+
   it('promptSession refuses to create a session without profileId', async () => {
     const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
     dirs.push(dataDir);

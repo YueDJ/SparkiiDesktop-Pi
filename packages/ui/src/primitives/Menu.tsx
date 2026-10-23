@@ -153,7 +153,7 @@ export function Menu({
   );
 }
 
-export function MenuItem({ label, hint, onSelect, trailing = '›', testId, disabled, current }: { label: string; hint?: string; onSelect(): void; trailing?: ReactNode; testId?: string; disabled?: boolean; current?: boolean }) {
+export function MenuItem({ label, hint, onSelect, trailing = '›', testId, disabled, current, leading }: { label: string; hint?: string; onSelect(): void; trailing?: ReactNode; testId?: string; disabled?: boolean; current?: boolean; leading?: ReactNode }) {
   return (
     <button
       type="button"
@@ -164,6 +164,7 @@ export function MenuItem({ label, hint, onSelect, trailing = '›', testId, disa
       disabled={disabled}
       onClick={() => { if (!disabled) onSelect(); }}
     >
+      {leading && <span className="ui-menu-item-leading">{leading}</span>}
       <span>{label}</span>
       {hint && <span className="ui-menu-item-hint">{hint}</span>}
       <span className="ui-menu-item-chevron">{trailing}</span>

@@ -68,6 +68,23 @@ describe('PermissionModeSelect', () => {
     expect(document.body.textContent).not.toMatch(/pid|worker|queue|模型请求/i);
   });
 
+  it('uses distinct icons for manual confirmation and automatic review', async () => {
+    const api = makeApi();
+    renderBar(api);
+    const trigger = await screen.findByTestId('permission-mode-trigger');
+    expect(trigger.querySelector('[data-permission-icon="user"]')).toBeTruthy();
+
+    fireEvent.click(trigger);
+    expect(screen.getByRole('menuitem', { name: /每次询问/ })
+      .querySelector('[data-permission-icon="user"]')).toBeTruthy();
+    expect(screen.getByRole('menuitem', { name: /自动审查/ })
+      .querySelector('[data-permission-icon="shield"]')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('menuitem', { name: /自动审查/ }));
+    await waitFor(() => expect(screen.getByTestId('permission-mode-trigger')
+      .querySelector('[data-permission-icon="shield"]')).toBeTruthy());
+  });
+
   it('disables Auto review when the profile does not allow it and never switches on its own', async () => {
     const api = makeApi({
       getPermissionModeState: vi.fn(async () => state({ allowedModes: ['ask'] })),

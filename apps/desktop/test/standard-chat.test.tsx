@@ -90,6 +90,10 @@ describe('StandardChatSurface (contract)', () => {
     render(<StandardChatSurface {...baseProps('s1', { api })} />);
 
     expect(await screen.findByTestId('permission-mode-trigger')).toBeTruthy();
+    const toolbar = document.querySelector('.ui-composer-toolbar-left');
+    expect(toolbar?.children[0]).toBe(screen.getByRole('button', { name: '上传文件' }));
+    expect(toolbar?.children[1].querySelector('[data-testid="composer-workspace"]')).toBeTruthy();
+    expect(toolbar?.children[2].querySelector('[data-testid="permission-mode-trigger"]')).toBeTruthy();
     expect(screen.queryByText('工作区可写')).toBeNull();
     expect(screen.queryByText('Host Git Bash')).toBeNull();
     expect(screen.queryByText('撤销本任务权限')).toBeNull();
