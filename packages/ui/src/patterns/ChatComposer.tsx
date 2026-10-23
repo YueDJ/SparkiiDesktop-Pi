@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { TextArea } from '../primitives/TextArea.js';
+import { IconButton } from '../primitives/IconButton.js';
 import { ModelEffortControl, type ModelEffortProps } from './ModelEffortControl.js';
 import { WorkspaceButton } from './WorkspaceButton.js';
 import { PlusIcon, FolderIcon, ClipIcon, ArrowUpIcon, StopIcon } from '../icons/index.js';
@@ -366,8 +367,15 @@ export function ChatComposer({ busy, stopping = false, workspacePath, onChooseWo
 
         <div className="ui-composer-toolbar">
           <div className="ui-composer-toolbar-left">
-            {toolbarExtra}
-            <button type="button" className="ui-icon-btn ui-composer-plus" aria-label="上传文件" title="上传本地文件" onClick={pickFiles}><PlusIcon /></button>
+            <IconButton
+              label="上传文件"
+              size="sm"
+              className="ui-composer-plus"
+              title="上传本地文件"
+              onClick={pickFiles}
+            >
+              <PlusIcon />
+            </IconButton>
             {!hideWorkspace && (
               <WorkspaceButton
                 path={workspacePath}
@@ -380,6 +388,7 @@ export function ChatComposer({ busy, stopping = false, workspacePath, onChooseWo
                 <span className="ui-composer-ws-name" data-testid="workspace-path">{name}</span>
               </WorkspaceButton>
             )}
+            {toolbarExtra}
           </div>
           <ContextUsageBar contextUsage={contextUsage} isCompacting={isCompacting} />
           <div className="ui-composer-toolbar-right">

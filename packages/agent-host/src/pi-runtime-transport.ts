@@ -1,11 +1,17 @@
 import type { RpcCommand, RpcResponse, NormalizedEvent } from "./types.js";
 import type { ProposalRequest } from "@sparkii/approval";
+import type {
+  ActionExecutionResult,
+  RuntimeActionRequest,
+} from "./runtime-actions.js";
 
 export interface ProposalDecision {
   approved: boolean;
   proposalId: string;
   status: string;
   result?: unknown;
+  /** How far the user meant the approval to reach. Absent means a single action. */
+  approvalScope?: 'once' | 'task';
 }
 
 export type ConnectorReadRequest = {
@@ -27,6 +33,8 @@ export type PiRuntimeEnvelope =
   | { direction: "runtime-to-main"; ready: true }
   | { direction: "runtime-to-main"; proposal: ProposalRequest & { requestId: string } }
   | { direction: "main-to-runtime"; requestId: string; proposalDecision: ProposalDecision }
+  | { direction: "runtime-to-main"; action: RuntimeActionRequest }
+  | { direction: "main-to-runtime"; requestId: string; actionResult: ActionExecutionResult }
   | { direction: "runtime-to-main"; connectorRead: ConnectorReadRequest }
   | { direction: "main-to-runtime"; requestId: string; connectorReadResult: ConnectorReadResult };
 

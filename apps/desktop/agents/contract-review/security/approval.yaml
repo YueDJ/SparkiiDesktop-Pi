@@ -2,3 +2,5 @@ requireApproval:
   - report.export
 timeoutMs: 300000
 highRiskDoubleConfirm: true
+defaultPermissionMode: ask
+allowedPermissionModes: [ask, auto_review]

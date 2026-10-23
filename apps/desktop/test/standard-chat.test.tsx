@@ -24,6 +24,8 @@ function makeApi(over: Record<string, unknown> = {}) {
     getChatSession: vi.fn().mockResolvedValue({ workspacePath: 'C:/ws/SparkiiXyZ9202608251710' }),
     getChatMessages: vi.fn().mockResolvedValue([]),
     getChatState: vi.fn().mockResolvedValue({ streaming: false, steering: [], followUp: [] }),
+    getPermissionModeState: vi.fn().mockResolvedValue({ mode: 'ask', allowedModes: ['ask', 'auto_review'], taskActive: false, hostShellAvailable: true, reviewerAvailable: true, limitations: [] }),
+    setChatPermissionMode: vi.fn(async (_id: string, mode: string) => ({ ok: true, mode })),
     promptSession: vi.fn().mockResolvedValue({ ok: true }),
     abortChat: vi.fn().mockResolvedValue({ ok: true, cleared: { steering: [], followUp: [] } }),
     queueMutate: vi.fn().mockResolvedValue({ ok: true }),
@@ -80,6 +82,22 @@ describe('StandardChatSurface (contract)', () => {
   it('shows the draft composer when sessionId is null and draft is set', () => {
     render(<StandardChatSurface {...baseProps(null, { draft: true })} />);
     expect(screen.getByTestId('composer-input')).toBeTruthy();
+  });
+
+  it('keeps permission selection in the composer without task capability details', async () => {
+    const getTaskCapabilities = vi.fn().mockResolvedValue({ active: true, workspaceWrite: true });
+    const { api } = makeApi({ getTaskCapabilities });
+    render(<StandardChatSurface {...baseProps('s1', { api })} />);
+
+    expect(await screen.findByTestId('permission-mode-trigger')).toBeTruthy();
+    const toolbar = document.querySelector('.ui-composer-toolbar-left');
+    expect(toolbar?.children[0]).toBe(screen.getByRole('button', { name: '上传文件' }));
+    expect(toolbar?.children[1].querySelector('[data-testid="composer-workspace"]')).toBeTruthy();
+    expect(toolbar?.children[2].querySelector('[data-testid="permission-mode-trigger"]')).toBeTruthy();
+    expect(screen.queryByText('工作区可写')).toBeNull();
+    expect(screen.queryByText('Host Git Bash')).toBeNull();
+    expect(screen.queryByText('撤销本任务权限')).toBeNull();
+    expect(getTaskCapabilities).not.toHaveBeenCalled();
   });
 
   it('allocates a workspace path for a new draft and chooses from that folder', async () => {

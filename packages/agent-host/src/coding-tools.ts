@@ -1,37 +1,26 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
 import { access, readFile } from "node:fs/promises";
-import { relative } from "node:path";
 import {
   createBashToolDefinition,
   createEditToolDefinition,
   createWriteToolDefinition,
   type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
-import type { ProposalRequest } from "@sparkii/approval";
-import { toPreviewLines } from "@sparkii/approval";
-import type { ProposalDecision } from "./pi-runtime-transport.js";
+import type {
+  ActionExecutionResult,
+  RuntimeActionRequest,
+} from "./runtime-actions.js";
 import { isPathInside } from "./workspace-guard.js";
 
 export interface CodingToolsContext {
   cwd: string;
   workspaceRoot: string;
-  propose(request: ProposalRequest & { requestId: string }): Promise<ProposalDecision>;
+  requestAction(request: RuntimeActionRequest): Promise<ActionExecutionResult>;
   recordSessionEntry?(customType: string, data: Record<string, unknown>): void;
 }
 
 const activeToolCallId = new AsyncLocalStorage<string>();
-
-function workspaceRelative(workspaceRoot: string, absolutePath: string): string {
-  const rel = relative(workspaceRoot, absolutePath);
-  if (!rel || rel.startsWith("..")) return absolutePath;
-  return rel;
-}
-
-function bashSummary(command: string): string {
-  const firstLine = command.split("\n")[0] ?? "";
-  return firstLine.slice(0, 120);
-}
 
 function guardPath(ctx: CodingToolsContext, absolutePath: string): void {
   if (!isPathInside(ctx.workspaceRoot, absolutePath)) {
@@ -39,57 +28,39 @@ function guardPath(ctx: CodingToolsContext, absolutePath: string): void {
   }
 }
 
-function slimApprovalData(
-  requestId: string,
+async function requestToolAction(
+  ctx: CodingToolsContext,
   toolName: string,
-  status: "pending" | "approved" | "denied",
-  extra: { proposalId?: string } = {},
-): Record<string, unknown> {
-  const data: Record<string, unknown> = { requestId, toolName, status };
-  const toolCallId = activeToolCallId.getStore();
-  if (toolCallId) data.toolCallId = toolCallId;
-  if (extra.proposalId) data.proposalId = extra.proposalId;
-  return data;
+  args: Record<string, unknown>,
+): Promise<ActionExecutionResult> {
+  return ctx.requestAction({
+    requestId: randomUUID(),
+    toolCallId: activeToolCallId.getStore(),
+    toolName,
+    args,
+  });
 }
 
-async function proposeWrite(
-  ctx: CodingToolsContext,
-  request: ProposalRequest & { requestId: string },
-): Promise<ProposalDecision> {
-  ctx.recordSessionEntry?.("approval_required", slimApprovalData(request.requestId, request.toolName, "pending"));
-  try {
-    const decision = await ctx.propose(request);
-    ctx.recordSessionEntry?.("approval_resolved", slimApprovalData(
-      request.requestId,
-      request.toolName,
-      decision.approved ? "approved" : "denied",
-      decision.proposalId ? { proposalId: decision.proposalId } : {},
-    ));
-    return decision;
-  } catch (error) {
-    ctx.recordSessionEntry?.("approval_resolved", slimApprovalData(request.requestId, request.toolName, "denied"));
-    throw error;
-  }
+function executionError(
+  toolName: string,
+  result: ActionExecutionResult,
+): Error {
+  const detail = result.error?.message ?? result.decision.reason;
+  return new Error(`${toolName}未执行:${result.status}:${detail}`);
 }
 
 function shellExec(ctx: CodingToolsContext) {
   return async (command: string, cwd: string, opts: { onData: (data: Buffer) => void }) => {
-    const decision = await proposeWrite(ctx, {
-      requestId: randomUUID(),
-      toolName: "bash",
-      targetSystem: "general",
-      summary: bashSummary(command),
-      preview: { kind: "text", lines: toPreviewLines(command) },
-      payload: { command, cwd, workspaceRoot: ctx.workspaceRoot },
-      risk: "write",
+    const result = await requestToolAction(ctx, "bash", {
+      command,
     });
-    if (!decision.approved) {
-      opts.onData(Buffer.from(`操作未执行:${decision.status}\n`));
+    if (result.status === "denied" || result.status === "failed") {
+      opts.onData(Buffer.from(`${result.decision.reason}\n`));
       return { exitCode: 1 };
     }
-    const result = (decision.result ?? {}) as { exitCode?: number | null; output?: string };
-    if (result.output) opts.onData(Buffer.from(result.output));
-    return { exitCode: result.exitCode ?? 0 };
+    const data = (result.result ?? {}) as { exitCode?: number | null; output?: string };
+    if (data.output) opts.onData(Buffer.from(data.output));
+    return { exitCode: data.exitCode ?? 0 };
   };
 }
 
@@ -125,15 +96,11 @@ export function createCodingToolDefinitions(ctx: CodingToolsContext): Array<Tool
       },
       writeFile: async (absolutePath: string, content: string) => {
         guardPath(ctx, absolutePath);
-        const decision = await proposeWrite(ctx, {
-          requestId: randomUUID(),
-          toolName: "edit",
-          targetSystem: "general",
-          summary: `修改 ${workspaceRelative(ctx.workspaceRoot, absolutePath)}`,
-          payload: { path: absolutePath, content },
-          risk: "write",
+        const result = await requestToolAction(ctx, "edit", {
+          path: absolutePath,
+          content,
         });
-        if (!decision.approved) throw new Error(`编辑未执行:${decision.status}`);
+        if (result.status !== "executed") throw executionError("编辑", result);
       },
     },
   });
@@ -145,15 +112,11 @@ export function createCodingToolDefinitions(ctx: CodingToolsContext): Array<Tool
       },
       writeFile: async (absolutePath: string, content: string) => {
         guardPath(ctx, absolutePath);
-        const decision = await proposeWrite(ctx, {
-          requestId: randomUUID(),
-          toolName: "write",
-          targetSystem: "general",
-          summary: `写入 ${workspaceRelative(ctx.workspaceRoot, absolutePath)}`,
-          payload: { path: absolutePath, content },
-          risk: "write",
+        const result = await requestToolAction(ctx, "write", {
+          path: absolutePath,
+          content,
         });
-        if (!decision.approved) throw new Error(`写入未执行:${decision.status}`);
+        if (result.status !== "executed") throw executionError("写入", result);
       },
     },
   });

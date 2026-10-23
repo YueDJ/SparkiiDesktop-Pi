@@ -12,6 +12,11 @@ import {
   type PiRuntimeEnvelope,
   type PiRuntimeHostHandle,
 } from "../src/pi-runtime-transport.js";
+import {
+  actionResultEnvelope,
+  runtimeActionEnvelope,
+  type RuntimeActionRequest,
+} from "../src/runtime-actions.js";
 
 class FakeHandle implements PiRuntimeHostHandle {
   sent: PiRuntimeEnvelope[] = [];
@@ -123,6 +128,66 @@ describe("PiRuntimeSupervisor", () => {
       requestId: "r1", toolName: "knowledge.search", args: { query: "q" },
     });
     expect(handle.sent).toContainEqual(connectorReadResultEnvelope("r1", { ok: true, data: { chunks: [] } }));
+  });
+
+  it("routes raw Runtime actions to Main and returns the correlated result", async () => {
+    const handle = new FakeHandle();
+    const sup = new PiRuntimeSupervisor(() => handle);
+    const request: RuntimeActionRequest = {
+      requestId: "a1",
+      toolCallId: "call-1",
+      toolName: "write",
+      args: { path: "C:/ws/a.txt", content: "x" },
+    };
+    const onAction = vi.fn(async () => ({
+      requestId: "a1",
+      status: "executed" as const,
+      decision: {
+        decision: "allow" as const,
+        ruleId: "workspace.write",
+        reason: "workspace",
+      },
+      result: { path: "C:/ws/a.txt" },
+    }));
+    sup.onAction(onAction);
+    await sup.start();
+    handle.emit(runtimeActionEnvelope(request));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(onAction).toHaveBeenCalledWith(request);
+    expect(handle.sent).toContainEqual(actionResultEnvelope("a1", {
+      requestId: "a1",
+      status: "executed",
+      decision: {
+        decision: "allow",
+        ruleId: "workspace.write",
+        reason: "workspace",
+      },
+      result: { path: "C:/ws/a.txt" },
+    }));
+  });
+
+  it("fails closed when no Runtime action handler is registered", async () => {
+    const handle = new FakeHandle();
+    const sup = new PiRuntimeSupervisor(() => handle);
+    await sup.start();
+    handle.emit(runtimeActionEnvelope({
+      requestId: "a2",
+      toolName: "bash",
+      args: { command: "echo unsafe" },
+    }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(handle.sent).toContainEqual(expect.objectContaining({
+      direction: "main-to-runtime",
+      requestId: "a2",
+      actionResult: expect.objectContaining({
+        status: "denied",
+        decision: expect.objectContaining({
+          decision: "deny",
+          ruleId: "platform.action-handler-unavailable",
+        }),
+      }),
+    }));
   });
 
   it("denies connector_read when no handler is registered", async () => {

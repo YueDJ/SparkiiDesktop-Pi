@@ -225,7 +225,9 @@ type InspectedSource = {
   packageJson?: string;
 };
 
-function failedDestName(diagnostics?: string[]): PreviewUserSkillResult {
+type InspectedFailure = Extract<PreviewUserSkillResult, { ok: false }>;
+
+function failedDestName(diagnostics?: string[]): InspectedFailure {
   return diagnostics?.length
     ? { ok: false, reason: 'bad-name', diagnostics }
     : { ok: false, reason: 'bad-name' };
@@ -233,7 +235,7 @@ function failedDestName(diagnostics?: string[]): PreviewUserSkillResult {
 
 async function inspectSource(sourceDir: string): Promise<
   | { ok: true } & InspectedSource
-  | PreviewUserSkillResult
+  | InspectedFailure
 > {
   if (!(await isDir(sourceDir))) {
     return { ok: false, reason: 'unavailable' };

@@ -7,6 +7,8 @@ export interface ApprovalPreview { kind: ApprovalPreviewKind; lines: string[]; }
 export interface ProposalRequest {
   toolName: string; targetSystem: string; summary: string;
   preview?: ApprovalPreview; payload: unknown; risk: SideEffect;
+  /** `caller` means the initiating platform router executes after approval. */
+  executionMode?: 'proposal' | 'caller';
 }
 export type ProposalSubmission = ProposalRequest & { requestId: string };
 export interface Proposal {
@@ -14,6 +16,7 @@ export interface Proposal {
   toolName: string; targetSystem: string; summary: string;
   preview?: ApprovalPreview;
   payloadHash: string; payload: unknown; risk: SideEffect;
+  executionMode: 'proposal' | 'caller';
   status: ProposalStatus; createdAt: number;
   decidedAt?: number; decisionBy?: string; decisionNote?: string;
   execution?: { ok: boolean; result?: unknown; error?: string };
@@ -45,7 +48,8 @@ export function createProposal(req: ProposalSubmission, meta: { profileId: strin
   return {
     id: randomUUID(), requestId: req.requestId, ...meta, toolName: req.toolName, targetSystem: req.targetSystem,
     summary: req.summary, payloadHash: hashPayload(req.payload), payload: req.payload,
-    risk: req.risk, status: 'pending', createdAt: Date.now(),
+    risk: req.risk, executionMode: req.executionMode ?? 'proposal',
+    status: 'pending', createdAt: Date.now(),
     ...(req.preview !== undefined ? { preview: req.preview } : {}),
   };
 }

@@ -14,5 +14,9 @@ test('general agent surface smoke', async () => {
   await page.getByTestId('agent-nav-general').click();
   await expect(page.getByTestId('composer-input')).toBeVisible();
   await expect(page.getByTestId('workspace-path')).toContainText(/Sparkii/);
+  await expect(page.getByRole('button', { name: 'Ask' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Auto review' })).toBeVisible();
+  await expect(page.getByText(/Host Git Bash/)).toBeVisible();
+  await expect(page.getByText(/Full access/i)).toHaveCount(0);
   await app.close();
 });

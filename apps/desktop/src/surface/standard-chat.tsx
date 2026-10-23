@@ -2,6 +2,7 @@ import { Fragment, cloneElement, isValidElement, useEffect, useLayoutEffect, use
 import type { WheelEvent as ReactWheelEvent } from 'react';
 import type { AgentSurfaceProps, CustomSessionEntry, SessionEntry } from './contract.js';
 import type { ChatAttachment, SparkiiApi } from '../types/sparkii-api.js';
+import { PermissionModeSelect, usePermissionMode } from '../trust/PermissionModeSelect.js';
 import {
   Button,
   ChatMessage,
@@ -37,10 +38,19 @@ export type StandardChatProps = AgentSurfaceProps & {
   hideToolNames?: string[];
   composerSkills?: Array<{ name: string; description: string }> | null;
   renderAssistantMessage?(args: {
-    entry: Extract<ChatEntry, { kind: 'message'; role: 'assistant' }>;
+    entry: AssistantChatEntry;
     following: CustomSessionEntry[];
   }): ReactNode;
   renderCustomEntry?(entry: CustomSessionEntry): ReactNode | null;
+};
+
+export type AssistantChatEntry = {
+  kind: 'message';
+  id: string;
+  role: 'assistant';
+  text: string;
+  thinking?: string;
+  streaming: boolean;
 };
 
 function isChatEntry(e: SessionEntry): e is ChatEntry {
@@ -57,14 +67,16 @@ function followingCustomsUntilMessage(entries: SessionEntry[], start: number): C
   }
   let lo = 0;
   for (let j = start - 1; j >= 0; j--) {
-    if (entries[j].kind === 'message' && entries[j].role === 'user') {
+    const candidate = entries[j];
+    if (candidate?.kind === 'message' && candidate.role === 'user') {
       lo = j + 1;
       break;
     }
   }
   let hi = entries.length;
   for (let j = start + 1; j < entries.length; j++) {
-    if (entries[j].kind === 'message' && entries[j].role === 'user') {
+    const candidate = entries[j];
+    if (candidate?.kind === 'message' && candidate.role === 'user') {
       hi = j;
       break;
     }
@@ -269,6 +281,7 @@ export function StandardChatSurface(props: StandardChatProps) {
   const [thinkingLevel, setThinkingLevel] = useState<string | null>(null);
   const [workspacePath, setWorkspacePath] = useState<string | null>(null);
   const [workspaceKind, setWorkspaceKind] = useState<'auto' | 'user'>('auto');
+  const { state: permissionModeState } = usePermissionMode();
   const [contextUsage, setContextUsage] = useState<{ tokens?: number | null; contextWindow?: number; percent?: number | null } | null>(null);
   const [isCompacting, setIsCompacting] = useState(false);
   const [detailLevel, setDetailLevel] = useState<ChatDetailLevel>(DEFAULT_CHAT_DETAIL_LEVEL);
@@ -564,7 +577,16 @@ export function StandardChatSurface(props: StandardChatProps) {
       display,
       undefined,
       chatAttachments.length ? chatAttachments : undefined,
-      sessionId ? undefined : { profileId: agent.id, workspacePath, workspaceKind, model, thinkingLevel },
+      sessionId ? undefined : {
+        profileId: agent.id,
+        workspacePath,
+        workspaceKind,
+        model,
+        thinkingLevel,
+        // A draft has no session row yet, so the chosen mode travels with the
+        // first prompt instead of being written through IPC.
+        permissionMode: permissionModeState.mode,
+      },
     ).then((res: any) => {
       if (!res?.ok && res?.ok !== undefined) {
         reportError(String(res.error ?? '发送失败'), { source: agent.name });
@@ -655,6 +677,7 @@ export function StandardChatSurface(props: StandardChatProps) {
     if (!workspacePath) return;
     void api.openWorkspace?.(workspacePath);
   };
+
   // The authoritative timeline is props.session.entries, normalized once by useAgentSession from
   // Pi's JSONL (live event increments and history replay produce the same ordered entries). We
   // render it directly. There is no local/optimistic timeline, so the display stays 1:1 with the
@@ -683,7 +706,7 @@ export function StandardChatSurface(props: StandardChatProps) {
         for (const custom of following) foldedCustomIds.add(custom.id);
       }
       const rendered = renderAssistantMessage
-        ? renderAssistantMessage({ entry, following })
+        ? renderAssistantMessage({ entry: entry as AssistantChatEntry, following })
         : <ChatMessage role="assistant" text={entry.text} thinking={entry.thinking} streaming={entry.streaming}><Markdown text={entry.text} /></ChatMessage>;
       timeline.push(
         isValidElement(rendered)
@@ -799,7 +822,12 @@ export function StandardChatSurface(props: StandardChatProps) {
         getLocalPath={getLocalPath}
         onChooseWorkspace={chooseWorkspace}
         onOpenWorkspace={openWorkspace}
-        toolbarExtra={toolbarExtra}
+        toolbarExtra={(
+          <>
+            {toolbarExtra}
+            <PermissionModeSelect />
+          </>
+        )}
         hideWorkspace={hideWorkspace}
         modelProps={{
           model,

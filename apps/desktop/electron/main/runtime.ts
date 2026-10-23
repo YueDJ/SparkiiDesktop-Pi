@@ -1,24 +1,54 @@
 import { delimiter, dirname, join } from "node:path";
 import { existsSync } from "node:fs";
-import { userInfo } from "node:os";
+import { homedir, userInfo } from "node:os";
 import { fileURLToPath } from "node:url";
 import { loadProfile } from "@sparkii/config";
 import { ModelRouter, normalizeRouting } from "@sparkii/model-router";
 import { Rbac, type Subject } from "@sparkii/identity";
-import { ApprovalGate, ConnectorExecutor, AuditStore } from "@sparkii/approval";
-import { PiRuntimePool } from "@sparkii/agent-host";
+import {
+  ApprovalGate,
+  CapabilityGateway,
+  ConnectorExecutor,
+  AuditStore,
+  TaskGrantRegistry,
+  type HostShellAdapter,
+  type HostShellProbeReport,
+  type PlatformProfilePolicy,
+  type SecurityAction,
+  type WorkspaceSandboxAdapter,
+} from "@sparkii/approval";
+import { PiRuntimePool, PiRuntimeSupervisor } from "@sparkii/agent-host";
 import { knowledgeConnector } from "@sparkii/connectors";
 import { createUtilityHostHandle, createForkHostHandle } from "../pi-runtime/transports.js";
 import { registerConnectorHandlers } from "./connector-registry.js";
 import { ChatSessionStore } from "./chat-session-store.js";
 import { ErrorStore } from "./error-store.js";
 import { Keyring } from "./keyring.js";
-import { loadSettings } from "./settings.js";
-import { loadApiKey, saveApiKey } from "./settings.js";
-import { registerGeneralExecutor } from "./general-executor.js";
-import { resolveRuntimeToolsDir } from "./runtime-layout.js";
+import { resolveRuntimePaths, resolveRuntimeToolsDir } from "./runtime-layout.js";
 import { loadAgentRuntimes, type AgentRuntime } from "./agent-registry.js";
 import type { KnowledgeBackendId } from "./knowledge-settings.js";
+import {
+  DEFAULT_TOOL_DESCRIPTORS,
+  createActionNormalizer,
+  type ActionNormalizer,
+} from "./security/action-normalizer.js";
+import {
+  createWindowsPathProbe,
+  windowsProtectedRoots,
+} from "./security/windows-platform.js";
+import {
+  createWorkspaceExecutor,
+  type WorkspaceExecutor,
+} from "./security/workspace-executor.js";
+import { normalizeProfilePolicy } from "./security/profile-policy.js";
+import { TaskLifecycle } from "./security/task-lifecycle.js";
+import { createWindowsSandboxAdapter } from "./security/windows-sandbox.js";
+import { createHostShellAdapter, resolveHelperPath } from "./security/host-shell.js";
+import { ShellGrantStore } from "./security/shell-grant-store.js";
+import { createPiShellReviewer, type ShellReviewer } from "./security/shell-reviewer.js";
+import { resolveReviewerConfig } from "./settings.js";
+import { loadSettings, loadApiKey, saveApiKey } from "./settings.js";
+import type { Logger } from "./logger.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -41,6 +71,31 @@ export interface Runtime {
   setKey(providerId: string, key: string): Promise<void>;
   knowledgeToken(backend: KnowledgeBackendId): Promise<string | null>;
   setKnowledgeToken(backend: KnowledgeBackendId, token: string): Promise<void>;
+  security?: RuntimeSecurity;
+}
+
+export interface RuntimeSecurity {
+  pathProbe: ReturnType<typeof createWindowsPathProbe>;
+  protectedRoots: ReturnType<typeof windowsProtectedRoots>;
+  actionNormalizer: ActionNormalizer;
+  workspaceExecutor: WorkspaceExecutor;
+  taskGrants: TaskGrantRegistry;
+  taskLifecycle: TaskLifecycle;
+  profilePolicies: Map<string, PlatformProfilePolicy>;
+  scratchParent: string;
+  bashPath: string;
+  /** Windows Shell main path: host Git Bash under a Job Object. Not a sandbox. */
+  hostShell: HostShellAdapter;
+  hostShellReport: HostShellProbeReport;
+  shellGrants: ShellGrantStore;
+  /** Platform-owned, hidden, tool-less Pi worker. Never an Agent, never in the pool. */
+  reviewer: ShellReviewer;
+  reviewerModel: string;
+  reviewerPolicyVersion: string;
+  /** AppContainer prototype kept for research only; the main path never runs it. */
+  researchSandbox: WorkspaceSandboxAdapter;
+  capabilityGateway: CapabilityGateway;
+  platformReadyFor(action: SecurityAction): boolean;
 }
 
 export interface KeyStore {
@@ -108,6 +163,7 @@ function resolvePiRuntimeEntry(): string {
 export async function assemble(opts: {
   profiles: Array<{ id: string; dir: string }>;
   dataDir: string; publicKey?: string; allowUnsigned?: boolean;
+  logger?: Logger;
 }): Promise<Runtime> {
   const profiles = new Map<string, ProfileRuntime>();
   for (const { id, dir } of opts.profiles) {
@@ -141,8 +197,13 @@ export async function assemble(opts: {
   }), { dataDir: opts.dataDir });
   const audit = new AuditStore(join(opts.dataDir, "audit.db"));
   const gate = new ApprovalGate({ audit });
+  const profilePolicies = new Map<string, PlatformProfilePolicy>();
   for (const [id, pr] of profiles) {
     gate.configureProfile(id, { policy: pr.profile.security.approval, rbac: pr.rbac });
+    profilePolicies.set(
+      id,
+      normalizeProfilePolicy(pr.profile.security.approval, DEFAULT_TOOL_DESCRIPTORS),
+    );
   }
   const executor = new ConnectorExecutor(audit);
   const installedTools = new Set([...agents.values()].flatMap((agent) => agent.tools));
@@ -151,13 +212,6 @@ export async function assemble(opts: {
   const errors = new ErrorStore(join(opts.dataDir, "errors.db"));
   const keyring = new Keyring(join(opts.dataDir, "keyring"));
   const piAgentDir = join(opts.dataDir, "pi-agent");
-  registerGeneralExecutor(executor, {
-    getWorkspace: (sessionId) => {
-      const rec = chatSessions.get(sessionId);
-      return rec ? { workspacePath: rec.workspacePath } : undefined;
-    },
-    markWorkspaceCreated: () => {},
-  });
   for (const [id, pr] of profiles) {
     if (pr.profile.agent.knowledge.length) {
       await knowledgeConnector.init({ corpus: pr.profile.agent.knowledge, profileId: id });
@@ -180,6 +234,96 @@ export async function assemble(opts: {
   });
   const keyStore = createKeyStore(keyring);
   const knowledgeSecrets = createKnowledgeSecretStore(keyring, keyStore);
+  let security: RuntimeSecurity | undefined;
+  if (process.platform === 'win32') {
+    const home = homedir();
+    const localAppData = process.env.LOCALAPPDATA
+      ?? join(home, 'AppData', 'Local');
+    const appData = process.env.APPDATA
+      ?? join(home, 'AppData', 'Roaming');
+    const volumes = [...new Set([
+      process.env.SystemDrive ? `${process.env.SystemDrive}/` : 'C:/',
+    ])];
+    const options = {
+      home,
+      windowsDir: process.env.SystemRoot ?? 'C:/Windows',
+      programFiles: process.env.ProgramFiles ?? 'C:/Program Files',
+      programFilesX86: process.env['ProgramFiles(x86)'],
+      programData: process.env.ProgramData ?? 'C:/ProgramData',
+      appData,
+      localAppData,
+      dataDir: opts.dataDir,
+      volumes,
+    };
+    const pathProbe = createWindowsPathProbe(options);
+    const protectedRoots = windowsProtectedRoots(options);
+    const taskGrants = new TaskGrantRegistry();
+    const capabilityGateway = new CapabilityGateway();
+    const runtimePaths = resolveRuntimePaths();
+    const hostShell = createHostShellAdapter({
+      bashPath: runtimePaths.bashPath,
+      helperPath: resolveHelperPath({
+        resourcesPath: process.resourcesPath,
+        cwd: process.cwd(),
+      }),
+    });
+    const hostShellReport = await hostShell.probe();
+    const reviewerConfig = resolveReviewerConfig(settings);
+    const reviewerLogger = opts.logger ?? { log: async () => {} };
+    const reviewer = createPiShellReviewer({
+      provider: reviewerConfig.provider,
+      modelId: reviewerConfig.modelId,
+      timeoutMs: reviewerConfig.timeoutMs,
+      idleMs: reviewerConfig.idleMs,
+      keyFor: keyStore.keyFor,
+      logger: reviewerLogger,
+      makeClient: async () => {
+        const supervisor = new PiRuntimeSupervisor(
+          () => createUtilityHostHandle(entry, env),
+        );
+        const client = await supervisor.start();
+        return {
+          send: (command) => client.send(command as never),
+          stop: () => supervisor.stop(),
+        };
+      },
+    });
+    security = {
+      pathProbe,
+      protectedRoots,
+      actionNormalizer: createActionNormalizer({
+        descriptors: DEFAULT_TOOL_DESCRIPTORS,
+        protectedRoots,
+        probe: pathProbe,
+      }),
+      workspaceExecutor: createWorkspaceExecutor({ probe: pathProbe }),
+      taskGrants,
+      taskLifecycle: new TaskLifecycle(taskGrants),
+      capabilityGateway,
+      profilePolicies,
+      scratchParent: join(opts.dataDir, 'tasks'),
+      bashPath: runtimePaths.bashPath,
+      hostShell,
+      hostShellReport,
+      shellGrants: new ShellGrantStore(),
+      reviewer,
+      reviewerModel: reviewerConfig.modelId,
+      reviewerPolicyVersion: reviewerConfig.policyVersion,
+      // Research prototype only. Probing or running AppContainer is never a
+      // prerequisite for process.exec any more.
+      researchSandbox: createWindowsSandboxAdapter({
+        runtimeRoot: runtimePaths.portableGitDir,
+        resourcesPath: process.resourcesPath,
+      }),
+      platformReadyFor: (action) =>
+        action.capability === 'fs.read'
+        || action.capability === 'fs.write'
+        || (
+          action.capability === 'process.exec'
+          && hostShellReport.status === 'available'
+        ),
+    };
+  }
   return {
     profiles, agents, gate, executor, audit, pool,
     subject: { userId: userInfo().username, roles: ["admin", "reviewer"] },
@@ -198,5 +342,6 @@ export async function assemble(opts: {
     setKey: keyStore.setKey,
     knowledgeToken: knowledgeSecrets.knowledgeToken,
     setKnowledgeToken: knowledgeSecrets.setKnowledgeToken,
+    security,
   };
 }

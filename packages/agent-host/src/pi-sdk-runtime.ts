@@ -24,6 +24,11 @@ import {
   type ConnectorReadResult,
   type ProposalDecision,
 } from "./pi-runtime-transport.js";
+import {
+  runtimeActionEnvelope,
+  type ActionExecutionResult,
+  type RuntimeActionRequest,
+} from "./runtime-actions.js";
 import type { ProposalRequest } from "@sparkii/approval";
 import type { ImageContent, SessionSaddle } from "./types.js";
 import type {
@@ -185,6 +190,10 @@ export async function createPiSdkSessionHost(
     string,
     { resolve: (result: ConnectorReadResult) => void; reject: (error: Error) => void }
   >();
+  const pendingActions = new Map<
+    string,
+    { resolve: (result: ActionExecutionResult) => void; reject: (error: Error) => void }
+  >();
 
   options.transport.onMessage((envelope) => {
     if ("proposalDecision" in envelope) {
@@ -198,6 +207,12 @@ export async function createPiSdkSessionHost(
       if (!pending) return;
       pendingConnectorReads.delete(envelope.requestId);
       pending.resolve(envelope.connectorReadResult);
+    }
+    if ("actionResult" in envelope) {
+      const pending = pendingActions.get(envelope.requestId);
+      if (!pending) return;
+      pendingActions.delete(envelope.requestId);
+      pending.resolve(envelope.actionResult);
     }
   });
 
@@ -218,6 +233,12 @@ export async function createPiSdkSessionHost(
       options.transport.postMessage(connectorReadEnvelope(request));
     });
 
+  const requestActionFromTool = (request: RuntimeActionRequest) =>
+    new Promise<ActionExecutionResult>((resolve, reject) => {
+      pendingActions.set(request.requestId, { resolve, reject });
+      options.transport.postMessage(runtimeActionEnvelope(request));
+    });
+
   /**
    * 按鞍装配工具定义。Pi 1.0 起工具必须经会话注册表（`customTools` / 扩展 `registerTool`）进入，
    * 直接写 `session.agent.state.tools` 会在下一个 prompt 被 loadout 过滤掉。
@@ -228,6 +249,7 @@ export async function createPiSdkSessionHost(
       workspaceRoot: saddle.workspaceRoot ?? fallbackWorkspaceRoot,
       skillsDir: saddle.skillsDir,
       propose: proposeFromTool,
+      requestAction: requestActionFromTool,
       connectorRead: connectorReadFromTool,
       recordSessionEntry: (customType, data) => {
         if (liveSession) appendCustomEntryAndEmit(liveSession, customType, data);
@@ -434,11 +456,12 @@ export async function createPiSdkSessionHost(
       },
       getThinkingLevel: () => session.thinkingLevel,
       getAvailableThinkingLevels: () => session.getAvailableThinkingLevels(),
-      complete: async (provider, modelId, text) => {
+      complete: async (provider, modelId, text, system) => {
         await syncModelConfig(provider);
         const model = modelRuntime.getModel(provider, modelId);
         if (!model) throw new Error(`unknown model ${provider}/${modelId}`);
         const out = await modelRuntime.completeSimple(model, {
+          ...(system ? { systemPrompt: system } : {}),
           messages: [{ role: "user", content: text, timestamp: Date.now() }],
         });
         return out.content

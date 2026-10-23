@@ -11,7 +11,12 @@ interface InboxValue {
   claimed: ReadonlySet<string>;
   claim(id: string): void;
   release(id: string): void;
-  decide(id: string, approved: boolean, note?: string): Promise<ApprovalDecisionResult>;
+  decide(
+    id: string,
+    approved: boolean,
+    note?: string,
+    scope?: 'once' | 'task',
+  ): Promise<ApprovalDecisionResult>;
   onDecided(cb: () => void): () => void;
 }
 
@@ -92,7 +97,12 @@ export function ApprovalInboxProvider({ api, children }: { api: SparkiiApi; chil
     return () => { decidedCbs.current.delete(cb); };
   }, []);
 
-  const decide = useCallback(async (id: string, approved: boolean, note?: string): Promise<ApprovalDecisionResult> => {
+  const decide = useCallback(async (
+    id: string,
+    approved: boolean,
+    note?: string,
+    scope?: 'once' | 'task',
+  ): Promise<ApprovalDecisionResult> => {
     setProposals((prev) => {
       if (!prev.has(id)) return prev;
       const next = new Map(prev);
@@ -100,7 +110,7 @@ export function ApprovalInboxProvider({ api, children }: { api: SparkiiApi; chil
       return next;
     });
     try {
-      await api.decideApproval(id, approved, note);
+      await api.decideApproval(id, approved, note, scope);
       for (const cb of decidedCbs.current) cb();
       return { ok: true, status: approved ? 'approved' : 'denied' };
     } catch (e) {

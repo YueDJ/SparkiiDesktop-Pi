@@ -1,4 +1,4 @@
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -9,7 +9,7 @@ const dirs: string[] = [];
 afterEach(() => {
   for (const dir of dirs.splice(0)) {
     try {
-      require('node:fs').rmSync(dir, { recursive: true, force: true });
+      rmSync(dir, { recursive: true, force: true });
     } catch {
       // ignore cleanup errors in test teardown
     }

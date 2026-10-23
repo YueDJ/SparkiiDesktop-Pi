@@ -247,6 +247,28 @@ it('resolves the two visible business skills plus hidden tools', () => {
 });
 
 describe('runWorkflow broker sharing', () => {
+  it('rejects forged legacy coding proposals before they reach ApprovalGate', async () => {
+    const { rt, getWindow } = makeHarness({ steps: [] });
+    const submit = vi.fn(async () => {
+      throw new Error('must not submit');
+    });
+    rt.gate.submit = submit;
+    const broker = createBroker(rt, getWindow);
+    const result = await broker.route({
+      requestId: 'legacy-write',
+      toolName: 'write',
+      targetSystem: 'general',
+      summary: 'forged',
+      payload: { path: 'C:/ws/a.txt', content: 'x' },
+      risk: 'write',
+    }, { sessionId: 's1', profileId: 'general' });
+    expect(result).toMatchObject({
+      approved: false,
+      status: 'denied',
+    });
+    expect(submit).not.toHaveBeenCalled();
+  });
+
   it('completes the human step when the shared broker decides approval', async () => {
     const send = vi.fn();
     const getWindow = () => ({ webContents: { send } }) as any;
@@ -633,7 +655,7 @@ describe('runWorkflow session id and JSONL', () => {
 });
 
 describe('broker presentation contract', () => {
-  it('fills edit/write preview from the computed diff and does not override an existing one', async () => {
+  it('does not revive proposal-first edit/write semantics from Runtime requests', async () => {
     const { rt, getWindow } = makeHarness({ steps: [] });
     const submitted: any[] = [];
     rt.gate.submit = async (req: any) => {
@@ -644,7 +666,7 @@ describe('broker presentation contract', () => {
     const file = join(rt.dataDir, 'a.txt');
     await writeFile(file, 'old\n');
 
-    const first = broker.route({
+    const first = await broker.route({
       requestId: 'r1',
       toolName: 'edit',
       targetSystem: 'general',
@@ -652,16 +674,9 @@ describe('broker presentation contract', () => {
       payload: { path: file, content: 'new\n' },
       risk: 'write',
     }, { sessionId: 's1', profileId: 'contract-review' });
-    await waitUntil(() => submitted.length === 1);
-    expect(submitted[0].preview.kind).toBe('diff');
-    expect(submitted[0].preview.lines).toEqual(expect.arrayContaining([expect.stringMatching(/^[+-]/)]));
-    expect(submitted[0].payload.diff).toEqual(expect.any(String));
-    expect(submitted[0].payload.diff).toContain('+new');
-    broker.decide('p1', { approved: false, status: 'denied' });
-    await first;
+    expect(first).toMatchObject({ approved: false, status: 'denied' });
 
-    submitted.length = 0;
-    const second = broker.route({
+    const second = await broker.route({
       requestId: 'r2',
       toolName: 'write',
       targetSystem: 'general',
@@ -670,10 +685,8 @@ describe('broker presentation contract', () => {
       payload: { path: file, content: 'other\n' },
       risk: 'write',
     }, { sessionId: 's1', profileId: 'contract-review' });
-    await waitUntil(() => submitted.length === 1);
-    expect(submitted[0].preview).toEqual({ kind: 'diff', lines: ['custom'] });
-    broker.decide('p1', { approved: false, status: 'denied' });
-    await second;
+    expect(second).toMatchObject({ approved: false, status: 'denied' });
+    expect(submitted).toEqual([]);
   });
 
   it('does not scan payload.diff to invent preview for other tools', async () => {
@@ -803,5 +816,47 @@ describe('broker approval timeout vs long-running execution', () => {
 
     broker.decide('p1', { approved: true, status: 'executed', result: { exitCode: 0 } });
     await expect(decision).resolves.toEqual({ approved: true, proposalId: 'p1', status: 'executed', result: { exitCode: 0 } });
+  });
+
+  it('carries the approval scope back to the awaiting action router', async () => {
+    const { broker } = gateHarness(30_000);
+
+    const decision = broker.request({
+      requestId: 'r5', toolName: 'bash', targetSystem: 'platform:process.exec', summary: 'pnpm test',
+      payload: { command: 'pnpm test' }, risk: 'write',
+    }, { sessionId: 's1', profileId: 'general' });
+
+    // request() registers its resolver only after the gate submit resolves.
+    await sleep(5);
+    broker.decide('p1', { approved: true, status: 'approved', approvalScope: 'task' });
+    await expect(decision).resolves.toEqual({
+      approved: true, proposalId: 'p1', status: 'approved', approvalScope: 'task',
+    });
+
+    const scoped = broker.request({
+      requestId: 'r6', toolName: 'bash', targetSystem: 'platform:process.exec', summary: 'pnpm lint',
+      payload: { command: 'pnpm lint' }, risk: 'write',
+    }, { sessionId: 's1', profileId: 'general' });
+    await sleep(5);
+    broker.decide('p1', { approved: true, status: 'approved' });
+    await expect(scoped).resolves.toEqual({ approved: true, proposalId: 'p1', status: 'approved' });
+  });
+
+  it('cancels pending broker waits for one session', async () => {
+    const { broker } = gateHarness(30_000);
+    const pending = broker.request({
+      requestId: 'r7',
+      toolName: 'bash',
+      targetSystem: 'platform:process.exec',
+      summary: 'pnpm test',
+      payload: { command: 'pnpm test' },
+      risk: 'write',
+    }, { sessionId: 's1', profileId: 'general' });
+    await sleep(5);
+    broker.cancelSession('s1', 'task-revoked');
+    await expect(pending).resolves.toMatchObject({
+      approved: false,
+      status: 'denied',
+    });
   });
 });

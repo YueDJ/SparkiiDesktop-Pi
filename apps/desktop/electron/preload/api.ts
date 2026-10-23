@@ -11,6 +11,8 @@ export type IpcLike = {
 export function buildApi(ipc: IpcLike): SparkiiApi {
   const invoke = (name: string, ...args: unknown[]) => ipc.invoke(`sparkii:${name}`, ...args);
   return {
+    getPermissionModeState: (agentId, sessionId) => invoke('getPermissionModeState', agentId, sessionId) as ReturnType<SparkiiApi['getPermissionModeState']>,
+    setChatPermissionMode: (sessionId, mode) => invoke('setChatPermissionMode', sessionId, mode) as ReturnType<SparkiiApi['setChatPermissionMode']>,
     getLocalSubject: () => invoke('getLocalSubject') as Promise<{ userId: string; roles: string[] }>,
     chooseDocument: (opts) => invoke('chooseDocument', opts) as Promise<{ path?: string }>,
     readDocumentBytes: (path, sessionId) => invoke('readDocumentBytes', path, sessionId) as Promise<import('./api-types.js').ReadDocumentBytesResult>,
@@ -57,7 +59,8 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
     listAgents: () => invoke('listAgents') as ReturnType<SparkiiApi['listAgents']>,
     probeOntologyGraph: () => invoke('probeOntologyGraph') as ReturnType<SparkiiApi['probeOntologyGraph']>,
     listPendingApprovals: () => invoke('listPendingApprovals') as Promise<unknown[]>,
-    decideApproval: (id, approved, note) => invoke('decideApproval', id, approved, note),
+    decideApproval: (id, approved, note, approvalScope) =>
+      invoke('decideApproval', id, approved, note, approvalScope),
     queryAudit: (filter) => invoke('queryAudit', filter) as Promise<unknown[]>,
     getSettings: () => invoke('getSettings'),
     saveSettings: (settings) => invoke('saveSettings', settings),

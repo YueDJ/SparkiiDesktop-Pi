@@ -537,7 +537,8 @@ export class DocumentParseSupervisor {
     if (this.idleGen !== gen) return;
     if (this.current || this.queue.length > 0) return;
     if (this.keepResident) return;
-    if (this.status === 'starting' || this.status === 'parsing' || this.status === 'resident') return;
+    const statusAfterDestroy: DocumentParseStatus = this.status as DocumentParseStatus;
+    if (statusAfterDestroy === 'starting' || statusAfterDestroy === 'parsing' || statusAfterDestroy === 'resident') return;
     this.status = 'stopped';
     this.notify();
   }

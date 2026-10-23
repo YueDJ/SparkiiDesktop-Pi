@@ -32,6 +32,7 @@ export interface DraftPromptContext {
   workspaceKind?: 'auto' | 'user';
   model?: string | null;
   thinkingLevel?: string | null;
+  permissionMode?: 'ask' | 'auto_review';
 }
 
 export type ChooseDocumentOptions = { extensions?: string[] };
@@ -125,6 +126,11 @@ export type OntologyGraphProbeResult = {
 
 
 export interface SparkiiApi {
+  getPermissionModeState(agentId: string, sessionId?: string | null): Promise<PermissionModeState>;
+  setChatPermissionMode(
+    sessionId: string,
+    mode: 'ask' | 'auto_review',
+  ): Promise<{ ok: boolean; mode?: 'ask' | 'auto_review'; error?: string }>;
   getLocalSubject(): Promise<{ userId: string; roles: string[] }>;
   chooseDocument(opts?: ChooseDocumentOptions): Promise<{ path?: string }>;
   readDocumentBytes(path: string, sessionId?: string | null): Promise<ReadDocumentBytesResult>;
@@ -196,7 +202,7 @@ export interface SparkiiApi {
   }>>;
   probeOntologyGraph(): Promise<OntologyGraphProbeResult>;
   listPendingApprovals(): Promise<unknown[]>;
-  decideApproval(id: string, approved: boolean, note?: string): Promise<unknown>;
+  decideApproval(id: string, approved: boolean, note?: string, approvalScope?: 'once' | 'task'): Promise<unknown>;
   queryAudit(filter: object): Promise<unknown[]>;
   getSettings(): Promise<unknown>;
   saveSettings(settings: unknown): Promise<unknown>;
@@ -240,4 +246,18 @@ export interface SparkiiApi {
   windowClose(): Promise<boolean>;
   windowIsMaximized(): Promise<boolean>;
   on(channel: string, cb: (payload: unknown) => void): () => void;
+}
+
+export interface PermissionModeState {
+  mode: 'ask' | 'auto_review';
+  allowedModes: Array<'ask' | 'auto_review'>;
+  taskActive: boolean;
+  hostShellAvailable: boolean;
+  reviewerAvailable: boolean;
+  limitations: string[];
+  lastReview?: {
+    decision: 'allow' | 'ask' | 'deny';
+    risk: string;
+    reason: string;
+  };
 }

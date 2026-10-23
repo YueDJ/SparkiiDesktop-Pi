@@ -30,6 +30,33 @@ describe('AuditStore', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].sessionId).toBe("s-1");
   });
+  it("stores task, capability, rule, payload hash and sandbox evidence", async () => {
+    const store = new AuditStore(join(mkdtempSync(join(tmpdir(), "audit-")), "a.db"));
+    stores.push(store);
+    await store.append({
+      actor: "agent",
+      action: "action.executed",
+      resource: "write",
+      sessionId: "s-1",
+      taskId: "task-1",
+      actionId: "action-1",
+      ruleId: "workspace.write",
+      capability: "fs.write",
+      payloadHash: "sha256:abc",
+      platform: "windows",
+      sandboxVersion: "appcontainer-v1",
+    });
+    const rows = await store.query({ sessionId: "s-1" });
+    expect(rows[0]).toMatchObject({
+      taskId: "task-1",
+      actionId: "action-1",
+      ruleId: "workspace.write",
+      capability: "fs.write",
+      payloadHash: "sha256:abc",
+      platform: "windows",
+      sandboxVersion: "appcontainer-v1",
+    });
+  });
   it("exports jsonl with camelCase fields", async () => {
     const s = new AuditStore(join(mkdtempSync(join(tmpdir(), "audit-")), "a.db"));
     stores.push(s);

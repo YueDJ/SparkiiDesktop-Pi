@@ -24,8 +24,6 @@ export async function probePdf(path: string): Promise<{
     const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs');
     const doc = await getDocument({
       data: new Uint8Array(buf),
-      disableWorker: true,
-      isEvalSupported: false,
       disableFontFace: true,
       useSystemFonts: true,
     }).promise;
@@ -33,7 +31,7 @@ export async function probePdf(path: string): Promise<{
     for (let i = 1; i <= doc.numPages; i++) {
       const page = await doc.getPage(i);
       const content = await page.getTextContent();
-      pages.push(content.items.map((it: { str?: string }) => String(it.str ?? '')).join(' '));
+      pages.push(content.items.map((it) => 'str' in it ? String(it.str ?? '') : '').join(' '));
     }
     const textLayer = pages.every((p) => p === '') ? '' : pages.join('\n');
     return { textLayer, pageCount: doc.numPages, pages };

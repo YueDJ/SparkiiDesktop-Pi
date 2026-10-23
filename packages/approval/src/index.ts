@@ -3,3 +3,4 @@ export * from './proposal.js';
 export * from './audit.js';
 export * from './gate.js';
 export * from './executor.js';
+export * from './security/index.js';

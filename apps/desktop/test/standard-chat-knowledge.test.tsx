@@ -11,6 +11,8 @@ function makeApi(over: Record<string, unknown> = {}) {
     openChatSession: vi.fn().mockResolvedValue({ entries: [], streamingMessage: null, streaming: false }),
     getChatSession: vi.fn().mockResolvedValue({ workspacePath: 'C:/ws' }),
     getChatState: vi.fn().mockResolvedValue({ streaming: false, steering: [], followUp: [] }),
+    getPermissionModeState: vi.fn().mockResolvedValue({ mode: 'ask', allowedModes: ['ask', 'auto_review'], taskActive: false, hostShellAvailable: true, reviewerAvailable: true, limitations: [] }),
+    setChatPermissionMode: vi.fn(async (_id: string, mode: string) => ({ ok: true, mode })),
     promptSession: vi.fn().mockResolvedValue({ ok: true, sessionId: 's1' }),
     abortChat: vi.fn().mockResolvedValue({ ok: true, cleared: { steering: [], followUp: [] } }),
     queueMutate: vi.fn().mockResolvedValue({ ok: true }),
@@ -66,6 +68,19 @@ describe('StandardChat knowledge slots', () => {
     })} />);
     expect(screen.getByText('hello')).toBeTruthy();
     expect(screen.queryByTestId('knowledge-dataset-select')).toBeNull();
+  });
+
+  it('orders the knowledge picker before permission selection', async () => {
+    render(<StandardChatSurface {...chatProps({
+      hideWorkspace: true,
+      toolbarExtra: <button type="button" data-testid="knowledge-dataset-select">知识库</button>,
+    })} />);
+
+    expect(await screen.findByTestId('permission-mode-trigger')).toBeTruthy();
+    const toolbar = document.querySelector('.ui-composer-toolbar-left');
+    expect(toolbar?.children[0]).toBe(screen.getByRole('button', { name: '上传文件' }));
+    expect(toolbar?.children[1]).toBe(screen.getByTestId('knowledge-dataset-select'));
+    expect(toolbar?.children[2].querySelector('[data-testid="permission-mode-trigger"]')).toBeTruthy();
   });
 
   it('calls onBeforeSend before promptSession', async () => {

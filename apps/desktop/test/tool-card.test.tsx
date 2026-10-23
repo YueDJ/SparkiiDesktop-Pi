@@ -22,4 +22,19 @@ describe('ToolCard', () => {
     fireEvent.click(screen.getByText('详情 ▸'));
     expect(screen.getByTestId('diff-view')).toBeTruthy();
   });
+
+  it('badges a bash call as host execution', () => {
+    render(<ToolCard toolName="bash" input={{ command: 'pnpm test' }} result={{ exitCode: 0, output: 'ok' }} />);
+    expect(screen.getByTestId('tool-card-host-badge').textContent).toBe('Host');
+  });
+
+  it('badges any result that ran on the host boundary', () => {
+    render(<ToolCard toolName="run" input={{ command: 'x' }} result={{ executionBoundary: 'host', exitCode: 0 }} />);
+    expect(screen.getByTestId('tool-card-host-badge').textContent).toBe('Host');
+  });
+
+  it('does not claim a sandbox', () => {
+    render(<ToolCard toolName="bash" input={{ command: 'pnpm test' }} result={{ exitCode: 0 }} />);
+    expect(document.body.textContent).not.toMatch(/沙箱|sandbox/);
+  });
 });

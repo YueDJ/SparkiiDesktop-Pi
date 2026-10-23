@@ -6,4 +6,6 @@ export const generalAgentTools = [
   'bash',
   'edit',
   'write',
+  'delete',
+  'move',
 ];

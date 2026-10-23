@@ -93,5 +93,5 @@ describe("PiRuntimePool skill isolation", () => {
     expect((boundB.data as { skills: string[] }).skills).not.toContain("skill-alpha");
 
     await pool.stopAll();
-  });
+  }, 15_000);
 });

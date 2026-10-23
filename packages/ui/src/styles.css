@@ -108,6 +108,7 @@ button { font: inherit; color: inherit; }
 .ui-menu--top { bottom: calc(100% + var(--spacing-xs)); right: 0; }
 .ui-menu-item { display: flex; align-items: center; width: 100%; gap: var(--spacing-xs); padding: var(--spacing-xs) var(--spacing-sm); border: none; background: none; color: var(--color-text); border-radius: var(--radius-control); cursor: pointer; }
 .ui-menu-item:hover, .ui-menu-item:focus, .ui-menu-item:focus-visible { background: var(--color-primaryBg); }
+.ui-menu-item-leading { display: inline-flex; align-items: center; flex: none; color: var(--color-textMuted); }
 .ui-menu-item-hint { margin-left: auto; color: var(--color-textMuted); font-size: var(--font-size-sm); }
 .ui-menu-item-chevron { color: var(--color-textMuted); }
 
@@ -192,7 +193,8 @@ button { font: inherit; color: inherit; }
 .ui-composer-context-text { font-variant-numeric: tabular-nums; }
 .ui-composer-context-empty, .ui-composer-context-compacting { color: var(--color-textMuted); }
 .ui-composer-context--compacting { background: var(--color-warnBg); color: var(--color-warn); }
-.ui-composer-plus { border: none; background: none; color: var(--color-textSecondary); border-radius: var(--radius-pill); width: var(--control-height-sm); height: var(--control-height-sm); cursor: pointer; }
+.ui-composer-plus { display: inline-flex; align-items: center; justify-content: center; flex: none; padding: 0; border: none; background: none; color: var(--color-textSecondary); border-radius: var(--radius-pill); width: var(--control-height-sm); height: var(--control-height-sm); cursor: pointer; }
+.ui-composer-plus svg { flex: none; }
 .ui-composer-plus:hover { background: var(--color-controlBg); color: var(--color-text); }
 .ui-composer-send { width: var(--control-height-md); height: var(--control-height-md); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; border: none; background: var(--color-primary); color: var(--color-onPrimary); cursor: pointer; flex: none; transition: background var(--motion-fast) var(--motion-ease), opacity var(--motion-fast) var(--motion-ease); }
 .ui-composer-send:hover:not(:disabled) { background: var(--color-primaryHover); }

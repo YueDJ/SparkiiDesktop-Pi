@@ -28,6 +28,10 @@ test('contract review pilot acceptance', async () => {
   });
   const page = await app.firstWindow();
   await page.getByTestId('agent-card-contract').click();
+  await expect(page.getByRole('button', { name: 'Ask' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Auto review' })).toBeVisible();
+  await expect(page.getByText(/Host Git Bash/)).toBeVisible();
+  await expect(page.getByText(/Full access/i)).toHaveCount(0);
   await page.getByTestId('upload').click();
   await page.getByTestId('review').click();
   // 新提案到达时自动弹出审批详情(高风险为模态,写操作为右侧面板)

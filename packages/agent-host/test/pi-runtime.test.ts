@@ -167,10 +167,40 @@ describe("createPiRuntime", () => {
 
     transport.emit(commandEnvelope("r3", { type: "complete", provider: "deepseek", modelId: "m", text: "hi" }));
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(session.complete).toHaveBeenCalledWith("deepseek", "m", "hi");
+    expect(session.complete).toHaveBeenCalledWith("deepseek", "m", "hi", undefined);
     expect(sent).toContainEqual(responseEnvelope("r3", {
       id: "r3", type: "response", command: "complete", success: true, data: "标题",
     }));
+  });
+
+  it("routes a complete with a fixed system prompt", async () => {
+    const session = fakeSession();
+    const host: PiRuntimeSessionHost = {
+      current: () => session,
+      newSession: vi.fn(async () => {}),
+      switchSession: vi.fn(async () => {}),
+      configureSaddle: vi.fn(async () => {}),
+    };
+    const sent: PiRuntimeEnvelope[] = [];
+    const transport = {
+      postMessage: (env: PiRuntimeEnvelope) => sent.push(env),
+      onMessage: (cb: (env: PiRuntimeEnvelope) => void) => {
+        transport.emit = cb;
+        return () => {};
+      },
+      emit: (_env: PiRuntimeEnvelope) => {},
+    };
+    createPiRuntime({ host, transport });
+
+    transport.emit(commandEnvelope("r3s", {
+      type: "complete",
+      provider: "deepseek",
+      modelId: "m",
+      text: "payload",
+      system: "Return one JSON object",
+    }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(session.complete).toHaveBeenCalledWith("deepseek", "m", "payload", "Return one JSON object");
   });
 
   it("routes list_providers to the session and returns provider info", async () => {

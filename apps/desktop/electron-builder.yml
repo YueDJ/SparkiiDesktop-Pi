@@ -9,6 +9,8 @@ files:
   - package.json
 asar: true
 extraResources:
+  - from: native/windows-sandbox/bin
+    to: windows-sandbox
   - from: ../../apps/desktop/agents
     to: agents
   - from: runtime/portable-git.7z.exe

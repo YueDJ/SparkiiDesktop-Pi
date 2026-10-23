@@ -131,4 +131,56 @@ describe('ChatSessionStore', () => {
     expect(s.get('old')?.titleLockedByUser).toBe(true);
     s.close();
   });
+
+  it('persists permission mode with Ask as legacy default', () => {
+    const s = store();
+    s.create({
+      id: 's1',
+      profileId: 'general',
+      workspaceKind: 'auto',
+      workspacePath: 'C:/ws',
+      permissionMode: 'auto_review',
+    });
+    expect(s.get('s1')?.permissionMode).toBe('auto_review');
+    s.update('s1', { permissionMode: 'ask' });
+    expect(s.get('s1')?.permissionMode).toBe('ask');
+    s.create({ id: 's2', profileId: 'general', workspaceKind: 'auto', workspacePath: 'C:/ws' });
+    expect(s.get('s2')?.permissionMode).toBe('ask');
+    expect(s.list()).toHaveLength(2);
+    s.close();
+  });
+
+  it('adds the permission column to a database written before it existed', () => {
+    const dbPath = join(mkdtempSync(join(tmpdir(), 'sessions-legacy-')), 'sessions.db');
+    const raw = new Database(dbPath);
+    raw.exec(`
+      CREATE TABLE chat_sessions (
+        id TEXT PRIMARY KEY,
+        profile_id TEXT NOT NULL,
+        kind TEXT NOT NULL DEFAULT 'chat',
+        current_step TEXT,
+        workspace_kind TEXT NOT NULL,
+        workspace_path TEXT NOT NULL,
+        model TEXT,
+        thinking_level TEXT,
+        pi_session_file TEXT,
+        inputs TEXT,
+        pinned INTEGER NOT NULL DEFAULT 0,
+        archived INTEGER NOT NULL DEFAULT 0,
+        sort_order REAL,
+        title_locked_by_user INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+    `);
+    raw.prepare(`INSERT INTO chat_sessions (id, profile_id, kind, workspace_kind, workspace_path, pinned, archived, created_at, updated_at)
+      VALUES ('old', 'general', 'chat', 'auto', 'C:/a', 0, 0, 1, 1)`).run();
+    raw.close();
+
+    const s = new ChatSessionStore(dbPath);
+    expect(s.get('old')?.permissionMode).toBe('ask');
+    s.update('old', { permissionMode: 'auto_review' });
+    expect(s.get('old')?.permissionMode).toBe('auto_review');
+    s.close();
+  });
 });

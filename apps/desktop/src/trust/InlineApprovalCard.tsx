@@ -9,5 +9,5 @@ export function InlineApprovalCard({ proposal }: { proposal: ApprovalProposalLik
     claim(proposal.id);
     return () => release(proposal.id);
   }, [proposal.id, claim, release]);
-  return <ApprovalCard proposal={proposal} onDecide={(id, ok, note) => { void decide(id, ok, note); }} />;
+  return <ApprovalCard proposal={proposal} onDecide={(id, ok, note, scope) => { void decide(id, ok, note, scope); }} />;
 }

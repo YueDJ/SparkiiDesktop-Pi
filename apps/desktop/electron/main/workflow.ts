@@ -1,18 +1,15 @@
 import { randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { BrowserWindow } from 'electron';
 import { LinearRunner, type ProposalDecision, type RunContext, type WorkflowDef } from '@sparkii/agent-host';
-import { computeEditDiff, connectorWriteProposal } from '@sparkii/agent-host';
+import { connectorWriteProposal } from '@sparkii/agent-host';
 import { documentConnector, knowledgeConnector, reportConnector, sparkiiOntoConnector, type ToolDef } from '@sparkii/connectors';
-import type { ProposalRequest, ProposalSubmission } from '@sparkii/approval';
-import { toPreviewLines } from '@sparkii/approval';
+import type { ProposalSubmission } from '@sparkii/approval';
 import type { ModelTask } from '@sparkii/model-router';
 import type { Runtime } from './runtime.js';
 import type { Logger } from './logger.js';
 import { buildAgentSaddle } from './saddle.js';
 import { allocateAutoWorkspace } from './workspace.js';
-import { isReadOnlyBashCommand, riskOfCommand } from './general-executor.js';
 import { loadSettings, type AppSettings } from './settings.js';
 import { knowledgeFromManifest } from './rag-settings.js';
 import { knowledgeBackendSettings, patchKnowledgeSettings, remoteKnowledgeBackend } from './knowledge-settings.js';
@@ -26,7 +23,11 @@ const allTools = new Map<string, ToolDef>(
 );
 
 export function createBroker(rt: Runtime, getWindow: () => BrowserWindow | null) {
-  const resolvers = new Map<string, { resolve: (d: ProposalDecision) => void; timer: ReturnType<typeof setTimeout> }>();
+  const resolvers = new Map<string, {
+    resolve: (d: ProposalDecision) => void;
+    timer: ReturnType<typeof setTimeout>;
+    sessionId: string;
+  }>();
   return {
     async request(req: ProposalSubmission, meta: { sessionId: string; profileId: string }): Promise<ProposalDecision> {
       const p = await rt.gate.submit(req, { profileId: meta.profileId, sessionId: meta.sessionId, actor: rt.subject?.userId ?? 'agent' });
@@ -55,30 +56,23 @@ export function createBroker(rt: Runtime, getWindow: () => BrowserWindow | null)
             // 等 decideApproval 完成由 broker.decide 回真实结果。
           });
         }, rt.profileOf(meta.profileId).profile.security.approval.timeoutMs);
-        resolvers.set(p.id, { resolve, timer });
+        resolvers.set(p.id, { resolve, timer, sessionId: meta.sessionId });
       });
     },
-    async requestReadOnly(req: ProposalSubmission, meta: { sessionId: string; profileId: string }): Promise<ProposalDecision> {
-      const result = await rt.executor.execute({
-        ...req,
-        id: req.requestId, profileId: meta.profileId, sessionId: meta.sessionId,
-        payloadHash: '', status: 'approved', createdAt: Date.now(),
-      } as any, { actor: rt.subject?.userId ?? 'agent' });
-      await rt.audit.append({ actor: rt.subject?.userId ?? 'agent', action: 'tool.read', resource: req.toolName, sessionId: meta.sessionId });
-      return { approved: true, proposalId: req.requestId, status: result.status, result: result.execution?.result };
-    },
     route(req: ProposalSubmission, meta: { sessionId: string; profileId: string }): Promise<ProposalDecision> {
-      if (req.toolName === 'bash' && isReadOnlyBashCommand(String((req.payload as any)?.command ?? ''))) {
-        return this.requestReadOnly(req, meta);
-      }
-      if (req.toolName === 'edit' || req.toolName === 'write' || req.toolName === 'bash') {
-        const command = String((req.payload as { command?: unknown })?.command ?? '');
-        const risk = req.toolName === 'bash' ? riskOfCommand(command) : req.risk;
-        const { payload, diff } = attachDiff(rt, req);
-        req = { ...req, payload, risk };
-        if ((req.toolName === 'edit' || req.toolName === 'write') && req.preview == null && diff) {
-          req = { ...req, preview: { kind: 'diff', lines: toPreviewLines(diff) } };
-        }
+      if (['bash', 'edit', 'write', 'delete', 'move'].includes(req.toolName)) {
+        void rt.audit?.append({
+          actor: rt.subject?.userId ?? 'agent',
+          action: 'execution.blocked',
+          resource: req.toolName,
+          payloadSummary: 'runtime action protocol required',
+          sessionId: meta.sessionId,
+        });
+        return Promise.resolve({
+          approved: false,
+          proposalId: req.requestId,
+          status: 'denied',
+        });
       }
       return this.request(req, meta);
     },
@@ -86,18 +80,21 @@ export function createBroker(rt: Runtime, getWindow: () => BrowserWindow | null)
       const entry = resolvers.get(id);
       if (entry) { clearTimeout(entry.timer); entry.resolve({ ...decision, proposalId: id }); resolvers.delete(id); }
     },
+    async cancelSession(sessionId: string, reason: string): Promise<void> {
+      const cancelled = typeof rt.gate.cancelSession === 'function'
+        ? await rt.gate.cancelSession(sessionId, reason)
+        : [];
+      for (const proposal of cancelled) {
+        getWindow()?.webContents.send('sparkii:event:approval', proposal);
+      }
+      for (const [id, entry] of [...resolvers.entries()]) {
+        if (entry.sessionId !== sessionId) continue;
+        clearTimeout(entry.timer);
+        entry.resolve({ approved: false, proposalId: id, status: 'denied' });
+        resolvers.delete(id);
+      }
+    },
   };
-}
-
-function attachDiff(_rt: Runtime, req: ProposalRequest & { requestId: string }): { payload: unknown; diff?: string } {
-  const payload = (req.payload ?? {}) as { path?: string; content?: string };
-  if ((req.toolName === 'edit' || req.toolName === 'write') && payload.path) {
-    let oldText = '';
-    try { oldText = readFileSync(payload.path, 'utf8'); } catch { oldText = ''; }
-    const diff = computeEditDiff(oldText, String(payload.content ?? ''), payload.path);
-    return { payload: { ...payload, diff }, diff };
-  }
-  return { payload };
 }
 
 export function resolveModelTarget(
@@ -330,7 +327,10 @@ export function resolveWorkflowTemplates(def: WorkflowDef): WorkflowDef {
 }
 
 export interface WorkflowRunHooks {
-  onReady?: (sessionId: string, slot: Awaited<ReturnType<Runtime['pool']['acquire']>>) => void;
+  onReady?: (
+    sessionId: string,
+    slot: Awaited<ReturnType<Runtime['pool']['acquire']>>,
+  ) => void | Promise<void>;
   beforeRelease?: (sessionId: string) => void | Promise<void>;
   logger?: Pick<Logger, 'log'>;
 }
@@ -397,7 +397,7 @@ export async function runWorkflow(
       piSessionFile: sessionFile ?? null,
     });
     slot.supervisor.onProposal((req) => broker.route(req, { sessionId: sessionId!, profileId }));
-    opts?.onReady?.(sessionId, slot);
+    await opts?.onReady?.(sessionId, slot);
   } catch (err) {
     if (sessionId) await opts?.beforeRelease?.(sessionId);
     await rt.pool.release(sessionId ?? tempKey);

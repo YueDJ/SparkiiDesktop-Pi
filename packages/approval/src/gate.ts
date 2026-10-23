@@ -58,6 +58,27 @@ export class ApprovalGate {
     return p;
   }
 
+  async cancelSession(sessionId: string, reason: string): Promise<Proposal[]> {
+    const cancelled: Proposal[] = [];
+    for (const proposal of this.proposals.values()) {
+      if (proposal.sessionId !== sessionId || proposal.status !== 'pending') continue;
+      const out = transition(proposal, 'denied');
+      out.decisionBy = 'system:task-revoked';
+      out.decisionNote = reason;
+      this.proposals.set(out.id, out);
+      cancelled.push(out);
+      await this.opts.audit.append({
+        actor: 'system',
+        action: 'proposal.cancelled',
+        resource: out.toolName,
+        payloadSummary: reason,
+        decision: 'denied',
+        sessionId: out.sessionId,
+      });
+    }
+    return cancelled;
+  }
+
   get(id: string) { return this.proposals.get(id); }
   listPending() { return [...this.proposals.values()].filter((p) => p.status === 'pending'); }
 }

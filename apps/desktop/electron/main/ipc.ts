@@ -2,7 +2,7 @@ import { ipcMain, dialog, app, shell, type BrowserWindow } from 'electron';
 import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm } from 'node:fs/promises';
-import { isAbsolute, join } from 'node:path';
+import { dirname, isAbsolute, join } from 'node:path';
 import { listPiSessions, readPiSessionEntries, connectorWriteProposal, type PiProviderInfo, type SessionSaddle, type ConnectorReadRequest, type ConnectorReadResult } from '@sparkii/agent-host';
 import { knowledgeConnector, sparkiiOntoConnector, SparkiiRagClient } from '@sparkii/connectors';
 import { applyThinkingLevel, createBroker, modelTargetKey, resolveModelTarget, resolveSessionModel, resolveThinkingLevel, runWorkflow, selectModel } from './workflow.js';
@@ -68,6 +68,19 @@ import {
   uninstallUserSkill,
 } from './skill-library.js';
 import type { AgentRuntime } from './agent-registry.js';
+import {
+  hashPayload,
+  resolvePermissionMode,
+  type PlatformPermissionMode,
+  type SecurityAction,
+  type TaskGrant,
+} from '@sparkii/approval';
+import { createTaskGrant } from './security/task-grant-factory.js';
+import { createRuntimeActionRouter } from './security/runtime-action-router.js';
+import { authorizeDocumentReadPaths } from './security/document-access.js';
+import { ShellGrantStore } from './security/shell-grant-store.js';
+import { resolveSessionPermissionMode } from './security/session-permission-mode.js';
+import { REVIEWER_USER_TASK_LIMIT } from './security/reviewer-policy.js';
 
 /** 按后端探活：读该后端自己的配置块与凭据，再交给 `knowledge-probe`。 */
 async function probeKnowledgeConnection(
@@ -175,6 +188,280 @@ function userLibraryAgent(rt: Runtime): AgentRuntime | null {
 
 export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, logger: Logger) {
   const broker = createBroker(rt, getWindow);
+  const shellGrants = new ShellGrantStore();
+  /** The prompt text of the live Task, trimmed, for the Reviewer only. */
+  const userTaskBySession = new Map<string, string>();
+  /** Only "can the platform still review?" and the last verdict leave Main. */
+  let reviewerUnavailable = false;
+  const lastReviewBySession = new Map<string, {
+    decision: 'allow' | 'ask' | 'deny';
+    risk: string;
+    reason: string;
+  }>();
+  const actionRouter = rt.security
+    ? createRuntimeActionRouter({
+      lifecycle: rt.security.taskLifecycle,
+      normalizer: rt.security.actionNormalizer,
+      shellGrants,
+      reviewerModel: rt.security.reviewerModel,
+      reviewerPolicyVersion: rt.security.reviewerPolicyVersion,
+      userTaskOf: (sessionId) => userTaskBySession.get(sessionId) ?? '',
+      async reviewShell(input) {
+        const reviewer = rt.security?.reviewer;
+        if (!reviewer) throw new Error('Reviewer unavailable');
+        try {
+          const reviewed = await reviewer.review(input);
+          reviewerUnavailable = false;
+          lastReviewBySession.set(input.sessionId, {
+            decision: reviewed.decision,
+            risk: reviewed.risk,
+            reason: reviewed.reason,
+          });
+          getWindow()?.webContents.send('sparkii:event:permission-event', {
+            sessionId: input.sessionId,
+            taskId: input.taskId,
+            decision: reviewed.decision,
+            risk: reviewed.risk,
+            reason: reviewed.reason,
+          });
+          return reviewed;
+        } catch (error) {
+          reviewerUnavailable = true;
+          void logger.log({
+            level: 'warn',
+            msg: 'reviewer.availability.changed',
+            ctx: {
+              available: false,
+              sessionId: input.sessionId,
+              error: error instanceof Error ? error.message : String(error),
+            },
+          });
+          throw error;
+        }
+      },
+      profilePolicyOf: (profileId) =>
+        rt.security?.profilePolicies.get(profileId)
+        ?? {
+          // Unknown profiles fail closed: Ask only, everything needs approval.
+          defaultPermissionMode: 'ask',
+          allowedPermissionModes: ['ask'],
+          requireApproval: [
+            'fs.read',
+            'fs.write',
+            'process.exec',
+            'net.connect',
+            'connector.invoke',
+            'task.delegate',
+          ],
+        },
+      platformReady: (action) =>
+        Boolean(
+          rt.security
+          && rt.security.profilePolicies.has(action.profileId)
+          && rt.security.platformReadyFor(action),
+        ),
+      async execute(action, grant) {
+        if (!rt.security) throw new Error('platform security unavailable');
+        if (action.capability === 'fs.write') {
+          return {
+            result: await rt.security.workspaceExecutor.execute(action, grant),
+          };
+        }
+        if (action.capability === 'fs.read') {
+          const target = action.resources.find((resource) => resource.kind === 'path');
+          return {
+            result: {
+              authorized: true,
+              canonicalPath: target?.value,
+            },
+          };
+        }
+        if (action.capability === 'process.exec') {
+          const payload = (action.payload ?? {}) as { command?: unknown; timeout?: unknown };
+          const command = String(payload.command ?? '');
+          if (!command.trim()) {
+            throw new Error('empty shell command');
+          }
+          await rt.security.workspaceExecutor.ensureWorkspace(grant);
+          const requested = Number(payload.timeout ?? 60_000);
+          const timeoutMs = Number.isFinite(requested)
+            ? Math.max(1_000, Math.min(300_000, Math.floor(requested)))
+            : 60_000;
+          const result = await rt.security.hostShell.run({
+            taskId: grant.taskId,
+            workspaceRoot: grant.workspaceRoot,
+            scratchRoot: grant.scratchRoot,
+            command,
+            timeoutMs,
+          });
+          return {
+            result: {
+              exitCode: result.exitCode,
+              output: `${result.stdout}${result.stderr}`,
+              timedOut: result.timedOut,
+              // The host runs the command; Workspace is only the working directory.
+              executionBoundary: 'host',
+              backend: rt.security.hostShellReport.backend,
+              truncated: result.truncated,
+            },
+          };
+        }
+        throw new Error(`execution backend unavailable for ${action.capability}`);
+      },
+      async requestApproval(action, _grant, riskOverride) {
+        const decision = await broker.request({
+          requestId: action.id,
+          toolName: action.toolName,
+          targetSystem: `platform:${action.capability}`,
+          summary: action.reason,
+          preview: {
+            kind: 'text',
+            lines: action.resources.map((resource) =>
+              `${resource.scope}: ${resource.value}`),
+          },
+          payload: action.payload,
+          risk: riskOverride ?? action.risk,
+          executionMode: 'caller',
+        }, {
+          sessionId: action.sessionId,
+          profileId: action.profileId,
+        });
+        if (!decision.approved) return { choice: 'deny' as const };
+        return { choice: decision.approvalScope === 'task' ? 'task' as const : 'once' as const };
+      },
+      async revalidate(action, grant) {
+        if (!rt.security) return false;
+        try {
+          for (const resource of action.resources) {
+            if (resource.kind !== 'path') continue;
+            const inspected = await rt.security.pathProbe.inspect(resource.value);
+            if (resource.identity && inspected.identity !== resource.identity) {
+              return false;
+            }
+            if (resource.parentIdentity) {
+              const parent = await rt.security.pathProbe.inspect(
+                dirname(inspected.canonicalPath),
+              );
+              if (parent.identity !== resource.parentIdentity) return false;
+            }
+          }
+          const root = await rt.security.pathProbe.inspect(grant.workspaceRoot);
+          const liveTask = rt.security.taskLifecycle.assertActive(
+            grant.sessionId,
+            grant.taskId,
+          );
+          const expectedIdentity = rt.security.workspaceExecutor
+            .liveWorkspaceIdentity(grant.taskId)
+            ?? liveTask.workspaceIdentity;
+          return root.identity === expectedIdentity
+            || root.exists === false;
+        } catch {
+          return false;
+        }
+      },
+      audit: rt.audit,
+      actor: () => rt.subject?.userId ?? 'agent',
+      platformName: process.platform,
+      sandboxVersion: rt.security?.hostShellReport.version,
+    })
+    : null;
+
+  // A Task that ends takes its routing state with it: no shell grant, no
+  // evidence, no denial memory. A new Task starts from zero.
+  rt.security?.taskGrants.onRevoke((taskId) => {
+    shellGrants.revoke(taskId);
+    actionRouter?.clearTask(taskId);
+  });
+
+  const bindRuntimeActions = (
+    slot: Awaited<ReturnType<typeof rt.pool.acquire>>,
+    sessionId: string,
+  ): void => {
+    if (typeof slot.supervisor.onAction !== 'function') return;
+    slot.supervisor.onAction(async (request) => {
+      if (!actionRouter) {
+        return {
+          requestId: request.requestId,
+          status: 'denied' as const,
+          decision: {
+            decision: 'deny' as const,
+            ruleId: 'platform.security-unavailable',
+            reason: 'Main security layer is unavailable',
+          },
+        };
+      }
+      return actionRouter.route(request, sessionId);
+    });
+  };
+
+  const startSessionTask = async (
+    sessionId: string,
+    profileId: string,
+    replace: boolean,
+  ): Promise<void> => {
+    const security = rt.security;
+    if (!security) return;
+    if (!replace && security.taskLifecycle.active(sessionId)) return;
+    const rec = rt.chatSessions.get(sessionId);
+    if (!rec) throw new Error('session not found');
+    const workspacePath = rec?.workspacePath;
+    if (!workspacePath) throw new Error('session workspace missing');
+    const policy = security.profilePolicies.get(profileId);
+    if (!policy) throw new Error(`no security policy for profile ${profileId}`);
+    const rawInputs = rec?.inputs;
+    const inputs = (parseSessionInputs(rawInputs ?? undefined) ?? []).flatMap((input) => {
+      const path = input?.path;
+      return typeof path === 'string' && path.length > 0 ? [path] : [];
+    });
+    const grant = await security.taskLifecycle.start(() => createTaskGrant({
+      sessionId,
+      agentId: profileId,
+      profileId,
+      actorId: rt.subject.userId,
+      unattended: false,
+      planMode: 'execute',
+      permissionMode: resolvePermissionMode({
+        sessionId,
+        profileId,
+        sessionMode: rec.permissionMode,
+        profileDefaultMode: policy.defaultPermissionMode,
+        allowedModes: policy.allowedPermissionModes,
+      }),
+      workspacePath,
+      scratchParent: security.scratchParent,
+      inputRoots: inputs,
+      protectedRoots: security.protectedRoots,
+      probe: security.pathProbe,
+    }));
+    security.taskLifecycle.registerCancellation(
+      grant.taskId,
+      'host-shell',
+      async () => {
+        await security.hostShell.terminate(grant.taskId);
+        await rm(grant.scratchRoot, { recursive: true, force: true }).catch(() => {});
+      },
+    );
+    security.taskLifecycle.registerCancellation(
+      grant.taskId,
+      'reviewer',
+      () => security.reviewer.cancel(grant.taskId),
+    );
+    security.taskLifecycle.registerCancellation(
+      grant.taskId,
+      'capability-gateway',
+      async () => { security.capabilityGateway.revokeTask(grant.taskId); },
+    );
+    security.taskLifecycle.registerCancellation(
+      grant.taskId,
+      'pending-approval',
+      () => broker.cancelSession(sessionId, 'task-revoked'),
+    );
+    security.taskLifecycle.registerCancellation(
+      grant.taskId,
+      'user-task',
+      async () => { userTaskBySession.delete(sessionId); },
+    );
+  };
   const win = getWindow();
   if (win) {
     win.on('maximize', () => {
@@ -273,6 +560,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   }
 
 const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
+  'deepseek-flash': ['chat', 'vision', 'toolCall'],
   'deepseek-v4-pro': ['chat', 'reasoning', 'longContext', 'toolCall', 'thinking'],
   'deepseek-v4-flash': ['chat', 'fast', 'toolCall'],
   'deepseek-vision': ['chat', 'vision'],
@@ -334,6 +622,9 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       if (!sessionId) return;
       getWindow()?.webContents.send('sparkii:event:chat-event', { ...ev, sessionId });
       if (ev.type === 'agent_settled') {
+        void rt.security?.taskLifecycle
+          .end(sessionId, 'session-ended')
+          .catch(() => {});
         void persistHitTurn(sessionId);
         if (!inFlightWorkflowRuns.has(sessionId)) {
           scheduleIdleRelease(sessionId);
@@ -345,6 +636,9 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       const sessionId = slot.getSessionId();
       void logger.log({ level: 'error', msg: 'pi runtime exited', ctx: { sessionId, code } });
       if (!sessionId) return;
+      void rt.security?.taskLifecycle
+        .end(sessionId, 'runtime-released')
+        .catch(() => {});
       // 子进程没了就问不到 sessionFile，也不去抢救 streamingMessage：JSONL 是唯一的账。
       cancelIdleRelease(sessionId);
       openSessions.delete(sessionId);
@@ -446,7 +740,39 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     }
     if (req.toolName === 'document.read') {
       const displayName = rt.profileOf(profileId)?.profile?.manifest?.displayName ?? profileId;
-      const result = await executeDocumentRead(req.args, {
+      let args = req.args;
+      if (rt.security) {
+        const grant = rt.security.taskLifecycle.active(sessionId);
+        if (!grant) {
+          return {
+            ok: false,
+            error: { code: 'CONNECTOR_DENIED', message: 'Task grant is not active' },
+          };
+        }
+        const requested = Array.isArray(req.args.documents)
+          ? req.args.documents.map((value) => String(value ?? ''))
+          : [];
+        const authorized = await authorizeDocumentReadPaths(
+          requested,
+          grant,
+          rt.security.actionNormalizer,
+        );
+        if (!authorized.ok) {
+          await rt.audit.append({
+            actor: rt.subject.userId,
+            action: 'tool.read.denied',
+            resource: 'document.read',
+            sessionId,
+            payloadSummary: authorized.message,
+          });
+          return {
+            ok: false,
+            error: { code: 'CONNECTOR_DENIED', message: authorized.message },
+          };
+        }
+        args = { ...req.args, documents: authorized.paths };
+      }
+      const result = await executeDocumentRead(args, {
         profileId,
         sessionId,
         actor: rt.subject.userId,
@@ -622,13 +948,14 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
 
   async function openOrCreateSession(
     sessionId: string | null,
-    context: { profileId?: string; workspacePath?: string | null; workspaceKind?: 'auto' | 'user'; model?: string | null; thinkingLevel?: string | null },
+    context: { profileId?: string; workspacePath?: string | null; workspaceKind?: 'auto' | 'user'; model?: string | null; thinkingLevel?: string | null; permissionMode?: PlatformPermissionMode },
   ): Promise<{ open: Awaited<ReturnType<typeof ensureOpenSession>>; sessionId: string; workspacePath: string | undefined }> {
     if (sessionId) {
       cancelIdleRelease(sessionId);
       const open = await ensureOpenSession(sessionId);
       ensureProcessPipe(open.slot);
       open.slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId: open.profileId }));
+      bindRuntimeActions(open.slot, sessionId);
       open.slot.supervisor.onConnectorRead?.((req) => handleConnectorRead(req, open.profileId, sessionId));
       const rec = rt.chatSessions.get(sessionId);
       const target = rec?.model
@@ -686,8 +1013,22 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       openSessions.set(createdSessionId, entry);
       ensureProcessPipe(slot);
       slot.supervisor.onProposal((req) => broker.route(req, { sessionId: createdSessionId!, profileId }));
+      bindRuntimeActions(slot, createdSessionId!);
       slot.supervisor.onConnectorRead?.((req) => handleConnectorRead(req, profileId, createdSessionId!));
       await mkdir(anchorDir(createdSessionId), { recursive: true });
+      // A draft carries the mode the user picked before the row existed. A mode
+      // the profile does not allow silently degrades to Ask.
+      let permissionMode: PlatformPermissionMode = 'ask';
+      const policy = rt.security?.profilePolicies.get(profileId);
+      if (context.permissionMode && policy) {
+        try {
+          permissionMode = resolveSessionPermissionMode(
+            createdSessionId, profileId, policy, context.permissionMode,
+          );
+        } catch {
+          permissionMode = 'ask';
+        }
+      }
       rt.chatSessions.create({
         id: createdSessionId,
         profileId,
@@ -696,6 +1037,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         model: target ? modelTargetKey(target) : null,
         thinkingLevel: context.thinkingLevel ?? null,
         piSessionFile: sessionFile ?? null,
+        permissionMode,
       });
       if (target) {
         const apiKey = await rt.keyFor(target.provider);
@@ -789,7 +1131,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     text: string,
     options?: { behavior?: 'steer' | 'followUp' },
     attachments: ChatAttachment[] = [],
-    context: { profileId?: string; workspacePath?: string | null; workspaceKind?: 'auto' | 'user'; model?: string | null; thinkingLevel?: string | null } = {},
+    context: { profileId?: string; workspacePath?: string | null; workspaceKind?: 'auto' | 'user'; model?: string | null; thinkingLevel?: string | null; permissionMode?: PlatformPermissionMode } = {},
   ) => {
     const profileIdForGate = sessionId
       ? rt.chatSessions.get(sessionId)?.profileId
@@ -838,6 +1180,16 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     const state = chatStateData(stateResp.data);
     const isStreaming = state.isStreaming ?? state.streaming ?? false;
     const behavior = options?.behavior ?? (isStreaming ? 'followUp' : 'prompt');
+    await startSessionTask(
+      resolvedSessionId,
+      open.profileId,
+      behavior === 'prompt',
+    );
+    // A new prompt starts a new Task, so the Reviewer only ever sees the prompt
+    // that owns the current Task. steer/followUp keep the existing one.
+    if (behavior === 'prompt') {
+      userTaskBySession.set(resolvedSessionId, text.slice(0, REVIEWER_USER_TASK_LIMIT));
+    }
 
     if (behavior === 'steer') {
       const resp = await open.slot.client.send(images.length
@@ -871,6 +1223,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   });
 
   ipcMain.handle('sparkii:abortChat', async (_e, sessionId: string) => {
+    await rt.security?.taskLifecycle.end(sessionId, 'user');
     await getDocumentParseSupervisor().failSession(sessionId);
     const open = await ensureOpenSession(sessionId);
     ensureProcessPipe(open.slot);
@@ -1025,6 +1378,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   ipcMain.handle('sparkii:setChatWorkspace', async (_e, sessionId: string, path: string | null) => {
     const rec = rt.chatSessions.get(sessionId);
     if (!rec) throw new Error('session not found');
+    await rt.security?.taskLifecycle.end(sessionId, 'workspace-changed');
     if (path) {
       rt.chatSessions.update(sessionId, { workspaceKind: 'user', workspacePath: path });
     } else {
@@ -1055,6 +1409,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   ipcMain.handle('sparkii:requestExportReport', async (_e, sessionId: string, summary: Record<string, unknown>) => {
     const open = await ensureOpenSession(sessionId);
     ensureProcessPipe(open.slot);
+    await startSessionTask(sessionId, open.profileId, true);
     const d = await broker.route(connectorWriteProposal('report.export', summary, {
       requestId: randomUUID(),
       risk: 'write',
@@ -1189,7 +1544,11 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       provider: providerId,
       modelId: m.modelId,
       capabilities: MODEL_CAPABILITY_DEFAULTS[m.modelId]
-        ?? (m.supportsImages ? ['chat', 'vision'] : ['chat', 'toolCall']) as ModelCapability[],
+        ?? ([
+          'chat',
+          'toolCall',
+          ...(m.supportsImages ? ['vision' as const] : []),
+        ] as ModelCapability[]),
     }));
     const compatible = findCompatibleModels(descriptors, requirements);
     const compatibleSet = new Set(compatible.map((m) => m.modelId));
@@ -1205,6 +1564,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   });
 
   ipcMain.handle('sparkii:deleteChatSession', async (_e, sessionId: string) => {
+    await rt.security?.taskLifecycle.end(sessionId, 'session-ended');
     cancelIdleRelease(sessionId);
     const open = openSessions.get(sessionId);
     if (open) {
@@ -1306,6 +1666,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   });
 
   async function releaseSessionSlotInternal(sessionId: string): Promise<void> {
+    await rt.security?.taskLifecycle.end(sessionId, 'runtime-released');
     await getDocumentParseSupervisor().failSession(sessionId);
     if (!rt.pool.get(sessionId)) throw new Error('session is not occupying a runtime slot');
     cancelIdleRelease(sessionId);
@@ -1392,10 +1753,83 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     });
   });
   ipcMain.handle('sparkii:listPendingApprovals', () => rt.gate.listPending());
-  ipcMain.handle('sparkii:decideApproval', async (_e, id: string, approved: boolean, note?: string) => {
+  ipcMain.handle('sparkii:getPermissionModeState', (_e, agentId: string, sessionId?: string | null) => {
+    const policy = rt.security?.profilePolicies.get(agentId);
+    const rec = sessionId ? rt.chatSessions.get(sessionId) : null;
+    const allowedModes = policy?.allowedPermissionModes ?? ['ask', 'auto_review'];
+    let mode: PlatformPermissionMode = 'ask';
+    try {
+      mode = resolvePermissionMode({
+        sessionId: sessionId ?? '',
+        profileId: agentId,
+        sessionMode: rec?.permissionMode,
+        profileDefaultMode: policy?.defaultPermissionMode,
+        allowedModes,
+      });
+    } catch {
+      mode = 'ask';
+    }
+    return {
+      mode,
+      allowedModes,
+      taskActive: Boolean(sessionId && rt.security?.taskLifecycle.active(sessionId)),
+      hostShellAvailable: rt.security?.hostShellReport.status === 'available',
+      reviewerAvailable: Boolean(rt.security?.reviewer) && !reviewerUnavailable,
+      limitations: rt.security?.hostShellReport.limitations ?? ['平台安全层不可用'],
+      ...(sessionId ? { lastReview: lastReviewBySession.get(sessionId) } : {}),
+    };
+  });
+  ipcMain.handle('sparkii:setChatPermissionMode', async (
+    _e,
+    sessionId: string,
+    mode: PlatformPermissionMode,
+  ) => {
+    const rec = rt.chatSessions.get(sessionId);
+    if (!rec) return { ok: false, error: 'session not found' };
+    const policy = rt.security?.profilePolicies.get(rec.profileId);
+    if (!policy) return { ok: false, error: 'no security policy for this profile' };
+    let resolved: PlatformPermissionMode;
+    try {
+      resolved = resolveSessionPermissionMode(sessionId, rec.profileId, policy, mode);
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+    const previous = rec.permissionMode;
+    // A mode change never retroactively cancels executed work, but the running
+    // Task and its shell grant must not carry the old privilege level.
+    const activeTask = rt.security?.taskLifecycle.active(sessionId);
+    await rt.security?.taskLifecycle.end(sessionId, 'permission-mode-changed');
+    if (activeTask) rt.security?.shellGrants.revoke(activeTask.taskId);
+    rt.chatSessions.update(sessionId, { permissionMode: resolved });
+    await rt.audit.append({
+      actor: rt.subject?.userId ?? 'agent',
+      action: 'permission-mode.changed',
+      resource: 'permission-mode',
+      payloadSummary: JSON.stringify({
+        from: previous,
+        to: resolved,
+        policyVersion: rt.security?.reviewerPolicyVersion,
+      }).slice(0, 512),
+      sessionId,
+      taskId: activeTask?.taskId,
+      ruleId: 'permission-mode.changed',
+    });
+    return { ok: true, mode: resolved };
+  });
+  ipcMain.handle('sparkii:decideApproval', async (
+    _e,
+    id: string,
+    approved: boolean,
+    note?: string,
+    approvalScope?: 'once' | 'task',
+  ) => {
     let out = await rt.gate.decide(id, rt.subject, approved, note);
     let result: unknown;
-    if (out.status === 'approved' && out.toolName !== 'workflow.approval') {
+    if (
+      out.status === 'approved'
+      && out.executionMode !== 'caller'
+      && out.toolName !== 'workflow.approval'
+    ) {
       if (out.toolName === 'report.export') {
         const payload = (out.payload ?? {}) as Record<string, unknown>;
         const suggested = typeof payload.path === 'string' && payload.path.trim() ? payload.path : undefined;
@@ -1404,18 +1838,94 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         );
         if (path) {
           out.payload = { ...payload, path };
-          out = await rt.executor.execute(out, { actor: rt.subject.userId });
-          result = out.execution?.result;
+          out.payloadHash = hashPayload(out.payload);
         } else {
           await rt.audit.append({ actor: rt.subject.userId, action: 'execution.blocked', resource: out.toolName });
           out.execution = { ok: false, error: 'export path canceled' };
         }
-      } else {
-        out = await rt.executor.execute(out, { actor: rt.subject.userId });
-        result = out.execution?.result;
+      }
+      if (out.execution?.error !== 'export path canceled') {
+        if (rt.security) {
+          let grant: TaskGrant | undefined;
+          let action: SecurityAction | undefined;
+          try {
+            grant = rt.security.taskLifecycle.assertActive(out.sessionId);
+            action = {
+              id: out.id,
+              subjectId: rt.subject.userId,
+              taskId: grant.taskId,
+              sessionId: out.sessionId,
+              agentId: grant.agentId,
+              profileId: out.profileId,
+              toolName: out.toolName,
+              capability: 'connector.invoke',
+              approvalClass: 'human_required',
+              resources: [{
+                kind: 'connector',
+                value: out.toolName,
+                scope: 'external',
+              }],
+              payload: out.payload,
+              payloadHash: out.payloadHash,
+              risk: out.risk,
+              reason: out.summary,
+              externalEffect: 'connector',
+            };
+            const lease = rt.security.capabilityGateway.issue(action, grant);
+            await rt.audit.append({
+              actor: rt.subject.userId,
+              action: 'gateway.lease-issued',
+              resource: out.toolName,
+              payloadSummary: lease.fingerprint,
+              sessionId: out.sessionId,
+              taskId: action.taskId,
+              actionId: action.id,
+              ruleId: 'gateway.lease',
+              capability: action.capability,
+              payloadHash: action.payloadHash,
+              platform: process.platform,
+              sandboxVersion: rt.security.hostShellReport.version,
+              decision: 'approved',
+            });
+            out = await rt.security.capabilityGateway.execute(
+              action,
+              lease.id,
+              grant,
+              async () => rt.executor.execute(out, { actor: rt.subject.userId }),
+            );
+            result = out.execution?.result;
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            out.execution = { ok: false, error: message };
+            await rt.audit.append({
+              actor: rt.subject.userId,
+              action: 'gateway.execution-blocked',
+              resource: out.toolName,
+              payloadSummary: message,
+              sessionId: out.sessionId,
+              taskId: grant?.taskId,
+              actionId: action?.id,
+              ruleId: 'gateway.execution-blocked',
+              capability: action?.capability,
+              payloadHash: action?.payloadHash,
+              platform: process.platform,
+              sandboxVersion: rt.security.hostShellReport.version,
+              decision: 'failed',
+            });
+          }
+        } else {
+          out = await rt.executor.execute(out, { actor: rt.subject.userId });
+          result = out.execution?.result;
+        }
       }
     }
-    broker.decide(out.id, { approved: out.status === 'approved' || out.status === 'executed', status: out.status, result });
+    const executionOk = out.execution?.ok !== false;
+    broker.decide(out.id, {
+      approved: executionOk && (out.status === 'approved' || out.status === 'executed'),
+      status: executionOk ? out.status : 'failed',
+      result,
+      ...(approvalScope ? { approvalScope } : {}),
+    });
     return out;
   });
   ipcMain.handle('sparkii:queryAudit', (_e, filter: object) => rt.audit.query(filter));
@@ -1607,6 +2117,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       meta: profilePoolMeta(rt, profileId),
     });
     slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId }));
+    bindRuntimeActions(slot, sessionId);
     slot.supervisor.onConnectorRead?.((req) => handleConnectorRead(req, profileId, sessionId));
     try {
       await selectModel(rt, 'chat', sessionId);
@@ -1624,6 +2135,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         });
       });
     } finally {
+      await rt.security?.taskLifecycle.end(sessionId, 'session-ended');
       await rt.pool.release(sessionId);
     }
     return { ok: true };
@@ -1639,14 +2151,17 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       workspacePath,
       workspaceKind: input.workspaceKind === 'user' ? 'user' : 'auto',
     }, broker, profileId, {
-      onReady(id, slot) {
+      async onReady(id, slot) {
         inFlightWorkflowRuns.add(id);
         const entry = { slot, profileId };
         openSessions.set(id, entry);
         ensureProcessPipe(slot);
+        bindRuntimeActions(slot, id);
+        await startSessionTask(id, profileId, true);
       },
       logger,
       async beforeRelease(id) {
+        await rt.security?.taskLifecycle.end(id, 'session-ended');
         // workflow 跑完由 workflow.ts 调 pool.release；这里先让窗口停转圈，管子留给下一条会话。
         inFlightWorkflowRuns.delete(id);
         if (!openSessions.has(id)) return;

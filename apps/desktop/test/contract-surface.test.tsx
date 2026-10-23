@@ -386,6 +386,8 @@ describe('ContractAgentSurface', () => {
     (window as any).sparkii = {
       getModelOptions: async () => ({ models: [], defaultModel: null, provider: 'deepseek' }),
       getChatState: async () => ({}),
+      getPermissionModeState: async () => ({ mode: 'ask', allowedModes: ['ask', 'auto_review'], taskActive: false, hostShellAvailable: true, reviewerAvailable: true, limitations: [] }),
+      setChatPermissionMode: async (_id: string, mode: string) => ({ ok: true, mode }),
       getChatSession: async () => ({}),
       setChatTitle,
       on: () => () => {},
@@ -408,6 +410,8 @@ describe('ContractAgentSurface', () => {
     (window as any).sparkii = {
       getModelOptions: async () => ({ models: [], defaultModel: null, provider: 'deepseek' }),
       getChatState: async () => ({}),
+      getPermissionModeState: async () => ({ mode: 'ask', allowedModes: ['ask', 'auto_review'], taskActive: false, hostShellAvailable: true, reviewerAvailable: true, limitations: [] }),
+      setChatPermissionMode: async (_id: string, mode: string) => ({ ok: true, mode }),
       getChatSession: async () => ({}),
       setChatTitle,
       on: () => () => {},
@@ -432,6 +436,8 @@ describe('ContractAgentSurface', () => {
     (window as any).sparkii = {
       getModelOptions: async () => ({ models: [], defaultModel: null, provider: 'deepseek' }),
       getChatState: async () => ({}),
+      getPermissionModeState: async () => ({ mode: 'ask', allowedModes: ['ask', 'auto_review'], taskActive: false, hostShellAvailable: true, reviewerAvailable: true, limitations: [] }),
+      setChatPermissionMode: async (_id: string, mode: string) => ({ ok: true, mode }),
       getChatSession: async () => ({}),
       setChatTitle,
       on: () => () => {},
@@ -455,6 +461,8 @@ describe('ContractAgentSurface', () => {
     (window as any).sparkii = {
       getModelOptions: async () => ({ models: [], defaultModel: null, provider: 'deepseek' }),
       getChatState: async () => ({}),
+      getPermissionModeState: async () => ({ mode: 'ask', allowedModes: ['ask', 'auto_review'], taskActive: false, hostShellAvailable: true, reviewerAvailable: true, limitations: [] }),
+      setChatPermissionMode: async (_id: string, mode: string) => ({ ok: true, mode }),
       getChatSession: async () => ({}),
       setChatTitle,
       on: () => () => {},
@@ -745,6 +753,8 @@ describe('ContractAgentSurface', () => {
     (window as any).sparkii = {
       getModelOptions: async () => ({ models: [], defaultModel: null, provider: 'deepseek' }),
       getChatState: async () => ({}),
+      getPermissionModeState: async () => ({ mode: 'ask', allowedModes: ['ask', 'auto_review'], taskActive: false, hostShellAvailable: true, reviewerAvailable: true, limitations: [] }),
+      setChatPermissionMode: async (_id: string, mode: string) => ({ ok: true, mode }),
       getChatSession: async () => ({}),
       setChatTitle,
       on: () => () => {},

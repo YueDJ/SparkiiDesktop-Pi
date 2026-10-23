@@ -10,6 +10,10 @@ import { buildAgentSaddle } from '../electron/main/saddle.js';
 import { listUserSkills } from '../electron/main/skill-library.js';
 import { resetGrantedDocumentPaths } from '../electron/main/document-bytes.js';
 import { selectModel } from '../electron/main/workflow.js';
+import {
+  DEFAULT_TOOL_DESCRIPTORS,
+  createActionNormalizer,
+} from '../electron/main/security/action-normalizer.js';
 import type { Runtime } from '../electron/main/runtime.js';
 import { downloadDocumentParseModule } from '../electron/main/document-parse-modules.js';
 
@@ -21,9 +25,9 @@ vi.mock('@sparkii/agent-host', async (importOriginal) => {
   };
 });
 
-vi.mock('electron', () => {
-  const { join } = require('node:path') as typeof import('node:path');
-  const { tmpdir } = require('node:os') as typeof import('node:os');
+vi.mock('electron', async () => {
+  const { join } = await import('node:path');
+  const { tmpdir } = await import('node:os');
   const handlers = new Map<string, (...args: unknown[]) => unknown>();
   return {
     getHandlers: () => handlers,
@@ -148,6 +152,7 @@ async function makeRuntime(opts: {
   /** 测试用：收集 ipc 订上的 `supervisor.onExit` 回调，用来模拟子进程退出。 */
   exitCbs?: Array<(code: number | null) => void>;
   logger?: { export: () => Promise<string>; log: (entry: unknown) => Promise<void> };
+  security?: unknown;
 }): Promise<Runtime> {
   // 一根进程一根管子：牌子（活 sessionId）由池子持有，acquire/release/rename 改它。
   let boundSessionId: string | null = null;
@@ -157,6 +162,10 @@ async function makeRuntime(opts: {
       onProposal: () => {},
       onConnectorRead: (cb: (req: unknown) => Promise<unknown>) => {
         (rt as unknown as { __onConnectorRead?: (req: unknown) => Promise<unknown> }).__onConnectorRead = cb;
+      },
+      onAction: (cb: (req: unknown) => Promise<unknown>) => {
+        (rt as unknown as { __onAction?: (req: unknown) => Promise<unknown> }).__onAction = cb;
+        return () => {};
       },
       onExit: (cb: (code: number | null) => void) => {
         opts.exitCbs?.push(cb);
@@ -199,6 +208,7 @@ async function makeRuntime(opts: {
       updateMeta: vi.fn(() => true),
     },
     subject: { userId: 'tester', roles: ['admin'] },
+    security: opts.security,
     chatSessions: { get: () => opts.chatSession ?? null, list: vi.fn(() => []), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
     dataDir: opts.dataDir,
     keyring: null as any,
@@ -3008,6 +3018,55 @@ describe('ipc provider handlers', () => {
     expect(result).toMatchObject({ modelRequirements: { requires: ['chat'] } });
   });
 
+  it('classifies current DeepSeek models with orthogonal capabilities', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-model-capabilities-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: {
+        send: async (command: any) => command.type === 'list_models'
+          ? {
+              success: true,
+              data: [
+                { modelId: 'deepseek-flash', supportsImages: true },
+                { modelId: 'future-vision-chat', supportsImages: true },
+                { modelId: 'deepseek-vision', supportsImages: true },
+              ],
+            }
+          : { success: true },
+      },
+      agentOf: () => ({
+        id: 'general',
+        tools: [],
+        dir: join(dataDir, 'profiles', 'general'),
+        systemPrompt: 'test',
+        manifest: {
+          id: 'general',
+          version: '1.0.0',
+          surface: { type: 'chat' },
+          capabilities: { tools: [] },
+          modelRequirements: { requires: ['chat', 'toolCall'] },
+        },
+      }),
+    });
+
+    const handlers = await registeredHandlers();
+    const result = await handlers.get('sparkii:getModelOptions')!(null, 'general') as {
+      compatibleModels: string[];
+      incompatibleModels: string[];
+    };
+
+    expect(result.compatibleModels).toEqual([
+      'deepseek-flash',
+      'future-vision-chat',
+    ]);
+    expect(result.incompatibleModels).toEqual(['deepseek-vision']);
+  });
+
   it('promptSession refuses to create a session without profileId', async () => {
     const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
     dirs.push(dataDir);
@@ -4036,6 +4095,357 @@ describe('ipc user skill library', () => {
     await handlers.get('sparkii:runWorkflow')!(null, 'contract-review', { documents: [], workspacePath: allocated });
     expect(created[0].workspacePath).toBe(allocated);
     expect(created[0].workspaceKind).toBe('auto');
+  });
+});
+
+describe('retired task capability IPC', () => {
+  it('does not expose task capability or user revocation handlers', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-capability-'));
+    dirs.push(dataDir);
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir: join(dataDir, 'pi-agent'),
+      client: { send: async () => ({ success: true }) },
+      security: {
+        taskGrants: { onRevoke: () => () => {} },
+        hostShellReport: {
+          backend: 'host-git-bash',
+          status: 'unavailable',
+          executionBoundary: 'host',
+          version: 'host-job-v1',
+          limitations: ['Git Bash unavailable'],
+        },
+      },
+    });
+    expect(rt).toBeTruthy();
+    const handlers = await registeredHandlers();
+    expect(handlers.has('sparkii:getTaskCapabilities')).toBe(false);
+    expect(handlers.has('sparkii:revokeTaskCapabilities')).toBe(false);
+  });
+});
+
+describe('permission mode IPC', () => {
+  function securityStub(options: { withReviewer?: boolean } = {}) {
+    const auditEvents: Array<Record<string, unknown>> = [];
+    const review = vi.fn(async () => ({ decision: 'allow', risk: 'low', reason: 'ok' }));
+    const security: Record<string, unknown> = {
+      profilePolicies: new Map([['general', {
+        defaultPermissionMode: 'ask',
+        allowedPermissionModes: ['ask', 'auto_review'],
+      }]]),
+      hostShellReport: {
+        backend: 'host-git-bash',
+        status: 'available',
+        executionBoundary: 'host',
+        version: 'host-job-v1',
+        limitations: ['宿主执行，不是操作系统沙箱', '网络能力由宿主进程决定'],
+      },
+      reviewerModel: 'deepseek-v4-flash',
+      reviewerPolicyVersion: 'shell-review-v1',
+      shellGrants: { allows: () => false, grant: vi.fn(), revoke: vi.fn(), clear: vi.fn() },
+      taskLifecycle: { active: vi.fn(() => undefined), end: vi.fn(async () => {}) },
+      taskGrants: { onRevoke: () => () => {} },
+    };
+    if (options.withReviewer !== false) {
+      security.reviewer = { review, cancel: vi.fn(async () => {}), dispose: vi.fn(async () => {}) };
+    }
+    return { auditEvents, review, security };
+  }
+
+  async function permissionRuntime(
+    stub: ReturnType<typeof securityStub>,
+    permissionMode = 'ask',
+  ) {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-permission-'));
+    dirs.push(dataDir);
+    const sessions = new Map<string, Record<string, unknown>>([
+      ['s1', {
+        id: 's1',
+        profileId: 'general',
+        workspaceKind: 'auto',
+        workspacePath: 'C:/ws',
+        permissionMode,
+      }],
+    ]);
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir: join(dataDir, 'pi-agent'),
+      client: { send: async () => ({ success: true }) },
+      security: stub.security,
+      audit: {
+        append: async (event: unknown) => {
+          stub.auditEvents.push(event as Record<string, unknown>);
+          return event;
+        },
+      },
+    });
+    (rt as any).chatSessions.get = (id: string) => sessions.get(id) ?? null;
+    (rt as any).chatSessions.update = (id: string, patch: Record<string, unknown>) => {
+      const current = sessions.get(id);
+      if (!current) return undefined;
+      const next = { ...current, ...patch };
+      sessions.set(id, next);
+      return next;
+    };
+    return rt;
+  }
+
+  it('reads the session permission mode and host semantics without leaking credentials', async () => {
+    const stub = securityStub();
+    await permissionRuntime(stub);
+    const handlers = await registeredHandlers();
+    const state = await handlers.get('sparkii:getPermissionModeState')!(null, 'general', 's1') as any;
+    expect(state).toMatchObject({
+      mode: 'ask',
+      allowedModes: ['ask', 'auto_review'],
+      taskActive: false,
+      hostShellAvailable: true,
+      reviewerAvailable: true,
+    });
+    expect(state.limitations.join(' ')).toContain('宿主');
+    expect(state).not.toHaveProperty('pid');
+    expect(state).not.toHaveProperty('apiKey');
+    expect(JSON.stringify(state)).not.toMatch(/api-?key|authorization|token|secret|sk-/i);
+  });
+
+  it('writes the mode, ends the running task and audits the change', async () => {
+    const stub = securityStub();
+    const rt = await permissionRuntime(stub);
+    const handlers = await registeredHandlers();
+    expect(await handlers.get('sparkii:setChatPermissionMode')!(null, 's1', 'auto_review'))
+      .toEqual({ ok: true, mode: 'auto_review' });
+    expect(rt.chatSessions.get('s1')?.permissionMode).toBe('auto_review');
+    expect(stub.security.taskLifecycle.end).toHaveBeenCalledWith('s1', 'permission-mode-changed');
+    expect(stub.auditEvents).toContainEqual(expect.objectContaining({
+      action: 'permission-mode.changed',
+      sessionId: 's1',
+    }));
+    const state = await handlers.get('sparkii:getPermissionModeState')!(null, 'general', 's1') as any;
+    expect(state.mode).toBe('auto_review');
+  });
+
+  it('revokes the shell task grant when the mode changes', async () => {
+    const stub = securityStub();
+    stub.security.taskLifecycle.active = vi.fn(() => ({
+      taskId: 'task-9',
+      sessionId: 's1',
+      permissionMode: 'auto_review',
+    }));
+    await permissionRuntime(stub, 'auto_review');
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:setChatPermissionMode')!(null, 's1', 'ask');
+    expect(stub.security.shellGrants.revoke).toHaveBeenCalledWith('task-9');
+  });
+
+  it('refuses a permission mode the profile does not allow', async () => {
+    const stub = securityStub();
+    stub.security.profilePolicies = new Map([['general', {
+      defaultPermissionMode: 'ask',
+      allowedPermissionModes: ['ask'],
+    }]]);
+    await permissionRuntime(stub);
+    const handlers = await registeredHandlers();
+    const out = await handlers.get('sparkii:setChatPermissionMode')!(null, 's1', 'auto_review') as any;
+    expect(out.ok).toBe(false);
+    expect(String(out.error)).toMatch(/not allowed/);
+  });
+
+  it('reports the reviewer as unavailable when Main has no worker', async () => {
+    const stub = securityStub({ withReviewer: false });
+    await permissionRuntime(stub);
+    const handlers = await registeredHandlers();
+    const state = await handlers.get('sparkii:getPermissionModeState')!(null, 'general', 's1') as any;
+    expect(state.reviewerAvailable).toBe(false);
+    expect(state.mode).toBe('ask');
+  });
+
+  it('does not expose the Reviewer worker in the user runtime pool', async () => {
+    const stub = securityStub();
+    await permissionRuntime(stub);
+    const handlers = await registeredHandlers();
+    const pool = await handlers.get('sparkii:getRuntimePool')!(null);
+    expect(JSON.stringify(pool)).not.toContain('reviewer');
+    expect(JSON.stringify(pool)).not.toContain('shell-review');
+  });
+
+  it('runs an approved shell command through the host adapter and reports host semantics', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-host-shell-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    const key = (value: string) => value.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+    const pathProbe = {
+      inspect: async (target: string) => ({
+        displayPath: target,
+        canonicalPath: target,
+        identity: `object:${key(target)}`,
+        nearestExistingAncestor: target,
+        isDirectory: true,
+        isReparsePoint: false,
+        exists: true,
+      }),
+      isSameOrDescendant: async (root: string, target: string) => {
+        const r = key(root);
+        const t = key(target);
+        return t === r || t.startsWith(`${r}/`);
+      },
+      isSameObject: async (left: string, right: string) => key(left) === key(right),
+    };
+
+    const executionOrder: string[] = [];
+    const ensureWorkspace = vi.fn(async () => {
+      executionOrder.push('ensure-workspace');
+      return {
+        displayPath: 'C:/ws',
+        canonicalPath: 'C:/ws',
+        identity: 'object:c:/ws',
+        nearestExistingAncestor: 'C:/ws',
+        isDirectory: true,
+        isReparsePoint: false,
+        exists: true,
+      };
+    });
+    const run = vi.fn(async () => {
+      executionOrder.push('shell-run');
+      return {
+        exitCode: 0,
+        timedOut: false,
+        stdout: 'host-ok',
+        stderr: '',
+        truncated: { stdout: false, stderr: false },
+      };
+    });
+    let liveGrant: { taskId: string; sessionId: string; workspaceIdentity: string } | undefined;
+    const review = vi.fn(async () => ({ decision: 'allow', risk: 'low', reason: '普通测试命令' }));
+    const auditEvents: Array<Record<string, unknown>> = [];
+    const stub = securityStub();
+    Object.assign(stub.security, {
+      pathProbe,
+      protectedRoots: [],
+      scratchParent: join(dataDir, 'tasks'),
+      actionNormalizer: createActionNormalizer({
+        descriptors: DEFAULT_TOOL_DESCRIPTORS,
+        protectedRoots: [],
+        probe: pathProbe,
+      }),
+      workspaceExecutor: {
+        execute: vi.fn(async () => ({ path: 'C:/ws/a.txt', changes: [] })),
+        ensureWorkspace,
+        liveWorkspaceIdentity: () => undefined,
+      },
+      capabilityGateway: { revokeTask: vi.fn(), issue: vi.fn(), execute: vi.fn() },
+      platformReadyFor: (action: { capability: string }) =>
+        action.capability === 'fs.read'
+        || action.capability === 'fs.write'
+        || (action.capability === 'process.exec'
+          && stub.security.hostShellReport.status === 'available'),
+      taskLifecycle: {
+        start: vi.fn(async (factory: () => Promise<any>) => {
+          const created = await factory();
+          liveGrant = created;
+          return created;
+        }),
+        active: vi.fn(() => liveGrant),
+        assertActive: vi.fn(() => liveGrant),
+        end: vi.fn(async () => { liveGrant = undefined; }),
+        registerCancellation: vi.fn(() => () => {}),
+      },
+      hostShell: { run, probe: async () => stub.security.hostShellReport, terminate: vi.fn(async () => {}) },
+      reviewer: { review, cancel: vi.fn(async () => {}), dispose: vi.fn(async () => {}) },
+    });
+
+    const listeners = new Set<(event: any) => void>();
+    const client = {
+      onEvent: (cb: (event: any) => void) => {
+        listeners.add(cb);
+        return () => { listeners.delete(cb); };
+      },
+      send: async (command: any) => {
+        if (command.type === 'new_session') return { success: true };
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's-host', sessionFile: 'C:/pi/s.jsonl', isStreaming: false } };
+        }
+        return { success: true };
+      },
+    };
+    const sessions = new Map<string, Record<string, unknown>>();
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      security: stub.security,
+      audit: {
+        append: async (event: unknown) => {
+          auditEvents.push(event as Record<string, unknown>);
+          return event;
+        },
+      },
+      profile: {
+        dir: join(dataDir, 'profiles', 'general'),
+        profile: {
+          manifest: { name: 'general', displayName: '通用智能体' },
+          security: {
+            approval: {
+              requireApproval: [],
+              timeoutMs: 60_000,
+              highRiskDoubleConfirm: true,
+              defaultPermissionMode: 'ask',
+              allowedPermissionModes: ['ask', 'auto_review'],
+            },
+          },
+          agent: { tools: ['bash'], prompts: { system: 'sys' } },
+        },
+        router: { resolve: () => undefined },
+      } as any,
+    });
+    (rt as any).chatSessions.create = (rec: Record<string, unknown>) => {
+      sessions.set(String(rec.id), { ...rec, permissionMode: 'auto_review' });
+    };
+    (rt as any).chatSessions.get = (id: string) => sessions.get(id) ?? null;
+
+    const handlers = await registeredHandlers();
+    const opened = await handlers.get('sparkii:promptSession')!(null, null, '跑一下测试', undefined, [], {
+      profileId: 'general',
+      workspaceKind: 'user',
+      workspacePath: 'C:/ws',
+    });
+    expect(opened).toMatchObject({ ok: true, sessionId: 's-host' });
+
+    // The Task started for this session must carry the stored permission mode.
+    expect(liveGrant).toMatchObject({
+      sessionId: 's-host',
+      profileId: 'general',
+      permissionMode: 'auto_review',
+      planMode: 'execute',
+      actorId: 'tester',
+      unattended: false,
+    });
+
+    const onAction = (rt as any).__onAction as (request: unknown) => Promise<any>;
+    expect(typeof onAction).toBe('function');
+    const result = await onAction({ requestId: 'r1', toolName: 'bash', args: { command: 'pnpm test' } });
+
+    expect(result).toMatchObject({
+      requestId: 'r1',
+      status: 'executed',
+      decision: { decision: 'allow', ruleId: 'reviewer.allow' },
+    });
+    expect(result.result).toMatchObject({
+      exitCode: 0,
+      output: 'host-ok',
+      executionBoundary: 'host',
+      backend: 'host-git-bash',
+    });
+    expect(review).toHaveBeenCalledTimes(1);
+    expect(run).toHaveBeenCalledWith(expect.objectContaining({
+      workspaceRoot: 'C:/ws',
+      command: 'pnpm test',
+    }));
+    expect(executionOrder).toEqual(['ensure-workspace', 'shell-run']);
+    expect(auditEvents).toContainEqual(expect.objectContaining({ action: 'reviewer.decision' }));
+    expect(auditEvents).toContainEqual(expect.objectContaining({ action: 'action.executed' }));
+    expect(JSON.stringify(result)).not.toMatch(/沙箱|sandbox/);
   });
 });
 
