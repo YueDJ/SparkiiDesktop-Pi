@@ -91,4 +91,20 @@ describe('settings store', () => {
     expect(loaded.defaultThinkingLevel).toBe('high');
     expect(loaded.modelThinkingLevels).toEqual({ 'deepseek/deepseek-v4-pro': 'max' });
   });
+
+  it('normalizes the legacy Kimi Coding base URL on save and load', async () => {
+    const d = await makeDir();
+    await saveSettings(d, {
+      providers: [{
+        id: 'kimi-coding',
+        name: 'Kimi Coding',
+        baseUrl: 'https://api.kimi.com/coding/',
+        api: 'openai-completions',
+      }],
+    });
+    expect((await loadSettings(d)).providers?.[0]?.baseUrl)
+      .toBe('https://api.kimi.com/coding/v1');
+    expect(await readFile(join(d, 'settings.json'), 'utf8'))
+      .toContain('https://api.kimi.com/coding/v1');
+  });
 });

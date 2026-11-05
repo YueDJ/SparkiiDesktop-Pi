@@ -52,6 +52,7 @@ describe('workspace tools', () => {
       parameters: {
         type: 'object',
         required: ['path'],
+        additionalProperties: false,
       },
     });
     expect(move).toMatchObject({
@@ -59,6 +60,7 @@ describe('workspace tools', () => {
       parameters: {
         type: 'object',
         required: ['from', 'to'],
+        additionalProperties: false,
       },
     });
   });

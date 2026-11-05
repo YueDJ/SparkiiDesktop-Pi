@@ -63,6 +63,18 @@ export interface ProviderEntry {
   api?: ProviderApi;
 }
 
+export function normalizeCustomProvider(provider: CustomProvider): CustomProvider {
+  if (provider.id !== 'kimi-coding') return provider;
+  try {
+    const url = new URL(provider.baseUrl);
+    if (url.hostname !== 'api.kimi.com') return provider;
+    if (url.pathname !== '/coding' && url.pathname !== '/coding/') return provider;
+    return { ...provider, baseUrl: `${url.origin}/coding/v1` };
+  } catch {
+    return provider;
+  }
+}
+
 export function buildProviderList(
   runtimeProviders: PiProviderInfo[],
   customProviders: CustomProvider[],

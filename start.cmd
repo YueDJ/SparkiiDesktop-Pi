@@ -61,10 +61,34 @@ if errorlevel 1 (
     echo [ERROR] If the log mentions better-sqlite3 / node-gyp / Visual Studio, delete node_modules and retry. Local install uses the package prebuild.
     goto :fail
 )
+if not exist "%APP_DIR%\node_modules\electron\cli.js" (
+    echo [WARN] Electron package files are incomplete after pnpm install.
+    echo [INFO] Re-materializing workspace dependencies...
+    call pnpm install --force --no-frozen-lockfile
+    if errorlevel 1 (
+        echo [ERROR] Failed to repair the incomplete Electron package.
+        echo [ERROR] Run "pnpm install --force --no-frozen-lockfile" from the repo root.
+        goto :fail
+    )
+)
 
 cd /d "%APP_DIR%"
 if errorlevel 1 (
     echo [ERROR] Cannot change to %APP_DIR%
+    goto :fail
+)
+if not exist "node_modules\electron\cli.js" (
+    echo [ERROR] Electron package is still incomplete: node_modules\electron\cli.js is missing.
+    echo [ERROR] Delete node_modules and run start.cmd again.
+    goto :fail
+)
+
+rem Electron 44 downloads its binary lazily on first require.
+call node -e "require('electron')"
+if errorlevel 1 (
+    echo [ERROR] Electron runtime download failed.
+    echo [ERROR] Check network/proxy settings, then run this from apps\desktop:
+    echo [ERROR]   node -e "require('electron')"
     goto :fail
 )
 

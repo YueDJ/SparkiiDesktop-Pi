@@ -76,6 +76,7 @@ describe("pi-sdk-runtime skill loader options", () => {
 
     const settingsManager = createPiSettingsManager(agentDir, agentDir);
     expect(settingsManager.getCacheWarmingMode()).toBe("off");
+    expect(settingsManager.getImageAutoResize()).toBe(false);
 
     // Pi 的 settings 落盘是异步队列；等它写完再验，同时确认不会破坏同目录的 auth.json / models.json
     const settingsPath = join(agentDir, "settings.json");
@@ -87,6 +88,7 @@ describe("pi-sdk-runtime skill loader options", () => {
     expect(JSON.parse(readFileSync(join(agentDir, "auth.json"), "utf8"))).toHaveProperty("anthropic");
     expect(JSON.parse(readFileSync(join(agentDir, "models.json"), "utf8"))).toHaveProperty("providers");
     expect(createPiSettingsManager(agentDir, agentDir).getCacheWarmingMode()).toBe("off");
+    expect(createPiSettingsManager(agentDir, agentDir).getImageAutoResize()).toBe(false);
   });
 });
 

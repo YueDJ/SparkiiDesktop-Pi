@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { PiProviderInfo } from "@sparkii/agent-host";
-import { buildProviderList } from "../electron/main/provider-catalog.js";
+import { buildProviderList, normalizeCustomProvider } from "../electron/main/provider-catalog.js";
 
 describe("provider catalog", () => {
   it("merges builtin whitelist with custom providers and excludes non-whitelisted builtins", () => {
@@ -26,5 +26,26 @@ describe("provider catalog", () => {
     expect(ollama?.kind).toBe("custom");
     expect(ollama?.api).toBe("openai-completions");
     expect(ollama?.baseUrl).toBe("http://127.0.0.1:11434/v1");
+  });
+
+  it("normalizes only the legacy Kimi Coding endpoint", () => {
+    expect(normalizeCustomProvider({
+      id: "kimi-coding",
+      name: "Kimi Coding",
+      baseUrl: "https://api.kimi.com/coding",
+      api: "openai-completions",
+    }).baseUrl).toBe("https://api.kimi.com/coding/v1");
+    expect(normalizeCustomProvider({
+      id: "kimi-coding",
+      name: "Kimi Coding",
+      baseUrl: "https://api.kimi.com/coding/",
+      api: "openai-completions",
+    }).baseUrl).toBe("https://api.kimi.com/coding/v1");
+    expect(normalizeCustomProvider({
+      id: "other",
+      name: "Other",
+      baseUrl: "https://api.kimi.com/coding",
+      api: "openai-completions",
+    }).baseUrl).toBe("https://api.kimi.com/coding");
   });
 });

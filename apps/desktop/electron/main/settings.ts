@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Keyring } from './keyring.js';
-import type { CustomProvider } from './provider-catalog.js';
+import { normalizeCustomProvider, type CustomProvider } from './provider-catalog.js';
 import type { LogLevel } from './logger.js';
 import { SHELL_REVIEWER_POLICY_VERSION } from './security/reviewer-policy.js';
 
@@ -83,7 +83,10 @@ const apiKeyName = (providerId: string): string => `apiKey:${providerId}`;
 
 export async function loadSettings(dataDir: string): Promise<AppSettings> {
   try {
-    return JSON.parse(await readFile(join(dataDir, 'settings.json'), 'utf8')) as AppSettings;
+    const settings = JSON.parse(await readFile(join(dataDir, 'settings.json'), 'utf8')) as AppSettings;
+    return settings.providers
+      ? { ...settings, providers: settings.providers.map(normalizeCustomProvider) }
+      : settings;
   } catch {
     return {};
   }
@@ -94,7 +97,10 @@ export async function saveSettings(
   settings: AppSettings,
 ): Promise<void> {
   await mkdir(dataDir, { recursive: true });
-  await writeFile(join(dataDir, 'settings.json'), JSON.stringify(settings, null, 2), 'utf8');
+  const normalized = settings.providers
+    ? { ...settings, providers: settings.providers.map(normalizeCustomProvider) }
+    : settings;
+  await writeFile(join(dataDir, 'settings.json'), JSON.stringify(normalized, null, 2), 'utf8');
 }
 
 export async function loadApiKey(keyring: Keyring, providerId: string): Promise<string | null> {

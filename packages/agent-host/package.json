@@ -7,11 +7,12 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@earendil-works/pi-coding-agent": "^1.0.2",
+    "@earendil-works/pi-coding-agent": "1.5.0",
     "@sparkii/approval": "workspace:*",
     "@sparkii/connectors": "workspace:*"
   },
   "devDependencies": {
+    "@earendil-works/pi-ai": "1.5.0",
     "@sparkii/config": "workspace:*",
     "@sparkii/identity": "workspace:*",
     "typescript": "^6.0.3"
