@@ -18,4 +18,19 @@ describe('pi-model-config', () => {
     });
     expect(cfg.providers.deepseek).toBeUndefined();
   });
+
+  it('writes the Kimi Coding v1 endpoint', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'pi-model-kimi-'));
+    await writePiModelsConfig(dir, [{
+      id: 'kimi-coding',
+      name: 'Kimi Coding',
+      baseUrl: 'https://api.kimi.com/coding',
+      api: 'openai-completions',
+    }]);
+    const cfg = JSON.parse(readFileSync(join(dir, 'models.json'), 'utf8'));
+    expect(cfg.providers['kimi-coding']).toEqual({
+      baseUrl: 'https://api.kimi.com/coding/v1',
+      api: 'openai-completions',
+    });
+  });
 });

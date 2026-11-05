@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { CustomProvider } from './provider-catalog.js';
+import { normalizeCustomProvider, type CustomProvider } from './provider-catalog.js';
 
 /**
  * 把自定义 provider（baseUrl + api 类型）写进 Pi agentDir 的 models.json。
@@ -10,9 +10,10 @@ export async function writePiModelsConfig(
   piAgentDir: string,
   providers: CustomProvider[],
 ): Promise<void> {
+  const normalizedProviders = providers.map(normalizeCustomProvider);
   const config = {
     providers: Object.fromEntries(
-      providers.map((p) => [p.id, { baseUrl: p.baseUrl, api: p.api }]),
+      normalizedProviders.map((p) => [p.id, { baseUrl: p.baseUrl, api: p.api }]),
     ),
   };
   await mkdir(piAgentDir, { recursive: true });
