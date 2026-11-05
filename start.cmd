@@ -87,7 +87,8 @@ rem Electron 44 downloads its binary lazily on first require.
 call node -e "require('electron')"
 if errorlevel 1 (
     echo [ERROR] Electron runtime download failed.
-    echo [ERROR] Check network/proxy settings and run "node -e \"require('electron')\"" from apps\desktop.
+    echo [ERROR] Check network/proxy settings, then run this from apps\desktop:
+    echo [ERROR]   node -e "require('electron')"
     goto :fail
 )
 
