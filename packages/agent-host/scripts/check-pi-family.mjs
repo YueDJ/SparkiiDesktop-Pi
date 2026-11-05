@@ -26,7 +26,7 @@ function findWorkspaceRoot(start) {
   }
 }
 
-const workspaceRoot = findWorkspaceRoot(agentHostRoot);
+findWorkspaceRoot(agentHostRoot);
 
 function findPackageRoot(filePath) {
   let current = dirname(filePath);
