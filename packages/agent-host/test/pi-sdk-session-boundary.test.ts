@@ -1,10 +1,13 @@
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
   createAgentSession,
   createReadToolDefinition,
+  CURRENT_SESSION_VERSION,
+  buildSessionProjection,
+  parseSessionEntries,
   SessionManager,
   SettingsManager,
 } from "@earendil-works/pi-coding-agent";
@@ -65,5 +68,35 @@ describe("pi 1.0 session persistence boundary", () => {
     } finally {
       session.dispose();
     }
+  });
+
+  it("round-trips optional version-3 entries through the current projection reader", () => {
+    expect(CURRENT_SESSION_VERSION).toBe(3);
+    const dir = tempDir();
+    const sessionManager = SessionManager.create(dir, join(dir, "sessions"));
+    const userId = sessionManager.appendMessage({
+      role: "user",
+      content: "hello",
+      timestamp: Date.now(),
+    });
+    sessionManager.appendUsage("test", "deepseek", "deepseek-v4-flash", {
+      input: 1,
+      output: 1,
+      cacheRead: 0,
+      cacheWrite: 0,
+    });
+    sessionManager.appendCustomEntry("sparkii.test", { ok: true });
+    sessionManager.appendContextEdit(userId, null);
+
+    const sessionPath = sessionManager.getSessionFile() as string;
+    const parsed = parseSessionEntries(readFileSync(sessionPath, "utf8"));
+    const projection = buildSessionProjection(parsed.filter((entry) => entry.type !== "session"));
+    expect(projection.messages).toEqual([]);
+
+    const reopened = SessionManager.open(sessionPath);
+    expect(reopened.buildSessionProjection()).toMatchObject({
+      messages: [],
+      thinkingLevel: expect.any(String),
+    });
   });
 });

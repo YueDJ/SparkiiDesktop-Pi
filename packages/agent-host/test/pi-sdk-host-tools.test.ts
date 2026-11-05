@@ -1,7 +1,8 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { createPiSdkSessionHost } from "../src/pi-sdk-runtime.js";
 
 /**
@@ -75,18 +76,23 @@ describe("pi sdk host saddle tool assembly", () => {
     await host.newSession();
     expect(activeTools(host)).toEqual(["read"]);
 
-    const sessionPath = join(dir, "resume.jsonl");
-    writeFileSync(
-      sessionPath,
-      `${JSON.stringify({
-        type: "session",
-        version: 3,
-        id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-        timestamp: new Date().toISOString(),
-        cwd: dir,
-      })}\n`,
-      "utf8",
-    );
+    const sessionManager = SessionManager.create(dir, join(dir, "sessions"));
+    sessionManager.appendMessage({
+      role: "system",
+      content: "restored tools",
+      toolsAdded: [{
+        name: "bash",
+        description: "restored bash",
+        parameters: { type: "object", properties: {} },
+      }],
+      timestamp: Date.now(),
+    });
+    sessionManager.appendMessage({
+      role: "user",
+      content: "resume",
+      timestamp: Date.now(),
+    });
+    const sessionPath = sessionManager.getSessionFile() as string;
     await host.switchSession(sessionPath);
     expect(activeTools(host)).toEqual(["read"]);
   });
