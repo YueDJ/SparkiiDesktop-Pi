@@ -14,6 +14,7 @@ import {
 import {
   applySaddleSystemPrompt,
   promptWorkingDirectory,
+  type SkillPromptMergeInput,
 } from "./skill-prompt.js";
 import { join } from "node:path";
 import type { ToolDef } from "@sparkii/connectors";
@@ -63,7 +64,22 @@ export function resolveAgentDir(explicit?: string): string {
 export function createPiSettingsManager(cwd: string, agentDir: string): SettingsManager {
   const settingsManager = SettingsManager.create(cwd, agentDir);
   if (settingsManager.getCacheWarmingMode() !== "off") settingsManager.setCacheWarmingMode("off");
+  if (settingsManager.getImageAutoResize()) settingsManager.setImageAutoResize(false);
   return settingsManager;
+}
+
+export function projectSaddlePromptInput(
+  event: Pick<BeforeAgentStartEvent, "systemPrompt" | "systemPromptOptions">,
+  saddle: SessionSaddle | null,
+): SkillPromptMergeInput {
+  return {
+    systemPrompt: event.systemPrompt,
+    systemPromptOptions: {
+      ...event.systemPromptOptions,
+      cwd: promptWorkingDirectory(saddle, event.systemPromptOptions?.cwd),
+      workspaceRoot: saddle?.workspaceRoot,
+    },
+  };
 }
 
 export function readQueueSnapshot(session: {
@@ -161,14 +177,10 @@ function systemPromptExtensionFactory(
       // 每次 prompt 前 `_preparePromptAndToolLoadout()` 会用注册表过滤一次并回写
       // `agent.state.tools`，所以鞍里的工具必须真的进注册表（0.84.x 可直接赋值 state.tools）。
       syncTools(pi);
-      return applySaddleSystemPrompt(getSystemPrompt(), {
-        ...event,
-        systemPromptOptions: {
-          ...event.systemPromptOptions,
-          cwd: promptWorkingDirectory(getSaddle(), event.systemPromptOptions?.cwd),
-          workspaceRoot: getSaddle()?.workspaceRoot,
-        },
-      });
+      return applySaddleSystemPrompt(
+        getSystemPrompt(),
+        projectSaddlePromptInput(event, getSaddle()),
+      );
     });
   };
 }
