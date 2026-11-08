@@ -17,6 +17,7 @@ describe('sparkii api shape', () => {
       'getRuntimePool', 'getDocumentParse', 'stopDocumentParse', 'releaseDocumentParse', 'cancelDocumentParseLoad', 'saveDocumentParseSettings', 'listDocumentParseModules', 'retryDocumentParse', 'importDocumentParseModule', 'downloadDocumentParseModule', 'cancelQueuedSession', 'releaseSessionSlot',
       'getPathForFile',
       'windowMinimize', 'windowToggleMaximize', 'windowClose', 'windowIsMaximized',
+      'getAppVersion', 'getUpdateState', 'checkForUpdate', 'downloadUpdate', 'cancelDownload', 'installUpdate', 'clearDownloaded', 'deferUpdate', 'skipUpdate', 'getUpdateSettings', 'saveUpdateSettings', 'resetInstallId',
     ];
     const api = buildApi({ invoke: () => Promise.resolve(null), on: () => () => {}, removeListener: () => {} } as any);
     expect(Object.keys(api).sort()).toEqual([...names].sort());

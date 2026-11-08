@@ -4,7 +4,7 @@
 >
 > [English](./README.en.md) · 简体中文
 
-**状态：** pilot（v0.1.0，私有仓库） · **平台：** Windows 优先（NSIS / MSIX）
+**状态：** pilot（v0.1.0，私有仓库） · **平台：** Windows x64 NSIS（per-user，免 UAC）
 
 ## 简介
 
@@ -21,7 +21,7 @@ Sparkii Desktop 是一个以「可控、可审计、可私有化部署」为设�
 - **安全门控与审计**：LLM 只能提出写操作，Main 侧确定性执行器在人工批准后才执行；SQLite 审计可导出，拒绝即不写。
 - **Profile 驱动的可配置性**：页面、流程、技能、主题、权限、模型路由全部声明式配置，带 Ed25519 签名完整性校验。
 - **原生 Skills 加载**：遵循 Pi 的 SKILL.md 标准，目录注入 + 内置 read 工具按需读取正文与 references/assets。
-- **私有化/离线交付**：数据不出本机，单安装包交付，无退出遥测；模型 provider 可插拔（当前 pilot 使用 deepseek，支持按 profile 接入本地/云端端点）。
+- **私有化/离线交付**：数据不出本机，单安装包交付，无退出遥测；模型 provider 可插拔（当前 pilot 使用 deepseek，支持按 profile 接入本地/云端端点）。自动升级只读更新源的静态清单、请求零身份信息且可一键关闭，不配置更新源时保持零外网请求。
 
 ## 合同审核流程
 
@@ -151,7 +151,17 @@ profiles/contract-review/
 pnpm --filter @sparkii/desktop dist
 ```
 
-产物位于 `apps/desktop/out/`：NSIS 安装包（`.exe`）与 MSIX（`.appx`）。Pi Runtime 与 profile 资源随包分发，安装后不依赖 PATH 中的 pi / pnpm / Node。
+产物位于 `apps/desktop/out/`：Windows x64 NSIS 安装包（`.exe`，per-user、免 UAC）；**不产出 MSIX / `.appx`**。Pi Runtime 与 profile 资源随包分发，安装后不依赖 PATH 中的 pi / pnpm / Node。构建同时产出 `out/latest.yml`（**仅构建期产物，不上传服务器**）与包内 `resources/app-update.yml`。
+
+### 自动升级
+
+应用支持自动升级（发现新版 → 下载 → 安装 → 重启），入口在 **设置 → 关于**：查看当前版本与更新源、手动「检查更新」、下载、安装。
+
+- **下载和安装都是显式动作**：`autoDownload` 恒为 `false`，不会偷偷下载或偷偷安装；进度只在状态栏呈现，不弹窗、不抢焦点。
+- **检查请求零身份信息**：只以 `GET` 读取更新源里的固定静态文件，无 query、无自定义 header、无设备 ID、无遥测；自动检查可在设置里**一键关闭**。（口径精确化：客户端代码不注入 header，HTTP 栈自身仍带 `user-agent: node` 等平台默认头，其中不含设备 / 账户 / 会话信息。）
+- **更新源地址可配置**：默认值在构建期注入，**留空即为关闭自动检查**；地址支持内网 HTTP(S) 服务端点，保存时做严格校验并写入审计。「设置 → 关于」当前展示该地址与自动检查开关。
+
+更新完整性不依赖代码签名（安装包未签名），而依赖发布清单的 Ed25519 数字签名与安装包 SHA512 校验；任一校验失败一律当作「无更新」，绝不安装未验签内容。服务器地址属运维信息，示例一律用占位符 `http://<更新源地址>/sparkii-updates/`，实际部署见 `docs/operations/update-service.md`；发布操作见 `docs/release-windows.md`，设计见 `docs/superpowers/specs/2026-11-06-auto-update-design.md`。
 
 ## 路线图与当前边界
 

@@ -1,4 +1,4 @@
-import type { ErrorRecord, ProviderEntryInfo, SparkiiApi } from './api-types.js';
+import type { ErrorRecord, ProviderEntryInfo, SparkiiApi, UpdateActionResult, UpdateSettingsPublic, UpdateState } from './api-types.js';
 import type { RuntimePoolSnapshot } from '@sparkii/agent-host';
 import { webUtils } from 'electron';
 
@@ -91,6 +91,18 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
     windowToggleMaximize: () => invoke('windowToggleMaximize') as Promise<boolean>,
     windowClose: () => invoke('windowClose') as Promise<boolean>,
     windowIsMaximized: () => invoke('windowIsMaximized') as Promise<boolean>,
+    getAppVersion: () => invoke('getAppVersion') as Promise<string>,
+    getUpdateState: () => invoke('getUpdateState') as Promise<UpdateState>,
+    checkForUpdate: (force) => invoke('checkForUpdate', force) as Promise<UpdateActionResult>,
+    downloadUpdate: (opts) => invoke('downloadUpdate', opts) as Promise<UpdateActionResult>,
+    cancelDownload: () => invoke('cancelDownload') as Promise<UpdateActionResult>,
+    installUpdate: (opts) => invoke('installUpdate', opts) as Promise<UpdateActionResult>,
+    clearDownloaded: (opts) => invoke('clearDownloaded', opts) as Promise<UpdateActionResult>,
+    deferUpdate: () => invoke('deferUpdate') as Promise<UpdateActionResult>,
+    skipUpdate: (opts) => invoke('skipUpdate', opts) as Promise<UpdateActionResult>,
+    getUpdateSettings: () => invoke('getUpdateSettings') as Promise<UpdateSettingsPublic>,
+    saveUpdateSettings: (partial) => invoke('saveUpdateSettings', partial) as Promise<UpdateActionResult>,
+    resetInstallId: () => invoke('resetInstallId') as Promise<UpdateActionResult>,
     on: (channel, cb) => {
       const listener = (_e: unknown, payload: unknown) => cb(payload);
       ipc.on(`sparkii:event:${channel}`, listener);

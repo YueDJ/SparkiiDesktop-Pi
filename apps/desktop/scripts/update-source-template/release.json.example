@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 2,
+  "product": "Sparkii",
+  "channel": "stable",
+  "platform": "win-x64",
+  "sequence": 18,
+  "nonce": "<hex: randomBytes(16)>",
+  "publishedAt": "2026-11-06T05:20:00.000Z",
+  "expiresAt": "2026-11-09T05:20:00.000Z",
+  "version": "0.3.0",
+  "minSupportedVersion": "0.1.0",
+  "rollback": false,
+  "allowDowngrade": false,
+  "mandatory": false,
+  "mandatoryAfter": null,
+  "rollout": { "percentage": 100, "salt": "<string>" },
+  "releaseNotes": { "summary": "<string>", "highlights": ["<string>"] },
+  "artifact": {
+    "name": "Sparkii-0.3.0-win-x64.exe",
+    "bytes": 401196487,
+    "sha512": "<base64: 包体 sha512>",
+    "url": "releases/0.3.0/Sparkii-0.3.0-win-x64.exe"
+  },
+  "requires": { "minOSBuild": "10.0.19045", "minFreeDiskBytes": 1200000000 }
+}

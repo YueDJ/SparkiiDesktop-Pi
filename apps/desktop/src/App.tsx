@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Shell, type ScreenId, type ShellAgent, type ShellSession } from './shell/Shell.js';
+import { Shell, type ScreenId, type ShellAgent, type ShellSession, type UpdateStatusSummary } from './shell/Shell.js';
 import { ErrorProvider, useErrors, type ErrorStoreAdapter, type RuntimePoolSummary, type DocumentParseSnapshot } from '@sparkii/ui';
 import type { SparkiiApi } from './types/sparkii-api.js';
 import { SettingsView } from './shell/SettingsView.js';
@@ -86,6 +86,48 @@ export function mapRuntimePool(raw: any, pendingApprovals: any[]): RuntimePoolSu
   };
 }
 
+/**
+ * 状态栏更新 pill 的最小映射（§7.5）：只在 available / downloading / readyToInstall 出内容，
+ * 其余阶段返回 null ⇒ StatusBar 完全不渲染，不抢焦点、不弹模态。
+ * 文案里的版本号只来自已验签清单（Main 侧 state），绝不自己拼 URL 或加载远程内容。
+ */
+export function mapUpdateSummary(state: unknown): UpdateStatusSummary | null {
+  const s = state as {
+    phase?: string; percent?: number | null; version?: string | null;
+    progress?: { percent?: number | null } | null;
+    remote?: { version?: string } | null;
+    local?: { version?: string } | null;
+    choiceRequired?: boolean;
+  } | null;
+  if (!s || typeof s.phase !== 'string') return null;
+  if (s.phase === 'available') {
+    return {
+      phase: 'available',
+      percent: null,
+      label: s.choiceRequired === true ? '有 2 个可选版本' : '有新版',
+      version: s.remote?.version ?? s.version ?? null,
+    };
+  }
+  if (s.phase === 'downloading') {
+    const pct = Number(s.progress?.percent ?? s.percent ?? 0);
+    return {
+      phase: 'downloading',
+      percent: Number.isFinite(pct) ? Math.max(0, Math.min(100, Math.round(pct))) : 0,
+      label: '下载中',
+      version: s.remote?.version ?? s.version ?? null,
+    };
+  }
+  if (s.phase === 'readyToInstall') {
+    return {
+      phase: 'readyToInstall',
+      percent: null,
+      label: '已下载完，可以安装',
+      version: s.local?.version ?? s.version ?? null,
+    };
+  }
+  return null;
+}
+
 function makeErrorStore(api: SparkiiApi): ErrorStoreAdapter {
   return {
     load: () => api.listErrors(),
@@ -162,6 +204,13 @@ function AppShell() {
     queue: [],
   });
   const [documentParse, setDocumentParse] = useState<DocumentParseSnapshot>({ status: 'stopped', waiting: [] });
+  const [updateSummary, setUpdateSummary] = useState<UpdateStatusSummary | null>(null);
+  /**
+   * 进入设置页时落在哪个 pane。状态栏更新 pill 要直达「关于」（R1 · B-2：
+   * 只跳设置页会停在「大模型连接」，§7.5 的入口等于没做完）；
+   * 其它方式进设置则回到默认 pane，不让这个落点粘住。
+   */
+  const [settingsPane, setSettingsPane] = useState<string | undefined>(undefined);
   // 本地尚未被后端确认的会话状态（名称 / 最近活动时间 / 所属智能体）。
   // 新会话、重命名、正在运行的会话在刷新时用这份覆盖值穿透滞后的后端快照，
   // 一旦后端确认(名称与时间一致/会话出现)即清除，避免多个各自为政的缓存。
@@ -248,6 +297,15 @@ function AppShell() {
     api.getRuntimePool?.().then((p: any) => setRuntimePool(mapRuntimePool(p, pendingList))).catch(() => {});
     return off;
   }, [api, pendingList]);
+  // 状态栏更新 pill：订阅 Main 推来的 update-state，并在挂载时取一次初值（零网络，只读本地推导）。
+  useEffect(() => {
+    const off = api.on?.('update-state', (p: any) => setUpdateSummary(mapUpdateSummary(p)));
+    const pending = api.getUpdateState?.();
+    if (pending) {
+      pending.then((s: any) => setUpdateSummary(mapUpdateSummary(s))).catch(() => {});
+    }
+    return () => { if (typeof off === 'function') off(); };
+  }, [api]);
   useEffect(() => {
     const off = api.on?.('document-parse', (p: any) => {
       if (p && typeof p === 'object') setDocumentParse(p as DocumentParseSnapshot);
@@ -474,6 +532,8 @@ function AppShell() {
       refreshSessions(s);
       return;
     }
+    // 常规入口进设置 ⇒ 回到默认 pane，不让更新 pill 的落点粘住。
+    if (s === 'settings') setSettingsPane(undefined);
     commitCurrent(openPage(s));
   };
 
@@ -539,7 +599,7 @@ function AppShell() {
       <AuditView key={auditVersion} api={api} onExport={exportAudit} />
     ),
     settings: (
-      <SettingsView api={api} onExportAudit={exportAudit} />
+      <SettingsView api={api} onExportAudit={exportAudit} initialPane={settingsPane} />
     ),
   };
 
@@ -592,6 +652,12 @@ function AppShell() {
         onStopParse={() => { void api.stopDocumentParse?.(); }}
         onReleaseParse={() => { void api.releaseDocumentParse?.(); }}
         onCancelLoad={() => { void api.cancelDocumentParseLoad?.(); }}
+        update={updateSummary ?? undefined}
+        onUpdateClick={() => {
+          // 直达「关于」：pill 是唯一的全局入口，跳过去还得自己找 pane 就等于没接上（R1 · B-2）。
+          setSettingsPane('about');
+          commitCurrent(openPage('settings'));
+        }}
       >
         {surfaceNode}
         {agentFrames}

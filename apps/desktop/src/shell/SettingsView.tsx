@@ -12,11 +12,13 @@ import { SettingsSkillsPane, type SkillsPaneApi } from './SettingsSkillsPane.js'
 import { SettingsKnowledgePane } from './SettingsKnowledgePane.js';
 import { SettingsDocumentParsePane } from './SettingsDocumentParsePane.js';
 import { COMPANY_NAME, PRODUCT_NAME, RELEASE_CHANNEL } from '../branding.js';
+import { SettingsUpdatePane } from './SettingsUpdatePane.js';
 import type {
   KnowledgeBackendId,
   KnowledgeProbeOverride,
   KnowledgeProbeResult,
   KnowledgeSettingsPartial,
+  SparkiiApi,
 } from '../../electron/preload/api-types.js';
 
 export interface ProviderEntry {
@@ -79,9 +81,35 @@ export interface SettingsApi {
     status: 'stopped' | 'starting' | 'parsing' | 'idle' | 'resident';
     waiting: unknown[];
   }>;
+  // 自动更新（G5）：全部可选，避免破坏既有调用方与测试 mock。
+  getAppVersion?: SparkiiApi['getAppVersion'];
+  getUpdateState?: SparkiiApi['getUpdateState'];
+  checkForUpdate?: SparkiiApi['checkForUpdate'];
+  downloadUpdate?: SparkiiApi['downloadUpdate'];
+  cancelDownload?: SparkiiApi['cancelDownload'];
+  installUpdate?: SparkiiApi['installUpdate'];
+  clearDownloaded?: SparkiiApi['clearDownloaded'];
+  deferUpdate?: SparkiiApi['deferUpdate'];
+  skipUpdate?: SparkiiApi['skipUpdate'];
+  getUpdateSettings?: SparkiiApi['getUpdateSettings'];
+  saveUpdateSettings?: SparkiiApi['saveUpdateSettings'];
+  on?: SparkiiApi['on'];
 }
 
-export interface SettingsViewProps { api?: SettingsApi; onExportAudit?(jsonl: string): void; }
+export interface SettingsViewProps {
+  api?: SettingsApi;
+  onExportAudit?(jsonl: string): void;
+  /**
+   * 首次挂载时落在哪个 pane（R1 · B-2）。状态栏更新 pill 的落点是「关于」，
+   * 若只是跳到设置页却停在「大模型连接」，用户还得自己找一遍，§7.5 的入口就不成立。
+   * 非法值一律忽略并回到默认 pane，绝不因为外部传了个怪字符串就白屏。
+   */
+  initialPane?: string;
+}
+
+const DEFAULT_PANE: Pane = 'llm';
+const isKnownPane = (v: unknown): v is Pane =>
+  typeof v === 'string' && (PANES as readonly string[]).includes(v);
 
 const PANES = ['llm', 'knowledge', 'documentParse', 'data', 'runtime', 'skills', 'approval', 'appearance', 'audit', 'about'] as const;
 type Pane = (typeof PANES)[number];
@@ -108,7 +136,7 @@ function probeError(r: { reason?: string; error?: string }): string {
 export function SettingsView(props: SettingsViewProps) {
   const { api, onExportAudit } = props;
   const { reportError } = useErrors();
-  const [pane, setPane] = useState<Pane>('llm');
+  const [pane, setPane] = useState<Pane>(isKnownPane(props.initialPane) ? props.initialPane : DEFAULT_PANE);
   const [entries, setEntries] = useState<ProviderEntry[]>([]);
   const [providerId, setProviderId] = useState('');
   const [customProviders, setCustomProviders] = useState<CustomProvider[]>([]);
@@ -476,6 +504,7 @@ export function SettingsView(props: SettingsViewProps) {
           <div className="ui-muted settings-hint">
             当前安装包未购买代码签名证书；首次运行时 Windows SmartScreen 可能提示未知发布者。
           </div>
+          {api && <SettingsUpdatePane api={api} />}
         </>
       )}
     </SettingsLayout>

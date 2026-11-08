@@ -35,6 +35,24 @@ export interface AppSettings {
     keepResident?: boolean;
   };
   /**
+   * 自动更新设置（§7.4）。独立于 rag.baseUrl：更新源是静态文件目录，不复用 RAG 业务地址。
+   * autoDownload 恒为 false（写死，不提供开启入口）；其单测覆盖在 G3。
+   * loadSettings / saveSettings 的 merge 语义保持不变，normalize 只处理 providers，
+   * 不得丢弃本字段。
+   */
+  update?: {
+    baseUrl?: string;
+    autoCheck?: boolean;
+    checkIntervalHours?: number;
+    checkOnStartup?: boolean;
+    startupDelaySeconds?: number;
+    checkOnNetworkResume?: boolean;
+    checkOnSystemResume?: boolean;
+    remindIntervalHours?: number;
+    requestTimeoutMs?: number;
+    autoDownload?: false;
+  };
+  /**
    * Only the operational knobs of the platform reviewer live here. The system
    * prompt, the policy version and the output schema stay in reviewer-policy.ts.
    */

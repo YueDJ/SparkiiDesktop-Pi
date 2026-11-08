@@ -125,6 +125,101 @@ export type OntologyGraphProbeResult = {
 };
 
 
+/** 自动更新共享数据类型：结构等价地重复声明契约 §3，字段名逐字一致。
+ *  preload 层不得 import `electron/main/update/*`，故在此本地声明并导出。 */
+export type UpdatePhase =
+  | 'disabled' | 'idle' | 'checking' | 'available' | 'downloading'
+  | 'readyToInstall' | 'installing' | 'restarting' | 'completed'
+  | 'rolledBack' | 'error';
+
+export interface UpdateProgress {
+  percent: number;
+  bytesDownloaded: number;
+  bytesTotal: number;
+  savePath: string | null;
+}
+
+export interface RemoteUpdateInfo {
+  version: string;
+  sequence: number;
+  nonce: string;
+  publishedAt: string;
+  expiresAt: string;
+  summary: string;
+  highlights: string[];
+  bytes: number;
+  minSupportedVersion: string;
+  allowDowngrade: boolean;
+}
+
+export interface LocalUpdateInfo {
+  version: string;
+  sequence: number;
+  nonce: string;
+  artifactPath: string;
+  bytes: number;
+  sha512: string;
+  expiresAt: string;
+  valid: boolean;
+}
+
+export interface UpdateState {
+  phase: UpdatePhase;
+  currentVersion: string;
+  baseUrl: string | null;
+  autoCheck: boolean;
+  lastCheckedAt: number | null;
+  lastSuccessAt: number | null;
+  remote: RemoteUpdateInfo | null;
+  local: LocalUpdateInfo | null;
+  progress: UpdateProgress | null;
+  choiceRequired: boolean;
+  errorCode: string | null;
+  stateTampered: boolean;
+  httpWarning: boolean;
+  pendingApprovals: number;
+  activeSessions: number;
+}
+
+export interface UpdateSettingsPublic {
+  baseUrl: string;
+  autoCheck: boolean;
+  checkIntervalHours: number;
+  checkOnStartup: boolean;
+  startupDelaySeconds: number;
+  checkOnNetworkResume: boolean;
+  checkOnSystemResume: boolean;
+  remindIntervalHours: number;
+  requestTimeoutMs: number;
+  autoDownload: false;
+  isHttp: boolean;
+}
+
+export interface UpdateSettingsPatch {
+  baseUrl?: string;
+  autoCheck?: boolean;
+  checkIntervalHours?: number;
+  checkOnStartup?: boolean;
+  startupDelaySeconds?: number;
+  checkOnNetworkResume?: boolean;
+  checkOnSystemResume?: boolean;
+  remindIntervalHours?: number;
+  requestTimeoutMs?: number;
+}
+
+export interface UpdateActionResult {
+  ok: boolean;
+  reason?: string;
+  message?: string;
+}
+
+export interface UpdateStatusSummary {
+  phase: UpdatePhase;
+  percent: number | null;
+  label: string;
+  version: string | null;
+}
+
 export interface SparkiiApi {
   getPermissionModeState(agentId: string, sessionId?: string | null): Promise<PermissionModeState>;
   setChatPermissionMode(
@@ -246,6 +341,18 @@ export interface SparkiiApi {
   windowClose(): Promise<boolean>;
   windowIsMaximized(): Promise<boolean>;
   on(channel: string, cb: (payload: unknown) => void): () => void;
+  getAppVersion(): Promise<string>;
+  getUpdateState(): Promise<UpdateState>;
+  checkForUpdate(force?: boolean): Promise<UpdateActionResult>;
+  downloadUpdate(opts: { version: string }): Promise<UpdateActionResult>;
+  cancelDownload(): Promise<UpdateActionResult>;
+  installUpdate(opts: { version: string }): Promise<UpdateActionResult>;
+  clearDownloaded(opts: { version: string }): Promise<UpdateActionResult>;
+  deferUpdate(): Promise<UpdateActionResult>;
+  skipUpdate(opts: { version: string }): Promise<UpdateActionResult>;
+  getUpdateSettings(): Promise<UpdateSettingsPublic>;
+  saveUpdateSettings(partial: UpdateSettingsPatch): Promise<UpdateActionResult>;
+  resetInstallId(): Promise<UpdateActionResult>;
 }
 
 export interface PermissionModeState {

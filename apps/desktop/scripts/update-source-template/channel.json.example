@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "product": "Sparkii",
+  "channel": "stable",
+  "platform": "win-x64",
+  "sequence": 18,
+  "targetVersion": "0.3.0",
+  "manifestPath": "releases/0.3.0/release.json",
+  "manifestSha256": "<hex: 实收 release.json 原始字节的 sha256>",
+  "signaturePath": "releases/0.3.0/release.json.sig",
+  "publishedAt": "2026-11-06T05:20:00.000Z"
+}

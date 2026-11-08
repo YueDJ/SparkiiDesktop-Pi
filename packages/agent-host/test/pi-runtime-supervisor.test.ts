@@ -216,4 +216,76 @@ describe("PiRuntimeSupervisor", () => {
     expect(onExit).toHaveBeenCalledWith(1);
     expect(handle.killed).toBe(true);
   });
+
+  describe("M3：stop() 等待子进程真正退出", () => {
+    /** 手动控制退出时机的句柄：kill() 不自动触发 exit。 */
+    class ManualHandle implements PiRuntimeHostHandle {
+      kills = 0;
+      private messageCb?: (env: PiRuntimeEnvelope) => void;
+      private exitCbs = new Set<(code: number | null) => void>();
+      postMessage(_envelope: PiRuntimeEnvelope) { /* 测试不需要应答 */ }
+      onMessage(cb: (env: PiRuntimeEnvelope) => void) { this.messageCb = cb; return () => { this.messageCb = undefined; }; }
+      onExit(cb: (code: number | null) => void) { this.exitCbs.add(cb); return () => { this.exitCbs.delete(cb); }; }
+      kill() { this.kills += 1; }
+      emitExit(code: number | null = 0) { for (const cb of [...this.exitCbs]) cb(code); }
+      ready() { this.messageCb?.(readyEnvelope()); }
+    }
+
+    it("kill 不阻塞 stop：exit 到达后 stop 才 resolve", async () => {
+      const handle = new ManualHandle();
+      const sup = new PiRuntimeSupervisor(() => handle);
+      await sup.start();
+      let exitedAt = 0;
+      const stop = sup.stop();
+      // 还没退出 ⇒ stop 必须仍在等
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      let settled = false;
+      void stop.then(() => { settled = true; });
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(settled).toBe(false);
+      exitedAt = Date.now();
+      handle.emitExit(0);
+      await stop;
+      expect(Date.now()).toBeGreaterThanOrEqual(exitedAt);
+      expect(handle.kills).toBe(1);
+    });
+
+    it("超时兜底：exit 永不出现 ⇒ stop 在 stopTimeoutMs 后返回并再 kill 一次", async () => {
+      const handle = new ManualHandle();
+      const logger = { warn: vi.fn() };
+      const sup = new PiRuntimeSupervisor(() => handle, { stopTimeoutMs: 50, logger });
+      await sup.start();
+      const startedAt = Date.now();
+      await sup.stop();
+      const elapsed = Date.now() - startedAt;
+      expect(elapsed).toBeGreaterThanOrEqual(40);
+      expect(elapsed).toBeLessThan(2_000);
+      expect(handle.kills).toBe(2);                     // 超时后再强杀一次
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("did not exit"));
+    });
+
+    it("句柄同一性守卫（防御性）：旧句柄迟到 exit 不清理新句柄、不通知 onExit", async () => {
+      const first = new ManualHandle();
+      const second = new ManualHandle();
+      const handles = [first, second];
+      const sup = new PiRuntimeSupervisor(
+        () => handles.shift()!,
+        { stopTimeoutMs: 30, sendTimeoutMs: 50 },
+      );
+      const onExit = vi.fn();
+      sup.onExit(onExit);
+      const client1 = await sup.start();
+      await sup.stop();                                 // 第一个句柄不会自己退出 ⇒ 超时收尾
+      const client2 = await sup.start();
+      expect(client2).not.toBe(client1);
+      first.emitExit(1);                                // 旧句柄迟到 exit
+      expect(onExit).not.toHaveBeenCalledWith(1);       // 不得把「当前运行时退出了」报给订阅者
+      // 新句柄仍然可用：start() 幂等返回同一个 client，send 不会因旧 exit 被拒。
+      second.ready();
+      expect(await sup.start()).toBe(client2);
+      const p = client2.send({ type: "abort" });
+      // 没有应答 ⇒ 走 sendTimeout；关键是它**不是**「runtime exited」。
+      await expect(p).rejects.toThrow(/timed out/);
+    });
+  });
 });

@@ -23,9 +23,10 @@
     "build:main:check": "tsc --noEmit -p tsconfig.electron.json",
     "smoke:pi-runtime": "node scripts/smoke-pi-runtime-bundle.mjs",
     "prebuild:main": "node native/windows-sandbox/build.mjs && node -e \"const fs=require('fs');fs.rmSync('dist-electron',{recursive:true,force:true})\"",
-    "build:main": "esbuild electron/main/index.ts --bundle --platform=node --format=esm --external:electron --external:better-sqlite3 --banner:js=\"import { createRequire as nodeCreateRequire } from 'module'; const require = nodeCreateRequire(import.meta.url);\" --outfile=dist-electron/main/index.js && esbuild electron/preload/index.ts --bundle --platform=node --format=cjs --external:electron --outfile=dist-electron/preload/index.cjs && esbuild electron/pi-runtime/utility-entry.ts --bundle --platform=node --format=esm --external:electron --banner:js=\"import { createRequire as nodeCreateRequire } from 'module'; const require = nodeCreateRequire(import.meta.url);\" --outfile=dist-electron/pi-runtime/utility-entry.js && esbuild electron/pi-runtime/fork-entry.ts --bundle --platform=node --format=esm --external:electron --banner:js=\"import { createRequire as nodeCreateRequire } from 'module'; const require = nodeCreateRequire(import.meta.url);\" --outfile=dist-electron/pi-runtime/fork-entry.js",
+    "build:main": "node scripts/build-main.mjs",
+    "build:watchdog": "node scripts/build-watchdog-sea.mjs",
     "ensure:runtime": "node scripts/ensure-runtime.mjs && node scripts/ensure-document-parse.mjs",
-    "dist": "pnpm ensure:runtime && pnpm build:renderer && pnpm build:main && node scripts/install-native-deps.mjs --rebuild && electron-builder --win nsis --publish never && node scripts/create-release-manifest.mjs",
+    "dist": "pnpm ensure:runtime && pnpm build:renderer && pnpm build:main && pnpm build:watchdog && node scripts/install-native-deps.mjs --rebuild && electron-builder --win nsis --publish never --config electron-builder.config.mjs && node scripts/create-release-manifest.mjs",
     "postinstall": "node scripts/install-native-deps.mjs"
   },
   "dependencies": {
@@ -39,6 +40,7 @@
     "@sparkii/ui": "workspace:*",
     "better-sqlite3": "^13.0.3",
     "docx-preview": "^0.4.0",
+    "electron-updater": "6.3.0",
     "pdfjs-dist": "6.3.289",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -56,6 +58,7 @@
     "electron-builder": "^26.15.3",
     "esbuild": "^0.28.2",
     "jsdom": "^30.0.1",
+    "postject": "1.0.0-alpha.6",
     "typescript": "^6.0.3",
     "vite": "^8.2.2"
   }

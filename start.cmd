@@ -13,6 +13,11 @@ set "ROOT=%~dp0"
 if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
 set "APP_DIR=%ROOT%\apps\desktop"
 
+rem pnpm 9's update-notifier keeps the process alive after "Done" while it waits
+rem for the registry; on a slow registry this looked like start.cmd hanging (~2 min).
+rem Disable it for this launcher so pnpm install returns in ~1s.
+set "npm_config_update_notifier=false"
+
 rem Node fallback for this machine (used only if node is not already on PATH).
 if not defined SPARKII_NODE_DIR set "SPARKII_NODE_DIR=%LOCALAPPDATA%\hermes\node"
 

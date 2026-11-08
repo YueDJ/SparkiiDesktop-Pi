@@ -6,3 +6,4 @@ export {
   type ShellProps,
   type ShellSession,
 } from '@sparkii/ui';
+export type { UpdateStatusSummary } from '@sparkii/ui';

@@ -4,7 +4,7 @@
 >
 > English · [简体中文](./README.md)
 
-**Status:** pilot (v0.1.0, private repo) · **Platform:** Windows-first (NSIS / MSIX)
+**Status:** pilot (v0.1.0, private repo) · **Platform:** Windows x64 NSIS (per-user, no UAC prompt)
 
 ## Overview
 
@@ -21,7 +21,7 @@ Upload contract → parse document → search regulations → extract clauses �
 - **Approval gate + audit**: the LLM can only propose writes; a deterministic executor on the Main side runs them only after human approval. SQLite audit records are exportable — denial means no write.
 - **Profile-driven configurability**: pages, workflows, skills, theme, permissions, and model routing are all declarative, with Ed25519 signed integrity checks.
 - **Native skill loading**: follows the Pi SKILL.md standard — directory injection plus on-demand reading of skill bodies and references/assets via the built-in `read` tool.
-- **Private / offline delivery**: data stays on the machine, delivered as a single installer, no exit telemetry. Model providers are pluggable (the pilot uses deepseek; local/cloud endpoints can be wired per profile).
+- **Private / offline delivery**: data stays on the machine, delivered as a single installer, no exit telemetry. Model providers are pluggable (the pilot uses deepseek; local/cloud endpoints can be wired per profile). Auto-update only reads static manifests from the update source, its requests carry zero identity, and it can be switched off entirely — with no update source configured the app still makes zero outbound requests.
 
 ## Contract Review Flow
 
@@ -152,7 +152,17 @@ Pages are driven by a widget registry + JSON schema; a profile can never execute
 pnpm --filter @sparkii/desktop dist
 ```
 
-Artifacts land in `apps/desktop/out/`: an NSIS installer (`.exe`) and MSIX (`.appx`). The Pi Runtime and profile resources ship inside the installer — no dependency on pi / pnpm / Node on the target machine's PATH.
+Artifacts land in `apps/desktop/out/`: a Windows x64 NSIS installer (`.exe`, per-user, no UAC prompt). **No MSIX / `.appx` is produced.** The Pi Runtime and profile resources ship inside the installer — no dependency on pi / pnpm / Node on the target machine's PATH. The build also emits `out/latest.yml` (**build-time only; never uploaded to the server**) and `resources/app-update.yml` inside the package.
+
+### Auto-update
+
+The app supports auto-update (discover → download → install → restart) from **Settings → About**, where you can see the current version and update source, check for updates manually, download and install.
+
+- **Download and install are both explicit user actions**: `autoDownload` is permanently `false` — nothing is downloaded or installed silently. Progress lives in the status bar only: no modal, no focus stealing.
+- **Check requests carry zero identity**: plain `GET` of fixed static files from the update source, with no query string, no custom headers, no device ID and no telemetry. Automatic checks can be turned off with a single switch.
+- **The update source URL is configurable**: a build-time injected default (**empty ⇒ automatic checks are disabled**); intranet HTTP(S) endpoints are supported, and saving an address is strictly validated and audited. Settings → About shows the current source and the automatic-check switch.
+
+Update integrity does not rely on code signing (the installer is unsigned) but on the Ed25519 signature of the release manifest plus the SHA512 check of the package: any verification failure is treated as "no update" and unsigned content is never installed. Server addresses are operational details and are kept as placeholders here (`http://<update-source>/sparkii-updates/`); see `docs/operations/update-service.md` for deployment, `docs/release-windows.md` for the release procedure and `docs/superpowers/specs/2026-11-06-auto-update-design.md` for the design.
 
 ## Roadmap & Current Boundaries
 

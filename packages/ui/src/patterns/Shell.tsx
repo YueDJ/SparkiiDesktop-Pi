@@ -5,7 +5,7 @@ import { Badge } from '../primitives/Badge.js';
 import { Drawer } from '../primitives/Drawer.js';
 import { AgentNav } from './AgentNav.js';
 import { SessionList, type SessionGroup, type SessionListItem } from './SessionList.js';
-import { StatusBar } from './StatusBar.js';
+import { StatusBar, type UpdateStatusSummary } from './StatusBar.js';
 import { EMPTY_DOCUMENT_PARSE, RuntimeCenter, type DocumentParseSnapshot, type RuntimePoolSummary } from './RuntimeCenter.js';
 import { ErrorCenterPanel, useErrors } from './ErrorCenter.js';
 import { TextField } from '../primitives/TextField.js';
@@ -64,6 +64,9 @@ export interface ShellProps {
   onStopParse?(): Promise<void> | void;
   onReleaseParse?(): Promise<void> | void;
   onCancelLoad?(): Promise<void> | void;
+  /** 状态栏更新 pill（§7.5）：宿主给数据才显示，缺省时 StatusBar 完全保持现状。 */
+  update?: UpdateStatusSummary;
+  onUpdateClick?(): void;
   children?: ReactNode;
 }
 
@@ -283,7 +286,7 @@ export function Shell(props: ShellProps) {
         </main>
       </div>
 
-      <StatusBar statusText={statusText} runtimePool={fallbackRuntimePool} documentParse={documentParse} onOpenQueue={() => openDrawer('queue')} />
+      <StatusBar statusText={statusText} runtimePool={fallbackRuntimePool} documentParse={documentParse} onOpenQueue={() => openDrawer('queue')} update={props.update} onUpdateClick={props.onUpdateClick} />
 
       <Drawer open={drawer === 'queue'} title="运行中心" onClose={closeDrawer}>
         <RuntimeCenter

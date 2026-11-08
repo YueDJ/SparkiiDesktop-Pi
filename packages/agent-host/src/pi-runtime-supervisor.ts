@@ -170,10 +170,31 @@ class PiRuntimeClientImpl implements PiRuntimeClient {
   }
 }
 
+export interface PiRuntimeSupervisorOptions {
+  sendTimeoutMs?: number;
+  readinessTimeoutMs?: number;
+  /**
+   * stop() 等待子进程退出的上限（每个句柄）。
+   * ⚠ 这与「主进程 3s 未退出则 app.exit(0)」是两件事：那个兜底作用于 app.quit()，
+   * 这里等的是 pi 子进程的 exit 事件。pool.stopAll 会并行 stop 所有槽位，
+   * 因此整池的等待上限也是这个值（不随槽位数线性增长）。
+   */
+  stopTimeoutMs?: number;
+  logger?: { warn(message: string): void };
+}
+
+/**
+ * stop() 的默认等待上限：关机序列要求「停进程」这一步在快照/退出前完成（设计 §7.7 步骤 3）。
+ * 超时仍不退 ⇒ 再 kill 一次并记录，绝不让关机永久挂起。
+ */
+export const DEFAULT_STOP_TIMEOUT_MS = 3_000;
+
 export class PiRuntimeSupervisor {
   private client?: PiRuntimeClientImpl;
   private handle?: PiRuntimeHostHandle;
   private exitCbs = new Set<(code: number | null) => void>();
+  /** stop() 等待者：按句柄区分，旧句柄的迟到 exit 不会唤醒等待新句柄的人。 */
+  private exitWaiters = new Map<PiRuntimeHostHandle, Set<() => void>>();
   private proposalCb: ProposalHandler = async () => ({
     approved: false,
     proposalId: "unhandled",
@@ -184,7 +205,7 @@ export class PiRuntimeSupervisor {
 
   constructor(
     private makeHandle: () => PiRuntimeHostHandle,
-    private opts: { sendTimeoutMs?: number; readinessTimeoutMs?: number } = {},
+    private opts: PiRuntimeSupervisorOptions = {},
   ) {}
 
   async start(): Promise<PiRuntimeClient> {
@@ -200,6 +221,12 @@ export class PiRuntimeSupervisor {
       this.opts.readinessTimeoutMs,
     );
     handle.onExit((code) => {
+      // 先唤醒 stop() 的等待者（按句柄匹配，见 waitForExit）。
+      this.notifyExit(handle);
+      // 句柄同一性守卫（防御性）：同一实例被 start→stop→start 复用时，旧句柄的迟到 exit
+      // 绝不能清掉新句柄的 client/handle。当前池的接线不会走到这里（每槽 new、只 start 一次），
+      // 这是公开 API 层面的加固，不是现网活体 bug。
+      if (this.handle !== handle) return;
       this.client?.failPending(new Error(`runtime exited with code ${code}`));
       this.client = undefined;
       this.handle = undefined;
@@ -208,11 +235,76 @@ export class PiRuntimeSupervisor {
     return this.client;
   }
 
+  /**
+   * 停子进程并**等待它真的退出**（M3）。原先 kill 即返回，关机序列可能在子进程仍持有
+   * 文件句柄 / 未 flush 的会话 JSONL 时就走到快照与 app.exit（违反 §7.7 步骤 3）。
+   * 超时兜底：再 kill 一次并记录 —— 不无限等，也不静默放行。
+   */
   async stop(): Promise<void> {
-    this.handle?.kill();
-    this.client?.close();
+    const handle = this.handle;
+    const client = this.client;
+    // 先摘 client：即便下面等超时，也不会有人再通过本实例往旧句柄发命令。
+    // handle 暂不清 —— 让正常的 exit 回调仍按「同一句柄」路径通知 onExit 订阅者（清理会话状态）；
+    // 只有超时（exit 永不出现）或期间已被 start() 换成新句柄时，才在收尾处清掉。
     this.client = undefined;
-    this.handle = undefined;
+    client?.close();
+    if (!handle) {
+      this.handle = undefined;
+      return;
+    }
+
+    const timeoutMs = Number.isFinite(this.opts.stopTimeoutMs) && (this.opts.stopTimeoutMs ?? 0) > 0
+      ? this.opts.stopTimeoutMs!
+      : DEFAULT_STOP_TIMEOUT_MS;
+    const exited = this.waitForExit(handle, timeoutMs);
+    try {
+      handle.kill();
+    } catch (err) {
+      this.opts.logger?.warn(`pi runtime kill failed: ${String(err)}`);
+    }
+    const timedOut = await exited;
+    if (timedOut) {
+      this.opts.logger?.warn(
+        `pi runtime did not exit within ${timeoutMs}ms; forcing kill again (handles may still be held)`,
+      );
+      try {
+        handle.kill();
+      } catch { /* 已经死掉的句柄再 kill 失败无害 */ }
+    }
+    if (this.handle === handle) this.handle = undefined;
+  }
+
+  /** 等一次 exit；返回 true 表示超时（未退出）。等待者按句柄匹配，见 notifyExit。 */
+  private waitForExit(handle: PiRuntimeHostHandle, timeoutMs: number): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      let settled = false;
+      const timeoutRef: { id?: ReturnType<typeof setTimeout> } = {};
+      const finish = (timedOut: boolean): void => {
+        if (settled) return;
+        settled = true;
+        if (timeoutRef.id) clearTimeout(timeoutRef.id);
+        const set = this.exitWaiters.get(handle);
+        if (set) {
+          set.delete(onExit);
+          if (set.size === 0) this.exitWaiters.delete(handle);
+        }
+        resolve(timedOut);
+      };
+      const onExit = (): void => finish(false);
+      let set = this.exitWaiters.get(handle);
+      if (!set) { set = new Set(); this.exitWaiters.set(handle, set); }
+      set.add(onExit);
+      timeoutRef.id = setTimeout(() => finish(true), timeoutMs);
+      // 只等孩子，不阻止进程退出（关机路径上主进程可能已经在收尾）。
+      (timeoutRef.id as { unref?: () => void }).unref?.();
+    });
+  }
+
+  private notifyExit(handle: PiRuntimeHostHandle): void {
+    const set = this.exitWaiters.get(handle);
+    if (!set) return;
+    this.exitWaiters.delete(handle);
+    for (const waiter of [...set]) waiter();
   }
 
   onExit(cb: (code: number | null) => void): () => void {

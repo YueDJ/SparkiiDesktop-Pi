@@ -13,6 +13,9 @@ import { findCompatibleModels, type ModelCapability } from '@sparkii/model-route
 import { sortAgents } from './agent-catalog.js';
 import { resolveExportPath } from './export-path.js';
 import { loadSettings, saveSettings } from './settings.js';
+import { getUpdateService, hasUpdateService } from './update/service.js';
+import { isSafeVersionSegment } from './update/dirs.js';
+import type { UpdateActionResult, UpdateSettingsPatch, UpdateSettingsPublic, UpdateState } from '../preload/api-types.js';
 import { knowledgeFromManifest, patchRagSettings, ragFromSettings, type KnowledgeSelection } from './rag-settings.js';
 import {
   checkKnowledgeBaseUrl,
@@ -2198,4 +2201,105 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     return true;
   });
   ipcMain.handle('sparkii:windowIsMaximized', () => getWindow()?.isMaximized() ?? false);
+
+  // ── 自动更新 IPC（G5 / A 关）────────────────────────────────────────────
+  // 只经 UpdateService 门面访问；downloadUpdate / installUpdate 的验签门禁由服务层实现，
+  // 此处绝不绕过、不直接调 updater；所有通道只传结构化数据，不回传 URL 给 Renderer 加载。
+  const UPDATE_DISABLED: UpdateActionResult = { ok: false, reason: 'DISABLED' };
+  const UPDATE_DISABLED_STATE: UpdateState = {
+    phase: 'disabled',
+    currentVersion: '',
+    baseUrl: null,
+    autoCheck: false,
+    lastCheckedAt: null,
+    lastSuccessAt: null,
+    remote: null,
+    local: null,
+    progress: null,
+    choiceRequired: false,
+    errorCode: 'DISABLED',
+    stateTampered: false,
+    httpWarning: false,
+    pendingApprovals: 0,
+    activeSessions: 0,
+  };
+  const UPDATE_DISABLED_SETTINGS: UpdateSettingsPublic = {
+    baseUrl: '',
+    autoCheck: false,
+    checkIntervalHours: 24,
+    checkOnStartup: false,
+    startupDelaySeconds: 90,
+    checkOnNetworkResume: false,
+    checkOnSystemResume: false,
+    remindIntervalHours: 24,
+    requestTimeoutMs: 8000,
+    autoDownload: false,
+    isHttp: false,
+  };
+  /** 只依赖 UpdateService 门面的结构形态（契约 §4），不依赖 G3 额外导出的类型名。 */
+  type UpdateServiceLike = {
+    getAppVersion(): Promise<string>;
+    getState(): Promise<UpdateState>;
+    checkForUpdate(force?: boolean): Promise<UpdateActionResult>;
+    downloadUpdate(opts: { version: string }): Promise<UpdateActionResult>;
+    cancelDownload(): Promise<UpdateActionResult>;
+    installUpdate(opts: { version: string }): Promise<UpdateActionResult>;
+    clearDownloaded(opts: { version: string }): Promise<UpdateActionResult>;
+    deferUpdate(): Promise<UpdateActionResult>;
+    skipUpdate(opts: { version: string }): Promise<UpdateActionResult>;
+    getSettings(): Promise<UpdateSettingsPublic>;
+    saveSettings(partial: UpdateSettingsPatch): Promise<UpdateActionResult>;
+    resetInstallId(): Promise<UpdateActionResult>;
+  };
+  /** 服务未初始化时不抛错：返回结构化兜底，绝不触碰 updater。 */
+  const withUpdateService = <T>(fallback: T, fn: (s: UpdateServiceLike) => Promise<T> | T) =>
+    async (..._args: unknown[]): Promise<T> => hasUpdateService() ? await fn(getUpdateService()) : fallback;
+  /**
+   * IPC 边界形态校验：与 `update/dirs.ts` 的 choke point 用**同一条**判据。
+   * 这里原先是一条独立的宽正则 `^[0-9A-Za-z.+-]+$`，它允许 `..`，
+   * 于是 `clearDownloaded({version:'..'})` 会把整棵 `updates/` 树删掉（含防降级状态）。
+   */
+  const validVersion = (v: unknown): v is string => isSafeVersionSegment(v);
+  const versionOpts = (opts: unknown): { version: string } | null => {
+    const version = (opts as { version?: unknown } | null | undefined)?.version;
+    return validVersion(version) ? { version } : null;
+  };
+
+  ipcMain.handle('sparkii:getAppVersion', async (..._args: unknown[]) =>
+    hasUpdateService() ? await getUpdateService().getAppVersion() : (app.getVersion?.() ?? ''));
+  ipcMain.handle('sparkii:getUpdateState', withUpdateService(UPDATE_DISABLED_STATE, (s) => s.getState()));
+  ipcMain.handle('sparkii:checkForUpdate', (_e, force?: boolean) =>
+    withUpdateService<UpdateActionResult>(UPDATE_DISABLED, (s) => s.checkForUpdate(force))());
+  ipcMain.handle('sparkii:downloadUpdate', (_e, opts: unknown) => {
+    const parsed = versionOpts(opts);
+    if (!parsed) return { ok: false, reason: 'POINTER_INVALID' };
+    return withUpdateService<UpdateActionResult>(UPDATE_DISABLED, (s) => s.downloadUpdate(parsed))();
+  });
+  ipcMain.handle('sparkii:cancelDownload', withUpdateService(UPDATE_DISABLED, (s) => s.cancelDownload()));
+  ipcMain.handle('sparkii:installUpdate', (_e, opts: unknown) => {
+    const parsed = versionOpts(opts);
+    if (!parsed) return { ok: false, reason: 'POINTER_INVALID' };
+    return withUpdateService<UpdateActionResult>(UPDATE_DISABLED, (s) => s.installUpdate(parsed))();
+  });
+  ipcMain.handle('sparkii:clearDownloaded', (_e, opts: unknown) => {
+    const parsed = versionOpts(opts);
+    if (!parsed) return { ok: false, reason: 'POINTER_INVALID' };
+    return withUpdateService<UpdateActionResult>(UPDATE_DISABLED, (s) => s.clearDownloaded(parsed))();
+  });
+  ipcMain.handle('sparkii:deferUpdate', withUpdateService(UPDATE_DISABLED, (s) => s.deferUpdate()));
+  ipcMain.handle('sparkii:skipUpdate', (_e, opts: unknown) => {
+    const parsed = versionOpts(opts);
+    if (!parsed) return { ok: false, reason: 'POINTER_INVALID' };
+    return withUpdateService<UpdateActionResult>(UPDATE_DISABLED, (s) => s.skipUpdate(parsed))();
+  });
+  ipcMain.handle('sparkii:getUpdateSettings', withUpdateService(UPDATE_DISABLED_SETTINGS, (s) => s.getSettings()));
+  // §6.6 设置页「重置 installId」：只改本地检查时间的散布，不碰版本判定、不出网。
+  ipcMain.handle('sparkii:resetInstallId', withUpdateService(UPDATE_DISABLED, (s) => s.resetInstallId()));
+  ipcMain.handle('sparkii:saveUpdateSettings', (_e, partial: unknown) => {
+    // baseUrl 校验与二次确认由 UpdateService 负责；G5 只透传结构化数据（不回传 URL 供加载）。
+    const patch: UpdateSettingsPatch = partial && typeof partial === 'object' && !Array.isArray(partial)
+      ? partial as UpdateSettingsPatch
+      : {};
+    return withUpdateService<UpdateActionResult>(UPDATE_DISABLED, (s) => s.saveSettings(patch))();
+  });
 }

@@ -6,7 +6,7 @@
 
 web
 
-> Sparkii Desktop 是 Electron 桌面应用(Windows 优先,NSIS/MSIX 交付);渲染层为 React/web 技术,设计语言按 web 对待。
+> Sparkii Desktop 是 Electron 桌面应用(Windows 优先,Windows x64 NSIS 交付:per-user、免 UAC,不产出 MSIX/AppX);渲染层为 React/web 技术,设计语言按 web 对待。
 
 ## Users
 

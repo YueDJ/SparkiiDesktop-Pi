@@ -1,5 +1,19 @@
 # Windows Internal Release Packaging Implementation Plan
 
+> **后续变更（2026-11-06）／superseded in part:** Two of this plan's out-of-scope decisions have been
+> overturned by `docs/superpowers/specs/2026-11-06-auto-update-design.md` (v3, with the §0.7 field-test
+> amendments): (1) **automatic updates are now in scope** — Windows client L2 upgrade
+> (discover → download → install → restart), and (2) **a new network endpoint is now in scope** — a
+> read-only static update source `/sparkii-updates/` hosted on the same IP:80 as the existing RAG
+> service (the client only reads static files and never calls RAG business APIs; see design D3 / D11 / §8.1).
+> **Still valid from this plan:** NSIS-only delivery (no MSIX/AppX is configured or produced —
+> `apps/desktop/electron-builder.config.mjs` has `win.target: ['nsis']`), per-user install without
+> administrator rights, no Authenticode code signing, the company/copyright/product metadata, and never
+> deleting `%LOCALAPPDATA%\SparkiiDesktop\data` on install, upgrade or uninstall.
+> The historical statements below (line 7 / 16 / 22 and the `docs/deploy.md` replacement text in Task 5)
+> are the decisions taken at the time and are **kept verbatim as a record**; the current wording lives in
+> `docs/release-windows.md`, `docs/deploy.md` and `docs/operations/update-service.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Produce a versioned, unsigned Windows x64 NSIS installer for controlled internal distribution that installs per user without administrator rights and displays 深圳宇岳向上科技有限公司 as the company in application and installer metadata.
@@ -460,6 +474,8 @@ In `docs/deploy.md`, replace claims that MSIX is part of the current release wit
 ```md
 当前内部试用版仅发布 Windows x64 NSIS 安装包。MSIX、代码签名和自动更新均不包含在首版范围内。
 ```
+
+> 注记（2026-11-06）：上面这段当时写入 `docs/deploy.md` 的文案**已被 2026-11-06 变更再次取代**（自动更新已在本期范围内）。`docs/deploy.md` 的现行口径见其「离线安装包构成」与「更新源部署形态（自动更新）」两节，此处原文仅作历史保留。
 
 - [ ] **Step 3: Run the full automated verification**
 

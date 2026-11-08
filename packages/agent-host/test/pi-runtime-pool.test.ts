@@ -5,6 +5,7 @@ import { readyEnvelope, responseEnvelope, type PiRuntimeHostHandle, type PiRunti
 
 class FakeHandle implements PiRuntimeHostHandle {
   sent: PiRuntimeEnvelope[] = [];
+  killed = false;
   private messageCb?: (env: PiRuntimeEnvelope) => void;
   private exitCb?: (code: number | null) => void;
   postMessage(e: PiRuntimeEnvelope) {
@@ -17,7 +18,7 @@ class FakeHandle implements PiRuntimeHostHandle {
   onExit(cb: (code: number | null) => void) { this.exitCb = cb; return () => { this.exitCb = undefined; }; }
   emit(env: PiRuntimeEnvelope) { this.messageCb?.(env); }
   crash(code: number | null = 1) { this.exitCb?.(code); }
-  kill() {}
+  kill() { this.killed = true; this.crash(0); }
   ready() { this.emit(readyEnvelope()); }
 }
 
@@ -375,5 +376,51 @@ describe("PiRuntimePool", () => {
     const slot = await second;
     expect(slot.client).not.toBe(first.client);
     expect(slot.getSessionId()).toBe("b");
+  });
+
+  // m9（审核报告 §4 Minor）：acquire 入口查过 stopped 之后还有 `await start()` 这个让位点，
+  // 期间 stopAll() 置 stopped ⇒ 原实现仍会新建槽位入池（关机中冒出一个活进程）。
+  // 用例：不 await acquire，立刻 stopAll，再 await ⇒ 必须被拒绝且新建的句柄已被 kill。
+  it("m9：await start() 期间池被 stopAll ⇒ acquire 复检 stopped、停掉新 supervisor 并拒绝", async () => {
+    const handles: FakeHandle[] = [];
+    const pool = new PiRuntimePool({
+      maxAgents: 1,
+      makeSupervisor: () => {
+        const h = new FakeHandle();
+        handles.push(h);
+        return h;
+      },
+    });
+    const pending = pool.acquire("late");
+    // stopAll 的本体同步置 stopped（第一个 await 之前）⇒ acquire 的 await 之后必然看到。
+    const stopping = pool.stopAll();
+    await expect(pending).rejects.toThrow(/pool stopped/);
+    await stopping;
+    expect(handles).toHaveLength(1);
+    expect(handles[0].killed, "复检发现已停时必须 kill 掉刚建好的运行时").toBe(true);
+    expect(pool.snapshot().slots).toHaveLength(0);
+    expect(pool.activeCount()).toBe(0);
+  });
+
+  // M3：stopAll 必须等每个子进程真的退出（supervisor.stop 内部带超时兜底），
+  // 而不是 kill 即返回 —— 否则关机序列会在句柄仍被占用时走到快照/退出。
+  it("M3：stopAll 等到子进程 exit 才 resolve（kill 不自动退出时由超时兜底）", async () => {
+    class SlowExitHandle extends FakeHandle {
+      kills = 0;
+      private exits = new Set<(code: number | null) => void>();
+      onExit(cb: (code: number | null) => void) { this.exits.add(cb); return () => { this.exits.delete(cb); }; }
+      kill() { this.kills += 1; }
+      emitExit(code: number) { for (const cb of [...this.exits]) cb(code); }
+    }
+    const handle = new SlowExitHandle();
+    const pool = new PiRuntimePool({ maxAgents: 1, makeSupervisor: () => handle });
+    await pool.acquire("a");
+    let resolved = false;
+    const stopping = pool.stopAll().then(() => { resolved = true; });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(resolved, "子进程还没退出，stopAll 不得提前 resolve").toBe(false);
+    handle.emitExit(0);
+    await stopping;
+    expect(handle.kills).toBe(1);
   });
 });

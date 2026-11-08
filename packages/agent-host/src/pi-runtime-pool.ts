@@ -1,3 +1,8 @@
+/**
+ * 复用既有 stopAll()，不新增 stop()；stopped 闸门用于升级关机时拒绝新会话（§0.7 P0-1）。
+ * 关机协议（apps/desktop/electron/main/shutdown.ts）调用 stopAll() 后，acquire() 一律
+ * 抛 'pool stopped'，避免升级退出过程中又重建 slot；stopAll() 本身保持幂等。
+ */
 import { randomUUID } from "node:crypto";
 import { PiRuntimeSupervisor } from "./pi-runtime-supervisor.js";
 import type { PiRuntimeClient, PiRuntimeHostHandle } from "./pi-runtime-transport.js";
@@ -41,6 +46,8 @@ export interface AcquireOptions {
 }
 
 export class PiRuntimePool {
+  /** 升级关机后置位：拒绝一切新 acquire()，不新增 stop() 方法。见文件头注释。 */
+  private stopped = false;
   private slots: Slot[] = [];
   private pending: Pending[] = [];
   private bySession = new Map<string, PiRuntimeClient>();
@@ -101,11 +108,18 @@ export class PiRuntimePool {
   }
 
   async acquire(sessionId: string, opts: AcquireOptions = {}): Promise<PiRuntimeSlot> {
+    if (this.stopped) throw new Error('pool stopped');
     const free = this.slots.find((s) => s.sessionId === null);
     if (free) return this.bind(free, sessionId, opts);
     if (this.slots.length < this.opts.maxAgents) {
       const supervisor = new PiRuntimeSupervisor(this.opts.makeSupervisor);
       const client = await supervisor.start();
+      // m9：await 是让位点 —— stopAll() 可能在这期间置 stopped。必须在注册事件 / 入池之前
+      // 复检，否则关机过程中会新建一个永远停在池外的活进程（违反 §0.7 P0-1 的闸门）。
+      if (this.stopped) {
+        await supervisor.stop();
+        throw new Error('pool stopped');
+      }
       const slot: Slot = {
         id: randomUUID(),
         supervisor,
@@ -247,11 +261,15 @@ export class PiRuntimePool {
   }
 
   async stopAll(): Promise<void> {
-    for (const slot of this.slots) await slot.supervisor.stop();
+    // 先置闸门再停进程；重复调用时空数组循环与 emitSnapshot() 均不抛错 ⇒ 幂等。
+    this.stopped = true;
+    // 并行停：每个 supervisor.stop() 自带退出等待超时（M3），串行会让整池上限随槽位数增长。
+    const stops = this.slots.map((slot) => slot.supervisor.stop());
     this.slots = [];
     this.bySession.clear();
     for (const p of this.pending) p.reject(new Error("pool stopped"));
     this.pending = [];
     this.emitSnapshot();
+    await Promise.all(stops);
   }
 }
