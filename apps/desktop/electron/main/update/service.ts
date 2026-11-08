@@ -893,28 +893,28 @@ export function initUpdateService(deps: UpdateDeps): UpdateService {
         return await refusalOnWriteFailure('markSuccess', err);
       }
       await refreshTiming(st);
-      state.remote = remoteFrom(vo.release);
       state.baseUrl = s.baseUrl || null;
       state.httpWarning = s.isHttp;
       // 合并本地 pending 与远端，判定二选一。
       const locals = await scanPending(deps.dataDir, scanOpts(st));
-      state.local = pickBestLocal(locals, deps.currentVersion);
       const d = decide({
         currentVersion: deps.currentVersion,
-        remoteVerified: state.remote,
-        localValid: state.local,
+        remoteVerified: remoteFrom(vo.release),
+        localValid: pickBestLocal(locals, deps.currentVersion),
         skippedVersions: p.skippedVersions,
         deferredUntil: p.deferredUntil,
         now: deps.now(),
       });
-      state.choiceRequired = d.choiceRequired;
-      // decide 的过滤结果必须回写：同版本 / skip / deferred / minSupported 的远端已在 d.remote
-      // 里被置空，继续拿过滤前的 state.remote 判 available 会把「已是最新」重新报成「发现新版本」。
+      // decide 的过滤结果就是 state 的唯一来源：同版本 / skip / deferred / minSupported 的远端
+      // 已在 d.remote 里被置空，拿过滤前的值判 available 会把「已是最新」重新报成「发现新版本」。
       state.remote = d.remote;
       state.local = d.local;
+      state.choiceRequired = d.choiceRequired;
       if (!state.remote) {
         setPhase(state.local ? 'readyToInstall' : 'idle');
-        return ok('已是最新版本');
+        // 本路径只有 SKIPPED 会留下原因：deferredUntil 已被上面的 markSuccess 清零，
+        // MIN_SUPPORTED 则已先被 verifier 拦成错误。别让「跳过」被说成「已是最新」。
+        return ok(d.blockedReason === 'SKIPPED' ? '该版本已跳过，不再提醒' : '已是最新版本');
       }
       setPhase('available');
       await logUpdateEvent(auditLike, 'update.available', {
@@ -1055,7 +1055,9 @@ export function initUpdateService(deps: UpdateDeps): UpdateService {
       // 回到 available（不丢已完成的包：cancelDownload 只清 .part）。
       // R7 · M-4：但本次运行已因锚点异常拒绝时，不能借「取消」把 errorCode 洗掉。
       if (tamperLatched) { setPhase('error', 'STATE_TAMPERED'); return ok(); }
-      setPhase(state.local ? 'readyToInstall' : 'available');
+      // remote 可能已被 decide 过滤（同版本 / 跳过）：此时再造一个 available 会让
+      // 状态栏渲染「有新版」却没有版本号。没有可安装的本地包时如实回 idle。
+      setPhase(state.local ? 'readyToInstall' : state.remote ? 'available' : 'idle');
       return ok();
     },
 

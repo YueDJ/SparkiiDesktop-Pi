@@ -841,8 +841,8 @@ describe('UpdateService（A 关门面）', () => {
     const st = await svc.getState();
     expect(st.phase, '同版本不得停在 available').toBe('idle');
     expect(st.remote, '同版本不是可下载的远端').toBeNull();
-    const calls = audit.append.mock.calls as Array<[Record<string, unknown>]>;
-    expect(calls.some((c) => c[0].action === 'update.available'), JSON.stringify(calls)).toBe(false);
+    // 不是「恰好没跑到」：同版本成功路径一条 update.* 审计都不该写（含 update.available）。
+    expect(audit.append, '同版本成功路径不应写更新审计').not.toHaveBeenCalled();
 
     // 不提示 ≠ 丢掉防重放锚点：同版本清单的 sequence / nonce 必须照常推进。
     expect(mirror).not.toBeNull();
@@ -883,6 +883,27 @@ describe('UpdateService（A 关门面）', () => {
     expect(st.remote).toBeNull();
     expect(st.local, '同版本 pending 不是待办动作').toBeNull();
     expect(existsSync(join(vdir, NAME)), '只是不显示成待办动作，绝不删包').toBe(true);
+  });
+
+  it('同版本检查后点「取消下载」：不得凭空回到 available（remote 为 null 就是 idle）', async () => {
+    const svc = initUpdateService({ ...deps, currentVersion: VERSION });
+    expect((await svc.checkForUpdate(true)).ok).toBe(true);
+    const r = await svc.cancelDownload();
+    expect(r.ok).toBe(true);
+    const st = await svc.getState();
+    expect(st.phase, 'remote=null 时 available 会让状态栏显示没有版本号的新版').toBe('idle');
+    expect(st.remote).toBeNull();
+  });
+
+  it('跳过该版本后检查：文案说明已跳过，而不是误报「已是最新」', async () => {
+    const audit = { append: vi.fn(async () => ({})) };
+    const svc = initUpdateService({ ...deps, audit });
+    await svc.skipUpdate({ version: VERSION });
+    const r = await svc.checkForUpdate(true);          // currentVersion 0.1.0 < 远端 0.3.0
+    expect(r.ok).toBe(true);
+    expect(r.message).toBe('该版本已跳过，不再提醒');
+    expect((await svc.getState()).phase).toBe('idle');
+    expect(audit.append, '跳过 ≠ 发现新版本').not.toHaveBeenCalled();
   });
 
   it('Minor-1：没有登记标签的新入口**各占一把**限流键（不再共用 _OTHER）', async () => {
