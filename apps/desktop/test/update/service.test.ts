@@ -826,6 +826,65 @@ describe('UpdateService（A 关门面）', () => {
     expect(pickBestLocal(locals, '0.2.9')?.version).toBe('0.3.0+build.2');
   });
 
+  it('远端版本 == 当前版本 ⇒ 「已是最新」：phase=idle、remote=null、不写 update.available（防 UI 误报）', async () => {
+    const audit = { append: vi.fn(async () => ({})) };
+    let mirror: { sequence: number; nonce: string; version?: string } | null = null;
+    const svc = initUpdateService({
+      ...deps,
+      currentVersion: VERSION,                       // 与远端清单同版本
+      audit,
+      seqMirror: { read: async () => mirror, write: async (rec) => { mirror = rec; } },
+    });
+    const r = await svc.checkForUpdate(true);
+    expect(r.ok).toBe(true);
+    expect(r.message).toBe('已是最新版本');
+    const st = await svc.getState();
+    expect(st.phase, '同版本不得停在 available').toBe('idle');
+    expect(st.remote, '同版本不是可下载的远端').toBeNull();
+    const calls = audit.append.mock.calls as Array<[Record<string, unknown>]>;
+    expect(calls.some((c) => c[0].action === 'update.available'), JSON.stringify(calls)).toBe(false);
+
+    // 不提示 ≠ 丢掉防重放锚点：同版本清单的 sequence / nonce 必须照常推进。
+    expect(mirror).not.toBeNull();
+    expect(mirror!.sequence).toBe(world.release.sequence);
+    expect(mirror!.nonce).toBe(world.release.nonce);
+    const onDisk = new UpdateStateStore({ dataDir: dir, secret: Buffer.alloc(32, 7), now: () => NOW });
+    expect(onDisk.lastSeenSequence()).toBe(world.release.sequence);
+    expect(onDisk.nonceFor(world.release.sequence)).toBe(world.release.nonce);
+  });
+
+  it('远端更高版本仍正常提示（修复没有把所有远端都吞掉）', async () => {
+    const audit = { append: vi.fn(async () => ({})) };
+    const svc = initUpdateService({ ...deps, audit });   // currentVersion 0.1.0 < 远端 0.3.0
+    const r = await svc.checkForUpdate(true);
+    expect(r.ok).toBe(true);
+    const st = await svc.getState();
+    expect(st.phase).toBe('available');
+    expect(st.remote?.version).toBe(VERSION);
+    const calls = audit.append.mock.calls as Array<[Record<string, unknown>]>;
+    expect(calls.some((c) => c[0].action === 'update.available'
+      && String(c[0].payloadSummary).includes(VERSION)), JSON.stringify(calls)).toBe(true);
+  });
+
+  it('远端与本地 pending 都是当前版本 ⇒ 仍只报「已是最新」，包留在盘上但不显示为可安装', async () => {
+    const vdir = pendingVersionDir(dir, VERSION);
+    mkdirSync(vdir, { recursive: true });
+    writeFileSync(join(vdir, 'release.json'), world.files[`/releases/${VERSION}/release.json`]!);
+    writeFileSync(join(vdir, 'release.json.sig'), world.files[`/releases/${VERSION}/release.json.sig`]!);
+    writeFileSync(join(vdir, 'channel.json'), world.files['/channel.json']!);
+    writeFileSync(join(vdir, 'channel.json.sig'), world.files['/channel.json.sig']!);
+    writeFileSync(join(vdir, NAME), ARTIFACT);
+
+    const svc = initUpdateService({ ...deps, currentVersion: VERSION });
+    const r = await svc.checkForUpdate(true);
+    expect(r.ok).toBe(true);
+    const st = await svc.getState();
+    expect(st.phase).toBe('idle');
+    expect(st.remote).toBeNull();
+    expect(st.local, '同版本 pending 不是待办动作').toBeNull();
+    expect(existsSync(join(vdir, NAME)), '只是不显示成待办动作，绝不删包').toBe(true);
+  });
+
   it('Minor-1：没有登记标签的新入口**各占一把**限流键（不再共用 _OTHER）', async () => {
     const a = subreasonForMethod('STATE_WRITE_FAILED', 'installUpdate');
     const b = subreasonForMethod('STATE_WRITE_FAILED', 'cancelDownload');

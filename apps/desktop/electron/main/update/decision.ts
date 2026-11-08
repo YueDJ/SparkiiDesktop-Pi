@@ -98,6 +98,7 @@ export type ChooseResult =
  * - choiceRequired：两者版本不同且都有效。
  * - 跳过 / 稍后：过滤对应版本 / 该次远端。
  * - minSupportedVersion 硬闸门：当前版本低于远端下限时远端被硬拦截，绝不进入下载。
+ * - 远端版本 == 当前版本：不是更新（也不是 blocked），直接过滤。
  * - allowDowngrade 仅打二次确认标记，不在此处放行。
  */
 export function decide(opts: DecideOptions): DecideOutcome {
@@ -118,6 +119,10 @@ export function decide(opts: DecideOptions): DecideOutcome {
     } else if (compareVersions(opts.currentVersion, remote.minSupportedVersion) < 0) {
       remote = null;
       blockedReason = 'MIN_SUPPORTED';
+    } else if (compareVersions(remote.version, opts.currentVersion) === 0) {
+      // 同版本清单在验签层是合法的（用于推进 sequence），但「版本相同」不是新版本：
+      // 不过滤就会让调用方把 available 重新报给 UI。blockedReason 保持 null，不新增联合类型。
+      remote = null;
     }
   }
 

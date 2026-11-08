@@ -236,6 +236,13 @@ describe('verifier.fetchAndVerify', () => {
     expect(r.ok).toBe(true);
   });
 
+  it('同版本清单仍验签通过（同版本不是错误态，sequence 需照常推进）', async () => {
+    const r = await fetchAndVerify(opts({ currentVersion: VERSION }));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.release.version).toBe(VERSION);
+  });
+
   it('sequence 回退 → SEQUENCE_REGRESSION + 审计', async () => {
     const r = await fetchAndVerify(opts({ lastSeenSequence: 8 }));
     expect(r.ok).toBe(false);

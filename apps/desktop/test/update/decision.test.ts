@@ -122,3 +122,49 @@ describe('decide 跳过 / 稍后 / 硬拦截', () => {
     expect(r.remote?.version).toBe('0.3.0'); // 由调用方逐次二次确认，decide 不静默放行
   });
 });
+
+describe('decide 同版本远端（不是更新，也不是 blocked）', () => {
+  it('远端版本 == 当前版本 → remote 为 null，且不落进任何拦截原因', () => {
+    const r = decide({
+      ...baseOpts, currentVersion: '0.3.0',
+      remoteVerified: remote('0.3.0'), localValid: null,
+    });
+    expect(r.remote).toBeNull();
+    expect(r.blockedReason).toBeNull();
+    expect(r.choiceRequired).toBe(false);
+  });
+
+  it('build metadata 不改变优先级：0.3.0 vs 0.3.0+build.2 判等 → remote 为 null', () => {
+    const r = decide({
+      ...baseOpts, currentVersion: '0.3.0',
+      remoteVerified: remote('0.3.0+build.2'), localValid: null,
+    });
+    expect(r.remote).toBeNull();
+  });
+
+  it('当前是预发布 0.3.0-beta.1、远端 0.3.0 → 正式版更高，仍要提示', () => {
+    const r = decide({
+      ...baseOpts, currentVersion: '0.3.0-beta.1',
+      remoteVerified: remote('0.3.0'), localValid: null,
+    });
+    expect(r.remote?.version).toBe('0.3.0');
+  });
+
+  it('远端 0.3.1 高于当前 0.3.0 → 仍要提示', () => {
+    const r = decide({
+      ...baseOpts, currentVersion: '0.3.0',
+      remoteVerified: remote('0.3.1'), localValid: null,
+    });
+    expect(r.remote?.version).toBe('0.3.1');
+  });
+
+  it('远端同版本 + 本地更高 pending → 只留本地，不二选一', () => {
+    const r = decide({
+      ...baseOpts, currentVersion: '0.3.0',
+      remoteVerified: remote('0.3.0'), localValid: local('0.4.0'),
+    });
+    expect(r.remote).toBeNull();
+    expect(r.local?.version).toBe('0.4.0');
+    expect(r.choiceRequired).toBe(false);
+  });
+});

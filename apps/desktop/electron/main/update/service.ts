@@ -908,8 +908,12 @@ export function initUpdateService(deps: UpdateDeps): UpdateService {
         now: deps.now(),
       });
       state.choiceRequired = d.choiceRequired;
+      // decide 的过滤结果必须回写：同版本 / skip / deferred / minSupported 的远端已在 d.remote
+      // 里被置空，继续拿过滤前的 state.remote 判 available 会把「已是最新」重新报成「发现新版本」。
+      state.remote = d.remote;
+      state.local = d.local;
       if (!state.remote) {
-        setPhase(d.local ? 'readyToInstall' : 'idle');
+        setPhase(state.local ? 'readyToInstall' : 'idle');
         return ok('已是最新版本');
       }
       setPhase('available');
