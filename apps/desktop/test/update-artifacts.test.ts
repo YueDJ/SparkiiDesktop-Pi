@@ -18,6 +18,7 @@ const IPV4 = /(\d{1,3}\.){3}\d{1,3}/;
 
 type ExtraResource = { from: string; to: string };
 type BuilderConfig = {
+  appId: string;
   publish: { provider: string; url: string };
   win: { icon: string; target: string[]; verifyUpdateCodeSignature: boolean };
   nsis: {
@@ -25,6 +26,7 @@ type BuilderConfig = {
     perMachine: boolean;
     deleteAppDataOnUninstall: boolean;
     include: string;
+    guid?: string | null;
   };
   artifactName: string;
   copyright: string;
@@ -89,6 +91,13 @@ describe('auto-update build artifacts (G2)', () => {
     expect(config.nsis.perMachine).toBe(false);
     expect(config.nsis.deleteAppDataOnUninstall).toBe(false);
     expect(config.nsis.include).toBe('build/installer.nsh');
+  });
+
+  it('nsis.guid 必须等于 appId（卸载注册表键 = 客户端安装目录解析键）', async () => {
+    const { default: config } = await loadConfig();
+    // electron-builder 缺省把卸载键写成 UUID.v5(appId)，而客户端按 appId 查
+    // Uninstall\<appId> ⇒ 解析不到 ⇒ INSTALL_BLOCKED（真机 E2E 实测）。
+    expect(config.nsis.guid).toBe(config.appId);
   });
 
   it('artifactName / copyright / extraMetadata 原样', async () => {

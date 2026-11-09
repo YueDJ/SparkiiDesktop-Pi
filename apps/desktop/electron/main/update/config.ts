@@ -110,11 +110,11 @@ export function resolveUpdateSettings(s: AppSettingsLike): ResolvedUpdateSetting
  *
  * 空对象时 verifySignatureEnvelope 一律失败（拒绝一切更新），绝不允许「无公钥 ⇒ 放行未签名」。
  */
+const KID_RE = /^[A-Za-z0-9._-]+$/;
+
 export const RELEASE_PUBLIC_KEYS: PublicKeyMap = parseReleasePublicKeys(
   typeof __SPARKII_RELEASE_PUBLIC_KEYS__ !== 'undefined' ? __SPARKII_RELEASE_PUBLIC_KEYS__ : '',
 );
-
-const KID_RE = /^[A-Za-z0-9._-]+$/;
 
 /**
  * 解析注入的公钥清单文本。接受三种形态（G1 的 release-keys.mjs 产出第 1 种）：

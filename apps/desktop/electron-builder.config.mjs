@@ -14,8 +14,10 @@
  */
 export const PLACEHOLDER_UPDATE_URL = 'http://localhost/sparkii-updates/';
 
+const APP_ID = 'com.sparkii.desktop';
+
 export default {
-  appId: 'com.sparkii.desktop',
+  appId: APP_ID,
   productName: 'Sparkii',
   copyright: 'Copyright © 2026 深圳宇岳向上科技有限公司',
   artifactName: 'Sparkii-${version}-win-${arch}.${ext}',
@@ -56,6 +58,9 @@ export default {
     perMachine: false,
     deleteAppDataOnUninstall: false,
     include: 'build/installer.nsh',
+    // 卸载注册表键必须等于 appId：客户端按 Uninstall\<appId> 解析安装目录（§0.7 P0-2），
+    // 缺省的 UUID.v5(appId) 会让客户端永远查不到 ⇒ INSTALL_BLOCKED。
+    guid: APP_ID,
   },
   extraMetadata: { name: 'sparkii-desktop', main: 'dist-electron/main/index.js' },
   // publish: generic 让 builder 产出 latest.yml / .blockmap / app-update.yml。

@@ -8,7 +8,7 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 
 import {
   DEFAULT_UPDATE_URL, RELEASE_PUBLIC_KEYS, isHttpUrl, normalizeBaseUrl,
@@ -27,6 +27,24 @@ describe('parseReleasePublicKeys（§5.4 构建注入 + §6.3 kid 选钥）', ()
     expect(parseReleasePublicKeys('   ')).toEqual({});
     // 缺省编译期常量：本仓库不内置真实私钥对应的公钥，默认必须是空表。
     expect(Object.keys(RELEASE_PUBLIC_KEYS).length >= 0).toBe(true);
+  });
+
+  it('构建期注入非空公钥时模块加载本身不得崩溃（初始化顺序回归）', async () => {
+    // 生产构建把公钥清单内联进 __SPARKII_RELEASE_PUBLIC_KEYS__，RELEASE_PUBLIC_KEYS 在模块
+    // 加载期即调用 parseReleasePublicKeys；若 KID_RE 声明晚于该调用，注入非空公钥的真实包
+    // 一启动就崩（空串注入会提前 return，掩盖此问题）。这里用全局桩 + 重新导入复现加载期路径。
+    vi.resetModules();
+    vi.stubGlobal('__SPARKII_RELEASE_PUBLIC_KEYS__', JSON.stringify({
+      kid: 'init-order', notBefore: '2026-01-01T00:00:00Z', notAfter: '2027-01-01T00:00:00Z',
+      publicKeyPem: PEM_A,
+    }));
+    try {
+      const mod = await import('../electron/main/update/config.js');
+      expect(mod.RELEASE_PUBLIC_KEYS['init-order']?.pem).toBe(PEM_A);
+    } finally {
+      vi.unstubAllGlobals();
+      vi.resetModules();
+    }
   });
 
   it('release-keys.mjs 的单条形态 → { kid: {pem,notBefore,notAfter} }', () => {
