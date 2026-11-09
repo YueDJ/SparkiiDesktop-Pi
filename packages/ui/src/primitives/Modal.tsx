@@ -2,12 +2,12 @@ import type { ReactNode } from 'react';
 import { CloseIcon } from '../icons/index.js';
 import { useFocusScope } from './useFocusScope.js';
 
-export function Modal({ open, title, onClose, children }: { open: boolean; title: string; onClose(): void; children: ReactNode }) {
+export function Modal({ open, title, onClose, children, className = '' }: { open: boolean; title: string; onClose(): void; children: ReactNode; className?: string }) {
   const ref = useFocusScope<HTMLDivElement>(open, onClose);
   if (!open) return null;
   return (
     <div className="ui-modal-mask open" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div ref={ref} className="ui-modal" role="dialog" aria-label={title}>
+      <div ref={ref} className={`ui-modal ${className}`.trim()} role="dialog" aria-label={title}>
         <div className="ui-modal-head"><span>{title}</span><button type="button" className="ui-dismiss" aria-label="关闭" onClick={onClose}><CloseIcon /></button></div>
         <div className="ui-modal-body">{children}</div>
       </div>

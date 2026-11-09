@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Shell, type ScreenId, type ShellAgent, type ShellSession, type UpdateStatusSummary } from './shell/Shell.js';
+import { UpdateDialog } from './shell/UpdateDialog.js';
 import { ErrorProvider, useErrors, type ErrorStoreAdapter, type RuntimePoolSummary, type DocumentParseSnapshot } from '@sparkii/ui';
-import type { SparkiiApi } from './types/sparkii-api.js';
+import type { SparkiiApi, UpdateProgress, UpdateState } from './types/sparkii-api.js';
 import { SettingsView } from './shell/SettingsView.js';
 import { ApprovalCenter } from './trust/ApprovalCenter.js';
 import { ApprovalDrawer } from './trust/ApprovalDrawer.js';
@@ -204,7 +205,9 @@ function AppShell() {
     queue: [],
   });
   const [documentParse, setDocumentParse] = useState<DocumentParseSnapshot>({ status: 'stopped', waiting: [] });
-  const [updateSummary, setUpdateSummary] = useState<UpdateStatusSummary | null>(null);
+  const [updateState, setUpdateState] = useState<UpdateState | null>(null);
+  const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
+  const updateSummary = useMemo(() => mapUpdateSummary(updateState), [updateState]);
   /**
    * 进入设置页时落在哪个 pane。状态栏更新 pill 要直达「关于」（R1 · B-2：
    * 只跳设置页会停在「大模型连接」，§7.5 的入口等于没做完）；
@@ -297,14 +300,25 @@ function AppShell() {
     api.getRuntimePool?.().then((p: any) => setRuntimePool(mapRuntimePool(p, pendingList))).catch(() => {});
     return off;
   }, [api, pendingList]);
-  // 状态栏更新 pill：订阅 Main 推来的 update-state，并在挂载时取一次初值（零网络，只读本地推导）。
+  // 状态栏更新徽标：订阅 Main 推来的 update-state / update-progress，并在挂载时取一次初值。
   useEffect(() => {
-    const off = api.on?.('update-state', (p: any) => setUpdateSummary(mapUpdateSummary(p)));
+    const onState = (p: unknown) => {
+      setUpdateState(p && typeof p === 'object' ? p as UpdateState : null);
+    };
+    const onProgress = (p: unknown) => {
+      if (!p || typeof p !== 'object') return;
+      setUpdateState((prev) => (prev ? { ...prev, progress: p as UpdateProgress } : prev));
+    };
+    const off = api.on?.('update-state', onState);
+    const offProgress = api.on?.('update-progress', onProgress);
     const pending = api.getUpdateState?.();
     if (pending) {
-      pending.then((s: any) => setUpdateSummary(mapUpdateSummary(s))).catch(() => {});
+      pending.then((s: any) => onState(s)).catch(() => {});
     }
-    return () => { if (typeof off === 'function') off(); };
+    return () => {
+      if (typeof off === 'function') off();
+      if (typeof offProgress === 'function') offProgress();
+    };
   }, [api]);
   useEffect(() => {
     const off = api.on?.('document-parse', (p: any) => {
@@ -653,15 +667,17 @@ function AppShell() {
         onReleaseParse={() => { void api.releaseDocumentParse?.(); }}
         onCancelLoad={() => { void api.cancelDocumentParseLoad?.(); }}
         update={updateSummary ?? undefined}
-        onUpdateClick={() => {
-          // 直达「关于」：pill 是唯一的全局入口，跳过去还得自己找 pane 就等于没接上（R1 · B-2）。
-          setSettingsPane('about');
-          commitCurrent(openPage('settings'));
-        }}
+        onUpdateClick={() => setUpdateDialogOpen(true)}
       >
         {surfaceNode}
         {agentFrames}
       </Shell>
+      <UpdateDialog
+        open={updateDialogOpen}
+        state={updateState}
+        api={api}
+        onClose={() => setUpdateDialogOpen(false)}
+      />
       <ApprovalDrawer
         open={unclaimedRoutine.length > 0 && !drawerDismissed}
         currentSessionId={isSession(current) ? current.sessionId ?? '' : ''}

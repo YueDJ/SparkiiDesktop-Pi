@@ -1,7 +1,7 @@
 {
   "name": "@sparkii/desktop",
   "productName": "Sparkii",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "private": true,
   "description": "Sparkii Desktop – contract review pilot",
   "author": {

@@ -265,6 +265,16 @@ describe('§6.6 三个设置页入口（地址 / 记录 / 重置 installId）', 
     fireEvent.click(screen.getByTestId('update-records-toggle'));
     expect(screen.queryByRole('dialog')).toBe(null);
   });
+
+  it('诊断入口默认折叠进「高级选项」，普通用户不会被两个陌生按钮困扰', async () => {
+    const { container } = render(<SettingsUpdatePane api={paneApi()} />);
+    await screen.findByLabelText('更新源地址');
+    const details = container.querySelector('details.settings-update-advanced') as HTMLDetailsElement | null;
+    expect(details).not.toBe(null);
+    expect(details?.open).toBe(false);
+    expect(details?.querySelector('[data-testid="update-records-toggle"]')).not.toBe(null);
+    expect(details?.querySelector('[data-testid="update-reset-installid"]')).not.toBe(null);
+  });
 });
 
 describe('安装确认弹窗（§7.5 · B 关验收①）', () => {

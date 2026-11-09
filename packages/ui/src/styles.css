@@ -54,6 +54,7 @@ button { font: inherit; color: inherit; }
 .ui-select-menu-caret { flex: none; color: var(--color-textMuted); }
 .ui-textarea { height: auto; min-height: var(--control-textarea-min); padding-top: var(--spacing-xs); resize: vertical; }
 .ui-switch { width: 36px; height: 21px; border-radius: var(--radius-pill); background: var(--color-controlBorder); position: relative; border: none; cursor: pointer; padding: 0; }
+.ui-switch:disabled { opacity: .55; cursor: not-allowed; }
 .ui-switch::after { content: ''; position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%; background: var(--color-onPrimary); transition: left var(--motion-fast) var(--motion-ease); }
 .ui-switch.on { background: var(--color-primary); }
 .ui-switch.on::after { left: 17px; }
@@ -218,9 +219,77 @@ button { font: inherit; color: inherit; }
 .ui-rail-group { display: flex; flex-direction: column; gap: 2px; }
 .ui-list-row-hint { margin-left: auto; color: var(--color-textMuted); font-size: var(--font-size-xs); }
 .ui-list-row-rename { flex: 1; min-width: 0; height: var(--control-height-sm); font-size: var(--font-size-sm); }
-.ui-statusbar { display: flex; align-items: center; gap: var(--spacing-md); padding: 0 var(--spacing-md); background: var(--color-surface); border-top: 1px solid var(--color-border); color: var(--color-textSecondary); font-size: var(--font-size-sm); }
+.ui-statusbar { display: flex; align-items: center; gap: var(--spacing-sm); padding: 0 var(--spacing-md); background: var(--color-surface); border-top: 1px solid var(--color-border); color: var(--color-textSecondary); font-size: var(--font-size-sm); }
 .ui-statusbar-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ui-statusbar-tech { margin-left: auto; color: var(--color-textMuted); }
+.ui-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* 状态栏更新徽标：图标按钮（24px）+ 悬停提示；下载中才展开成进度胶囊。 */
+.ui-update-chip {
+  position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  width: 24px; height: 24px; padding: 0; flex: none;
+  border-radius: var(--radius-pill); border: 1px solid transparent;
+  font-size: var(--font-size-xs); font-weight: var(--font-weight-medium);
+  background: none; color: var(--color-textSecondary);
+  transition: background var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+}
+.ui-update-chip--available { color: var(--color-warn); background: var(--color-warnBg); border-color: var(--color-warnBorder); }
+.ui-update-chip--readyToInstall { color: var(--color-ok); background: var(--color-okBg); border-color: var(--color-okBorder); }
+.ui-update-chip--downloading {
+  width: auto; padding: 0 10px 0 6px; color: var(--color-primary);
+  background: var(--color-controlBg); border-color: var(--color-borderStrong);
+}
+.ui-update-chip--action { cursor: pointer; }
+.ui-update-chip--action:hover { box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 14%, transparent); }
+.ui-update-chip--action:active { transform: translateY(.5px); }
+.ui-update-chip--available.ui-update-chip--action { animation: ui-update-chip-pulse 2.6s var(--motion-ease) infinite; }
+.ui-update-chip-icon { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: color-mix(in srgb, currentColor 13%, transparent); flex: none; }
+.ui-update-chip-meter { display: inline-flex; align-items: center; gap: 6px; }
+.ui-update-chip-track { display: block; width: 56px; height: 4px; border-radius: var(--radius-pill); background: color-mix(in srgb, currentColor 18%, transparent); overflow: hidden; }
+.ui-update-chip-fill {
+  display: block; height: 100%; border-radius: inherit; position: relative; overflow: hidden;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primaryHover));
+  transition: width var(--motion-normal) var(--motion-ease);
+}
+.ui-update-chip-fill::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .55), transparent);
+  transform: translateX(-100%); animation: ui-update-chip-sheen 1.8s ease-in-out infinite;
+}
+.ui-update-chip-pct { min-width: 28px; text-align: right; font-variant-numeric: tabular-nums; color: inherit; }
+.ui-update-chip[data-tip]::before,
+.ui-update-chip[data-tip]::after {
+  position: absolute; left: 0; bottom: calc(100% + 7px); pointer-events: none;
+  opacity: 0; transition: opacity var(--motion-fast) var(--motion-ease), transform var(--motion-fast) var(--motion-ease);
+  z-index: var(--z-toast);
+}
+/* 徽标几乎贴着窗口左缘：气泡必须左对齐展开，居中会被裁掉开头。 */
+.ui-update-chip[data-tip]::before {
+  content: ''; width: 8px; height: 8px; left: 8px; bottom: calc(100% + 3px);
+  background: var(--color-toastBg); transform: rotate(45deg) translateY(4px); border-radius: 1px;
+}
+.ui-update-chip[data-tip]::after {
+  content: attr(data-tip); transform: translateY(4px);
+  padding: 5px 10px; border-radius: var(--radius-control); white-space: nowrap;
+  background: var(--color-toastBg); color: var(--color-toastText);
+  box-shadow: var(--shadow-overlay); font-size: var(--font-size-xs); font-weight: var(--font-weight-normal);
+}
+.ui-update-chip[data-tip]:hover::before, .ui-update-chip[data-tip]:focus-visible::before {
+  opacity: 1;
+}
+.ui-update-chip[data-tip]:hover::after, .ui-update-chip[data-tip]:focus-visible::after {
+  opacity: 1; transform: translateY(0);
+}
+@keyframes ui-update-chip-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-warn) 30%, transparent); }
+  55% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-warn) 0%, transparent); }
+}
+@keyframes ui-update-chip-sheen { 0% { transform: translateX(-100%); } 60%, 100% { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) {
+  .ui-update-chip--available.ui-update-chip--action { animation: none; }
+  .ui-update-chip-fill::after { animation: none; }
+  .ui-update-chip[data-tip]::before, .ui-update-chip[data-tip]::after { transition: none; }
+}
 .ui-shell { display: grid; grid-template-rows: 48px 1fr 36px; height: 100%; background: var(--color-bg); overflow: hidden; }
 .ui-shell-main { display: grid; grid-template-columns: 240px 1fr; min-height: 0; }
 .ui-rail { background: var(--color-surface); border-right: 1px solid var(--color-border); padding: var(--spacing-sm) var(--spacing-xs); display: flex; flex-direction: column; gap: var(--spacing-sm); overflow: hidden; min-height: 0; }
