@@ -82,6 +82,9 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
   const [setupMaterials, setSetupMaterials] = useState<Array<{ name: string; text: string }>>([]);
   const [setupBasic, setSetupBasic] = useState({ client: '', deadline: '', projectCode: '', template: '' });
   const [confirming, setConfirming] = useState(false);
+  // P10 — workspace drawer + relocate (setup only). Drawer is available in any
+  // phase to VIEW the path; the relocate action itself renders only in setup.
+  const [workspaceDrawerOpen, setWorkspaceDrawerOpen] = useState(false);
 
   // Load all bid-writing sessions, group by workspacePath, read each project.json.
   const refreshProjects = useCallback(async () => {
@@ -111,6 +114,19 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
 
   useEffect(() => {
     void refreshProjects();
+  }, [refreshProjects]);
+
+  // P10 — 跨窗口/跨会话搬迁同步：平台广播后强制刷新项目列表与当前项目路径，
+  // 避免旧 activeProject.workspacePath 被 writeProject 写回旧目录（计划 §5.6）。
+  useEffect(() => {
+    const off = api().on?.('workspace-relocated', (payload: unknown) => {
+      const ev = payload as { workspacePath?: string } | undefined;
+      if (ev?.workspacePath) {
+        setActiveProject((prev) => prev ? { ...prev, workspacePath: ev.workspacePath! } : prev);
+      }
+      void refreshProjects();
+    });
+    return () => off?.();
   }, [refreshProjects]);
 
   // §6.1 — load visible RAG datasets when the wizard opens (line one picker).
@@ -193,6 +209,40 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
     if (res.sessionId) actions.openSession(res.sessionId);
     else setStatus(res.error ?? '创建会话失败');
   }, [activeProject, actions]);
+
+  // P10 — change the project's storage location (setup only). The whole
+  // workspace is relocated by the platform (sessionId unchanged). Order is
+  // critical: relocate FIRST (updates session records), THEN write project.json
+  // — otherwise P1 would write project.json back into the OLD directory (F1).
+  const changeStorageLocation = useCallback(async () => {
+    if (!sessionId || !activeProject) return;
+    // 包内守卫：写作后锁定「存放位置」（高风险搬目录），与知识库生命周期分离。
+    if (activeProject.status !== 'setup') {
+      setStatus('开始写作后不可更改存放位置');
+      return;
+    }
+    const sparkii = api();
+    try {
+      setStatus('正在搬迁工作区…');
+      const parent = activeProject.workspacePath.replace(/[\\/][^\\/]+$/, '');
+      const picked = await sparkii.chooseWorkspace?.({ defaultPath: parent });
+      const newPath = picked?.path;
+      if (!newPath) { setStatus('已取消'); return; }
+      const r = await sparkii.relocateWorkspace(sessionId, newPath);
+      if (!r.ok) {
+        const suffix = r.keptBothCopies ? '（已保留两份副本，旧目录仍可用）' : '';
+        setStatus(`搬迁失败：${r.code} · ${r.reason}${suffix}`);
+        return;
+      }
+      const updated = { ...activeProject, workspacePath: r.workspacePath };
+      setActiveProject(updated);
+      await writeProject(sessionId, updated);
+      await refreshProjects();
+      setStatus(`工作区已搬到：${r.workspacePath}`);
+    } catch (e) {
+      setStatus(`搬迁失败：${e instanceof Error ? e.message : String(e)}`);
+    }
+  }, [sessionId, activeProject, refreshProjects]);
 
   // §9.2 step 2 — upload project-private material (line two). Only text-bearing
   // files can be indexed in-renderer; PDFs are registered by name and parsed by
@@ -695,8 +745,27 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
         <button className="bw-btn" onClick={() => setView('list')}>← 项目列表</button>
         <span className="bw-topbar-title">{activeProject?.name ?? '标书项目'}</span>
         <span className="bw-topbar-meta">版本 v{activeProject?.version ?? 1}</span>
+        <button className="bw-btn bw-workspace-btn" onClick={() => setWorkspaceDrawerOpen((v) => !v)}>工作区</button>
         <button className="bw-btn bw-btn-primary bw-export" onClick={() => void exportProject()}>导出 Word</button>
       </div>
+      {workspaceDrawerOpen && (
+        <div className="bw-ws-drawer">
+          <div className="bw-ws-drawer-head">
+            <b>工作区</b>
+            <button className="bw-btn bw-btn-small" onClick={() => setWorkspaceDrawerOpen(false)}>收起</button>
+          </div>
+          <div className="bw-ws-path" title={activeProject?.workspacePath}>{activeProject?.workspacePath ?? '（无）'}</div>
+          <div className="bw-ws-actions">
+            <button className="bw-btn bw-btn-small" onClick={() => void api().openWorkspace?.(activeProject?.workspacePath ?? '')}>在文件夹中打开</button>
+            {activeProject?.status === 'setup' ? (
+              <button className="bw-btn bw-btn-small" onClick={() => void changeStorageLocation()}>更改存放位置</button>
+            ) : (
+              <span className="bw-hint">开始写作后存放位置锁定</span>
+            )}
+          </div>
+          <div className="bw-hint">准备阶段可更改存放位置（整体搬迁工作区，会话与知识库绑定保留）。</div>
+        </div>
+      )}
       {activeProject?.status === 'setup' && (
         <div className="bw-setup">
           <div className="bw-setup-head">
