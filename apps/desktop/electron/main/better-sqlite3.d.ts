@@ -19,6 +19,8 @@ declare module 'better-sqlite3' {
       ): BindParameters extends unknown[] ? Statement<BindParameters, Result> : Statement<[BindParameters], Result>;
       exec(source: string): this;
       pragma(source: string, options?: unknown): unknown;
+      /** Wrap statements in a transaction; the returned fn runs it atomically. */
+      transaction<T extends (...args: any[]) => any>(fn: T): T;
       close(): this;
     }
 

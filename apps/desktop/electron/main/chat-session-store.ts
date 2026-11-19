@@ -152,6 +152,36 @@ export class ChatSessionStore {
     return next;
   }
 
+  /**
+   * P10 — relocate a workspace root by updating EVERY session that references
+   * it in ONE transaction (F8: multiple sessions may share a workspacePath).
+   * `db` is private, so this batch method must live inside the store. If any
+   * statement fails, better-sqlite3 rolls the whole batch back — no partial
+   * update, so the caller can safely keep the source copy on failure.
+   *
+   * @returns the list of session ids whose record was updated.
+   */
+  updateWorkspacePathInTransaction(
+    oldPath: string,
+    newPath: string,
+    workspaceKind: WorkspaceKind,
+  ): string[] {
+    const ids = (this.db.prepare(
+      `SELECT id FROM chat_sessions WHERE workspace_path = ?`,
+    ).all(oldPath) as Array<{ id: string }>).map((row) => row.id);
+    if (ids.length === 0) return ids;
+    const now = Date.now();
+    const update = this.db.prepare(
+      `UPDATE chat_sessions SET workspace_path = @newPath, workspace_kind = @kind, updated_at = @now WHERE id = @id`,
+    );
+    this.db.transaction(() => {
+      for (const id of ids) {
+        update.run({ id, newPath, kind: workspaceKind, now });
+      }
+    })();
+    return ids;
+  }
+
   delete(id: string): void {
     this.db.prepare('DELETE FROM chat_sessions WHERE id = ?').run(id);
   }

@@ -33,6 +33,14 @@ export interface DraftPromptContext {
   model?: string | null;
   thinkingLevel?: string | null;
   permissionMode?: 'ask' | 'auto_review';
+  /**
+   * Opt into degraded knowledge mode: when the agent's RAG backend is not
+   * configured, still open/prompt the session instead of failing the gate.
+   * Product §15 requires the material line to keep working when RAG is down.
+   * Defaults to false — agents whose knowledge line is mandatory (knowledge-qa)
+   * keep the strict gate and its "configure RAG first" message.
+   */
+  allowDegradedKnowledge?: boolean;
 }
 
 export type ChooseDocumentOptions = { extensions?: string[] };
@@ -220,7 +228,66 @@ export interface UpdateStatusSummary {
   version: string | null;
 }
 
+/** Generic workspace file operation request/result (platform capability, no business semantics). */
+export interface WorkspaceFileRequest {
+  sessionId: string;
+  /** Workspace-relative path. */
+  path: string;
+  content?: string;
+  to?: string;
+}
+export type WorkspaceFileResult =
+  | { ok: true; op: string; path: string; content?: string; bytesBase64?: string; entries?: string[] }
+  | { ok: false; code: 'DENIED' | 'INVALID' | 'IO_FAILED' | 'NO_SESSION' | 'NO_WORKSPACE'; reason: string };
+
+/** P10 — generic workspace-root relocation result (no agent/business semantics). */
+export type RelocateWorkspaceResult =
+  | { ok: true; workspacePath: string }
+  | {
+      ok: false;
+      code: string;
+      reason: string;
+      keptBothCopies?: boolean;
+    };
+
+/** Payload broadcast on `sparkii:event:workspace-relocated` after a successful move. */
+export interface WorkspaceRelocatedEvent {
+  sessionId: string;
+  workspacePath: string;
+}
+
 export interface SparkiiApi {
+  /**
+   * Relocate a session's fixed workspace root to a user-chosen empty directory.
+   * Platform capability — no business/agent branching. sessionId is unchanged.
+   */
+  relocateWorkspace(sessionId: string, newPath: string): Promise<RelocateWorkspaceResult>;
+  workspaceRead(req: WorkspaceFileRequest): Promise<WorkspaceFileResult>;
+  workspaceReadBytes(req: WorkspaceFileRequest): Promise<WorkspaceFileResult>;
+  workspaceWrite(req: WorkspaceFileRequest): Promise<WorkspaceFileResult>;
+  workspaceList(req: WorkspaceFileRequest): Promise<WorkspaceFileResult>;
+  workspaceMkdir(req: WorkspaceFileRequest): Promise<WorkspaceFileResult>;
+  workspaceDelete(req: WorkspaceFileRequest): Promise<WorkspaceFileResult>;
+  workspaceRename(req: WorkspaceFileRequest): Promise<WorkspaceFileResult>;
+  workspaceMove(req: WorkspaceFileRequest): Promise<WorkspaceFileResult>;
+  /** Generic SVG → PNG render (bundled Chromium) written into the fixed workspace. */
+  renderDiagram(req: {
+    sessionId: string;
+    path: string;
+    svg: string;
+    sourceXml?: string;
+    width?: number;
+    height?: number;
+    scale?: number;
+  }): Promise<WorkspaceFileResult>;
+  /** Generic MD + images → DOCX compile (user-initiated export). */
+  compileDocx(req: {
+    sessionId: string;
+    outPath: string;
+    title: string;
+    chapters: Array<{ title: string; markdown: string }>;
+    images: string[];
+  }): Promise<WorkspaceFileResult>;
   getPermissionModeState(agentId: string, sessionId?: string | null): Promise<PermissionModeState>;
   setChatPermissionMode(
     sessionId: string,
@@ -234,6 +301,12 @@ export interface SparkiiApi {
   openChatSession(sessionId: string): Promise<OpenChatSessionResult>;
   listChatSessions(profileId?: string): Promise<unknown[]>;
   getChatSession(sessionId: string): Promise<unknown>;
+  /**
+   * Create an empty workspace-bound session WITHOUT dispatching a prompt (P9).
+   * Returns the sessionId so callers can write workspace files / resume with a
+   * later promptSession(sessionId, …). No LLM turn is triggered by this call.
+   */
+  createSession(context?: DraftPromptContext): Promise<{ ok: boolean; sessionId?: string; workspacePath?: string }>;
   promptSession(sessionId: string | null, text: string, options?: { behavior?: 'steer' | 'followUp' }, attachments?: ChatAttachment[], context?: DraftPromptContext): Promise<{ ok: boolean; sessionId?: string; behavior?: 'prompt' | 'steer' | 'followUp' }>;
   abortChat(sessionId: string): Promise<{ ok: boolean; cleared?: { steering: string[]; followUp: string[] } }>;
   getChatState(sessionId: string): Promise<ChatQueueState>;

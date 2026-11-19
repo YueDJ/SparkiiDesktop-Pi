@@ -4629,3 +4629,71 @@ describe('permission mode IPC', () => {
   });
 });
 
+describe('P10 relocateWorkspace IPC', () => {
+  it('registers the channel, moves files, updates all session records and broadcasts', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-reloc-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const source = join(dataDir, 'ws-old');
+    const target = join(dataDir, 'ws-new');
+    await mkdir(join(source, 'input'), { recursive: true });
+    await writeFile(join(source, 'input', 'a.txt'), 'hello', 'utf8');
+
+    const key = (value: string) => value.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+    const pathProbe = {
+      inspect: async (t: string) => ({
+        displayPath: t, canonicalPath: t, identity: `object:${key(t)}`,
+        nearestExistingAncestor: t, isDirectory: true, isReparsePoint: false, exists: true, linkCount: 1,
+      }),
+      isSameOrDescendant: async (root: string, t: string) => {
+        const r = key(root); const x = key(t);
+        return x === r || x.startsWith(`${r}/`);
+      },
+      isSameObject: async (a: string, b: string) => key(a) === key(b),
+    };
+    const records = new Map<string, any>([
+      ['s1', { id: 's1', profileId: 'bid-writing', workspacePath: source }],
+      ['s2', { id: 's2', profileId: 'bid-writing', workspacePath: source }],
+    ]);
+    const windowSent: any[] = [];
+    const security = {
+      profilePolicies: new Map(), taskGrants: { onRevoke: () => () => {} },
+      hostShellReport: { version: 'v1', status: 'available', backend: 'host', executionBoundary: 'host', limitations: [] },
+      taskLifecycle: { active: vi.fn(() => undefined), end: vi.fn(async () => {}) },
+      pathProbe, protectedRoots: [],
+    };
+    const rt = await makeRuntime({
+      dataDir, piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      security,
+      audit: { append: vi.fn(async (e) => e) },
+      getWindow: () => ({
+        on: () => {}, isDestroyed: () => false,
+        webContents: { send: (...args: unknown[]) => { windowSent.push(args); } },
+      }) as any,
+    });
+    (rt as any).chatSessions.get = (id: string) => records.get(id);
+    (rt as any).chatSessions.list = () => [...records.values()];
+    (rt as any).chatSessions.updateWorkspacePathInTransaction = (o: string, n: string) => {
+      for (const r of records.values()) if (r.workspacePath === o) r.workspacePath = n;
+    };
+
+    const handlers = await registeredHandlers();
+    const relocate = handlers.get('sparkii:relocateWorkspace');
+    expect(relocate).toBeTypeOf('function');
+
+    // Target must exist and be empty (plan §5.1 step 5 contract).
+    await mkdir(target, { recursive: true });
+    const result = await relocate!(null, 's1', target);
+    expect(result).toMatchObject({ ok: true });
+
+    // Files moved, source removed, both session records updated.
+    expect((await import('node:fs')).existsSync(join(target, 'input', 'a.txt'))).toBe(true);
+    expect((await import('node:fs')).existsSync(source)).toBe(false);
+    expect(records.get('s1').workspacePath.replace(/\\/g, '/')).toBe(target.replace(/\\/g, '/'));
+    expect(records.get('s2').workspacePath.replace(/\\/g, '/')).toBe(target.replace(/\\/g, '/'));
+    expect(windowSent.some((c) => c[0] === 'sparkii:event:workspace-relocated')).toBe(true);
+  });
+});
+

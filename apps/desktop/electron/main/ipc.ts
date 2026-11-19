@@ -53,6 +53,7 @@ import {
 } from './rag-grounding.js';
 import { buildProviderList, findReservedProviderConflict, isReservedKnowledgeProviderId } from './provider-catalog.js';
 import { allocateAutoWorkspace, assertAgentId, ensureWorkspaceDir } from './workspace.js';
+import { relocateWorkspace, type RelocateResult } from './workspace-relocation.js';
 import { buildAgentSaddle } from './saddle.js';
 import { buildAttachmentPrompt, stageAttachments } from './attachments.js';
 import { resizeImageForAttachment } from './image-resize.js';
@@ -1564,6 +1565,56 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       if (!resp.success) throw new Error(`configure_session failed: ${resp.error ?? 'unknown'}`);
     }
     return { ok: true };
+  });
+
+  // ── P10: generic workspace-root relocation (no bid-writing branch) ────────
+  // Moves a session's fixed workspace to a user-chosen empty directory while
+  // keeping sessionId stable (chat history, KB bindings and T1 index follow).
+  // The ordered 12-step core lives in workspace-relocation.ts; this handler
+  // wires platform facts (store/slots/security) and broadcasts the result.
+  ipcMain.handle('sparkii:relocateWorkspace', async (
+    _e,
+    sessionId: string,
+    newPath: string,
+  ): Promise<RelocateResult> => {
+    const security = rt.security;
+    if (!security) {
+      return { ok: false, code: 'ADMISSION_FAILED', reason: 'security layer unavailable' };
+    }
+    const result = await relocateWorkspace(
+      { sessionId: String(sessionId ?? ''), newPath: String(newPath ?? ''), workspaceKind: 'user' },
+      {
+        getSession: (id) => rt.chatSessions.get(id),
+        sessionsByWorkspace: (wp) => rt.chatSessions.list().filter((r) => r.workspacePath === wp)
+          .map((r) => ({ id: r.id, profileId: r.profileId, open: openSessions.has(r.id) })),
+        updateWorkspacePathInTransaction: (oldPath, nextPath, kind) => {
+          rt.chatSessions.updateWorkspacePathInTransaction(oldPath, nextPath, kind);
+        },
+        isIdle: (id) => security ? security.taskLifecycle.active(id) === undefined : true,
+        configureSession: async (id, profileId) => {
+          const open = openSessions.get(id);
+          if (!open) return;
+          const resp = await open.slot.client.send({
+            type: 'configure_session',
+            saddle: buildSaddle(profileId, id),
+          });
+          if (!resp.success) throw new Error(resp.error ?? 'configure_session failed');
+        },
+        pathProbe: security.pathProbe,
+        protectedRoots: security.protectedRoots,
+        audit: (event) => rt.audit.append(event as never),
+        actor: rt.subject?.userId ?? 'agent',
+      },
+    );
+    if (result.ok) {
+      // 跨窗口状态同步：其他窗口的 activeProject.workspacePath 仍是旧值，
+      // 需强制 refreshProjects，否则后续 writeProject 会把旧路径写回。
+      getWindow()?.webContents.send('sparkii:event:workspace-relocated', {
+        sessionId,
+        workspacePath: result.workspacePath,
+      });
+    }
+    return result;
   });
 
   ipcMain.handle('sparkii:updateWorkflowState', async (_e, sessionId: string, entry: Record<string, unknown>) => {

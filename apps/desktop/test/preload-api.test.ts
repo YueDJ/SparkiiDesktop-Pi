@@ -11,8 +11,10 @@ describe('sparkii api shape', () => {
   it('exposes the expected method names', () => {
     const names = [
       'getLocalSubject', 'chooseDocument', 'readDocumentBytes', 'runWorkflow', 'prompt', 'listPendingApprovals', 'decideApproval', 'getPermissionModeState', 'setChatPermissionMode', 'queryAudit', 'getSettings', 'saveSettings', 'saveRagSettings', 'saveKnowledgeSettings', 'testRagConnection', 'listRagDatasets', 'testKnowledgeConnection', 'listKnowledgeDatasets', 'getApiKey', 'listModels', 'testConnection', 'listProviders', 'diagnostics', 'on',
+      'workspaceRead', 'workspaceReadBytes', 'workspaceWrite', 'workspaceList', 'workspaceMkdir', 'workspaceDelete', 'workspaceRename', 'workspaceMove', 'renderDiagram', 'compileDocx',
+      'relocateWorkspace',
       'listErrors', 'appendError', 'clearError', 'clearErrors', 'markAllErrorsRead',
-      'openChatSession', 'listChatSessions', 'getChatSession', 'promptSession', 'abortChat', 'getChatState', 'queueMutate', 'setChatTitle', 'completeText', 'setChatModel', 'setChatThinkingLevel', 'setChatWorkspace', 'updateWorkflowState', 'requestExportReport', 'allocateAutoWorkspace', 'chooseWorkspace', 'openWorkspace', 'getModelOptions', 'listThinkingLevels', 'deleteChatSession', 'setSessionPinned', 'setSessionArchived', 'setSessionOrder', 'listAgents', 'probeOntologyGraph', 'setSessionKnowledge', 'openRagDocument',
+      'openChatSession', 'listChatSessions', 'getChatSession', 'createSession', 'promptSession', 'abortChat', 'getChatState', 'queueMutate', 'setChatTitle', 'completeText', 'setChatModel', 'setChatThinkingLevel', 'setChatWorkspace', 'updateWorkflowState', 'requestExportReport', 'allocateAutoWorkspace', 'chooseWorkspace', 'openWorkspace', 'getModelOptions', 'listThinkingLevels', 'deleteChatSession', 'setSessionPinned', 'setSessionArchived', 'setSessionOrder', 'listAgents', 'probeOntologyGraph', 'setSessionKnowledge', 'openRagDocument',
       'listUserSkills', 'listAgentSkills', 'previewUserSkill', 'chooseSkillFolder', 'importUserSkill', 'uninstallUserSkill', 'openUserSkillsDir',
       'getRuntimePool', 'getDocumentParse', 'stopDocumentParse', 'releaseDocumentParse', 'cancelDocumentParseLoad', 'saveDocumentParseSettings', 'listDocumentParseModules', 'retryDocumentParse', 'importDocumentParseModule', 'downloadDocumentParseModule', 'cancelQueuedSession', 'releaseSessionSlot',
       'getPathForFile',
@@ -37,12 +39,15 @@ describe('sparkii api shape', () => {
     void api.setChatThinkingLevel('s1', 'high');
     void api.listThinkingLevels('deepseek', 'deepseek-v4-pro');
     void api.listAgents();
+    void api.createSession({ profileId: 'bid-writing' });
     void api.promptSession('s1', 'hi');
     void api.listAgentSkills('writer');
+    void api.relocateWorkspace('s1', 'C:/new-ws');
     expect(calls).toEqual([
       'sparkii:listChatSessions', 'sparkii:getModelOptions',
-      'sparkii:setChatThinkingLevel', 'sparkii:listThinkingLevels', 'sparkii:listAgents', 'sparkii:promptSession',
+      'sparkii:setChatThinkingLevel', 'sparkii:listThinkingLevels', 'sparkii:listAgents', 'sparkii:createSession', 'sparkii:promptSession',
       'sparkii:listAgentSkills',
+      'sparkii:relocateWorkspace',
     ]);
   });
 });

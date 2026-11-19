@@ -11,6 +11,17 @@ export type IpcLike = {
 export function buildApi(ipc: IpcLike): SparkiiApi {
   const invoke = (name: string, ...args: unknown[]) => ipc.invoke(`sparkii:${name}`, ...args);
   return {
+    relocateWorkspace: (sessionId, newPath) => invoke('relocateWorkspace', sessionId, newPath) as ReturnType<SparkiiApi['relocateWorkspace']>,
+    workspaceRead: (req) => invoke('workspaceRead', req) as ReturnType<SparkiiApi['workspaceRead']>,
+    workspaceReadBytes: (req) => invoke('workspaceReadBytes', req) as ReturnType<SparkiiApi['workspaceReadBytes']>,
+    workspaceWrite: (req) => invoke('workspaceWrite', req) as ReturnType<SparkiiApi['workspaceWrite']>,
+    workspaceList: (req) => invoke('workspaceList', req) as ReturnType<SparkiiApi['workspaceList']>,
+    workspaceMkdir: (req) => invoke('workspaceMkdir', req) as ReturnType<SparkiiApi['workspaceMkdir']>,
+    workspaceDelete: (req) => invoke('workspaceDelete', req) as ReturnType<SparkiiApi['workspaceDelete']>,
+    workspaceRename: (req) => invoke('workspaceRename', req) as ReturnType<SparkiiApi['workspaceRename']>,
+    workspaceMove: (req) => invoke('workspaceMove', req) as ReturnType<SparkiiApi['workspaceMove']>,
+    renderDiagram: (req) => invoke('renderDiagram', req) as ReturnType<SparkiiApi['renderDiagram']>,
+    compileDocx: (req) => invoke('compileDocx', req) as ReturnType<SparkiiApi['compileDocx']>,
     getPermissionModeState: (agentId, sessionId) => invoke('getPermissionModeState', agentId, sessionId) as ReturnType<SparkiiApi['getPermissionModeState']>,
     setChatPermissionMode: (sessionId, mode) => invoke('setChatPermissionMode', sessionId, mode) as ReturnType<SparkiiApi['setChatPermissionMode']>,
     getLocalSubject: () => invoke('getLocalSubject') as Promise<{ userId: string; roles: string[] }>,
@@ -21,6 +32,7 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
     openChatSession: (sessionId) => invoke('openChatSession', sessionId) as Promise<import('./api-types.js').OpenChatSessionResult>,
     listChatSessions: (profileId) => invoke('listChatSessions', profileId) as Promise<unknown[]>,
     getChatSession: (sessionId) => invoke('getChatSession', sessionId),
+    createSession: (context) => invoke('createSession', context) as Promise<{ ok: boolean; sessionId?: string; workspacePath?: string }>,
     promptSession: (sessionId, text, options, attachments, context) => invoke('promptSession', sessionId, text, options, attachments, context) as Promise<{ ok: boolean; sessionId?: string; behavior?: 'prompt' | 'steer' | 'followUp' }>,
     abortChat: (sessionId) => invoke('abortChat', sessionId) as Promise<{ ok: boolean; cleared?: { steering: string[]; followUp: string[] } }>,
     getChatState: (sessionId) => invoke('getChatState', sessionId) as Promise<import('./api-types.js').ChatQueueState>,
