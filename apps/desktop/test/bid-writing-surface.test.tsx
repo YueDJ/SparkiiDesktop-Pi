@@ -39,11 +39,9 @@ function makeApi(opts: { project?: ProjectFile | null; sessions?: unknown[] } = 
     createSession: vi.fn().mockResolvedValue({ ok: true, sessionId: 'new-session-1', workspacePath: 'C:/docs/Sparkii/workspaces/bid-writing/new-proj-1' }),
     promptSession: vi.fn().mockResolvedValue({ ok: true, sessionId: 'new-session-1' }),
     workspaceRead: vi.fn(async ({ path }: { path: string }) => {
+      if (store.has(path)) return { ok: true, op: 'read', path, content: store.get(path) };
       if (path === 'project.json') {
         return project ? { ok: true, op: 'read', path, content: JSON.stringify(project) } : { ok: false, code: 'INVALID', reason: 'none' };
-      }
-      if (path.startsWith('output/manuscript/')) {
-        return { ok: true, op: 'read', path, content: store.get(path) ?? '' };
       }
       return { ok: false, code: 'INVALID', reason: 'none' };
     }),
@@ -51,15 +49,23 @@ function makeApi(opts: { project?: ProjectFile | null; sessions?: unknown[] } = 
       store.set(path, content);
       return { ok: true, op: 'write', path };
     }),
+    workspaceWriteBytes: vi.fn(async ({ path, bytesBase64 }: { path: string; bytesBase64?: string }) => {
+      store.set(path, bytesBase64 ?? '');
+      return { ok: true, op: 'writeBytes', path };
+    }),
     workspaceList: vi.fn(async ({ path }: { path: string }) => {
-      const entries = path === '.' || path === ''
+      const defaults = path === '.' || path === ''
         ? ['input', 'output', 'project.json', 'requirements.md']
         : path === 'input'
           ? ['招标文件.txt', '评分办法.pdf']
           : path === 'output'
             ? ['manuscript', 'figures', 'versions']
             : [];
-      return { ok: true, op: 'list', path, entries };
+      const prefix = path === '.' || path === '' ? '' : `${path}/`;
+      const stored = [...store.keys()]
+        .filter((key) => key.startsWith(prefix))
+        .map((key) => key.slice(prefix.length).split('/')[0]);
+      return { ok: true, op: 'list', path, entries: [...new Set([...defaults, ...stored])] };
     }),
     workspaceMkdir: vi.fn().mockResolvedValue({ ok: true, op: 'mkdir', path: '' }),
     setChatTitle: vi.fn().mockResolvedValue({ ok: true }),
@@ -394,6 +400,40 @@ describe('bid-writing surface — P10 storage location (setup only)', () => {
     expect(document.querySelector('.bw-ws-drawer')).toBeNull();
     // P1 rejects path:'' as INVALID — the root MUST be requested as '.'.
     expect(api.workspaceList).toHaveBeenCalledWith(expect.objectContaining({ sessionId: 's1', path: '.' }));
+  });
+
+  it('imports a real binary into input/ in drafting and refreshes manifest/index', async () => {
+    const api = makeApi({ sessions: [], project: projectFixture({ status: 'drafting' }) });
+    api.chooseDocument.mockResolvedValue({ path: 'C:/docs/招标图纸.pdf' });
+    api.readDocumentBytes.mockResolvedValue({
+      kind: 'pdf',
+      fileName: '招标图纸.pdf',
+      fileSize: 4,
+      bytes: new Uint8Array([0x25, 0x50, 0x44, 0x46]).buffer,
+    });
+    (window as any).sparkii = api;
+    renderSurface(api, 's1');
+    await screen.findByText('章节大纲');
+    await act(async () => { fireEvent.click(screen.getByText('工作区')); });
+    await act(async () => { fireEvent.click(screen.getByText('＋ 导入文件')); });
+
+    expect(api.chooseDocument).toHaveBeenCalledWith({
+      extensions: ['pdf', 'docx', 'txt', 'md', 'jpg', 'jpeg', 'png'],
+    });
+    await waitFor(() => expect(api.workspaceWriteBytes).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: 's1',
+        path: 'input/招标图纸.pdf',
+        bytesBase64: 'JVBERg==',
+      }),
+    ));
+    await waitFor(() => {
+      const manifest = api.workspaceWrite.mock.calls.find((c: any[]) => c[0].path === 'input/manifest.md');
+      expect(manifest).toBeTruthy();
+      expect(manifest[0].content).toContain('- 招标图纸.pdf');
+      const index = api.workspaceWrite.mock.calls.find((c: any[]) => c[0].path === 'input/.index/chunks.json');
+      expect(index).toBeTruthy();
+    });
   });
 
   it('shows the relocate entry in setup and hides it in drafting', async () => {

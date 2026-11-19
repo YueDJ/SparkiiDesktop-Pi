@@ -79,6 +79,22 @@ describe('workspace file service — REAL probe integration (symlink / hard-link
     if (root.ok) expect(root.entries?.slice().sort()).toEqual(['input', 'project.json']);
   });
 
+  it('writes and reads back binary bytes through the fenced workspace', async () => {
+    const { workspace } = tempLayout();
+    mkdirSync(join(workspace, 'input'), { recursive: true });
+    const { service } = makeService(workspace);
+    const bytesBase64 = Buffer.from([0x25, 0x50, 0x44, 0x46, 0x00, 0xff]).toString('base64');
+
+    const w = await service.execute('writeBytes', {
+      sessionId: 's1', path: 'input/report.pdf', bytesBase64,
+    });
+    expect(w.ok).toBe(true);
+
+    const r = await service.execute('readBytes', { sessionId: 's1', path: 'input/report.pdf' });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.bytesBase64).toBe(bytesBase64);
+  });
+
   it('rejects .. escape with the REAL probe and records a failed audit', async () => {
     const { workspace } = tempLayout();
     const { service, audits } = makeService(workspace);

@@ -485,16 +485,18 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     subjectUserId: rt.subject?.userId ?? 'agent',
   });
   const workspaceFileHandler = (op: WorkspaceFileOp) =>
-    async (_e: unknown, req: { sessionId: string; path: string; content?: string; to?: string }) =>
+    async (_e: unknown, req: { sessionId: string; path: string; content?: string; bytesBase64?: string; to?: string }) =>
       workspaceFiles.execute(op, {
         sessionId: String(req?.sessionId ?? ''),
         path: String(req?.path ?? ''),
         ...(typeof req?.content === 'string' ? { content: req.content } : {}),
+        ...(typeof req?.bytesBase64 === 'string' ? { bytesBase64: req.bytesBase64 } : {}),
         ...(typeof req?.to === 'string' ? { to: req.to } : {}),
       });
   ipcMain.handle('sparkii:workspaceRead', workspaceFileHandler('read'));
   ipcMain.handle('sparkii:workspaceReadBytes', workspaceFileHandler('readBytes'));
   ipcMain.handle('sparkii:workspaceWrite', workspaceFileHandler('write'));
+  ipcMain.handle('sparkii:workspaceWriteBytes', workspaceFileHandler('writeBytes'));
   ipcMain.handle('sparkii:workspaceList', workspaceFileHandler('list'));
   ipcMain.handle('sparkii:workspaceMkdir', workspaceFileHandler('mkdir'));
   ipcMain.handle('sparkii:workspaceDelete', workspaceFileHandler('delete'));

@@ -234,6 +234,8 @@ export interface WorkspaceFileRequest {
   /** Workspace-relative path. */
   path: string;
   content?: string;
+  /** Base64 payload for the generic binary write capability. */
+  bytesBase64?: string;
   to?: string;
 }
 export type WorkspaceFileResult =
@@ -265,6 +267,8 @@ export interface SparkiiApi {
   workspaceRead(req: WorkspaceFileRequest): Promise<WorkspaceFileResult>;
   workspaceReadBytes(req: WorkspaceFileRequest): Promise<WorkspaceFileResult>;
   workspaceWrite(req: WorkspaceFileRequest): Promise<WorkspaceFileResult>;
+  /** Generic binary write into the fixed workspace (PDF/DOCX/image/etc.). */
+  workspaceWriteBytes(req: WorkspaceFileRequest): Promise<WorkspaceFileResult>;
   workspaceList(req: WorkspaceFileRequest): Promise<WorkspaceFileResult>;
   workspaceMkdir(req: WorkspaceFileRequest): Promise<WorkspaceFileResult>;
   workspaceDelete(req: WorkspaceFileRequest): Promise<WorkspaceFileResult>;

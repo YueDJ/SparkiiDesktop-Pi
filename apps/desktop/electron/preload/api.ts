@@ -15,6 +15,7 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
     workspaceRead: (req) => invoke('workspaceRead', req) as ReturnType<SparkiiApi['workspaceRead']>,
     workspaceReadBytes: (req) => invoke('workspaceReadBytes', req) as ReturnType<SparkiiApi['workspaceReadBytes']>,
     workspaceWrite: (req) => invoke('workspaceWrite', req) as ReturnType<SparkiiApi['workspaceWrite']>,
+    workspaceWriteBytes: (req) => invoke('workspaceWriteBytes', req) as ReturnType<SparkiiApi['workspaceWriteBytes']>,
     workspaceList: (req) => invoke('workspaceList', req) as ReturnType<SparkiiApi['workspaceList']>,
     workspaceMkdir: (req) => invoke('workspaceMkdir', req) as ReturnType<SparkiiApi['workspaceMkdir']>,
     workspaceDelete: (req) => invoke('workspaceDelete', req) as ReturnType<SparkiiApi['workspaceDelete']>,

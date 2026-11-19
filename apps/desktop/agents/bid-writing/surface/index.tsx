@@ -56,6 +56,17 @@ function sessionText(entry: SessionEntry): string {
   return String(e.text ?? e.content ?? '');
 }
 
+/** ArrayBuffer → base64, chunked to avoid spreading a large array into one call. */
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
 export default function BidWritingSurface(props: AgentSurfaceProps) {
   const { sessionId, session, actions } = props;
   const [view, setView] = useState<View>('list');
@@ -313,6 +324,66 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
       setStatus('复制失败，请手动选择路径');
     }
   }, [activeProject?.workspacePath]);
+
+  // Any phase can import project-private material into input/. Text files are
+  // indexed immediately; binaries are written as real bytes and registered in
+  // manifest.md so the session's document tools can parse them on demand.
+  const importWorkspaceFile = useCallback(async () => {
+    if (!sessionId) return;
+    const sparkii = api();
+    try {
+      const picked = await sparkii.chooseDocument?.({
+        extensions: ['pdf', 'docx', 'txt', 'md', 'jpg', 'jpeg', 'png'],
+      });
+      const sourcePath = picked?.path;
+      if (!sourcePath) return;
+      setStatus('正在导入文件…');
+      const bytes = await sparkii.readDocumentBytes?.(sourcePath, sessionId);
+      if (!bytes || 'error' in bytes) {
+        setStatus(`导入失败：无法读取文件（${bytes?.error ?? 'unsupported'}）`);
+        return;
+      }
+      const originalName = bytes.fileName || sourcePath.split(/[\\/]/).pop() || 'imported';
+      const safe = originalName.replace(/[^\w.\-\u4e00-\u9fa5]/g, '_');
+      const before = await sparkii.workspaceList?.({ sessionId, path: 'input' });
+      const existing = new Set(before?.ok && Array.isArray(before.entries) ? before.entries : []);
+      let name = safe;
+      const dot = safe.lastIndexOf('.');
+      const stem = dot > 0 ? safe.slice(0, dot) : safe;
+      const ext = dot > 0 ? safe.slice(dot) : '';
+      for (let n = 2; existing.has(name); n += 1) name = `${stem}_${n}${ext}`;
+      const rel = `input/${name}`;
+      const written = await sparkii.workspaceWriteBytes({
+        sessionId,
+        path: rel,
+        bytesBase64: arrayBufferToBase64(bytes.bytes),
+      });
+      if (!written.ok) {
+        setStatus(`导入失败：${written.code} · ${written.reason}`);
+        return;
+      }
+      const isText = bytes.kind === 'txt' || /\.(txt|md|csv|json)$/i.test(name);
+      const text = isText
+        ? new TextDecoder('utf-8').decode(bytes.bytes)
+        : `[二进制资料 ${name}，正文将在会话中由文档解析工具读取]`;
+      const after = await sparkii.workspaceList?.({ sessionId, path: 'input' });
+      const names = (after?.ok && Array.isArray(after.entries) ? after.entries : [...existing, name])
+        .filter((n) => n !== 'manifest.md' && !n.startsWith('.'));
+      await sparkii.workspaceWrite({
+        sessionId,
+        path: 'input/manifest.md',
+        content: ['# 项目私有资料清单', '', ...names.map((n) => `- ${n}`)].join('\n'),
+      });
+      const { docs } = await loadMaterialDocs(sessionId);
+      docs[rel] = text;
+      await buildIndex(sessionId, docs);
+      void loadWorkspaceEntries('input');
+      setSetupMaterials((prev) => [...prev.filter((m) => m.name !== name), { name, text }]);
+      setStatus(`已导入：${name}`);
+    } catch (e) {
+      setStatus(`导入失败：${e instanceof Error ? e.message : String(e)}`);
+    }
+  }, [sessionId, loadWorkspaceEntries]);
 
   const toggleWorkspaceNode = useCallback((path: string) => {
     const next = !wsExpanded[path];
@@ -946,6 +1017,7 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
             </div>
             <div className="bw-ws-path" title={activeProject?.workspacePath}>{activeProject?.workspacePath ?? '（无）'}</div>
             <div className="bw-ws-actions">
+              <button className="bw-btn bw-btn-small" onClick={() => void importWorkspaceFile()}>＋ 导入文件</button>
               <button className="bw-btn bw-btn-small" onClick={() => void copyWorkspacePath()}>复制路径</button>
               <button className="bw-btn bw-btn-small" onClick={() => void api().openWorkspace?.(activeProject?.workspacePath ?? '')}>在文件夹中打开</button>
               {activeProject?.status === 'setup' ? (
@@ -954,7 +1026,7 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
                 <span className="bw-hint">开始写作后存放位置锁定</span>
               )}
             </div>
-            <div className="bw-hint">准备阶段可更改存放位置（整体搬迁工作区，会话与知识库绑定保留）。</div>
+            <div className="bw-hint">导入的文件写入 input/；文本立即入索引，PDF/Word/图片由会话内文档工具按需解析。任何阶段可导入。</div>
           </div>
           <div className="bw-ws-drawer-body">
             <div className="bw-ws-tree-title">文件树</div>
