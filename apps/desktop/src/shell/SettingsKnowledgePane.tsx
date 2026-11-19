@@ -1,5 +1,15 @@
-import { useEffect, useState } from 'react';
-import { Button, SelectMenu, SettingsRow, TextField, useErrors } from '@sparkii/ui';
+import { useEffect, useRef, useState } from 'react';
+import {
+  Button,
+  SelectMenu,
+  SettingsPageHeader,
+  SettingsRow,
+  SettingsSaveBar,
+  SettingsSection,
+  TextArea,
+  TextField,
+  useErrors,
+} from '@sparkii/ui';
 import type {
   KnowledgeBackendId,
   KnowledgeProbeOverride,
@@ -44,8 +54,8 @@ const DEFAULT_THRESHOLD = 0.2;
 const DEFAULT_VECTOR_WEIGHT = 0.3;
 const DEFAULT_URL_NOTE = '默认地址仅适用于本机联调';
 const LOW_THRESHOLD_NOTE = '几乎不过滤，会把无关片段当命中';
-const PLAINTEXT_WARNING = '明文 HTTP 地址：凭据与内容可能被同网段嗅探或篡改；建议放在终止 TLS 的反向代理之后。';
-const TOKEN_LIFETIME_NOTE = 'API Token 默认 24 小时过期；需要更长寿命请让管理员上调站点策略（SPARKIIONTO_TOKEN_LIFETIME_SECONDS）。';
+const PLAINTEXT_WARNING = '明文 HTTP：凭据与内容可能被同网段嗅探或篡改。';
+const TOKEN_LIFETIME_NOTE = 'Token 默认 24 小时过期。';
 
 type KnowledgeBinding = { agentId: string; defaultDatasetId: string };
 type DatasetOption = { id: string; name: string };
@@ -130,7 +140,7 @@ function plaintextWarning(baseUrl: string): string | null {
 
 /** `/info` 协商结果文案：检索后端、是否语义嵌入、是否可打开原文。 */
 function capabilityText(info: KnowledgeProbeResult['info'] | undefined): string {
-  if (!info) return '未返回 /info 能力协商结果';
+  if (!info) return '未返回能力协商结果';
   const backend = info.retrieval?.backend || '未知';
   const semantic = info.retrieval?.semantic_embeddings === true;
   const canOpen = info.capabilities?.document_fetch === true;
@@ -172,7 +182,10 @@ function readOnto(raw: unknown): OntoState {
   };
 }
 
-export function SettingsKnowledgePane({ api }: { api?: KnowledgePaneApi }) {
+export function SettingsKnowledgePane({ api, onDirtyChange }: {
+  api?: KnowledgePaneApi;
+  onDirtyChange?(dirty: boolean): void;
+}) {
   const { reportError } = useErrors();
   const [rag, setRag] = useState<RagState>(DEFAULT_RAG);
   const [apiKey, setApiKey] = useState('');
@@ -186,6 +199,17 @@ export function SettingsKnowledgePane({ api }: { api?: KnowledgePaneApi }) {
   const [ontoTesting, setOntoTesting] = useState(false);
   const [ontoDatasets, setOntoDatasets] = useState<DatasetOption[]>([]);
   const [graphProbe, setGraphProbe] = useState<OntologyGraphProbeResult | null>(null);
+  const [ragDirty, setRagDirty] = useState(false);
+  const [ontoDirty, setOntoDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [savedMessage, setSavedMessage] = useState('');
+  const dirtyRef = useRef(false);
+  dirtyRef.current = ragDirty || ontoDirty;
+
+  useEffect(() => {
+    onDirtyChange?.(dirtyRef.current);
+  }, [ragDirty, ontoDirty, onDirtyChange]);
 
   const load = async () => {
     if (!api?.getSettings) return;
@@ -228,6 +252,20 @@ export function SettingsKnowledgePane({ api }: { api?: KnowledgePaneApi }) {
     }
   }, [api]);
 
+  const patchRag = (patch: Partial<RagState>) => {
+    setRag((prev) => ({ ...prev, ...patch }));
+    setRagDirty(true);
+    setSavedMessage('');
+    setSaveError('');
+  };
+
+  const patchOnto = (patch: Partial<OntoState>) => {
+    setOnto((prev) => ({ ...prev, ...patch }));
+    setOntoDirty(true);
+    setSavedMessage('');
+    setSaveError('');
+  };
+
   const test = async () => {
     if (!api?.testRagConnection) return;
     setTesting(true);
@@ -269,59 +307,63 @@ export function SettingsKnowledgePane({ api }: { api?: KnowledgePaneApi }) {
   };
 
   const save = async () => {
-    if (!api?.saveRagSettings) return;
+    setSaving(true);
+    setSaveError('');
+    setSavedMessage('');
     try {
-      await api.saveRagSettings({
-        baseUrl: rag.baseUrl,
-        similarityThreshold: parseThreshold(rag.similarityThreshold),
-        vectorSimilarityWeight: parseThreshold(rag.vectorSimilarityWeight),
-        bindings: rag.bindings,
-        apiKey: apiKey.trim() ? apiKey : '',
-      });
-      setApiKey('');
-      setInfo('设置已保存');
-      await load();
-    } catch (e) {
-      reportError(e instanceof Error ? e.message : String(e), { source: '系统设置' });
-    }
-  };
-
-  const saveOnto = async () => {
-    if (!api?.saveKnowledgeSettings) return;
-    try {
-      const result = await api.saveKnowledgeSettings('sparkiionto', {
-        baseUrl: onto.baseUrl,
-        similarityThreshold: parseThreshold(onto.similarityThreshold),
-        bindings: onto.bindings,
-        apiKey: ontoToken.trim() ? ontoToken : '',
-      });
-      // URL 非法等写入失败由 Main 回 { ok: false, error } —— 不能静默丢弃。
-      if (result && result.ok === false) {
-        setOntoInfo(result.error ?? '设置未保存');
-        reportError(result.error ?? '设置未保存', { source: '系统设置' });
-        return;
+      if (ragDirty) {
+        if (!api?.saveRagSettings) { setSaveError('IPC 未连接，无法保存'); return; }
+        await api.saveRagSettings({
+          baseUrl: rag.baseUrl,
+          similarityThreshold: parseThreshold(rag.similarityThreshold),
+          vectorSimilarityWeight: parseThreshold(rag.vectorSimilarityWeight),
+          bindings: rag.bindings,
+          apiKey: apiKey.trim() ? apiKey : '',
+        });
       }
-      setOntoToken('');
-      setOntoInfo('设置已保存');
+      if (ontoDirty) {
+        if (!api?.saveKnowledgeSettings) { setSaveError('IPC 未连接，无法保存'); return; }
+        const result = await api.saveKnowledgeSettings('sparkiionto', {
+          baseUrl: onto.baseUrl,
+          similarityThreshold: parseThreshold(onto.similarityThreshold),
+          bindings: onto.bindings,
+          apiKey: ontoToken.trim() ? ontoToken : '',
+        });
+        if (result && result.ok === false) {
+          setSaveError(result.error ?? '设置未保存');
+          reportError(result.error ?? '设置未保存', { source: '系统设置' });
+          return;
+        }
+      }
+      setRagDirty(false);
+      setOntoDirty(false);
+      setSavedMessage('设置已保存');
       await load();
     } catch (e) {
+      setSaveError('保存失败，请稍后重试');
       reportError(e instanceof Error ? e.message : String(e), { source: '系统设置' });
+    } finally {
+      setSaving(false);
     }
   };
 
   const setRagBinding = (agentId: string, defaultDatasetId: string) => {
-    setRag((prev) => {
-      const bindings = prev.bindings.filter((b) => b.agentId !== agentId);
-      if (defaultDatasetId) bindings.push({ agentId, defaultDatasetId });
-      return { ...prev, bindings };
+    patchRag({
+      bindings: (() => {
+        const bindings = rag.bindings.filter((b) => b.agentId !== agentId);
+        if (defaultDatasetId) bindings.push({ agentId, defaultDatasetId });
+        return bindings;
+      })(),
     });
   };
 
   const setOntoBinding = (agentId: string, defaultDatasetId: string) => {
-    setOnto((prev) => {
-      const bindings = prev.bindings.filter((b) => b.agentId !== agentId);
-      if (defaultDatasetId) bindings.push({ agentId, defaultDatasetId });
-      return { ...prev, bindings };
+    patchOnto({
+      bindings: (() => {
+        const bindings = onto.bindings.filter((b) => b.agentId !== agentId);
+        if (defaultDatasetId) bindings.push({ agentId, defaultDatasetId });
+        return bindings;
+      })(),
     });
   };
 
@@ -335,14 +377,21 @@ export function SettingsKnowledgePane({ api }: { api?: KnowledgePaneApi }) {
 
   return (
     <>
-      <section data-testid="knowledge-rag-group">
-        <h3 className="settings-section-title">知识库</h3>
-        <div className="ui-muted settings-hint">连接 SparkiiRAG，仅检索与打开出处；入库在引擎网页完成</div>
+      <SettingsPageHeader title="知识库" />
+
+      <SettingsSection
+        testId="knowledge-rag-group"
+        title="SparkiiRAG"
+        description="仅检索与打开原文；入库在引擎网页完成。"
+      >
         <SettingsRow label="引擎地址">
-          <TextField
+          <TextArea
             data-testid="rag-base-url-input"
+            className="settings-url"
+            rows={2}
+            spellCheck={false}
             value={rag.baseUrl}
-            onChange={(e) => setRag((prev) => ({ ...prev, baseUrl: e.target.value }))}
+            onChange={(e) => patchRag({ baseUrl: e.target.value })}
           />
         </SettingsRow>
         {rag.baseUrl.trim() === DEFAULT_BASE_URL && (
@@ -354,40 +403,40 @@ export function SettingsKnowledgePane({ api }: { api?: KnowledgePaneApi }) {
             data-testid="rag-api-key-input"
             type="password"
             value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder={rag.hasApiKey ? '留空则保持' : '粘贴 API Key'}
+            onChange={(e) => { setApiKey(e.target.value); patchRag({}); }}
+            placeholder={rag.hasApiKey ? '已配置，留空则保持' : '粘贴 API Key'}
             autoComplete="off"
           />
         </SettingsRow>
-        <div className="ui-muted settings-hint">{rag.hasApiKey ? '已配置，留空则保持' : '未配置'}</div>
         <SettingsRow label="相似度阈值">
           <TextField
             data-testid="rag-similarity-threshold-input"
+            className="settings-number"
             type="number"
             step="0.05"
             value={rag.similarityThreshold}
-            onChange={(e) => setRag((prev) => ({ ...prev, similarityThreshold: e.target.value }))}
+            onChange={(e) => patchRag({ similarityThreshold: e.target.value })}
           />
         </SettingsRow>
         <ThresholdHints text={rag.similarityThreshold} />
         <SettingsRow label="向量相似度权重">
           <TextField
             data-testid="rag-vector-similarity-weight-input"
+            className="settings-number"
             type="number"
             step="0.05"
             value={rag.vectorSimilarityWeight}
-            onChange={(e) => setRag((prev) => ({ ...prev, vectorSimilarityWeight: e.target.value }))}
+            onChange={(e) => patchRag({ vectorSimilarityWeight: e.target.value })}
           />
         </SettingsRow>
         <ThresholdHints text={rag.vectorSimilarityWeight} />
         <div className="settings-actions">
           <Button onClick={test} disabled={testing}>{testing ? '测试中…' : '测试连接'}</Button>
-          <Button variant="primary" onClick={save}>保存</Button>
         </div>
         {info && <div className="ui-muted settings-hint">{info}</div>}
         {agents.length > 0 && (
           <>
-            <h3 className="settings-section-title settings-title-mt">智能体默认库</h3>
+            <h4 className="settings-subtitle">智能体默认库</h4>
             {agents.map((agent) => {
               const value = rag.bindings.find((b) => b.agentId === agent.id)?.defaultDatasetId ?? '';
               return (
@@ -407,49 +456,53 @@ export function SettingsKnowledgePane({ api }: { api?: KnowledgePaneApi }) {
             })}
           </>
         )}
-      </section>
-      <section data-testid="knowledge-onto-group">
-        <h3 className="settings-section-title settings-title-mt">本体（SparkiiOnto）</h3>
-        <div className="ui-muted settings-hint">连接 SparkiiOnto；词法检索：适合短查询/引用式提问，不适合自然语言长问句</div>
+      </SettingsSection>
+
+      <SettingsSection
+        testId="knowledge-onto-group"
+        title="本体（SparkiiOnto）"
+        description="词法检索：适合短查询/引用式提问，不适合自然语言长问句。"
+      >
         <SettingsRow label="引擎地址">
-          <TextField
+          <TextArea
             data-testid="sparkiionto-base-url-input"
+            className="settings-url"
+            rows={2}
+            spellCheck={false}
             value={onto.baseUrl}
-            onChange={(e) => setOnto((prev) => ({ ...prev, baseUrl: e.target.value }))}
+            onChange={(e) => patchOnto({ baseUrl: e.target.value })}
           />
         </SettingsRow>
-        {onto.baseUrl.trim() === DEFAULT_BASE_URL && (
-          <div className="ui-muted settings-hint">{DEFAULT_URL_NOTE}（两个后端的默认地址相同，具体产品以 /info 的 product 为准）</div>
-        )}
-        {onto.unconfigured && (
-          <div className="ui-muted settings-hint">未配置，正在使用默认地址；填好地址与 API Token 后点"测试连接"</div>
-        )}
+        {onto.unconfigured ? (
+          <div className="ui-muted settings-hint">正在使用默认地址</div>
+        ) : onto.baseUrl.trim() === DEFAULT_BASE_URL ? (
+          <div className="ui-muted settings-hint">{DEFAULT_URL_NOTE}</div>
+        ) : null}
         {ontoPlaintext && <div className="settings-warning settings-hint">{ontoPlaintext}</div>}
         <SettingsRow label="API Token">
           <TextField
             data-testid="sparkiionto-api-token-input"
             type="password"
             value={ontoToken}
-            onChange={(e) => setOntoToken(e.target.value)}
-            placeholder={onto.hasToken ? '留空则保持' : '粘贴 API Token'}
+            onChange={(e) => { setOntoToken(e.target.value); patchOnto({}); }}
+            placeholder={onto.hasToken ? '已配置，留空则保持（不可回读）' : '粘贴 API Token'}
             autoComplete="off"
           />
         </SettingsRow>
-        <div className="ui-muted settings-hint">Token 写后不可读回；{onto.hasToken ? '已配置，留空则保持' : '未配置'}</div>
         <div className="ui-muted settings-hint">{TOKEN_LIFETIME_NOTE}</div>
         <SettingsRow label="相似度阈值">
           <TextField
             data-testid="sparkiionto-similarity-threshold-input"
+            className="settings-number"
             type="number"
             step="0.05"
             value={onto.similarityThreshold}
-            onChange={(e) => setOnto((prev) => ({ ...prev, similarityThreshold: e.target.value }))}
+            onChange={(e) => patchOnto({ similarityThreshold: e.target.value })}
           />
         </SettingsRow>
         <ThresholdHints text={onto.similarityThreshold} />
         <div className="settings-actions">
           <Button onClick={testOnto} disabled={ontoTesting}>{ontoTesting ? '测试中…' : '测试连接'}</Button>
-          <Button variant="primary" onClick={saveOnto}>保存</Button>
         </div>
         {ontoInfo && <div className="ui-muted settings-hint">{ontoInfo}</div>}
         {graphProbe != null && (
@@ -463,7 +516,7 @@ export function SettingsKnowledgePane({ api }: { api?: KnowledgePaneApi }) {
         )}
         {ontoAgents.length > 0 && (
           <>
-            <h3 className="settings-section-title settings-title-mt">智能体默认域</h3>
+            <h4 className="settings-subtitle">智能体默认域</h4>
             {ontoAgents.map((agent) => {
               const value = onto.bindings.find((b) => b.agentId === agent.id)?.defaultDatasetId ?? '';
               return (
@@ -483,7 +536,15 @@ export function SettingsKnowledgePane({ api }: { api?: KnowledgePaneApi }) {
             })}
           </>
         )}
-      </section>
+      </SettingsSection>
+
+      <SettingsSaveBar
+        dirty={ragDirty || ontoDirty}
+        saving={saving}
+        status={savedMessage}
+        error={saveError}
+        onSave={() => void save()}
+      />
     </>
   );
 }

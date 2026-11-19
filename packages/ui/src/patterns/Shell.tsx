@@ -120,6 +120,15 @@ export function Shell(props: ShellProps) {
     return () => off?.();
   }, [windowApi]);
 
+  // 主题可能由设置页改写（同一个 document 上的 dark class），顶栏图标必须跟着变。
+  useEffect(() => {
+    const target = document.documentElement;
+    const sync = () => setDark(target.classList.contains('dark'));
+    const observer = new MutationObserver(sync);
+    observer.observe(target, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+
   const activeAgent = agents.find((a) => a.id === active);
   const runningCount = agents.filter((a) => a.status === 'running').length;
   const queueCount = agents.filter((a) => a.status === 'queued').length;

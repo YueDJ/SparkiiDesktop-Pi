@@ -33,10 +33,14 @@ describe('SettingsView', () => {
     expect(screen.getByText('模型列表')).toBeTruthy();
   });
 
-  it('switches to the data and privacy pane', () => {
+  it('uses the grouped navigation and no longer exposes the fake privacy / approval panes', () => {
     render(<SettingsView api={makeApi()} />);
-    fireEvent.click(screen.getByText('数据与隐私'));
-    expect(screen.getByText('数据目录')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '数据与隐私' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '审批与安全' })).toBeNull();
+    expect(screen.getByRole('button', { name: '软件更新' })).toBeTruthy();
+    for (const group of ['模型与知识', '运行', '记录与更新', '偏好与关于']) {
+      expect(screen.getByText(group)).toBeTruthy();
+    }
   });
 
   it('shows the skills pane in the settings nav', async () => {
@@ -109,7 +113,7 @@ describe('SettingsView', () => {
     });
     const { container } = render(<SettingsView api={api} />);
     await screen.findByText('已加载本机配置');
-    for (const name of ['大模型连接', '知识库', '智能体与运行', '外观与语言', '审计']) {
+    for (const name of ['大模型连接', '知识库', '智能体与运行', '外观', '审计']) {
       fireEvent.click(screen.getByRole('button', { name }));
       expect(container.querySelector('select'), name).toBeNull();
     }

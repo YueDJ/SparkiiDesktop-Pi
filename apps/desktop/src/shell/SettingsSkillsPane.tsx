@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, useErrors } from '@sparkii/ui';
+import { Button, SettingsPageHeader, SettingsSection, useErrors } from '@sparkii/ui';
 
 export type UserSkillRow = {
   name: string;
@@ -125,45 +125,50 @@ export function SettingsSkillsPane({ api }: { api?: SkillsPaneApi }) {
     }
   };
 
+  const loading = !loaded;
   const noLibrary = loaded && !agent;
-  const actionsDisabled = noLibrary;
+  const actionsDisabled = loading || noLibrary;
 
   return (
     <>
-      <h3 className="settings-section-title">技能</h3>
-      {noLibrary ? (
-        <div className="ui-muted settings-hint">未配置用户技能库</div>
-      ) : (
-        <div className="ui-muted settings-hint">
-          这些技能仅用于「{agent?.name ?? ''}」。装上的 skill 在新会话里生效。
-        </div>
-      )}
-      <div className="settings-actions">
-        <Button onClick={importFolder} disabled={actionsDisabled}>导入文件夹</Button>
-        <Button onClick={openFolder} disabled={actionsDisabled}>打开技能文件夹</Button>
-      </div>
-      {loaded && !noLibrary && skills.length === 0 && (
-        <div className="ui-muted settings-hint">还没有安装技能。</div>
-      )}
-      <div className="settings-skill-list">
-        {skills.map((skill) => (
-          <div key={skill.name} className="settings-skill-row">
-            <div className="settings-skill-main">
-              <div className="settings-skill-name">{skill.name}</div>
-              <div className="ui-muted settings-skill-desc">{skill.description}</div>
-              {skill.hasScripts && (
-                <div className="ui-muted settings-skill-note">其中的命令仍要审批。</div>
-              )}
-              {skill.warnings.map((warning) => (
-                <div key={warning} className="ui-muted settings-skill-warn">{warning}</div>
-              ))}
-            </div>
-            <Button variant="danger" disabled={actionsDisabled} onClick={() => void uninstall(skill.name)}>
-              卸载
-            </Button>
+      <SettingsPageHeader title="技能" />
+      <SettingsSection>
+        {loading ? (
+          <div className="ui-muted settings-hint">正在加载…</div>
+        ) : noLibrary ? (
+          <div className="ui-muted settings-hint">未配置用户技能库</div>
+        ) : (
+          <div className="ui-muted settings-hint">
+            仅用于「{agent?.name ?? ''}」，新会话生效。
           </div>
-        ))}
-      </div>
+        )}
+        <div className="settings-actions">
+          <Button onClick={importFolder} disabled={actionsDisabled}>导入文件夹</Button>
+          <Button onClick={openFolder} disabled={actionsDisabled}>打开技能文件夹</Button>
+        </div>
+        {loaded && !noLibrary && skills.length === 0 && (
+          <div className="ui-muted settings-hint">还没有安装技能。</div>
+        )}
+        <div className="settings-skill-list">
+          {skills.map((skill) => (
+            <div key={skill.name} className="settings-skill-row">
+              <div className="settings-skill-main">
+                <div className="settings-skill-name">{skill.name}</div>
+                <div className="ui-muted settings-skill-desc">{skill.description}</div>
+                {skill.hasScripts && (
+                  <div className="ui-muted settings-skill-note">其中的命令仍要审批。</div>
+                )}
+                {skill.warnings.map((warning) => (
+                  <div key={warning} className="ui-muted settings-skill-warn">{warning}</div>
+                ))}
+              </div>
+              <Button variant="danger" disabled={actionsDisabled} onClick={() => void uninstall(skill.name)}>
+                卸载
+              </Button>
+            </div>
+          ))}
+        </div>
+      </SettingsSection>
     </>
   );
 }

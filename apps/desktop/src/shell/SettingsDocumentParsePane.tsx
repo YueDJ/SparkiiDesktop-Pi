@@ -1,5 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Button, SettingsRow, Switch, TextField, useErrors } from '@sparkii/ui';
+import {
+  Button,
+  SettingsPageHeader,
+  SettingsRow,
+  SettingsSaveBar,
+  SettingsSection,
+  Switch,
+  TextField,
+  useErrors,
+} from '@sparkii/ui';
 
 export type DocumentParseModuleRow = {
   id: string;
@@ -37,13 +46,23 @@ const STATUS_LABEL: Record<string, string> = {
   resident: '常驻',
 };
 
-export function SettingsDocumentParsePane({ api }: { api?: DocumentParsePaneApi }) {
+export function SettingsDocumentParsePane({ api, onDirtyChange }: {
+  api?: DocumentParsePaneApi;
+  onDirtyChange?(dirty: boolean): void;
+}) {
   const { reportError } = useErrors();
   const [idleMinutes, setIdleMinutes] = useState(5);
   const [keepResident, setKeepResident] = useState(false);
   const [modules, setModules] = useState<DocumentParseModuleRow[]>(FALLBACK_MODULES);
   const [status, setStatus] = useState<string | null>(null);
   const [info, setInfo] = useState('');
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
 
   const load = async () => {
     try {
@@ -51,6 +70,7 @@ export function SettingsDocumentParsePane({ api }: { api?: DocumentParsePaneApi 
       const dp = ((raw ?? {}) as { documentParse?: { idleMinutes?: number; keepResident?: boolean } }).documentParse ?? {};
       if (typeof dp.idleMinutes === 'number' && Number.isFinite(dp.idleMinutes)) setIdleMinutes(dp.idleMinutes);
       setKeepResident(dp.keepResident === true);
+      setDirty(false);
     } catch (e) {
       reportError(e instanceof Error ? e.message : String(e), { source: '文档解析' });
     }
@@ -73,12 +93,18 @@ export function SettingsDocumentParsePane({ api }: { api?: DocumentParsePaneApi 
   }, [api]);
 
   const save = async () => {
-    if (!api?.saveDocumentParseSettings) return;
+    if (!api?.saveDocumentParseSettings) { setSaveError('IPC 未连接，无法保存'); return; }
+    setSaving(true);
+    setSaveError('');
     try {
       await api.saveDocumentParseSettings({ idleMinutes, keepResident });
+      setDirty(false);
       setInfo('设置已保存');
     } catch (e) {
+      setSaveError('保存失败，请稍后重试');
       reportError(e instanceof Error ? e.message : String(e), { source: '文档解析' });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -127,47 +153,64 @@ export function SettingsDocumentParsePane({ api }: { api?: DocumentParsePaneApi 
 
   return (
     <>
-      <h3 className="settings-section-title">文档解析</h3>
-      {status != null && <div className="ui-muted settings-hint">当前：{status}</div>}
-      <SettingsRow label="空闲后释放">
-        <TextField
-          data-testid="document-parse-idle-minutes"
-          className="settings-timeout"
-          type="number"
-          min={1}
-          max={60}
-          value={idleMinutes}
-          disabled={keepResident}
-          onChange={(e) => setIdleMinutes(Number(e.target.value))}
-        />
-      </SettingsRow>
-      <SettingsRow label="保持常驻" hint="大约占用 1 GB 以上内存">
-        <Switch checked={keepResident} onCheckedChange={setKeepResident} label="保持常驻" />
-      </SettingsRow>
-      <div className="settings-actions">
-        <Button onClick={reload}>重新加载</Button>
-        <Button variant="primary" onClick={save}>保存</Button>
-      </div>
-      {info && <div className="ui-muted settings-hint">{info}</div>}
-      <h3 className="settings-section-title settings-title-mt">模块</h3>
-      <div className="settings-skill-list">
-        {modules.map((mod) => (
-          <div key={mod.id} className="settings-skill-row">
-            <div className="settings-skill-main">
-              <div className="settings-skill-name">{mod.label}</div>
-              <div className="ui-muted settings-skill-note">
-                {mod.bundled ? '已随包' : mod.installed ? '已导入' : '未安装'}
+      <SettingsPageHeader title="文档解析" />
+
+      <SettingsSection title="运行">
+        <SettingsRow label="当前状态">
+          <span className="ui-muted">{status ?? '未知'}</span>
+        </SettingsRow>
+        <SettingsRow label="空闲后释放" description="单位：分钟。">
+          <TextField
+            data-testid="document-parse-idle-minutes"
+            className="settings-timeout"
+            type="number"
+            min={1}
+            max={60}
+            value={idleMinutes}
+            disabled={keepResident}
+            onChange={(e) => { setIdleMinutes(Number(e.target.value)); setDirty(true); setSaveError(''); }}
+          />
+        </SettingsRow>
+        <SettingsRow label="保持常驻" description="大约占用 1 GB 以上内存。">
+          <Switch
+            checked={keepResident}
+            onCheckedChange={(next) => { setKeepResident(next); setDirty(true); setSaveError(''); }}
+            label="保持常驻"
+          />
+        </SettingsRow>
+        <div className="settings-actions">
+          <Button onClick={reload}>重新加载</Button>
+        </div>
+      </SettingsSection>
+
+      <SettingsSection title="模块">
+        <div className="settings-skill-list">
+          {modules.map((mod) => (
+            <div key={mod.id} className="settings-skill-row">
+              <div className="settings-skill-main">
+                <div className="settings-skill-name">{mod.label}</div>
+                <div className="ui-muted settings-skill-note">
+                  {mod.bundled ? '已随包' : mod.installed ? '已导入' : '未安装'}
+                </div>
               </div>
+              {!mod.bundled && (
+                <Button disabled={!mod.canDownload} onClick={() => void download(mod.id)}>下载</Button>
+              )}
             </div>
-            {!mod.bundled && (
-              <Button disabled={!mod.canDownload} onClick={() => void download(mod.id)}>下载</Button>
-            )}
-          </div>
-        ))}
-      </div>
-      <div className="settings-actions">
-        <Button onClick={importOffline}>导入离线包</Button>
-      </div>
+          ))}
+        </div>
+        <div className="settings-actions">
+          <Button onClick={importOffline}>导入离线包</Button>
+        </div>
+      </SettingsSection>
+
+      <SettingsSaveBar
+        dirty={dirty}
+        saving={saving}
+        status={info}
+        error={saveError}
+        onSave={() => void save()}
+      />
     </>
   );
 }

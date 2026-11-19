@@ -1,12 +1,22 @@
 import { useEffect, useState } from 'react';
-import { Modal, Switch, TextField } from '@sparkii/ui';
+import {
+  Modal,
+  SettingsPageHeader,
+  SettingsRow,
+  SettingsSaveBar,
+  SettingsSection,
+  Switch,
+  TextArea,
+} from '@sparkii/ui';
 import type {
   SparkiiApi,
   UpdateActionResult,
   UpdateProgress,
+  UpdateSettingsPatch,
   UpdateSettingsPublic,
   UpdateState,
 } from '../../electron/preload/api-types.js';
+import { updateFailureText } from './update-failure.js';
 
 /** 更新 pane 只经 IPC 拿结构化数据；全部字段可选 + guard，兼容未接线的 mock api。 */
 export type SettingsUpdatePaneApi = Partial<Pick<SparkiiApi,
@@ -39,6 +49,8 @@ const clampPercent = (p: number): number =>
 
 function phaseBadge(state: UpdateState | null, baseUrl: string): { text: string; tone: string } {
   if (state?.stateTampered) return { text: '状态异常', tone: 'risk' };
+  // 未打包的开发态不支持自动更新：这是环境限制，不该显示成“更新异常”。
+  if (state?.phase === 'error' && state.errorCode === 'NOT_READY') return { text: '仅安装版可用', tone: 'muted' };
   switch (state?.phase) {
     case 'available': return { text: '有新版本', tone: 'warn' };
     case 'downloading': return { text: '下载中', tone: 'primary' };
@@ -55,7 +67,10 @@ async function maybe<T>(p: Promise<T> | undefined | null): Promise<T | null> {
   try { return await p; } catch { return null; }
 }
 
-export function SettingsUpdatePane({ api }: { api?: SettingsUpdatePaneApi }) {
+export function SettingsUpdatePane({ api, onDirtyChange }: {
+  api?: SettingsUpdatePaneApi;
+  onDirtyChange?(dirty: boolean): void;
+}) {
   const [appVersion, setAppVersion] = useState('');
   const [state, setState] = useState<UpdateState | null>(null);
   const [settings, setSettings] = useState<UpdateSettingsPublic | null>(null);
@@ -64,10 +79,17 @@ export function SettingsUpdatePane({ api }: { api?: SettingsUpdatePaneApi }) {
   const [confirmVersion, setConfirmVersion] = useState<string | null>(null);
   // §6.6 三个入口：地址（可改 + 变更二次确认）/ 本地检查记录 / 重置 installId。
   const [baseUrlDraft, setBaseUrlDraft] = useState('');
+  const [autoCheckDraft, setAutoCheckDraft] = useState(false);
   const [confirmBaseUrl, setConfirmBaseUrl] = useState<string | null>(null);
   const [records, setRecords] = useState<AuditRowLike[] | null>(null);
   const [recordsError, setRecordsError] = useState('');
   const [message, setMessage] = useState('');
+
+  const seedDrafts = (cfg: UpdateSettingsPublic, nextState: UpdateState | null) => {
+    setSettings(cfg);
+    setBaseUrlDraft(cfg.baseUrl);
+    setAutoCheckDraft(cfg.autoCheck ?? nextState?.autoCheck ?? false);
+  };
 
   useEffect(() => {
     let active = true;
@@ -80,10 +102,7 @@ export function SettingsUpdatePane({ api }: { api?: SettingsUpdatePaneApi }) {
       if (!active) return;
       if (v !== null) setAppVersion(v);
       if (s !== null) setState(s);
-      if (cfg !== null) {
-        setSettings(cfg);
-        setBaseUrlDraft(cfg.baseUrl);
-      }
+      if (cfg !== null) seedDrafts(cfg, s);
     })();
     return () => { active = false; };
   }, [api]);
@@ -112,27 +131,36 @@ export function SettingsUpdatePane({ api }: { api?: SettingsUpdatePaneApi }) {
     return () => { for (const off of offs) off(); };
   }, [api]);
 
+  const savedBaseUrl = settings?.baseUrl ?? '';
+  const savedAutoCheck = settings?.autoCheck ?? state?.autoCheck ?? false;
+  const baseChanged = baseUrlDraft.trim() !== savedBaseUrl;
+  const autoChanged = autoCheckDraft !== savedAutoCheck;
+  const dirty = baseChanged || autoChanged;
+
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+
   const refresh = async () => {
     const s = await maybe(api?.getUpdateState?.());
     if (s) { setState(s); setChoice(null); }
     const cfg = await maybe(api?.getUpdateSettings?.());
-    if (cfg) {
-      setSettings(cfg);
-      setBaseUrlDraft(cfg.baseUrl);
-    }
+    if (cfg) seedDrafts(cfg, s);
   };
 
   /** 地址改动一律先确认再落盘：写审计与「校验 host / 拒绝非法 scheme」在 Main 侧完成。 */
-  const requestSaveBaseUrl = () => {
-    const next = baseUrlDraft.trim();
-    if (next === (settings?.baseUrl ?? '')) { setMessage('地址未变化'); return; }
-    setConfirmBaseUrl(next);
+  const requestSave = () => {
+    if (!baseChanged && !autoChanged) { setMessage('没有需要保存的更改'); return; }
+    if (baseChanged) { setConfirmBaseUrl(baseUrlDraft.trim()); return; }
+    void commitSave(false);
   };
 
-  const commitSaveBaseUrl = async () => {
-    const next = confirmBaseUrl ?? '';
+  const commitSave = async (confirmedBaseChange: boolean) => {
+    const patch: UpdateSettingsPatch = {};
+    if (confirmedBaseChange) patch.baseUrl = (confirmBaseUrl ?? '').trim();
+    if (autoChanged) patch.autoCheck = autoCheckDraft;
     setConfirmBaseUrl(null);
-    await run('保存更新源地址', () => api?.saveUpdateSettings?.({ baseUrl: next }));
+    await run('保存', () => api?.saveUpdateSettings?.(patch));
   };
 
   const loadRecords = async () => {
@@ -159,7 +187,7 @@ export function SettingsUpdatePane({ api }: { api?: SettingsUpdatePaneApi }) {
     setBusy(true);
     try {
       const r = await p;
-      setMessage(r && !r.ok ? (r.message ?? r.reason ?? `${label}未完成`) : '');
+      setMessage(r && !r.ok ? (r.message ?? updateFailureText(r.reason) ?? `${label}未完成`) : '');
     } catch (e) {
       setMessage(e instanceof Error ? e.message : String(e));
     } finally {
@@ -169,7 +197,6 @@ export function SettingsUpdatePane({ api }: { api?: SettingsUpdatePaneApi }) {
   };
 
   const tampered = state?.stateTampered === true;
-  const httpWarning = state?.httpWarning === true || settings?.isHttp === true;
   const locked = busy || choice !== null || tampered;
   const baseUrl = settings?.baseUrl ?? state?.baseUrl ?? '';
   const lastSuccessAt = state?.lastSuccessAt ?? null;
@@ -197,40 +224,40 @@ export function SettingsUpdatePane({ api }: { api?: SettingsUpdatePaneApi }) {
   };
 
   return (
-    <div className="settings-update-pane">
-      <h3 className="settings-section-title settings-title-mt">自动更新</h3>
+    <>
+      <SettingsPageHeader title="软件更新" />
 
-      <div className="settings-update-card">
-        {tampered && (
-          <div className="settings-update-alert" role="alert">更新状态异常，需手动恢复</div>
-        )}
-        {/* §7.5「重启后失败给明确提示 + 重试 / 回滚入口」：只有 Main 侧确认上次安装未收尾才显示。 */}
-        {!tampered && state?.phase === 'error' && state.errorCode === 'INSTALL_FAILED' && (
-          <div className="settings-update-alert" role="alert" data-testid="update-install-failed">
-            <div>上次升级没有成功完成，你的本地数据未受影响。</div>
-            <div className="settings-actions">
-              <button
-                type="button"
-                className="ui-btn ui-btn--sm"
-                data-testid="update-install-retry"
-                disabled={busy || !versionFor() || !api?.installUpdate}
-                onClick={() => requestInstall(versionFor())}
-              >
-                重试安装{state.local?.version ? ` ${state.local.version}` : ''}
-              </button>
-              <button
-                type="button"
-                className="ui-btn ui-btn--sm"
-                data-testid="update-install-discard"
-                disabled={busy || !versionFor() || !api?.clearDownloaded}
-                onClick={() => void run('删除', () => api?.clearDownloaded?.({ version: versionFor() }))}
-              >
-                删除已下载包
-              </button>
-            </div>
+      {tampered && (
+        <div className="settings-update-alert" role="alert">更新状态异常，需手动恢复</div>
+      )}
+      {/* §7.5「重启后失败给明确提示 + 重试 / 回滚入口」：只有 Main 侧确认上次安装未收尾才显示。 */}
+      {!tampered && state?.phase === 'error' && state.errorCode === 'INSTALL_FAILED' && (
+        <div className="settings-update-alert" role="alert" data-testid="update-install-failed">
+          <div>上次升级没有成功完成，你的本地数据未受影响。</div>
+          <div className="settings-actions">
+            <button
+              type="button"
+              className="ui-btn ui-btn--sm"
+              data-testid="update-install-retry"
+              disabled={busy || !versionFor() || !api?.installUpdate}
+              onClick={() => requestInstall(versionFor())}
+            >
+              重试安装{state.local?.version ? ` ${state.local.version}` : ''}
+            </button>
+            <button
+              type="button"
+              className="ui-btn ui-btn--sm"
+              data-testid="update-install-discard"
+              disabled={busy || !versionFor() || !api?.clearDownloaded}
+              onClick={() => void run('删除', () => api?.clearDownloaded?.({ version: versionFor() }))}
+            >
+              删除已下载包
+            </button>
           </div>
-        )}
+        </div>
+      )}
 
+      <SettingsSection>
         <div className="settings-update-head">
           <div className="settings-update-version">
             <span className="settings-update-version-label">当前版本</span>
@@ -239,54 +266,32 @@ export function SettingsUpdatePane({ api }: { api?: SettingsUpdatePaneApi }) {
           <span className={`settings-update-badge settings-update-badge--${badge.tone}`}>{badge.text}</span>
         </div>
 
-        {/* §6.6 更新源是一等可配置项。地址只作为文本输入/文本展示：绝不拼成链接、不做 fetch、不交给 Renderer 加载（C4）。 */}
-        <div className="settings-update-source">
-          <label className="settings-update-label" htmlFor="sparkii-update-baseurl">更新源地址</label>
-          <div className="settings-update-source-row">
-            <TextField
-              id="sparkii-update-baseurl"
-              className="settings-update-url"
-              type="text"
-              inputMode="url"
-              spellCheck={false}
-              value={baseUrlDraft}
-              disabled={!api?.saveUpdateSettings || tampered}
-              placeholder="http://<内网地址>/sparkii-updates/（留空 = 关闭自动检查）"
-              onChange={(e) => setBaseUrlDraft(e.target.value)}
-            />
-            <button
-              type="button"
-              className="ui-btn ui-btn--md"
-              data-testid="update-baseurl-save"
-              disabled={locked || !api?.saveUpdateSettings}
-              onClick={requestSaveBaseUrl}
-            >
-              保存地址
-            </button>
-          </div>
-          <div className="settings-update-effective">
-            当前生效：<code>{baseUrl || '未配置'}</code>
-          </div>
-          {httpWarning && (
-            <div className="settings-update-hint">当前为 HTTP，更新完整性由数字签名保证</div>
-          )}
-        </div>
+        <SettingsRow label="更新源地址" htmlFor="sparkii-update-baseurl" description="留空表示关闭自动检查。">
+          <TextArea
+            id="sparkii-update-baseurl"
+            className="settings-update-url"
+            rows={2}
+            inputMode="url"
+            spellCheck={false}
+            value={baseUrlDraft}
+            disabled={!api?.saveUpdateSettings || tampered}
+            placeholder="http://<内网地址>/sparkii-updates/"
+            onChange={(e) => { setBaseUrlDraft(e.target.value); setMessage(''); }}
+          />
+        </SettingsRow>
 
-        <div className="settings-update-meta">
-          <div className="settings-update-kv">
-            <span className="ui-muted">上次成功检查</span>
-            <span>{lastSuccessAt ? new Date(lastSuccessAt).toLocaleString('zh-CN') : '尚无记录'}</span>
-          </div>
-          <div className="settings-update-toggle">
-            <span>自动检查</span>
-            <Switch
-              label="自动检查"
-              checked={settings?.autoCheck ?? state?.autoCheck ?? false}
-              disabled={!api?.saveUpdateSettings || tampered}
-              onCheckedChange={(next) => void run('保存设置', () => api?.saveUpdateSettings?.({ autoCheck: next }))}
-            />
-          </div>
-        </div>
+        <SettingsRow label="自动检查">
+          <Switch
+            label="自动检查"
+            checked={autoCheckDraft}
+            disabled={!api?.saveUpdateSettings || tampered}
+            onCheckedChange={(next) => { setAutoCheckDraft(next); setMessage(''); }}
+          />
+        </SettingsRow>
+
+        <SettingsRow label="上次成功检查">
+          <span className="ui-muted">{lastSuccessAt ? new Date(lastSuccessAt).toLocaleString('zh-CN') : '尚无记录'}</span>
+        </SettingsRow>
 
         <div className="settings-update-check-row">
           <button
@@ -297,187 +302,191 @@ export function SettingsUpdatePane({ api }: { api?: SettingsUpdatePaneApi }) {
           >
             立即检查更新
           </button>
-          {message && <span className="settings-update-message">{message}</span>}
         </div>
+      </SettingsSection>
 
-        {/* 发布说明一律结构化纯文本渲染；禁止 dangerouslySetInnerHTML / 远程 HTML。 */}
-        {(state?.remote?.summary || (state?.remote?.highlights?.length ?? 0) > 0) && (
-          <div className="settings-update-notes">
-            <div className="settings-update-notes-title">
-              更新内容{state?.remote?.version ? ` · ${state.remote.version}` : ''}
-            </div>
-            {state?.remote?.summary && <p className="settings-update-summary">{state.remote.summary}</p>}
-            {Array.isArray(state?.remote?.highlights) && state.remote.highlights.length > 0 && (
-              <ul className="settings-update-highlights">
-                {state.remote.highlights.map((h, i) => <li key={i}>{h}</li>)}
-              </ul>
-            )}
-          </div>
-        )}
+      {/* 发布说明一律结构化纯文本渲染；禁止 dangerouslySetInnerHTML / 远程 HTML。 */}
+      {(state?.remote?.summary || (state?.remote?.highlights?.length ?? 0) > 0) && (
+        <SettingsSection title={`更新内容${state?.remote?.version ? ` · ${state.remote.version}` : ''}`}>
+          {state?.remote?.summary && <p className="settings-update-summary">{state.remote.summary}</p>}
+          {Array.isArray(state?.remote?.highlights) && state.remote.highlights.length > 0 && (
+            <ul className="settings-update-highlights">
+              {state.remote.highlights.map((h, i) => <li key={i}>{h}</li>)}
+            </ul>
+          )}
+        </SettingsSection>
+      )}
 
-        {/* 0.2 / 0.3 二选一：两个按钮互斥，任一点击后禁用另一个直到状态刷新。 */}
-        {state?.choiceRequired === true && (
-          <div className="settings-update-choice">
-            <div className="ui-muted settings-hint">检测到本地已下载版本与服务器新版本，请选择其一：</div>
-            <div className="settings-actions">
-              <button
-                type="button"
-                className="ui-btn ui-btn--sm"
-                disabled={locked || !state.local?.version || !api?.installUpdate}
-                onClick={() => {
-                  const v = state.local?.version ?? '';
-                  setChoice('local');
-                  requestInstall(v);
-                }}
-              >
-                安装已下载的 {state.local?.version}
-              </button>
-              <button
-                type="button"
-                className="ui-btn ui-btn--sm ui-btn--primary"
-                disabled={locked || !state.remote?.version || !api?.downloadUpdate}
-                onClick={() => {
-                  const v = state.remote?.version ?? '';
-                  setChoice('remote');
-                  void run('下载', () => api?.downloadUpdate?.({ version: v }));
-                }}
-              >
-                跳过本地，升级到 {state.remote?.version}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {state?.phase === 'downloading' && (
-          <div className="settings-update-progress">
-            <div className="settings-update-progress-head">
-              <span className="ui-muted">下载中{pct !== null ? ` · ${pct}%` : ''}</span>
-              <button
-                type="button"
-                className="ui-btn ui-btn--sm"
-                disabled={tampered || !api?.cancelDownload}
-                onClick={() => void run('取消下载', () => api?.cancelDownload?.())}
-              >
-                取消下载
-              </button>
-            </div>
-            <div
-              className="update-progress"
-              role="progressbar"
-              aria-label="更新下载进度"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={pct ?? 0}
-            >
-              <span className="update-progress-fill" style={{ width: `${pct ?? 0}%` }} />
-            </div>
-          </div>
-        )}
-
-        {state?.phase === 'readyToInstall' && (
-          <div className="settings-update-footer-actions">
-            <button
-              type="button"
-              className="ui-btn ui-btn--md ui-btn--primary"
-              disabled={locked || !versionFor() || !api?.installUpdate}
-              onClick={() => requestInstall(versionFor())}
-            >
-              安装
-            </button>
+      {/* 0.2 / 0.3 二选一：两个按钮互斥，任一点击后禁用另一个直到状态刷新。 */}
+      {state?.choiceRequired === true && (
+        <div className="settings-update-choice">
+          <div className="ui-muted settings-hint">检测到本地已下载版本与服务器新版本，请选择其一：</div>
+          <div className="settings-actions">
             <button
               type="button"
               className="ui-btn ui-btn--sm"
-              disabled={locked || !versionFor() || !api?.clearDownloaded}
-              onClick={() => void run('删除', () => api?.clearDownloaded?.({ version: versionFor() }))}
+              disabled={locked || !state.local?.version || !api?.installUpdate}
+              onClick={() => {
+                const v = state.local?.version ?? '';
+                setChoice('local');
+                requestInstall(v);
+              }}
             >
-              删除已下载包
+              安装已下载的 {state.local?.version}
             </button>
-          </div>
-        )}
-
-        {state?.phase === 'available' && (
-          <div className="settings-update-footer-actions">
             <button
               type="button"
-              className="ui-btn ui-btn--md ui-btn--primary"
+              className="ui-btn ui-btn--sm ui-btn--primary"
               disabled={locked || !state.remote?.version || !api?.downloadUpdate}
               onClick={() => {
                 const v = state.remote?.version ?? '';
+                setChoice('remote');
                 void run('下载', () => api?.downloadUpdate?.({ version: v }));
               }}
             >
-              下载
+              跳过本地，升级到 {state.remote?.version}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {state?.phase === 'downloading' && (
+        <div className="settings-update-progress">
+          <div className="settings-update-progress-head">
+            <span className="ui-muted">下载中{pct !== null ? ` · ${pct}%` : ''}</span>
+            <button
+              type="button"
+              className="ui-btn ui-btn--sm"
+              disabled={tampered || !api?.cancelDownload}
+              onClick={() => void run('取消下载', () => api?.cancelDownload?.())}
+            >
+              取消下载
+            </button>
+          </div>
+          <div
+            className="update-progress"
+            role="progressbar"
+            aria-label="更新下载进度"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={pct ?? 0}
+          >
+            <span className="update-progress-fill" style={{ width: `${pct ?? 0}%` }} />
+          </div>
+        </div>
+      )}
+
+      {state?.phase === 'readyToInstall' && (
+        <div className="settings-update-footer-actions">
+          <button
+            type="button"
+            className="ui-btn ui-btn--md ui-btn--primary"
+            disabled={locked || !versionFor() || !api?.installUpdate}
+            onClick={() => requestInstall(versionFor())}
+          >
+            安装
+          </button>
+          <button
+            type="button"
+            className="ui-btn ui-btn--sm"
+            disabled={locked || !versionFor() || !api?.clearDownloaded}
+            onClick={() => void run('删除', () => api?.clearDownloaded?.({ version: versionFor() }))}
+          >
+            删除已下载包
+          </button>
+        </div>
+      )}
+
+      {state?.phase === 'available' && (
+        <div className="settings-update-footer-actions">
+          <button
+            type="button"
+            className="ui-btn ui-btn--md ui-btn--primary"
+            disabled={locked || !state.remote?.version || !api?.downloadUpdate}
+            onClick={() => {
+              const v = state.remote?.version ?? '';
+              void run('下载', () => api?.downloadUpdate?.({ version: v }));
+            }}
+          >
+            下载
+          </button>
+          <button
+            type="button"
+            className="ui-btn ui-btn--sm"
+            disabled={locked || !api?.deferUpdate}
+            onClick={() => void run('稍后', () => api?.deferUpdate?.())}
+          >
+            稍后
+          </button>
+          <button
+            type="button"
+            className="ui-btn ui-btn--sm ui-btn--ghost"
+            disabled={locked || !state.remote?.version || !api?.skipUpdate}
+            onClick={() => {
+              const v = state.remote?.version ?? '';
+              void run('跳过', () => api?.skipUpdate?.({ version: v }));
+            }}
+          >
+            跳过此版本
+          </button>
+        </div>
+      )}
+
+      {/* §6.6 另外两个入口是诊断性质：默认折叠在「高级选项」里，普通用户不需要看到。 */}
+      <SettingsSection>
+      <details className="settings-update-advanced">
+        <summary>高级选项</summary>
+        <div className="settings-update-advanced-body">
+          <div className="settings-actions settings-update-privacy-actions">
+            <button
+              type="button"
+              className="ui-btn ui-btn--sm"
+              data-testid="update-records-toggle"
+              disabled={!api?.queryAudit}
+              onClick={() => (records === null ? void loadRecords() : setRecords(null))}
+            >
+              {records === null ? '查看本地检查记录' : '收起本地检查记录'}
             </button>
             <button
               type="button"
               className="ui-btn ui-btn--sm"
-              disabled={locked || !api?.deferUpdate}
-              onClick={() => void run('稍后', () => api?.deferUpdate?.())}
+              data-testid="update-reset-installid"
+              disabled={locked || !api?.resetInstallId}
+              onClick={() => void resetInstallIdNow()}
             >
-              稍后
-            </button>
-            <button
-              type="button"
-              className="ui-btn ui-btn--sm ui-btn--ghost"
-              disabled={locked || !state.remote?.version || !api?.skipUpdate}
-              onClick={() => {
-                const v = state.remote?.version ?? '';
-                void run('跳过', () => api?.skipUpdate?.({ version: v }));
-              }}
-            >
-              跳过此版本
+              重置检查标识
             </button>
           </div>
-        )}
+          {recordsError && <div className="ui-muted settings-hint">{recordsError}</div>}
+          {records !== null && (
+            <div className="settings-update-records" data-testid="update-records">
+              {records.length === 0 ? (
+                <div className="ui-muted settings-hint">暂无本地检查记录</div>
+              ) : (
+                <ul className="settings-update-records-list">
+                  {records.map((r, i) => (
+                    <li key={`${r.ts ?? 0}-${i}`}>
+                      <span className="settings-update-records-time">{formatAuditTime(r.ts)}</span>
+                      <span className="settings-update-records-action">{r.action ?? '—'}</span>
+                      <span className="settings-update-records-detail">{r.payloadSummary ?? ''}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      </details>
+      </SettingsSection>
 
-        {/* §6.6 另外两个入口是诊断性质：默认折叠在「高级选项」里，普通用户不需要看到。 */}
-        <details className="settings-update-advanced">
-          <summary>高级选项</summary>
-          <div className="settings-update-advanced-body">
-            <div className="settings-actions settings-update-privacy-actions">
-              <button
-                type="button"
-                className="ui-btn ui-btn--sm"
-                data-testid="update-records-toggle"
-                disabled={!api?.queryAudit}
-                onClick={() => (records === null ? void loadRecords() : setRecords(null))}
-              >
-                {records === null ? '查看本地检查记录' : '收起本地检查记录'}
-              </button>
-              <button
-                type="button"
-                className="ui-btn ui-btn--sm"
-                data-testid="update-reset-installid"
-                disabled={locked || !api?.resetInstallId}
-                onClick={() => void resetInstallIdNow()}
-              >
-                重置检查标识
-              </button>
-            </div>
-            <div className="ui-muted settings-hint">
-              检查请求只读取静态清单文件，零身份信息；「重置检查标识」只改变本机检查时间的散布，不影响版本判定。
-            </div>
-            {recordsError && <div className="ui-muted settings-hint">{recordsError}</div>}
-            {records !== null && (
-              <div className="settings-update-records" data-testid="update-records">
-                {records.length === 0 ? (
-                  <div className="ui-muted settings-hint">暂无本地检查记录</div>
-                ) : (
-                  <ul className="settings-update-records-list">
-                    {records.map((r, i) => (
-                      <li key={`${r.ts ?? 0}-${i}`}>
-                        <span className="settings-update-records-time">{formatAuditTime(r.ts)}</span>
-                        <span className="settings-update-records-action">{r.action ?? '—'}</span>
-                        <span className="settings-update-records-detail">{r.payloadSummary ?? ''}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-          </div>
-        </details>
-      </div>
+      <SettingsSaveBar
+        dirty={dirty && !tampered}
+        saving={busy}
+        status={message}
+        error={tampered ? '更新状态异常，需手动恢复' : ''}
+        onSave={requestSave}
+        saveTestId="update-baseurl-save"
+      />
 
       {/* §6.6：baseUrl 变更需二次确认，并由 Main 侧严格校验 + 写审计（非法 scheme 会被拒绝）。 */}
       <Modal
@@ -486,11 +495,10 @@ export function SettingsUpdatePane({ api }: { api?: SettingsUpdatePaneApi }) {
         onClose={() => setConfirmBaseUrl(null)}
       >
         <p className="settings-update-confirm-body">
-          新地址将写入设置并记录一条审计。地址必须由你自行确认；客户端只读取该目录下的静态清单文件，
-          不会调用任何业务接口。留空表示关闭自动检查。
+          新地址将写入设置；留空表示关闭自动检查。
         </p>
         <ul className="settings-update-confirm-list">
-          <li>当前：{settings?.baseUrl || '未配置'}</li>
+          <li>当前：{savedBaseUrl || '未配置'}</li>
           <li>新地址：{confirmBaseUrl || '（留空 = 关闭自动检查）'}</li>
         </ul>
         <div className="settings-actions">
@@ -506,7 +514,7 @@ export function SettingsUpdatePane({ api }: { api?: SettingsUpdatePaneApi }) {
             type="button"
             className="ui-btn ui-btn--sm ui-btn--primary"
             data-testid="update-baseurl-confirm"
-            onClick={() => void commitSaveBaseUrl()}
+            onClick={() => void commitSave(true)}
           >
             确认更换
           </button>
@@ -546,6 +554,6 @@ export function SettingsUpdatePane({ api }: { api?: SettingsUpdatePaneApi }) {
           </button>
         </div>
       </Modal>
-    </div>
+    </>
   );
 }

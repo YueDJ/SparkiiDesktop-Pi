@@ -78,7 +78,8 @@ describe('Settings knowledge pane', () => {
     fireEvent.click(screen.getByRole('button', { name: '知识库' }));
     const input = await screen.findByTestId('rag-api-key-input') as HTMLInputElement;
     expect(input.value).toBe('');
-    expect(await screen.findByText(/已配置/)).toBeTruthy();
+    // 已配置状态由 placeholder 表达，不再单独占一行小字（表 B）。
+    expect(input.placeholder).toContain('已配置');
     expect(screen.queryByRole('button', { name: /显示/ })).toBeNull();
     await waitFor(() => expect(api.listRagDatasets).toHaveBeenCalled());
   });
@@ -88,12 +89,13 @@ describe('Settings knowledge pane', () => {
     render(<SettingsView api={makeApi({ saveRagSettings })} />);
     fireEvent.click(screen.getByRole('button', { name: '知识库' }));
     await screen.findByTestId('rag-api-key-input');
-    // 两块分组各有一个"保存"，按分组取 RAG 那个（既有点击目标不变）。
-    fireEvent.click(within(screen.getByTestId('knowledge-rag-group')).getByText('保存'));
+    // 统一底部保存栏：先把页面变成未保存态，再点唯一的「保存」。
+    fireEvent.change(screen.getByTestId('rag-base-url-input'), { target: { value: 'http://127.0.0.1:9381' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
     await waitFor(() => expect(saveRagSettings).toHaveBeenCalled());
     const arg = saveRagSettings.mock.calls[0][0];
     expect(arg.apiKey === '' || arg.apiKey == null).toBe(true);
-    expect(arg.baseUrl).toBe('http://127.0.0.1:9380');
+    expect(arg.baseUrl).toBe('http://127.0.0.1:9381');
   });
 
   it('does not load the RAG key through getApiKey', async () => {
@@ -174,7 +176,7 @@ describe('Settings knowledge pane', () => {
     fireEvent.click(screen.getByRole('button', { name: '知识库' }));
     fireEvent.change(await screen.findByTestId('rag-similarity-threshold-input'), { target: { value: '0.35' } });
     fireEvent.change(screen.getByTestId('rag-vector-similarity-weight-input'), { target: { value: '0.5' } });
-    fireEvent.click(within(screen.getByTestId('knowledge-rag-group')).getByText('保存'));
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
     await waitFor(() => expect(saveRagSettings).toHaveBeenCalled());
     const arg = saveRagSettings.mock.calls[0][0];
     expect(arg.similarityThreshold).toBe(0.35);
@@ -189,7 +191,7 @@ describe('Settings knowledge pane', () => {
     expect(token.type).toBe('password');
     expect(token.value).toBe('');
     fireEvent.change(screen.getByTestId('sparkiionto-similarity-threshold-input'), { target: { value: '0.4' } });
-    fireEvent.click(within(screen.getByTestId('knowledge-onto-group')).getByText('保存'));
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
     await waitFor(() => expect(saveKnowledgeSettings).toHaveBeenCalled());
     const [backend, arg] = saveKnowledgeSettings.mock.calls[0];
     expect(backend).toBe('sparkiionto');
@@ -221,7 +223,7 @@ describe('Settings knowledge pane', () => {
     expect(screen.queryByText(/被同网段嗅探/)).toBeNull();
     fireEvent.change(baseUrl, { target: { value: 'http://10.0.0.8:9380' } });
     expect(await screen.findByText(/被同网段嗅探/)).toBeTruthy();
-    fireEvent.click(within(screen.getByTestId('knowledge-rag-group')).getByText('保存'));
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
     await waitFor(() => expect(saveRagSettings).toHaveBeenCalled());
   });
 
@@ -270,7 +272,7 @@ describe('Settings knowledge pane', () => {
     const select = await screen.findByTestId('sparkiionto-default-domain-onto-qa');
     fireEvent.click(select);
     fireEvent.click(await screen.findByRole('menuitem', { name: '工艺要求' }));
-    fireEvent.click(within(screen.getByTestId('knowledge-onto-group')).getByText('保存'));
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
     await waitFor(() => expect(saveKnowledgeSettings).toHaveBeenCalled());
     const [backend, arg] = saveKnowledgeSettings.mock.calls[0];
     expect(backend).toBe('sparkiionto');

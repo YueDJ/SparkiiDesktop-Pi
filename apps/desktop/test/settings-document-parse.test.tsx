@@ -55,10 +55,11 @@ describe('Settings document parse pane', () => {
 
   it('saves via saveDocumentParseSettings not saveSettings', async () => {
     const api = await openPane();
+    fireEvent.change(screen.getByTestId('document-parse-idle-minutes'), { target: { value: '7' } });
     fireEvent.click(screen.getByText('保存'));
     await waitFor(() => expect(api.saveDocumentParseSettings).toHaveBeenCalled());
     expect(api.saveSettings).not.toHaveBeenCalled();
-    expect(api.saveDocumentParseSettings).toHaveBeenCalledWith({ idleMinutes: 5, keepResident: false });
+    expect(api.saveDocumentParseSettings).toHaveBeenCalledWith({ idleMinutes: 7, keepResident: false });
   });
 
   it('has no 关掉文档解析 switch', async () => {

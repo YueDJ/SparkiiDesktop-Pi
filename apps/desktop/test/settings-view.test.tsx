@@ -97,7 +97,7 @@ describe('SettingsView provider rendering', () => {
     render(<SettingsView api={makeApi()} />);
     await screen.findByText('已加载本机配置');
     fireEvent.click(screen.getByText('智能体与运行'));
-    expect(screen.getByText('并行上限只约束智能体，不约束文档解析。')).toBeTruthy();
+    expect(screen.getByText('只约束智能体，不约束文档解析。')).toBeTruthy();
   });
 });
 
@@ -278,13 +278,15 @@ describe('SettingsView skills pane', () => {
 });
 
 describe('SettingsView about pane', () => {
-  it('shows the company and unsigned internal release status', async () => {
+  it('shows company / channel without build-time signing notes', async () => {
     render(<SettingsView api={makeApi()} />);
     await screen.findByText('已加载本机配置');
     fireEvent.click(screen.getByText('关于'));
 
     expect(screen.getByText('深圳宇岳向上科技有限公司')).toBeTruthy();
-    expect(screen.getByText('内部试用版（未签名）')).toBeTruthy();
-    expect(screen.getByText(/SmartScreen/)).toBeTruthy();
+    expect(screen.getByText('内部试用版')).toBeTruthy();
+    // 构建说明与签名机制不进入常规 UI（本任务表 B · a/e）。
+    expect(screen.queryByText(/SmartScreen/)).toBeNull();
+    expect(screen.queryByText(/未签名/)).toBeNull();
   });
 });
