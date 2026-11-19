@@ -393,21 +393,24 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
   ) => {
     if (!sessionId || files.length === 0) return;
     const sparkii = api();
-    const dir = !targetDir || targetDir === '.' ? 'input' : targetDir;
+    // '' / '.' means the workspace ROOT. Blank tree areas drop there; only the
+    // explicit “＋ 导入文件” button defaults to project-private input/.
+    const dir = targetDir === '.' || targetDir === '' ? '' : (targetDir || 'input');
+    const listPath = dir || '.';
     const saved: string[] = [];
     const docsToMerge: Record<string, string> = {};
     let lastRel = '';
     try {
       for (const file of files) {
         const safe = file.name.replace(/[^\w.\-\u4e00-\u9fa5]/g, '_') || 'imported';
-        const before = await sparkii.workspaceList?.({ sessionId, path: dir });
+        const before = await sparkii.workspaceList?.({ sessionId, path: listPath });
         const existing = new Set(before?.ok && Array.isArray(before.entries) ? before.entries : []);
         let name = safe;
         const dot = safe.lastIndexOf('.');
         const stem = dot > 0 ? safe.slice(0, dot) : safe;
         const ext = dot > 0 ? safe.slice(dot) : '';
         for (let n = 2; existing.has(name); n += 1) name = `${stem}_${n}${ext}`;
-        const rel = `${dir}/${name}`;
+        const rel = dir ? `${dir}/${name}` : name;
         const written = await sparkii.workspaceWriteBytes({
           sessionId,
           path: rel,
@@ -1153,22 +1156,23 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
                 <span className="bw-hint">开始写作后存放位置锁定</span>
               )}
             </div>
-            <div className="bw-hint">导入的文件写入 input/；文本立即入索引，PDF/Word/图片由会话内文档工具按需解析。任何阶段可导入。</div>
+            <div className="bw-hint">「＋ 导入文件」写入 input/；拖到文件夹写入该文件夹，拖到空白区写入根目录。input/ 内文本立即入索引，PDF/Word/图片由会话内文档工具按需解析。任何阶段可导入。</div>
           </div>
           <div
-            className={`bw-ws-drawer-body${dropTarget === 'input' ? ' drop-target' : ''}`}
-            onDragOver={(e) => { e.preventDefault(); setDropTarget('input'); }}
+            className={`bw-ws-drawer-body${dropTarget === '' ? ' drop-target' : ''}`}
+            onDragOver={(e) => { e.preventDefault(); setDropTarget(''); }}
             onDragLeave={(e) => {
               if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTarget(null);
             }}
             onDrop={(e) => {
               e.preventDefault();
-              const target = dropTarget ?? 'input';
+              // Blank tree area is the workspace ROOT — not an implicit input/.
+              const target = dropTarget ?? '';
               setDropTarget(null);
               void importDroppedFiles(e.dataTransfer.files, target);
             }}
           >
-            <div className="bw-ws-tree-title">文件树 · 可拖入文件夹</div>
+            <div className="bw-ws-tree-title">文件树 · 拖到文件夹或空白区</div>
             {(wsEntries[''] ?? []).length > 0
               ? renderWorkspaceTree('', 0)
               : <div className="bw-hint">

@@ -401,7 +401,7 @@ describe('bid-writing surface — P10 storage location (setup only)', () => {
     expect(drawer).toBeTruthy();
     expect(drawer!.getAttribute('aria-label')).toBe('工作区抽屉');
     expect(document.querySelector('.bw-workbench')?.classList.contains('bw-drawer-open')).toBe(true);
-    expect(within(drawer!).getByText('文件树 · 可拖入文件夹')).toBeTruthy();
+    expect(within(drawer!).getByText('文件树 · 拖到文件夹或空白区')).toBeTruthy();
     await waitFor(() => expect(within(drawer!).getByText('project.json')).toBeTruthy());
     expect(within(drawer!).getByTitle('收起')).toBeTruthy();
 
@@ -465,6 +465,30 @@ describe('bid-writing surface — P10 storage location (setup only)', () => {
     await waitFor(() => expect(api.workspaceWriteBytes).toHaveBeenCalledWith(
       expect.objectContaining({ path: 'input/拖入.txt', bytesBase64: 'aGkhIQ==' }),
     ));
+  });
+
+  it('drops a file on the blank tree area into the workspace root', async () => {
+    const api = makeApi({ sessions: [], project: projectFixture() });
+    (window as any).sparkii = api;
+    renderSurface(api, 's1');
+    await screen.findByText('章节大纲');
+    await act(async () => { fireEvent.click(screen.getByText('工作区')); });
+    const body = document.querySelector('.bw-ws-drawer-body') as HTMLElement | null;
+    expect(body).toBeTruthy();
+    const file = {
+      name: '根目录.txt',
+      size: 4,
+      arrayBuffer: async () => new Uint8Array([0x68, 0x69, 0x21, 0x21]).buffer,
+    } as unknown as File;
+    const dataTransfer = { files: [file], types: ['Files'] };
+    await act(async () => {
+      fireEvent.dragOver(body!, { dataTransfer });
+      fireEvent.drop(body!, { dataTransfer });
+    });
+    await waitFor(() => expect(api.workspaceWriteBytes).toHaveBeenCalledWith(
+      expect.objectContaining({ path: '根目录.txt', bytesBase64: 'aGkhIQ==' }),
+    ));
+    expect(api.workspaceWrite.mock.calls.some((c: any[]) => c[0].path === 'input/manifest.md')).toBe(false);
   });
 
   it('shows a text preview when a file row is selected', async () => {
