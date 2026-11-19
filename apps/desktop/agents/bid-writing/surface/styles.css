@@ -306,3 +306,22 @@
   word-break: break-all;
 }
 .bw-ws-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* WP3 — top-bar knowledge base binding (always available) */
+.bw-kb-wrap { position: relative; display: inline-flex; margin-left: 8px; }
+.bw-kb-count {
+  display: inline-grid; place-items: center; min-width: 18px; height: 18px;
+  padding: 0 5px; border-radius: 999px; background: #DBEAFE; color: #2563EB;
+  font-size: 11px; font-weight: 600; margin-left: 4px;
+}
+.bw-kb-popover {
+  position: absolute; top: calc(100% + 8px); right: 0; width: 300px;
+  background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, .16); padding: 14px; z-index: 9;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.bw-kb-pop-head { display: flex; flex-direction: column; gap: 2px; }
+.bw-kb-popover .bw-kb-list { margin: 0; max-height: 200px; overflow: auto; }
+.bw-kb-popover .bw-kb-list li { padding: 4px 0; }
+.bw-kb-apply { display: flex; justify-content: flex-end; gap: 8px; }
+.bw-kb-inline { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }

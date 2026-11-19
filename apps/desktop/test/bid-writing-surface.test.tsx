@@ -390,3 +390,125 @@ describe('bid-writing surface — P10 storage location (setup only)', () => {
     expect(api.relocateWorkspace).not.toHaveBeenCalled();
   });
 });
+
+describe('bid-writing surface — WP3 knowledge binding (top bar, any phase)', () => {
+  const datasets = [
+    { id: 'kb-1', name: '公司制度库' },
+    { id: 'kb-2', name: '历史标书库' },
+    { id: 'kb-3', name: '行业规范库' },
+  ];
+
+  function kbApi(status: 'setup' | 'drafting' | 'exported' = 'drafting', bound: Array<{ datasetId: string; name: string }> = []) {
+    const api = makeApi({ sessions: [], project: projectFixture({ status, knowledgeBases: bound }) });
+    api.listRagDatasets.mockResolvedValue({ ok: true, datasets });
+    return api;
+  }
+
+  it('restores the session binding from project.json on open (survives restart)', async () => {
+    const api = kbApi('drafting', [{ datasetId: 'kb-1', name: '公司制度库' }, { datasetId: 'kb-2', name: '历史标书库' }]);
+    (window as any).sparkii = api;
+    renderSurface(api, 's1');
+    await screen.findByText('章节大纲');
+    await waitFor(() => expect(api.setSessionKnowledge).toHaveBeenCalledWith(
+      's1', { mode: 'ids', datasetIds: ['kb-1', 'kb-2'] },
+    ));
+  });
+
+  it('applies binding: setSessionKnowledge + writeProject.knowledgeBases + count', async () => {
+    const api = kbApi('drafting');
+    (window as any).sparkii = api;
+    renderSurface(api, 's1');
+    await screen.findByText('章节大纲');
+    await waitFor(() => expect(api.listRagDatasets).toHaveBeenCalled());
+
+    await act(async () => { fireEvent.click(screen.getByText(/知识库/)); });
+    // Draft: select two datasets.
+    const boxes = screen.getAllByRole('checkbox') as HTMLInputElement[];
+    await act(async () => { fireEvent.click(boxes[0]); });
+    await act(async () => { fireEvent.click(boxes[1]); });
+    await act(async () => { fireEvent.click(screen.getByText('应用绑定')); });
+
+    await waitFor(() => expect(api.setSessionKnowledge).toHaveBeenCalledWith(
+      's1', { mode: 'ids', datasetIds: ['kb-1', 'kb-2'] },
+    ));
+    const projWrite = api.workspaceWrite.mock.calls.find((c: any[]) => c[0].path === 'project.json');
+    expect(projWrite).toBeTruthy();
+    expect(JSON.parse(projWrite[0].content).knowledgeBases).toEqual([
+      { datasetId: 'kb-1', name: '公司制度库' },
+      { datasetId: 'kb-2', name: '历史标书库' },
+    ]);
+  });
+
+  it('cancel rolls the draft back to the committed binding', async () => {
+    const api = kbApi('drafting', [{ datasetId: 'kb-1', name: '公司制度库' }]);
+    (window as any).sparkii = api;
+    renderSurface(api, 's1');
+    await screen.findByText('章节大纲');
+    await waitFor(() => expect(api.listRagDatasets).toHaveBeenCalled());
+
+    await act(async () => { fireEvent.click(screen.getByText(/知识库/)); });
+    const boxes = screen.getAllByRole('checkbox') as HTMLInputElement[];
+    expect(boxes[0].checked).toBe(true); // committed from project.json
+    await act(async () => { fireEvent.click(boxes[2]); }); // draft: add kb-3
+    expect((screen.getAllByRole('checkbox') as HTMLInputElement[])[2].checked).toBe(true);
+    await act(async () => { fireEvent.click(screen.getByText('取消')); });
+
+    const commitsAfterCancel = api.setSessionKnowledge.mock.calls.length;
+    await act(async () => { fireEvent.click(screen.getByText(/知识库/)); });
+    const boxes2 = screen.getAllByRole('checkbox') as HTMLInputElement[];
+    expect(boxes2[2].checked).toBe(false); // rolled back
+    expect(api.setSessionKnowledge.mock.calls.length).toBe(commitsAfterCancel); // no apply on cancel
+  });
+
+  it('empty binding applies [] (clear), and no-connection shows downgrade copy', async () => {
+    const api = kbApi('drafting', [{ datasetId: 'kb-1', name: '公司制度库' }]);
+    (window as any).sparkii = api;
+    renderSurface(api, 's1');
+    await screen.findByText('章节大纲');
+    await act(async () => { fireEvent.click(screen.getByText(/知识库/)); });
+    const boxes = screen.getAllByRole('checkbox') as HTMLInputElement[];
+    await act(async () => { fireEvent.click(boxes[0]); }); // uncheck → empty
+    await act(async () => { fireEvent.click(screen.getByText('应用绑定')); });
+    await waitFor(() => expect(api.setSessionKnowledge).toHaveBeenCalledWith('s1', { mode: 'ids', datasetIds: [] }));
+
+    cleanup();
+    delete (window as any).sparkii;
+    const down = makeApi({ sessions: [], project: projectFixture() });
+    down.listRagDatasets.mockResolvedValue({ ok: false, error: 'no connection' });
+    (window as any).sparkii = down;
+    renderSurface(down, 's1');
+    await screen.findByText('章节大纲');
+    await act(async () => { fireEvent.click(screen.getByText(/知识库/)); });
+    expect(await screen.findByText(/未检测到可用知识库连接/)).toBeTruthy();
+  });
+
+  it('keeps the top-bar entry editable after writing starts (drafting)', async () => {
+    const api = kbApi('drafting');
+    (window as any).sparkii = api;
+    renderSurface(api, 's1');
+    await screen.findByText('章节大纲');
+    // Entry exists even though the setup panel is gone.
+    expect(screen.getByText(/知识库/)).toBeTruthy();
+    await act(async () => { fireEvent.click(screen.getByText(/知识库/)); });
+    expect(screen.getByText('应用绑定')).toBeTruthy();
+  });
+
+  it('syncs binding to all sessions sharing the workspace (F8)', async () => {
+    const p = projectFixture({ status: 'drafting' });
+    const api = kbApi('drafting');
+    const boundApi = api as any;
+    boundApi.listChatSessions.mockResolvedValue([
+      { id: 's1', workspacePath: p.workspacePath, updatedAt: 3 },
+      { id: 's2', workspacePath: p.workspacePath, updatedAt: 2 },
+    ]);
+    (window as any).sparkii = api;
+    renderSurface(api, 's1');
+    await screen.findByText('章节大纲');
+    await waitFor(() => expect(api.listRagDatasets).toHaveBeenCalled());
+    await act(async () => { fireEvent.click(screen.getByText(/知识库/)); });
+    const boxes = screen.getAllByRole('checkbox') as HTMLInputElement[];
+    await act(async () => { fireEvent.click(boxes[0]); });
+    await act(async () => { fireEvent.click(screen.getByText('应用绑定')); });
+    await waitFor(() => expect(api.setSessionKnowledge).toHaveBeenCalledWith('s2', { mode: 'ids', datasetIds: ['kb-1'] }));
+  });
+});

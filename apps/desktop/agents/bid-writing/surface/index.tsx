@@ -66,7 +66,12 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
   const [draftMaterials, setDraftMaterials] = useState<Array<{ name: string; text: string }>>([]);
   // §6.1 line one — SparkiiRAG datasets selected for this project.
   const [ragDatasets, setRagDatasets] = useState<Array<{ id: string; name: string }>>([]);
+  const [kbConnected, setKbConnected] = useState(false);
   const [draftDatasetIds, setDraftDatasetIds] = useState<string[]>([]);
+  // WP3 — top-bar knowledge binding (committed state is activeProject.knowledgeBases;
+  // this is the in-popover draft). Any phase can edit; apply commits both lines.
+  const [kbPopoverOpen, setKbPopoverOpen] = useState(false);
+  const [kbDraftIds, setKbDraftIds] = useState<string[]>([]);
   // §10.1/O3 — source chips attributed from the live session timeline.
   const [activeContext, setActiveContext] = useState<ContextBlock[]>([]);
   const [activeChapter, setActiveChapter] = useState<string | null>(null);
@@ -129,16 +134,22 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
     return () => off?.();
   }, [refreshProjects]);
 
-  // §6.1 — load visible RAG datasets when the wizard opens (line one picker).
+  // §6.1 — load visible RAG datasets when the wizard opens (line one picker)
+  // AND whenever the workbench is active (knowledge-base top-bar entry is
+  // always available in setup/drafting/exported — v2 design ⑦). `kbConnected`
+  // drives the no-connection downgrade copy in both places.
   useEffect(() => {
-    if (!wizardOpen) return;
+    if (!wizardOpen && view !== 'workbench') return;
     void (async () => {
       try {
         const r = await api().listRagDatasets?.();
+        setKbConnected(Boolean(r?.ok));
         if (r?.ok) setRagDatasets(r.datasets ?? []);
-      } catch { /* RAG down → line two still usable (§15) */ }
+      } catch {
+        setKbConnected(false);
+      }
     })();
-  }, [wizardOpen]);
+  }, [wizardOpen, view]);
 
   // §10.1/O3 — attribute source chips from the REAL Live Pipeline timeline.
   // The pipeline normalizes tool events to kind:'tool'; knowledge_turn rows are
@@ -155,6 +166,12 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
       if (p) {
         setActiveProject(p);
         setView('workbench');
+        // WP3 — 按 project.json 恢复会话的知识库绑定。平台的
+        // sessionKnowledgeSelections 是内存 Map（重启即失），这是持久真相源。
+        // 空数组也要显式设置（清空绑定），两条独立通道互不影响（不改 T1 索引）。
+        const boundIds = p.knowledgeBases.map((k) => k.datasetId);
+        setKbDraftIds(boundIds);
+        void api().setSessionKnowledge?.(sessionId, { mode: 'ids', datasetIds: boundIds });
         // Remember chapter position per project (P5).
         const saved = localStorage.getItem(`bw:chapter:${p.id}`);
         const chapter = p.chapters.find((c) => c.id === saved) ?? p.chapters[0];
@@ -243,6 +260,49 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
       setStatus(`搬迁失败：${e instanceof Error ? e.message : String(e)}`);
     }
   }, [sessionId, activeProject, refreshProjects]);
+
+  // WP3 — commit the in-popover knowledge draft. Two independent channels:
+  // (1) setSessionKnowledge → session-level RAG retrieval (in-memory binding);
+  // (2) writeProject.knowledgeBases → durable per-project truth (survives restart).
+  // T1 input/ index is untouched — knowledge base change never rebuilds it.
+  const applyKnowledgeBinding = useCallback(async () => {
+    if (!sessionId || !activeProject) return;
+    const sparkii = api();
+    const datasetIds = [...kbDraftIds];
+    const knowledgeBases = datasetIds.map((id) => ({
+      datasetId: id,
+      name: ragDatasets.find((d) => d.id === id)?.name ?? id,
+    }));
+    try {
+      const r = await sparkii.setSessionKnowledge?.(sessionId, { mode: 'ids', datasetIds });
+      if (r && r.ok === false) { setStatus(`知识库绑定失败：${r.error ?? '未知错误'}`); return; }
+      // F8 — 多 session 共享 workspacePath：把绑定同步到所有共享会话，
+      // 否则其他窗口/会话的检索仍用旧绑定。project.json 已是共享真相源。
+      for (const s of projectSessions) {
+        if (s.id !== sessionId) {
+          await sparkii.setSessionKnowledge?.(s.id, { mode: 'ids', datasetIds });
+        }
+      }
+      const updated = { ...activeProject, knowledgeBases };
+      setActiveProject(updated);
+      await writeProject(sessionId, updated);
+      await refreshProjects();
+      setKbPopoverOpen(false);
+      setStatus(datasetIds.length ? `已绑定 ${datasetIds.length} 个知识库` : '已清空知识库绑定');
+    } catch (e) {
+      setStatus(`知识库绑定失败：${e instanceof Error ? e.message : String(e)}`);
+    }
+  }, [sessionId, activeProject, kbDraftIds, ragDatasets, projectSessions, refreshProjects]);
+
+  const cancelKnowledgeDraft = useCallback(() => {
+    setKbDraftIds(activeProject?.knowledgeBases.map((k) => k.datasetId) ?? []);
+    setKbPopoverOpen(false);
+  }, [activeProject]);
+
+  const openKnowledgePopover = useCallback(() => {
+    setKbDraftIds(activeProject?.knowledgeBases.map((k) => k.datasetId) ?? []);
+    setKbPopoverOpen((v) => !v);
+  }, [activeProject]);
 
   // §9.2 step 2 — upload project-private material (line two). Only text-bearing
   // files can be indexed in-renderer; PDFs are registered by name and parsed by
@@ -746,6 +806,42 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
         <span className="bw-topbar-title">{activeProject?.name ?? '标书项目'}</span>
         <span className="bw-topbar-meta">版本 v{activeProject?.version ?? 1}</span>
         <button className="bw-btn bw-workspace-btn" onClick={() => setWorkspaceDrawerOpen((v) => !v)}>工作区</button>
+        <span className="bw-kb-wrap">
+          <button className="bw-btn bw-kb-btn" onClick={openKnowledgePopover}>
+            知识库 {activeProject?.knowledgeBases.length ? <span className="bw-kb-count">{activeProject.knowledgeBases.length}</span> : null}
+          </button>
+          {kbPopoverOpen && (
+            <div className="bw-kb-popover">
+              <div className="bw-kb-pop-head">
+                <b>公司知识库绑定</b>
+                <span className="bw-hint">任何阶段可改 · 不影响已写正文</span>
+              </div>
+              {kbConnected && ragDatasets.length > 0 ? (
+                <ul className="bw-kb-list">
+                  {ragDatasets.map((d) => (
+                    <li key={d.id}>
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={kbDraftIds.includes(d.id)}
+                          onChange={() => setKbDraftIds((prev) => prev.includes(d.id) ? prev.filter((x) => x !== d.id) : [...prev, d.id])}
+                        />
+                        {d.name}
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="bw-hint">未检测到可用知识库连接，可跳过（项目资料与写作仍可用）。</div>
+              )}
+              <div className="bw-hint">来自知识库后端动态返回；与项目私有资料 input/ 是两条独立通道。</div>
+              <div className="bw-kb-apply">
+                <button className="bw-btn bw-btn-small" onClick={cancelKnowledgeDraft}>取消</button>
+                <button className="bw-btn bw-btn-small bw-btn-primary" onClick={() => void applyKnowledgeBinding()}>应用绑定</button>
+              </div>
+            </div>
+          )}
+        </span>
         <button className="bw-btn bw-btn-primary bw-export" onClick={() => void exportProject()}>导出 Word</button>
       </div>
       {workspaceDrawerOpen && (
@@ -788,7 +884,11 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
                 : <ul className="bw-mat-list">{setupMaterials.map((m, i) => (
                     <li key={i}>{m.name}</li>
                   ))}</ul>}
-              <div className="bw-hint">已绑定知识库：{activeProject.knowledgeBases.map((k) => k.name).join('、') || '（未选）'}</div>
+              <div className="bw-kb-inline">
+                <span className="bw-hint">已绑定知识库：{activeProject.knowledgeBases.map((k) => k.name).join('、') || '（未选）'}</span>
+                <button className="bw-btn bw-btn-small" onClick={openKnowledgePopover}>前往设置 →</button>
+                <div className="bw-hint">绑定/更换统一在顶栏「知识库」，写作后仍可随时改。</div>
+              </div>
             </div>
             <div className="bw-setup-col bw-setup-wide">
               <div className="bw-col-title">补充需求 / 写作要求（选填）</div>
