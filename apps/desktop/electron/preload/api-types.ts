@@ -303,7 +303,7 @@ export interface SparkiiApi {
   runWorkflow(id: string, input: Record<string, unknown>): Promise<{ ok: boolean; sessionId?: string }>;
   prompt(text: string): Promise<{ ok: boolean }>;
   openChatSession(sessionId: string): Promise<OpenChatSessionResult>;
-  listChatSessions(profileId?: string): Promise<unknown[]>;
+  listChatSessions(profileId?: string, opts?: { includeEmpty?: boolean }): Promise<unknown[]>;
   getChatSession(sessionId: string): Promise<unknown>;
   /**
    * Create an empty workspace-bound session WITHOUT dispatching a prompt (P9).

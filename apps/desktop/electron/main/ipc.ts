@@ -1236,9 +1236,23 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     }
   });
 
-  ipcMain.handle('sparkii:listChatSessions', async (_e, profileId?: string) => {
+  ipcMain.handle('sparkii:listChatSessions', async (
+    _e,
+    profileId?: string,
+    opts?: { includeEmpty?: boolean },
+  ) => {
     const all = await listPiSessions(join(rt.piAgentDir, 'sessions'));
-    const mapped = all.map((s) => {
+    const mapped: Array<{
+      id: string;
+      title?: string;
+      firstMessage: string;
+      profileId?: string;
+      updatedAt: number;
+      piFile: string | null;
+      pinned: boolean;
+      archived: boolean;
+      sortOrder: number | null;
+    }> = all.map((s) => {
       const rec = rt.chatSessions.get(s.id);
       return {
         id: s.id,
@@ -1252,7 +1266,30 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         sortOrder: rec?.sortOrder ?? null,
       };
     });
-    return profileId ? mapped.filter((m) => m.profileId === profileId || m.profileId === undefined) : mapped;
+    // P9: a workspace-bound session can be real and user-visible before its
+    // first Pi message is flushed. Generic callers may opt into those rows;
+    // the default keeps the historical "empty chat drafts are invisible" rule.
+    if (opts?.includeEmpty === true) {
+      const seen = new Set(mapped.map((m) => m.id));
+      for (const rec of rt.chatSessions.list()) {
+        if (seen.has(rec.id)) continue;
+        mapped.push({
+          id: rec.id,
+          title: undefined,
+          firstMessage: '(no messages)',
+          profileId: rec.profileId,
+          updatedAt: rec.updatedAt,
+          piFile: rec.piSessionFile,
+          pinned: rec.pinned,
+          archived: rec.archived,
+          sortOrder: rec.sortOrder,
+        });
+      }
+    }
+    const filtered = profileId
+      ? mapped.filter((m) => m.profileId === profileId || m.profileId === undefined)
+      : mapped;
+    return filtered.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
   });
   ipcMain.handle('sparkii:getChatSession', (_e, sessionId: string) => rt.chatSessions.get(sessionId) ?? null);
 

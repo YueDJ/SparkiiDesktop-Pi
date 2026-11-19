@@ -1627,6 +1627,41 @@ describe('ipc provider handlers', () => {
     expect(result).toEqual([]);
   });
 
+  it('listChatSessions includes DB-only P9 sessions when includeEmpty is true', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    const client = { send: async () => ({ success: true }) };
+    const rt = await makeRuntime({ dataDir, piAgentDir, client });
+    const emptySession = {
+      id: 'p9-empty-1',
+      profileId: 'bid-writing',
+      workspaceKind: 'auto' as const,
+      workspacePath: 'C:/ws/p9-empty',
+      model: null,
+      thinkingLevel: null,
+      piSessionFile: null,
+      createdAt: 123,
+      updatedAt: 456,
+    };
+    (rt.chatSessions as unknown as { list: (profileId?: string) => unknown[] }).list = () => [emptySession];
+
+    const handlers = await registeredHandlers();
+    const result = await handlers.get('sparkii:listChatSessions')!(
+      null, 'bid-writing', { includeEmpty: true },
+    ) as Array<{ id: string; profileId?: string; firstMessage: string; updatedAt: number; title?: string }>;
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      id: 'p9-empty-1',
+      profileId: 'bid-writing',
+      firstMessage: '(no messages)',
+      updatedAt: 456,
+    });
+    expect(result[0].title).toBeUndefined();
+  });
+
   it('getChatState does not acquire when a session has no lease', async () => {
     const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
     dirs.push(dataDir);

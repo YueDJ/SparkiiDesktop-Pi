@@ -147,6 +147,9 @@ describe('bid-writing surface (P1 skeleton)', () => {
       );
       expect(actions.openSession).toHaveBeenCalledWith('new-session-1');
     });
+    // Empty P9 sessions must still be discoverable and labelled by project name.
+    expect(api.listChatSessions).toHaveBeenCalledWith('bid-writing', { includeEmpty: true });
+    expect(api.setChatTitle).toHaveBeenCalledWith('new-session-1', '测试标书', 'user');
     // The core regression guard: creating a project must NOT start writing.
     expect(api.promptSession).not.toHaveBeenCalled();
     // skeleton dirs + project.json (status=setup) + chapter files written

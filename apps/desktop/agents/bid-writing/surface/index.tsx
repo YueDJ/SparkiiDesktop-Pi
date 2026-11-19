@@ -136,7 +136,7 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
   const refreshProjects = useCallback(async () => {
     const sparkii = api();
     try {
-      const rows = (await sparkii.listChatSessions?.(AGENT_ID)) as SessionMeta[] | undefined;
+      const rows = (await sparkii.listChatSessions?.(AGENT_ID, { includeEmpty: true })) as SessionMeta[] | undefined;
       const byWorkspace = new Map<string, SessionMeta>();
       for (const row of rows ?? []) {
         const wp = String(row.workspacePath ?? '').trim();
@@ -313,7 +313,7 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
   useEffect(() => {
     if (!activeProject) return;
     void (async () => {
-      const rows = (await api().listChatSessions?.(AGENT_ID)) as SessionMeta[] | undefined;
+      const rows = (await api().listChatSessions?.(AGENT_ID, { includeEmpty: true })) as SessionMeta[] | undefined;
       const mine = (rows ?? [])
         .filter((r) => r.workspacePath === activeProject.workspacePath)
         .map((r) => ({ id: r.id, updatedAt: r.updatedAt }))
@@ -767,6 +767,9 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
           .filter((ch) => Boolean(ch.file))
           .map((ch) => writeChapter(newSessionId, ch.file!, `# ${ch.title}\n\n`)),
       ]);
+      // Global chat history scans Pi files, which may not exist before the first
+      // message. Naming the session now both labels it and makes it discoverable.
+      try { await sparkii.setChatTitle?.(newSessionId, name, 'user'); } catch { /* keep project */ }
       // §6.2 line two — persist uploaded material into input/ + build the T1 index.
       if (draftMaterials.length) {
         const docs: Record<string, string> = {};
@@ -805,7 +808,7 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
     const sparkii = api();
     try {
       // Find or create a session bound to this project's workspace.
-      const rows = (await sparkii.listChatSessions?.(AGENT_ID)) as SessionMeta[] | undefined;
+      const rows = (await sparkii.listChatSessions?.(AGENT_ID, { includeEmpty: true })) as SessionMeta[] | undefined;
       const match = (rows ?? []).find((r) => r.workspacePath === p.workspacePath);
       if (match) {
         actions.openSession(match.id);
