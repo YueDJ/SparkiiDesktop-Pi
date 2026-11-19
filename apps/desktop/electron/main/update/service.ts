@@ -31,7 +31,7 @@ import type {
   UpdateSettingsPublic, UpdateState,
 } from './types.js';
 import {
-  createUpdater, crossCheckUpdateInfo, isUpdaterUnavailable, writeDerivedFeed,
+  createUpdater, crossCheckUpdateInfo, isUpdaterUnavailable, UpdaterUnavailableError, writeDerivedFeed,
   type NsisUpdaterLike,
 } from './updater-adapter.js';
 import { deriveLatestYml, fetchAndVerify, type VerifyOptions } from './verifier.js';
@@ -647,7 +647,12 @@ export function initUpdateService(deps: UpdateDeps): UpdateService {
     boundUpdaterKey = key;
 
     const checked = await updater.checkForUpdates() as { updateInfo?: unknown } | null;
-    const cross = crossCheckUpdateInfo(checked?.updateInfo ?? checked, release);
+    // 未打包（app.isPackaged=false）时 electron-updater 会直接返回 null：
+    // 这是环境不满足，不是「元数据被篡改」，不能记成 verify-failed。
+    if (checked == null) {
+      throw new UpdaterUnavailableError('checkForUpdates returned null', 'unpackaged');
+    }
+    const cross = crossCheckUpdateInfo(checked.updateInfo ?? checked, release);
     if (!cross.ok) {
       deps.logger.warn(`checkForUpdate crossCheck failed: ${cross.reason}`);
       throw new Error(`updateInfo crossCheck failed: ${cross.reason}`);
@@ -854,13 +859,16 @@ export function initUpdateService(deps: UpdateDeps): UpdateService {
           // 环境缺件（如打包未带上 electron-updater）：如实报「未就绪」，不伪装成投毒信号。
           deps.logger.warn(String(err));
           setPhase('error', 'NOT_READY');
-          return bad('NOT_READY', '更新组件不可用，请检查安装完整性');
+          const unpackaged = err instanceof UpdaterUnavailableError && err.category === 'unpackaged';
+          return bad('NOT_READY', unpackaged
+            ? '当前是开发版，自动更新只在安装版里可用'
+            : '更新组件不可用，请检查安装完整性');
         }
         setPhase('error', 'ARTIFACT_INVALID');
         await logUpdateEvent(auditLike, 'update.verify-failed', {
           reason: 'UPDATER_CHANNEL_FAILED', detail: String(err),
         }, loggerLike);
-        return bad('ARTIFACT_INVALID', '更新元数据二次比对失败');
+        return bad('ARTIFACT_INVALID', '更新信息校验未通过，请稍后重试');
       }
 
       // 成功路径上的三连写（下限 / 镜像 / 成功时间）任何一处抛错都必须走结构化拒绝：
@@ -1035,8 +1043,9 @@ export function initUpdateService(deps: UpdateDeps): UpdateService {
         }
         setPhase('available', cancelled ? null : 'DOWNLOAD_FAILED');
         if (!cancelled) {
+          deps.logger.warn(`downloadUpdate failed: ${String(err)}`);
           await logUpdateEvent(auditLike, 'update.failed', { reason: 'DOWNLOAD_FAILED' }, loggerLike);
-          return bad('DOWNLOAD_FAILED', `下载失败：${String(err)}`);
+          return bad('DOWNLOAD_FAILED', '下载失败，请检查网络后重试');
         }
         return bad('DOWNLOAD_FAILED', '下载已取消');
       }

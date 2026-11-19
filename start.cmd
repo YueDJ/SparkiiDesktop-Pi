@@ -13,6 +13,15 @@ set "ROOT=%~dp0"
 if "%ROOT:~-1%"=="\" set "ROOT=%ROOT:~0,-1%"
 set "APP_DIR=%ROOT%\apps\desktop"
 
+rem Local builds must embed the release public key, otherwise every update
+rem manifest fails signature verification (fail closed). The public key is not
+rem secret; reuse the local release-key folder when the env var is not set.
+if not defined SPARKII_RELEASE_KEYS_FILE (
+    if exist "%USERPROFILE%\.sparkii-release-keys\public-key.json" (
+        set "SPARKII_RELEASE_KEYS_FILE=%USERPROFILE%\.sparkii-release-keys\public-key.json"
+    )
+)
+
 rem pnpm 9's update-notifier keeps the process alive after "Done" while it waits
 rem for the registry; on a slow registry this looked like start.cmd hanging (~2 min).
 rem Disable it for this launcher so pnpm install returns in ~1s.
@@ -124,6 +133,8 @@ if not exist "dist\index.html" (
     goto :fail
 )
 echo [3/3] Starting Electron...
+echo [INFO] This is an unpackaged development build. Automatic update checks only work
+echo [INFO] in the packaged build: use start-packaged.cmd or an installed Sparkii.
 call pnpm exec electron .
 if errorlevel 1 goto :fail
 exit /b 0

@@ -6,6 +6,7 @@ import type {
   UpdateActionResult,
   UpdateState,
 } from '../../electron/preload/api-types.js';
+import { updateFailureText } from './update-failure.js';
 
 /** 只依赖更新相关的 IPC；未接线的 mock 一律当「不可用」，不抛错。 */
 export type UpdateDialogApi = Partial<Pick<SparkiiApi,
@@ -74,10 +75,10 @@ export function UpdateDialog({ open, state, api, onClose }: {
     setMessage('');
     try {
       const result = await pending;
-      if (result && !result.ok) setMessage(result.message ?? result.reason ?? `${label}未完成`);
+      if (result && !result.ok) setMessage(result.message ?? updateFailureText(result.reason) ?? `${label}未完成`);
       return result;
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : String(e));
+    } catch {
+      setMessage('操作未完成，请稍后重试');
       return null;
     } finally {
       setBusy(false);
@@ -123,12 +124,15 @@ export function UpdateDialog({ open, state, api, onClose }: {
     }
     switch (phase) {
       case 'available':
-        return { tone: 'warn' as const, icon: <SparkIcon width={18} height={18} />, title: `发现新版本 ${remoteVersion}`, subtitle: state?.currentVersion ? `当前版本 ${state.currentVersion}` : '已通过签名校验' };
+        return { tone: 'warn' as const, icon: <SparkIcon width={18} height={18} />, title: `发现新版本 ${remoteVersion}`, subtitle: state?.currentVersion ? `当前版本 ${state.currentVersion}` : '可以下载并安装' };
       case 'downloading':
         return { tone: 'primary' as const, icon: <DownloadIcon width={18} height={18} />, title: `正在下载 ${remoteVersion}`, subtitle: '下载完成后可选择立即安装' };
       case 'readyToInstall':
         return { tone: 'ok' as const, icon: <CheckIcon width={18} height={18} />, title: `新版本 ${localVersion} 已就绪`, subtitle: '安装后 Sparkii 会自动重启' };
       case 'error':
+        if (state?.errorCode === 'NOT_READY') {
+          return { tone: 'warn' as const, icon: <SparkIcon width={18} height={18} />, title: '自动更新只在安装版可用', subtitle: '当前运行的是开发版，请使用安装包启动' };
+        }
         return { tone: 'risk' as const, icon: <DownloadIcon width={18} height={18} />, title: state?.errorCode === 'INSTALL_FAILED' ? '上次升级未完成' : '更新没有完成', subtitle: state?.errorCode === 'INSTALL_FAILED' ? '你的本地数据未受影响，可以重试' : '可稍后重试或更换更新源' };
       default:
         return { tone: 'primary' as const, icon: <SparkIcon width={18} height={18} />, title: '软件更新', subtitle: '检查是否有新版本可用' };
@@ -257,10 +261,6 @@ export function UpdateDialog({ open, state, api, onClose }: {
           <div className="update-dialog-note">
             {installing !== null ? '安装开始后应用会自动退出；未完成的工作请提前保存。' : '取消则保留已下载的包，不会丢失任何文件。'}
           </div>
-        )}
-
-        {state?.httpWarning === true && (
-          <div className="update-dialog-hint">当前使用 HTTP 更新源，安装包完整性由数字签名保证。</div>
         )}
 
         {message && <div className="update-dialog-message" role="status">{message}</div>}

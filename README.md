@@ -100,6 +100,8 @@ pnpm build         # 各包构建
 
 应用入口在 `apps/desktop/electron/main/index.ts`；开发模式下通过 `VITE_DEV_SERVER_URL` 接入 Vite dev server。首次运行会种子本地演示账号 `admin / admin123`（仅开发/演示用途）。
 
+自动更新只能在**安装版/打包版**里验证：`start.cmd` 是未打包的开发态，更新器不会工作。本地验证请用 `start-packaged.cmd`，并确保构建时内置了发布公钥（`start-packaged.cmd` 会在 `%USERPROFILE%\.sparkii-release-keys\public-key.json` 存在时自动带上；也可手动设置 `SPARKII_RELEASE_KEYS_FILE`）。
+
 端到端验收（真实模型调用，120s+ 审批等待）：
 
 ```bash

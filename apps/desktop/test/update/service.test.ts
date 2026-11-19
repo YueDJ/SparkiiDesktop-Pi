@@ -272,6 +272,41 @@ describe('UpdateService（A 关门面）', () => {
     expect(inst.reason).not.toBe('STATE_TAMPERED');
   });
 
+  it('未打包时 updater 返回 null ⇒ NOT_READY，且不写成验签失败', async () => {
+    const audit = { append: vi.fn(async () => ({})) };
+    const nullUpdater = {
+      ...fakeUpdater(server.baseUrl, dir),
+      async checkForUpdates() {
+        return null;
+      },
+    };
+    const svc = initUpdateService({ ...deps, audit, updater: nullUpdater as never });
+    const r = await svc.checkForUpdate(true);
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe('NOT_READY');
+    expect(r.message).toContain('开发版');
+    const calls = audit.append.mock.calls as Array<[Record<string, unknown>]>;
+    expect(calls.some((c) => c[0].action === 'update.verify-failed')).toBe(false);
+    expect((await svc.getState()).errorCode).toBe('NOT_READY');
+  });
+
+  it('元数据二次比对不符 ⇒ ARTIFACT_INVALID，文案不暴露内部阶段名', async () => {
+    const audit = { append: vi.fn(async () => ({})) };
+    const badUpdater = {
+      ...fakeUpdater(server.baseUrl, dir),
+      async checkForUpdates() {
+        return { updateInfo: { version: '9.9.9', path: NAME, sha512: SHA512, size: ARTIFACT.length } };
+      },
+    };
+    const svc = initUpdateService({ ...deps, audit, updater: badUpdater as never });
+    const r = await svc.checkForUpdate(true);
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe('ARTIFACT_INVALID');
+    expect(r.message).toBe('更新信息校验未通过，请稍后重试');
+    const calls = audit.append.mock.calls as Array<[Record<string, unknown>]>;
+    expect(calls.some((c) => c[0].action === 'update.verify-failed')).toBe(true);
+  });
+
   it('镜像写入失败 ⇒ 本次运行拒绝自动更新并留痕，绝不静默当成首装（I-44）', async () => {
     // 攻击面：同用户把 keyring 目录设成只读 ⇒ 镜像永远写不进去 ⇒ 若写失败被静默放过，
     // 之后再删掉 update-state.json 就永远表现为「首次装机」，I-31 的删档防护被绕过。

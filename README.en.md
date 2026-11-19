@@ -101,6 +101,8 @@ pnpm build         # build all packages
 
 The app entry point is `apps/desktop/electron/main/index.ts`; in development, connect the Vite dev server via the `VITE_DEV_SERVER_URL` env var. On first run the app seeds a local demo account `admin / admin123` (development/demo only).
 
+Auto-update can only be verified in a **packaged / installed** build: `start.cmd` is an unpackaged development build and the updater is inactive there. For local verification use `start-packaged.cmd`, which automatically embeds `%USERPROFILE%\.sparkii-release-keys\public-key.json` when present (or set `SPARKII_RELEASE_KEYS_FILE` explicitly).
+
 End-to-end acceptance (real model calls, 120s+ approval wait):
 
 ```bash

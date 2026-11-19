@@ -119,14 +119,20 @@ describe('UpdateDialog', () => {
     await waitFor(() => expect(api.installUpdate).toHaveBeenCalledWith({ version: '0.1.2' }));
   });
 
-  it('安装被 Main 侧拒绝：如实显示原因，不假装成功', async () => {
+  it('安装被 Main 侧拒绝：如实显示人能看懂的原因，不假装成功', async () => {
     const api = makeApi({ installUpdate: vi.fn().mockResolvedValue({ ok: false, reason: 'INSTALL_BLOCKED' }) });
     render(<UpdateDialog open state={stateOver({
       phase: 'readyToInstall', remote: null,
       local: { version: '0.1.2', sequence: 3, nonce: 'n', artifactPath: 'C:/pending/a.exe', bytes: 1, sha512: 'x', expiresAt: '', valid: true },
     })} api={api} onClose={() => {}} />);
     fireEvent.click(screen.getByRole('button', { name: '立即安装并重启' }));
-    expect((await screen.findByRole('status')).textContent).toContain('INSTALL_BLOCKED');
+    expect((await screen.findByRole('status')).textContent).toContain('当前有任务正在运行');
+  });
+
+  it('NOT_READY：明确说明开发版不支持自动更新', () => {
+    render(<UpdateDialog open state={stateOver({ phase: 'error', errorCode: 'NOT_READY' })} api={makeApi()} onClose={() => {}} />);
+    expect(screen.getByText('自动更新只在安装版可用')).not.toBe(null);
+    expect(screen.getByText('当前运行的是开发版，请使用安装包启动')).not.toBe(null);
   });
 
   it('tampered：只提供关闭，不出现任何安装/下载入口', async () => {

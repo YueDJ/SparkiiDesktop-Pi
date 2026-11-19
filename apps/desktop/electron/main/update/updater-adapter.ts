@@ -355,9 +355,12 @@ export interface CreateUpdaterOptions extends LocalFeedExecutorOptions {
  */
 export class UpdaterUnavailableError extends Error {
   readonly updaterUnavailable = true;
-  constructor(message: string) {
+  /** unpackaged：开发态 updater 主动跳过；missing-updater：打包缺件 / 配置缺失。 */
+  readonly category: 'unpackaged' | 'missing-updater';
+  constructor(message: string, category: 'unpackaged' | 'missing-updater' = 'missing-updater') {
     super(`updater unavailable: ${message}`);
     this.name = 'UpdaterUnavailableError';
+    this.category = category;
   }
 }
 
