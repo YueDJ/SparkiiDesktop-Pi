@@ -404,11 +404,18 @@
 }
 .bw-ws-tree-row:hover { background: #F8FAFC; }
 .bw-ws-tree-row.selected { background: #EFF6FF; color: #2563EB; }
-.bw-ws-drawer-body.drop-target .bw-ws-tree-row,
+/* Only the actual drop row is highlighted; the body outline is a blank-area
+   hint, never a descendant-wide highlight over every tree row. */
 .bw-ws-tree-row.drop-target {
   background: #DBEAFE;
   outline: 1px dashed #2563EB;
   outline-offset: -2px;
+}
+.bw-ws-drawer-body.drop-target {
+  background: #F8FAFC;
+  outline: 1px dashed #BFDBFE;
+  outline-offset: -4px;
+  border-radius: 8px;
 }
 .bw-ws-caret { width: 12px; flex: none; color: #94A3B8; transition: transform .15s ease; }
 .bw-ws-caret.open { transform: rotate(90deg); }
