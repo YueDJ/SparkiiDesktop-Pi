@@ -64,6 +64,21 @@ describe('workspace file service — REAL probe integration (symlink / hard-link
     );
   });
 
+  it('lists the workspace root with path "." (P1 rejects an empty path)', async () => {
+    const { workspace } = tempLayout();
+    mkdirSync(join(workspace, 'input'), { recursive: true });
+    writeFileSync(join(workspace, 'project.json'), '{}');
+    const { service } = makeService(workspace);
+
+    const empty = await service.execute('list', { sessionId: 's1', path: '' });
+    expect(empty.ok).toBe(false);
+    if (!empty.ok) expect(empty.code).toBe('INVALID');
+
+    const root = await service.execute('list', { sessionId: 's1', path: '.' });
+    expect(root.ok).toBe(true);
+    if (root.ok) expect(root.entries?.slice().sort()).toEqual(['input', 'project.json']);
+  });
+
   it('rejects .. escape with the REAL probe and records a failed audit', async () => {
     const { workspace } = tempLayout();
     const { service, audits } = makeService(workspace);

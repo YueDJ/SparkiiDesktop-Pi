@@ -52,7 +52,7 @@ function makeApi(opts: { project?: ProjectFile | null; sessions?: unknown[] } = 
       return { ok: true, op: 'write', path };
     }),
     workspaceList: vi.fn(async ({ path }: { path: string }) => {
-      const entries = path === ''
+      const entries = path === '.' || path === ''
         ? ['input', 'output', 'project.json', 'requirements.md']
         : path === 'input'
           ? ['招标文件.txt', '评分办法.pdf']
@@ -392,7 +392,8 @@ describe('bid-writing surface — P10 storage location (setup only)', () => {
 
     await act(async () => { fireEvent.click(within(drawer!).getByTitle('收起')); });
     expect(document.querySelector('.bw-ws-drawer')).toBeNull();
-    expect(api.workspaceList).toHaveBeenCalledWith(expect.objectContaining({ sessionId: 's1', path: '' }));
+    // P1 rejects path:'' as INVALID — the root MUST be requested as '.'.
+    expect(api.workspaceList).toHaveBeenCalledWith(expect.objectContaining({ sessionId: 's1', path: '.' }));
   });
 
   it('shows the relocate entry in setup and hides it in drafting', async () => {

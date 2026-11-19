@@ -95,6 +95,7 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
   // P10 — lazy file tree for the right-side drawer entries (workspaceList is
   // fenced by P1; we only request directories the user actually expands).
   const [wsEntries, setWsEntries] = useState<Record<string, string[]>>({});
+  const [wsErrors, setWsErrors] = useState<Record<string, string>>({});
   const [wsExpanded, setWsExpanded] = useState<Record<string, boolean>>({ input: true, output: true });
 
   // Load all bid-writing sessions, group by workspacePath, read each project.json.
@@ -129,18 +130,29 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
 
   const loadWorkspaceEntries = useCallback(async (dir: string) => {
     if (!sessionId) return;
+    // P1 rejects an EMPTY path as invalid; the workspace root must be listed
+    // with '.' (workspaceRelative('') === null). Keep '' as our tree map key.
+    const ipcPath = dir === '' ? '.' : dir;
     try {
-      const res = await api().workspaceList?.({ sessionId, path: dir });
-      setWsEntries((prev) => ({ ...prev, [dir]: res?.ok && Array.isArray(res.entries) ? res.entries : [] }));
-    } catch {
+      const res = await api().workspaceList?.({ sessionId, path: ipcPath });
+      if (res?.ok && Array.isArray(res.entries)) {
+        setWsEntries((prev) => ({ ...prev, [dir]: res.entries ?? [] }));
+        setWsErrors((prev) => ({ ...prev, [dir]: '' }));
+      } else {
+        setWsEntries((prev) => ({ ...prev, [dir]: [] }));
+        setWsErrors((prev) => ({ ...prev, [dir]: res && !res.ok ? `${res.code}: ${res.reason}` : '文件服务未返回结果' }));
+      }
+    } catch (e) {
       // Fenced read denied / transient IPC failure: keep the drawer usable and
-      // show an empty-tree hint instead of breaking the relocation entry.
+      // surface the reason instead of pretending the workspace is empty.
       setWsEntries((prev) => ({ ...prev, [dir]: [] }));
+      setWsErrors((prev) => ({ ...prev, [dir]: e instanceof Error ? e.message : String(e) }));
     }
   }, [sessionId]);
 
   useEffect(() => {
     setWsEntries({});
+    setWsErrors({});
     setWsExpanded({ input: true, output: true });
   }, [activeProject?.workspacePath]);
 
@@ -948,7 +960,9 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
             <div className="bw-ws-tree-title">文件树</div>
             {(wsEntries[''] ?? []).length > 0
               ? renderWorkspaceTree('', 0)
-              : <div className="bw-hint">（工作区为空，或当前会话无权读取文件树）</div>}
+              : <div className="bw-hint">
+                  {wsErrors[''] ? `（无法读取文件树：${wsErrors['']}）` : '（工作区为空）'}
+                </div>}
           </div>
         </aside>
       )}
