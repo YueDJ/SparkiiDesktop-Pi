@@ -79,6 +79,10 @@ import {
   type TaskGrant,
 } from '@sparkii/approval';
 import { createTaskGrant } from './security/task-grant-factory.js';
+import { createWorkspaceFileService, type WorkspaceFileOp } from './security/workspace-file-service.js';
+import { createRenderDiagramService } from './security/render-diagram-service.js';
+import { createElectronSvgRenderer } from './security/electron-svg-renderer.js';
+import { compileDocx } from './security/docx-compile-service.js';
 import { createRuntimeActionRouter } from './security/runtime-action-router.js';
 import { authorizeDocumentReadPaths } from './security/document-access.js';
 import { ShellGrantStore } from './security/shell-grant-store.js';
@@ -401,10 +405,10 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     sessionId: string,
     profileId: string,
     replace: boolean,
-  ): Promise<void> => {
+  ): Promise<TaskGrant | undefined> => {
     const security = rt.security;
-    if (!security) return;
-    if (!replace && security.taskLifecycle.active(sessionId)) return;
+    if (!security) return undefined;
+    if (!replace && security.taskLifecycle.active(sessionId)) return undefined;
     const rec = rt.chatSessions.get(sessionId);
     if (!rec) throw new Error('session not found');
     const workspacePath = rec?.workspacePath;
@@ -464,7 +468,107 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       'user-task',
       async () => { userTaskBySession.delete(sessionId); },
     );
+    return grant;
   };
+
+  // ── P1: generic workspace file IPC ────────────────────────────────────────
+  // Platform capability, no business/agent specifics. Every operation is
+  // fenced by Workspace Admission, audited and fails closed (product §14 P1,
+  // hard condition R1). This is a distinct path from readDocumentBytes
+  // (restricted preview bytes) and requestExportReport (approval-broker export)
+  // — none of those handlers are modified here.
+  const workspaceFiles = createWorkspaceFileService({
+    chatSessions: rt.chatSessions,
+    audit: rt.audit,
+    security: rt.security,
+    subjectUserId: rt.subject?.userId ?? 'agent',
+  });
+  const workspaceFileHandler = (op: WorkspaceFileOp) =>
+    async (_e: unknown, req: { sessionId: string; path: string; content?: string; to?: string }) =>
+      workspaceFiles.execute(op, {
+        sessionId: String(req?.sessionId ?? ''),
+        path: String(req?.path ?? ''),
+        ...(typeof req?.content === 'string' ? { content: req.content } : {}),
+        ...(typeof req?.to === 'string' ? { to: req.to } : {}),
+      });
+  ipcMain.handle('sparkii:workspaceRead', workspaceFileHandler('read'));
+  ipcMain.handle('sparkii:workspaceReadBytes', workspaceFileHandler('readBytes'));
+  ipcMain.handle('sparkii:workspaceWrite', workspaceFileHandler('write'));
+  ipcMain.handle('sparkii:workspaceList', workspaceFileHandler('list'));
+  ipcMain.handle('sparkii:workspaceMkdir', workspaceFileHandler('mkdir'));
+  ipcMain.handle('sparkii:workspaceDelete', workspaceFileHandler('delete'));
+  ipcMain.handle('sparkii:workspaceRename', workspaceFileHandler('rename'));
+  ipcMain.handle('sparkii:workspaceMove', workspaceFileHandler('move'));
+  // ── end P1 ────────────────────────────────────────────────────────────────
+
+  // ── P7: generic SVG → PNG render (platform capability, no business semantics) ──
+  // Renders in-process via bundled Electron Chromium, then writes the PNG back
+  // through the same fenced P1 writeBytes path (Workspace Admission + audit).
+  const diagramRenderer = createRenderDiagramService(createElectronSvgRenderer());
+  ipcMain.handle('sparkii:renderDiagram', async (
+    _e,
+    req: { sessionId: string; path: string; svg: string; sourceXml?: string; width?: number; height?: number; scale?: number },
+  ) => {
+    const rendered = await diagramRenderer.render({
+      svg: String(req?.svg ?? ''),
+      ...(typeof req?.sourceXml === 'string' ? { sourceXml: req.sourceXml } : {}),
+      ...(typeof req?.width === 'number' ? { width: req.width } : {}),
+      ...(typeof req?.height === 'number' ? { height: req.height } : {}),
+      ...(typeof req?.scale === 'number' ? { scale: req.scale } : {}),
+    });
+    if (!rendered.ok || !rendered.png) {
+      return { ok: false, code: 'RENDER_FAILED', reason: rendered.error ?? 'render failed' };
+    }
+    return workspaceFiles.execute('writeBytes', {
+      sessionId: String(req?.sessionId ?? ''),
+      path: String(req?.path ?? ''),
+      bytesBase64: rendered.png.toString('base64'),
+    });
+  });
+  // ── end P7 ────────────────────────────────────────────────────────────────
+
+  // ── P1 (export): generic MD + images → DOCX compile ────────────────────────
+  // User-initiated export pre-authorizes the identical target/payload; the
+  // compiled file is written inside the fixed workspace through the fenced P1
+  // writeBytes path (Workspace Admission + audit). No Approval Proposal.
+  ipcMain.handle('sparkii:compileDocx', async (
+    _e,
+    req: {
+      sessionId: string;
+      outPath: string;
+      title: string;
+      chapters: Array<{ title: string; markdown: string }>;
+      images: string[];
+    },
+  ) => {
+    const sessionId = String(req?.sessionId ?? '');
+    const images = [];
+    for (const ref of req?.images ?? []) {
+      const cleanRef = String(ref).replace(/^\.\//, '').replace(/\\/g, '/');
+      const rel = cleanRef.startsWith('figures/')
+        ? `output/${cleanRef}`
+        : `output/manuscript/${cleanRef}`;
+      const read = await workspaceFiles.execute('readBytes', { sessionId, path: rel });
+      if (read.ok && read.bytesBase64) {
+        images.push({ ref: String(ref), data: Buffer.from(read.bytesBase64, 'base64') });
+      }
+    }
+    const compiled = await compileDocx(
+      (req?.chapters ?? []).map((c) => ({ title: String(c.title ?? ''), markdown: String(c.markdown ?? '') })),
+      images,
+      String(req?.title ?? 'document'),
+    );
+    if (!compiled.ok || !compiled.docx) {
+      return { ok: false, code: 'COMPILE_FAILED', reason: compiled.error ?? 'compile failed' };
+    }
+    return workspaceFiles.execute('writeBytes', {
+      sessionId,
+      path: String(req?.outPath ?? 'output/final/document.docx'),
+      bytesBase64: compiled.docx.toString('base64'),
+    });
+  });
+  // ── end export ────────────────────────────────────────────────────────────
+
   const win = getWindow();
   if (win) {
     win.on('maximize', () => {
@@ -504,7 +608,17 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   const groundingTurns = new Map<string, GroundingTurn>();
   const idleTimers = new Map<string, ReturnType<typeof setTimeout>>();
   const inFlightWorkflowRuns = new Set<string>();
-  const sessionIdleReleaseMs = 60_000;
+  /**
+   * B1 — 本轮 prompt 归属（sessionId -> taskId）。
+   * `agent_settled` 事件本身不带 taskId；迟到的 settled（来自 acquire/new_session）
+   * 若无条件 end，会撤销刚建立的 Task Grant，导致工作区文件读写 TASK_REVOKED。
+   * 只有「已发出 prompt 且 taskId 与活跃 Grant 一致」的 settled 才认领结束。
+   */
+  const armedPromptBySession = new Map<string, string>();
+  // P9 — 保持槽位 + 更激进 idle 释放（15s），与 B1 的 end 修复协同：
+  // setup 阶段的 new_session settled 在槽位建立时就消化掉，不在首条 prompt
+  // 建立 Grant 之后迟到触发误撤销。
+  const sessionIdleReleaseMs = 15_000;
 
   const anchorDir = (sessionId: string) => join(rt.dataDir, 'sessions', sessionId);
 
@@ -625,10 +739,21 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       if (!sessionId) return;
       getWindow()?.webContents.send('sparkii:event:chat-event', { ...ev, sessionId });
       if (ev.type === 'agent_settled') {
-        void rt.security?.taskLifecycle
-          .end(sessionId, 'session-ended')
-          .catch(() => {});
+        // B1 — 只认领「确属本轮 prompt」的 settled。
+        // 迟到的 settled（createSession 建槽位 / 复用旧进程发出的 new_session）
+        // 若无条件 end，会撤销刚 startSessionTask 建立的 Grant，使文件工具 TASK_REVOKED。
+        // 归属判据：该 session 已 arm 本轮 taskId，且与当前活跃 Grant 的 taskId 一致。
+        const activeTaskId = rt.security?.taskLifecycle.active(sessionId)?.taskId;
+        const armed = armedPromptBySession.get(sessionId);
+        const ownsSettled = armed !== undefined && activeTaskId !== undefined && armed === activeTaskId;
+        if (ownsSettled) {
+          armedPromptBySession.delete(sessionId);
+          void rt.security?.taskLifecycle
+            .end(sessionId, 'session-ended')
+            .catch(() => {});
+        }
         void persistHitTurn(sessionId);
+        // 迟到的 settled 不属于本轮，仍可调度 idle 释放空闲槽位，但绝不碰 Grant。
         if (!inFlightWorkflowRuns.has(sessionId)) {
           scheduleIdleRelease(sessionId);
         }
@@ -1128,18 +1253,58 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   });
   ipcMain.handle('sparkii:getChatSession', (_e, sessionId: string) => rt.chatSessions.get(sessionId) ?? null);
 
+  /**
+   * P9 — create an EMPTY session bound to a workspace, WITHOUT dispatching any
+   * prompt. Generic capability (no agent/business branch): any custom surface
+   * that must own a fixed workspace before the user is ready to talk to the
+   * model — e.g. set up project files, then start writing on explicit confirm.
+   *
+   * openOrCreateSession(null, …) already creates the Pi session file + session
+   * record (with workspacePath), which is what listChatSessions / the fenced
+   * workspace-file IPC need. No `prompt` is sent, so no LLM turn is triggered.
+   *
+   * Idle slot (P9 — 折中策略，设计稿决策⑤): 保持已绑定的槽位，用更激进的
+   * 15s idle 定时器回收。槽位内没有 prompt 就不会有 `agent_settled`，因此
+   * 不能靠事件回收；但也不再「建完即解绑」——立即解绑会发出 new_session，
+   * 其迟到的 agent_settled 曾在首条 prompt 建立 Grant 后被误判为任务结束
+   * （B1）。保持槽位后，首次 promptSession(sessionId, …) 直接复用；若用户
+   * 一直停在 setup，15s 后 idle 定时器走 releaseSessionSlotInternal 回收，
+   * 不会长期占用 maxAgents。
+   */
+  ipcMain.handle('sparkii:createSession', async (
+    _e,
+    context: {
+      profileId?: string;
+      workspacePath?: string | null;
+      workspaceKind?: 'auto' | 'user';
+      model?: string | null;
+      thinkingLevel?: string | null;
+      permissionMode?: PlatformPermissionMode;
+    } = {},
+  ) => {
+    const { sessionId, workspacePath } = await openOrCreateSession(null, context);
+    scheduleIdleRelease(sessionId);
+    return { ok: true, sessionId, workspacePath };
+  });
+
   ipcMain.handle('sparkii:promptSession', async (
     _e,
     sessionId: string | null,
     text: string,
     options?: { behavior?: 'steer' | 'followUp' },
     attachments: ChatAttachment[] = [],
-    context: { profileId?: string; workspacePath?: string | null; workspaceKind?: 'auto' | 'user'; model?: string | null; thinkingLevel?: string | null; permissionMode?: PlatformPermissionMode } = {},
+    context: { profileId?: string; workspacePath?: string | null; workspaceKind?: 'auto' | 'user'; model?: string | null; thinkingLevel?: string | null; permissionMode?: PlatformPermissionMode; allowDegradedKnowledge?: boolean } = {},
   ) => {
     const profileIdForGate = sessionId
       ? rt.chatSessions.get(sessionId)?.profileId
       : context.profileId;
-    if (profileIdForGate) {
+    // Callers that declare knowledge optional skip the preflight entirely: for
+    // them RAG is an enhancement, and the knowledge tool already degrades to a
+    // typed CONNECTOR_DENIED result when unconfigured. Running the probe anyway
+    // would add a 30s-per-request network stall to every session creation/prompt
+    // (product §15). Callers that omit the flag keep the strict gate and its
+    // "configure RAG first" message (knowledge-qa etc.).
+    if (profileIdForGate && context.allowDegradedKnowledge !== true) {
       const ragReady = await assertKnowledgeReady(profileIdForGate);
       if (!ragReady.ok) return ragReady;
     }
@@ -1183,7 +1348,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     const state = chatStateData(stateResp.data);
     const isStreaming = state.isStreaming ?? state.streaming ?? false;
     const behavior = options?.behavior ?? (isStreaming ? 'followUp' : 'prompt');
-    await startSessionTask(
+    const startedTask = await startSessionTask(
       resolvedSessionId,
       open.profileId,
       behavior === 'prompt',
@@ -1215,6 +1380,11 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         : { type: 'prompt', message: finalText });
       if (!resp.success) throw new Error(resp.error ?? 'prompt failed');
     }
+    // B1 — 三种投递分支成功后才 arm 本轮归属。steer/followUp 复用已有 Grant，
+    // 其 taskId 从活跃 Grant 取回；prompt 新建的从 startedTask 取。这样 createSession
+    // 或旧进程 new_session 迟到的 settled 在 arm 之前到达时不会被误判为本轮结束。
+    const ownedTaskId = startedTask?.taskId ?? rt.security?.taskLifecycle.active(resolvedSessionId)?.taskId;
+    if (ownedTaskId) armedPromptBySession.set(resolvedSessionId, ownedTaskId);
 
     const after = await open.slot.client.send({ type: 'get_state' });
     if ((after.data as { sessionFile?: string } | undefined)?.sessionFile) {

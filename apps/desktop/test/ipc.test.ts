@@ -778,6 +778,51 @@ describe('ipc provider handlers', () => {
     expect(sent.some((c) => c.type === 'prompt' || c.type === 'new_session')).toBe(false);
   });
 
+  it('promptSession opens the session when allowDegradedKnowledge is set (product §15)', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const sent: any[] = [];
+    const client = {
+      onEvent: () => () => {},
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') return { success: true, data: { sessionId: 's-new', sessionFile: null } };
+        return { success: true };
+      },
+    };
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({
+      rag: { baseUrl: 'http://127.0.0.1:9380' },
+    }), 'utf8');
+    const fetchSpy = vi.fn(async () => { throw new Error('RAG preflight must be skipped in degraded mode'); });
+    vi.stubGlobal('fetch', fetchSpy);
+    await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      knowledgeToken: async () => 'test-token',
+      profile: {
+        dir: join(dataDir, 'profiles', 'qa'),
+        profile: {
+          manifest: { name: 'qa', knowledge: { enabled: true, picker: 'session', backend: 'sparkiirag' } },
+          agent: { tools: [], prompts: { system: 'test' } },
+        },
+        router: { resolve: () => undefined },
+      },
+    });
+    const handlers = await registeredHandlers();
+    const result = await handlers.get('sparkii:promptSession')!(
+      null, null, '你好', undefined, undefined,
+      { profileId: 'qa', allowDegradedKnowledge: true },
+    );
+    // Degraded mode skips the RAG preflight altogether — not just its failure:
+    // a configured-but-unreachable backend must not add a 30s stall (perf).
+    expect(result).not.toMatchObject({ code: 'CONNECTOR_DENIED' });
+    expect(result.sessionId).toBeTruthy();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it('setSessionKnowledge stores selection and promptSession migrates draft key before prompt', async () => {
     const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
     dirs.push(dataDir);
@@ -1349,6 +1394,141 @@ describe('ipc provider handlers', () => {
     expect(created.workspacePath.startsWith(documentsDir)).toBe(true);
     expect(created.workspacePath.replace(/\\/g, '/')).toMatch(/sparkii-test-documents\/Sparkii\/workspaces\/general\/[a-z]+-[a-z]+-[a-z2-9]{3}$/);
     expect(existsSync(created.workspacePath)).toBe(false);
+  });
+
+  it('createSession binds a workspace WITHOUT sending a prompt (P9, holds slot + 15s idle release)', async () => {
+    vi.useFakeTimers();
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    const sent: any[] = [];
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's-bare', sessionFile: null } };
+        }
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({ dataDir, piAgentDir, client });
+    (rt as any).chatSessions.create = vi.fn();
+
+    const handlers = await registeredHandlers();
+    const createSession = handlers.get('sparkii:createSession');
+    expect(createSession).toBeTypeOf('function');
+    const result = await createSession!(null, { profileId: 'general' });
+
+    expect(result).toMatchObject({ ok: true, sessionId: 's-bare' });
+    // NO LLM turn: no prompt / startSessionTask command was dispatched.
+    expect(sent.some((c) => c.type === 'prompt')).toBe(false);
+    expect(sent.some((c) => c.type === 'steer' || c.type === 'follow_up')).toBe(false);
+    // Session record was still created with a fixed workspace path.
+    expect((rt as any).chatSessions.create).toHaveBeenCalledWith(expect.objectContaining({
+      workspaceKind: 'auto',
+      workspacePath: expect.any(String),
+    }));
+    // P9 折中策略：建会话不再立即解绑（避免 new_session 的迟到 settled 在首条
+    // prompt 建立 Grant 后误撤销它）；槽位保持，由更激进的 15s idle 定时器回收。
+    expect(rt.pool.release).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(rt.pool.release).toHaveBeenCalledWith('s-bare');
+    vi.useRealTimers();
+  });
+
+  it('B1: a late agent_settled never revokes a Grant that is not this prompt\'s', async () => {
+    vi.useFakeTimers();
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-b1-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+
+    const listeners = new Set<(e: any) => void>();
+    let liveGrant: { taskId: string; sessionId: string } | undefined;
+    const ended: Array<{ sessionId: string; reason: string }> = [];
+    const client = {
+      onEvent: (cb: (e: any) => void) => {
+        listeners.add(cb);
+        return () => { listeners.delete(cb); };
+      },
+      send: async (command: any) => {
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's1', sessionFile: null, isStreaming: false } };
+        }
+        return { success: true };
+      },
+    };
+    const security: Record<string, unknown> = {
+      profilePolicies: new Map([['general', {
+        defaultPermissionMode: 'ask',
+        allowedPermissionModes: ['ask'],
+      }]]),
+      taskLifecycle: {
+        start: vi.fn(async () => {
+          liveGrant = { taskId: `task-${ended.length + 1}`, sessionId: 's1' };
+          return liveGrant;
+        }),
+        active: vi.fn(() => liveGrant),
+        end: vi.fn(async (sessionId: string, reason: string) => {
+          ended.push({ sessionId, reason });
+          liveGrant = undefined;
+        }),
+        registerCancellation: vi.fn(() => () => {}),
+      },
+      capabilityGateway: { revokeTask: vi.fn() },
+      shellGrants: { allows: () => false, revoke: vi.fn() },
+      taskGrants: { onRevoke: vi.fn(() => () => {}) },
+      reviewerModel: 'deepseek-v4-flash',
+      reviewerPolicyVersion: 'shell-review-v1',
+      hostShellReport: {
+        backend: 'host-git-bash', status: 'available', executionBoundary: 'host',
+        version: 'host-job-v1', limitations: [],
+      },
+      hostShell: { terminate: vi.fn(async () => {}) },
+      reviewer: { cancel: vi.fn(async () => {}) },
+    };
+    const sessions = new Map<string, any>([['s1', {
+      id: 's1', profileId: 'general', kind: 'chat', workspaceKind: 'auto',
+      workspacePath: 'C:/ws', permissionMode: 'ask',
+    }]]);
+    const rt = await makeRuntime({
+      dataDir, piAgentDir, client, security,
+      chatSession: sessions.get('s1'),
+    });
+    (rt as any).chatSessions.get = (id: string) => sessions.get(id);
+    const handlers = await registeredHandlers();
+
+    // (1) Setup 阶段（尚未 arm 本轮 prompt）的迟到 settled：绝不 end 任何 Grant。
+    for (const cb of listeners) cb({ type: 'agent_settled' });
+    expect(ended).toEqual([]);
+
+    // (2) 本轮 prompt 投递成功 → arm 本轮 taskId。
+    await handlers.get('sparkii:promptSession')!(null, 's1', '写技术方案', undefined, undefined, {
+      profileId: 'general', allowDegradedKnowledge: true,
+    });
+    expect(liveGrant).toBeTruthy();
+    expect(ended).toEqual([]);
+
+    // (3) 模拟旧 new_session 的迟到 settled：活跃 Grant 已被下一轮 startSessionTask
+    // 换成新 taskId，但 armed 仍是上一轮的 —— taskId 不一致，不得撤销新 Grant。
+    const previousGrant = liveGrant!;
+    liveGrant = { taskId: 'task-late-from-old-session', sessionId: 's1' };
+    for (const cb of listeners) cb({ type: 'agent_settled' });
+    expect(ended).toEqual([]);
+    expect(liveGrant?.taskId).toBe('task-late-from-old-session');
+
+    // (4) 恢复本轮 Grant 后，真正属于本轮的 settled 才 end 一次。
+    liveGrant = previousGrant;
+    for (const cb of listeners) cb({ type: 'agent_settled' });
+    expect(ended).toEqual([{ sessionId: 's1', reason: 'session-ended' }]);
+
+    // (5) 重复 settled 不再 end（归属已消费）。
+    for (const cb of listeners) cb({ type: 'agent_settled' });
+    expect(ended).toHaveLength(1);
+    vi.useRealTimers();
   });
 
   it('setChatWorkspace(null) allocates a new Documents auto path', async () => {
