@@ -5,7 +5,9 @@
  * logic lives here in the agent package. Conversation rendering reuses the
  * Live Session Pipeline via the `session` prop — we never build our own pipe.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import type { AgentSurfaceProps, SessionEntry } from '../../../src/surface/contract.js';
 import type { SparkiiApi } from '../../../src/types/sparkii-api.js';
 import {
@@ -90,6 +92,10 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
   // P10 — workspace drawer + relocate (setup only). Drawer is available in any
   // phase to VIEW the path; the relocate action itself renders only in setup.
   const [workspaceDrawerOpen, setWorkspaceDrawerOpen] = useState(false);
+  // P10 — lazy file tree for the right-side drawer entries (workspaceList is
+  // fenced by P1; we only request directories the user actually expands).
+  const [wsEntries, setWsEntries] = useState<Record<string, string[]>>({});
+  const [wsExpanded, setWsExpanded] = useState<Record<string, boolean>>({ input: true, output: true });
 
   // Load all bid-writing sessions, group by workspacePath, read each project.json.
   const refreshProjects = useCallback(async () => {
@@ -120,6 +126,30 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
   useEffect(() => {
     void refreshProjects();
   }, [refreshProjects]);
+
+  const loadWorkspaceEntries = useCallback(async (dir: string) => {
+    if (!sessionId) return;
+    try {
+      const res = await api().workspaceList?.({ sessionId, path: dir });
+      setWsEntries((prev) => ({ ...prev, [dir]: res?.ok && Array.isArray(res.entries) ? res.entries : [] }));
+    } catch {
+      // Fenced read denied / transient IPC failure: keep the drawer usable and
+      // show an empty-tree hint instead of breaking the relocation entry.
+      setWsEntries((prev) => ({ ...prev, [dir]: [] }));
+    }
+  }, [sessionId]);
+
+  useEffect(() => {
+    setWsEntries({});
+    setWsExpanded({ input: true, output: true });
+  }, [activeProject?.workspacePath]);
+
+  useEffect(() => {
+    if (!workspaceDrawerOpen || !sessionId) return;
+    void loadWorkspaceEntries('');
+    void loadWorkspaceEntries('input');
+    void loadWorkspaceEntries('output');
+  }, [workspaceDrawerOpen, sessionId, activeProject?.workspacePath, loadWorkspaceEntries]);
 
   // P10 — 跨窗口/跨会话搬迁同步：平台广播后强制刷新项目列表与当前项目路径，
   // 避免旧 activeProject.workspacePath 被 writeProject 写回旧目录（计划 §5.6）。
@@ -260,6 +290,51 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
       setStatus(`搬迁失败：${e instanceof Error ? e.message : String(e)}`);
     }
   }, [sessionId, activeProject, refreshProjects]);
+
+  const copyWorkspacePath = useCallback(async () => {
+    const path = activeProject?.workspacePath;
+    if (!path) return;
+    try {
+      await navigator.clipboard?.writeText(path);
+      setStatus('工作区路径已复制');
+    } catch {
+      setStatus('复制失败，请手动选择路径');
+    }
+  }, [activeProject?.workspacePath]);
+
+  const toggleWorkspaceNode = useCallback((path: string) => {
+    const next = !wsExpanded[path];
+    setWsExpanded((prev) => ({ ...prev, [path]: next }));
+    if (next) void loadWorkspaceEntries(path);
+  }, [wsExpanded, loadWorkspaceEntries]);
+
+  const renderWorkspaceTree = (parent: string, depth: number): ReactNode => {
+    const names = wsEntries[parent] ?? [];
+    return names.map((name) => {
+      const path = parent ? `${parent}/${name}` : name;
+      const isDir = !name.includes('.');
+      const expanded = Boolean(wsExpanded[path]);
+      return (
+        <div key={path} className="bw-ws-tree-node">
+          <button
+            type="button"
+            className="bw-ws-tree-row"
+            style={{ paddingLeft: 8 + depth * 14 }}
+            title={path}
+            onClick={() => isDir && toggleWorkspaceNode(path)}
+          >
+            {isDir
+              ? <span className={`bw-ws-caret${expanded ? ' open' : ''}`}>▶</span>
+              : <span className="bw-ws-file-dot">·</span>}
+            <span>{name}</span>
+          </button>
+          {isDir && expanded && (
+            <div className="bw-ws-tree-children">{renderWorkspaceTree(path, depth + 1)}</div>
+          )}
+        </div>
+      );
+    });
+  };
 
   // WP3 — commit the in-popover knowledge draft. Two independent channels:
   // (1) setSessionKnowledge → session-level RAG retrieval (in-memory binding);
@@ -800,7 +875,7 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
 
   // ── Workbench: three columns ────────────────────────────────────────────
   return (
-    <div className="bw-root bw-workbench">
+    <div className={`bw-root bw-workbench${workspaceDrawerOpen ? ' bw-drawer-open' : ''}`}>
       <div className="bw-topbar">
         <button className="bw-btn" onClick={() => setView('list')}>← 项目列表</button>
         <span className="bw-topbar-title">{activeProject?.name ?? '标书项目'}</span>
@@ -845,22 +920,37 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
         <button className="bw-btn bw-btn-primary bw-export" onClick={() => void exportProject()}>导出 Word</button>
       </div>
       {workspaceDrawerOpen && (
-        <div className="bw-ws-drawer">
+        <aside className="bw-ws-drawer" aria-label="工作区抽屉">
           <div className="bw-ws-drawer-head">
-            <b>工作区</b>
-            <button className="bw-btn bw-btn-small" onClick={() => setWorkspaceDrawerOpen(false)}>收起</button>
+            <div className="bw-ws-drawer-title">
+              <b>工作区</b>
+              <button
+                type="button"
+                className="bw-ws-close"
+                title="收起"
+                aria-label="收起工作区抽屉"
+                onClick={() => setWorkspaceDrawerOpen(false)}
+              >×</button>
+            </div>
+            <div className="bw-ws-path" title={activeProject?.workspacePath}>{activeProject?.workspacePath ?? '（无）'}</div>
+            <div className="bw-ws-actions">
+              <button className="bw-btn bw-btn-small" onClick={() => void copyWorkspacePath()}>复制路径</button>
+              <button className="bw-btn bw-btn-small" onClick={() => void api().openWorkspace?.(activeProject?.workspacePath ?? '')}>在文件夹中打开</button>
+              {activeProject?.status === 'setup' ? (
+                <button className="bw-btn bw-btn-small" onClick={() => void changeStorageLocation()}>更改存放位置</button>
+              ) : (
+                <span className="bw-hint">开始写作后存放位置锁定</span>
+              )}
+            </div>
+            <div className="bw-hint">准备阶段可更改存放位置（整体搬迁工作区，会话与知识库绑定保留）。</div>
           </div>
-          <div className="bw-ws-path" title={activeProject?.workspacePath}>{activeProject?.workspacePath ?? '（无）'}</div>
-          <div className="bw-ws-actions">
-            <button className="bw-btn bw-btn-small" onClick={() => void api().openWorkspace?.(activeProject?.workspacePath ?? '')}>在文件夹中打开</button>
-            {activeProject?.status === 'setup' ? (
-              <button className="bw-btn bw-btn-small" onClick={() => void changeStorageLocation()}>更改存放位置</button>
-            ) : (
-              <span className="bw-hint">开始写作后存放位置锁定</span>
-            )}
+          <div className="bw-ws-drawer-body">
+            <div className="bw-ws-tree-title">文件树</div>
+            {(wsEntries[''] ?? []).length > 0
+              ? renderWorkspaceTree('', 0)
+              : <div className="bw-hint">（工作区为空，或当前会话无权读取文件树）</div>}
           </div>
-          <div className="bw-hint">准备阶段可更改存放位置（整体搬迁工作区，会话与知识库绑定保留）。</div>
-        </div>
+        </aside>
       )}
       {activeProject?.status === 'setup' && (
         <div className="bw-setup">
@@ -992,7 +1082,12 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
           </div>
           <div className="bw-messages">
             {conversation.map((m) => (
-              <div key={m.key} className="bw-msg"><span className="bw-role">{m.role === 'user' ? '我' : '助手'}</span>{m.text}</div>
+              <div key={m.key} className="bw-msg">
+                <span className="bw-role">{m.role === 'user' ? '我' : '助手'}</span>
+                <div className="bw-msg-text">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.text}</ReactMarkdown>
+                </div>
+              </div>
             ))}
             {conversation.length === 0 && <div className="bw-hint">发送消息开始写作或微调…</div>}
           </div>

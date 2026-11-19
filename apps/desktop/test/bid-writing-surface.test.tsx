@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, cleanup, act, within } from '@testing-library/react';
 import BidWritingSurface from '../agents/bid-writing/surface/index.js';
 import type { AgentSession } from '../src/surface/contract.js';
 import type { ProjectFile } from '../agents/bid-writing/surface/project-store.js';
@@ -50,6 +50,16 @@ function makeApi(opts: { project?: ProjectFile | null; sessions?: unknown[] } = 
     workspaceWrite: vi.fn(async ({ path, content }: { path: string; content: string }) => {
       store.set(path, content);
       return { ok: true, op: 'write', path };
+    }),
+    workspaceList: vi.fn(async ({ path }: { path: string }) => {
+      const entries = path === ''
+        ? ['input', 'output', 'project.json', 'requirements.md']
+        : path === 'input'
+          ? ['招标文件.txt', '评分办法.pdf']
+          : path === 'output'
+            ? ['manuscript', 'figures', 'versions']
+            : [];
+      return { ok: true, op: 'list', path, entries };
     }),
     workspaceMkdir: vi.fn().mockResolvedValue({ ok: true, op: 'mkdir', path: '' }),
     setChatTitle: vi.fn().mockResolvedValue({ ok: true }),
@@ -338,7 +348,53 @@ describe('bid-writing surface — B2 two context lines (architect review)', () =
   });
 });
 
+describe('bid-writing surface — chat Markdown rendering', () => {
+  it('renders assistant Markdown (GFM tables/lists/code) instead of literal syntax', async () => {
+    const api = makeApi({ sessions: [], project: projectFixture() });
+    (window as any).sparkii = api;
+    const session: AgentSession = {
+      entries: [{
+        kind: 'message', id: 'a1', role: 'assistant',
+        text: '## 方案\n\n- **重点**：工期 30 天\n- 报价见下表\n\n| 项 | 值 |\n| --- | --- |\n| 报价 | ¥100 |\n\n`KBD` 结束。',
+      } as any],
+      streaming: false,
+      meta: {},
+    };
+    renderSurface(api, 's1', session);
+    await screen.findByText('章节大纲');
+    await waitFor(() => {
+      const body = document.querySelector('.bw-msg-text');
+      expect(body?.querySelector('h2')?.textContent).toBe('方案');
+      expect(body?.querySelector('strong')?.textContent).toBe('重点');
+      expect(body?.querySelector('ul')).toBeTruthy();
+      expect(body?.querySelector('table')).toBeTruthy();
+      expect(body?.querySelector('code')?.textContent).toBe('KBD');
+    });
+    expect(screen.queryByText(/\*\*重点\*\*/)).toBeNull();
+  });
+});
+
 describe('bid-writing surface — P10 storage location (setup only)', () => {
+  it('opens a right-side workspace drawer with the file tree (v2 design)', async () => {
+    const api = makeApi({ sessions: [], project: projectFixture() });
+    (window as any).sparkii = api;
+    renderSurface(api, 's1');
+    await screen.findByText('章节大纲');
+    await act(async () => { fireEvent.click(screen.getByText('工作区')); });
+
+    const drawer = document.querySelector('.bw-ws-drawer') as HTMLElement | null;
+    expect(drawer).toBeTruthy();
+    expect(drawer!.getAttribute('aria-label')).toBe('工作区抽屉');
+    expect(document.querySelector('.bw-workbench')?.classList.contains('bw-drawer-open')).toBe(true);
+    expect(within(drawer!).getByText('文件树')).toBeTruthy();
+    await waitFor(() => expect(within(drawer!).getByText('project.json')).toBeTruthy());
+    expect(within(drawer!).getByTitle('收起')).toBeTruthy();
+
+    await act(async () => { fireEvent.click(within(drawer!).getByTitle('收起')); });
+    expect(document.querySelector('.bw-ws-drawer')).toBeNull();
+    expect(api.workspaceList).toHaveBeenCalledWith(expect.objectContaining({ sessionId: 's1', path: '' }));
+  });
+
   it('shows the relocate entry in setup and hides it in drafting', async () => {
     const apiSetup = makeApi({ sessions: [], project: projectFixture({ status: 'setup' }) });
     (window as any).sparkii = apiSetup;
