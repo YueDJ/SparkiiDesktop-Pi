@@ -1,0 +1,27 @@
+name: bid-writing
+displayName: 标书写作智能体
+sortOrder: 30
+version: 1.0.0
+surface:
+  type: custom
+capabilities:
+  entry: agent/capabilities.ts
+  # Working-area file CRUD is provided by generic P1 IPC under Task Grant
+  # (auto-ALLOW, audited). No requireApproval tool whitelist — approval follows
+  # the current capability-boundary model (2026-10-21).
+  tools: [read, write, edit, delete, move, knowledge.search, report.export]
+knowledge:
+  enabled: true
+  picker: session
+  backend: sparkiirag
+modelRequirements:
+  requires: [chat, reasoning, toolCall]
+modelRouting:
+  tasks:
+    drafting:
+      - { provider: deepseek, modelId: deepseek-v4-pro }
+      - { provider: deepseek, modelId: deepseek-v4-flash }
+    default:
+      - { provider: deepseek, modelId: deepseek-v4-flash }
+    title:
+      - { provider: deepseek, modelId: deepseek-v4-flash }

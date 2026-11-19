@@ -1,0 +1,8 @@
+tools:
+  - read
+  - write
+  - edit
+  - delete
+  - move
+  - knowledge.search
+  - report.export

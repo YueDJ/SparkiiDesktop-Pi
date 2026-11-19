@@ -1,0 +1,5 @@
+{
+  "page": "bid-writing/home",
+  "layout": { "type": "grid", "columns": 3 },
+  "regions": ["outline", "manuscript", "conversation"]
+}

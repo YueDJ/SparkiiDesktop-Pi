@@ -630,7 +630,7 @@ function AppShell() {
         key={a.id}
         agent={a}
         active={Boolean(mine)}
-        draft={a.surfaceType === 'chat' && Boolean(mine) && sid == null}
+        draft={(a.surfaceType === 'chat' || a.surfaceType === 'custom') && Boolean(mine) && sid == null}
         sessionId={sid}
         mode={mine?.mode ?? 'live'}
         buildActions={buildActions}

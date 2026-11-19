@@ -1,0 +1,9 @@
+roles:
+  - name: reviewer
+    pages: [home]
+    tools: [read, knowledge.search]
+    canApprove: []
+  - name: admin
+    pages: [home, audit]
+    tools: [read, write, edit, delete, move, knowledge.search, report.export]
+    canApprove: []

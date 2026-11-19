@@ -1,0 +1,13 @@
+# Approval follows the current capability-boundary model (2026-10-21).
+# In-workspace CRUD (including delete) is auto-ALLOWed by Task Grant and audited;
+# it does NOT produce an Approval Proposal. Export to output/final/ is user-
+# initiated and therefore pre-authorized.
+#
+# `requireApproval` is a REQUIRED schema field; the empty list means "no tool is
+# gated by the retired tool-whitelist mechanism" — approvals still flow through
+# Task Grant / Capability Gateway / Workspace Admission, not this list.
+requireApproval: []
+timeoutMs: 300000
+highRiskDoubleConfirm: false
+defaultPermissionMode: ask
+allowedPermissionModes: [ask, auto_review]
