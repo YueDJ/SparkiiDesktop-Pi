@@ -56,6 +56,20 @@ function sessionText(entry: SessionEntry): string {
   return String(e.text ?? e.content ?? '');
 }
 
+const MAX_IMPORT_BYTES = 40 * 1024 * 1024;
+
+function isTextFileName(name: string): boolean {
+  return /\.(txt|md|csv|json)$/i.test(name);
+}
+
+function imageDataUrl(name: string, base64: string): string {
+  const ext = name.split('.').pop()?.toLowerCase();
+  const mime = ext === 'jpg' || ext === 'jpeg'
+    ? 'image/jpeg'
+    : ext === 'webp' ? 'image/webp' : ext === 'gif' ? 'image/gif' : 'image/png';
+  return `data:${mime};base64,${base64}`;
+}
+
 /** ArrayBuffer → base64, chunked to avoid spreading a large array into one call. */
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
@@ -108,6 +122,15 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
   const [wsEntries, setWsEntries] = useState<Record<string, string[]>>({});
   const [wsErrors, setWsErrors] = useState<Record<string, string>>({});
   const [wsExpanded, setWsExpanded] = useState<Record<string, boolean>>({ input: true, output: true });
+  const [selectedWorkspaceFile, setSelectedWorkspaceFile] = useState<string | null>(null);
+  const [filePreview, setFilePreview] = useState<{
+    kind: 'text' | 'image' | 'binary';
+    text?: string;
+    dataUrl?: string;
+    error?: string;
+    loading?: boolean;
+  } | null>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
 
   // Load all bid-writing sessions, group by workspacePath, read each project.json.
   const refreshProjects = useCallback(async () => {
@@ -165,6 +188,9 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
     setWsEntries({});
     setWsErrors({});
     setWsExpanded({ input: true, output: true });
+    setSelectedWorkspaceFile(null);
+    setFilePreview(null);
+    setDropTarget(null);
   }, [activeProject?.workspacePath]);
 
   useEffect(() => {
@@ -173,6 +199,42 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
     void loadWorkspaceEntries('input');
     void loadWorkspaceEntries('output');
   }, [workspaceDrawerOpen, sessionId, activeProject?.workspacePath, loadWorkspaceEntries]);
+
+  useEffect(() => {
+    if (!workspaceDrawerOpen || !selectedWorkspaceFile || !sessionId) {
+      setFilePreview(null);
+      return;
+    }
+    let cancelled = false;
+    const name = selectedWorkspaceFile.split('/').pop() ?? selectedWorkspaceFile;
+    const run = async () => {
+      setFilePreview({ kind: 'text', loading: true });
+      try {
+        const sparkii = api();
+        if (/\.(png|jpe?g|gif|webp)$/i.test(name)) {
+          const r = await sparkii.workspaceReadBytes?.({ sessionId, path: selectedWorkspaceFile });
+          if (cancelled) return;
+          setFilePreview(r?.ok && r.bytesBase64
+            ? { kind: 'image', dataUrl: imageDataUrl(name, r.bytesBase64) }
+            : { kind: 'binary', error: r && !r.ok ? `${r.code}: ${r.reason}` : '无法读取图片' });
+          return;
+        }
+        if (isTextFileName(name)) {
+          const r = await sparkii.workspaceRead?.({ sessionId, path: selectedWorkspaceFile });
+          if (cancelled) return;
+          setFilePreview(r?.ok && typeof r.content === 'string'
+            ? { kind: 'text', text: r.content }
+            : { kind: 'binary', error: r && !r.ok ? `${r.code}: ${r.reason}` : '无法读取文件' });
+          return;
+        }
+        setFilePreview({ kind: 'binary' });
+      } catch (e) {
+        if (!cancelled) setFilePreview({ kind: 'binary', error: e instanceof Error ? e.message : String(e) });
+      }
+    };
+    void run();
+    return () => { cancelled = true; };
+  }, [workspaceDrawerOpen, selectedWorkspaceFile, sessionId]);
 
   // P10 — 跨窗口/跨会话搬迁同步：平台广播后强制刷新项目列表与当前项目路径，
   // 避免旧 activeProject.workspacePath 被 writeProject 写回旧目录（计划 §5.6）。
@@ -325,6 +387,71 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
     }
   }, [activeProject?.workspacePath]);
 
+  const persistWorkspaceFiles = useCallback(async (
+    files: Array<{ name: string; bytes: ArrayBuffer }>,
+    targetDir: string,
+  ) => {
+    if (!sessionId || files.length === 0) return;
+    const sparkii = api();
+    const dir = !targetDir || targetDir === '.' ? 'input' : targetDir;
+    const saved: string[] = [];
+    const docsToMerge: Record<string, string> = {};
+    let lastRel = '';
+    try {
+      for (const file of files) {
+        const safe = file.name.replace(/[^\w.\-\u4e00-\u9fa5]/g, '_') || 'imported';
+        const before = await sparkii.workspaceList?.({ sessionId, path: dir });
+        const existing = new Set(before?.ok && Array.isArray(before.entries) ? before.entries : []);
+        let name = safe;
+        const dot = safe.lastIndexOf('.');
+        const stem = dot > 0 ? safe.slice(0, dot) : safe;
+        const ext = dot > 0 ? safe.slice(dot) : '';
+        for (let n = 2; existing.has(name); n += 1) name = `${stem}_${n}${ext}`;
+        const rel = `${dir}/${name}`;
+        const written = await sparkii.workspaceWriteBytes({
+          sessionId,
+          path: rel,
+          bytesBase64: arrayBufferToBase64(file.bytes),
+        });
+        if (!written.ok) {
+          setStatus(`导入失败：${name} · ${written.code} · ${written.reason}`);
+          continue;
+        }
+        saved.push(name);
+        lastRel = rel;
+        if (dir === 'input') {
+          docsToMerge[rel] = isTextFileName(name)
+            ? new TextDecoder('utf-8').decode(file.bytes)
+            : `[二进制资料 ${name}，正文将在会话中由文档解析工具读取]`;
+        }
+      }
+      if (saved.length === 0) return;
+      if (dir === 'input') {
+        const after = await sparkii.workspaceList?.({ sessionId, path: 'input' });
+        const names = (after?.ok && Array.isArray(after.entries) ? after.entries : saved)
+          .filter((n) => n !== 'manifest.md' && !n.startsWith('.'));
+        await sparkii.workspaceWrite({
+          sessionId,
+          path: 'input/manifest.md',
+          content: ['# 项目私有资料清单', '', ...names.map((n) => `- ${n}`)].join('\n'),
+        });
+        const { docs } = await loadMaterialDocs(sessionId);
+        Object.assign(docs, docsToMerge);
+        await buildIndex(sessionId, docs);
+        const merged = docsToMerge;
+        setSetupMaterials((prev) => [
+          ...prev.filter((m) => !saved.includes(m.name)),
+          ...Object.entries(merged).map(([rel, text]) => ({ name: rel.slice('input/'.length), text })),
+        ]);
+      }
+      void loadWorkspaceEntries(dir);
+      setSelectedWorkspaceFile(lastRel);
+      setStatus(saved.length === 1 ? `已导入：${saved[0]}` : `已导入 ${saved.length} 个文件：${saved.join('、')}`);
+    } catch (e) {
+      setStatus(`导入失败：${e instanceof Error ? e.message : String(e)}`);
+    }
+  }, [sessionId, loadWorkspaceEntries]);
+
   // Any phase can import project-private material into input/. Text files are
   // indexed immediately; binaries are written as real bytes and registered in
   // manifest.md so the session's document tools can parse them on demand.
@@ -343,47 +470,30 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
         setStatus(`导入失败：无法读取文件（${bytes?.error ?? 'unsupported'}）`);
         return;
       }
-      const originalName = bytes.fileName || sourcePath.split(/[\\/]/).pop() || 'imported';
-      const safe = originalName.replace(/[^\w.\-\u4e00-\u9fa5]/g, '_');
-      const before = await sparkii.workspaceList?.({ sessionId, path: 'input' });
-      const existing = new Set(before?.ok && Array.isArray(before.entries) ? before.entries : []);
-      let name = safe;
-      const dot = safe.lastIndexOf('.');
-      const stem = dot > 0 ? safe.slice(0, dot) : safe;
-      const ext = dot > 0 ? safe.slice(dot) : '';
-      for (let n = 2; existing.has(name); n += 1) name = `${stem}_${n}${ext}`;
-      const rel = `input/${name}`;
-      const written = await sparkii.workspaceWriteBytes({
-        sessionId,
-        path: rel,
-        bytesBase64: arrayBufferToBase64(bytes.bytes),
-      });
-      if (!written.ok) {
-        setStatus(`导入失败：${written.code} · ${written.reason}`);
-        return;
-      }
-      const isText = bytes.kind === 'txt' || /\.(txt|md|csv|json)$/i.test(name);
-      const text = isText
-        ? new TextDecoder('utf-8').decode(bytes.bytes)
-        : `[二进制资料 ${name}，正文将在会话中由文档解析工具读取]`;
-      const after = await sparkii.workspaceList?.({ sessionId, path: 'input' });
-      const names = (after?.ok && Array.isArray(after.entries) ? after.entries : [...existing, name])
-        .filter((n) => n !== 'manifest.md' && !n.startsWith('.'));
-      await sparkii.workspaceWrite({
-        sessionId,
-        path: 'input/manifest.md',
-        content: ['# 项目私有资料清单', '', ...names.map((n) => `- ${n}`)].join('\n'),
-      });
-      const { docs } = await loadMaterialDocs(sessionId);
-      docs[rel] = text;
-      await buildIndex(sessionId, docs);
-      void loadWorkspaceEntries('input');
-      setSetupMaterials((prev) => [...prev.filter((m) => m.name !== name), { name, text }]);
-      setStatus(`已导入：${name}`);
+      const name = bytes.fileName || sourcePath.split(/[\\/]/).pop() || 'imported';
+      await persistWorkspaceFiles([{ name, bytes: bytes.bytes }], 'input');
     } catch (e) {
       setStatus(`导入失败：${e instanceof Error ? e.message : String(e)}`);
     }
-  }, [sessionId, loadWorkspaceEntries]);
+  }, [sessionId, persistWorkspaceFiles]);
+
+  const importDroppedFiles = useCallback(async (
+    files: FileList | File[],
+    targetDir: string,
+  ) => {
+    const list = Array.from(files);
+    if (list.length === 0) return;
+    setStatus('正在导入拖入的文件…');
+    const payload: Array<{ name: string; bytes: ArrayBuffer }> = [];
+    for (const file of list) {
+      if (file.size > MAX_IMPORT_BYTES) {
+        setStatus(`导入失败：${file.name} 超过 40 MB 限制`);
+        return;
+      }
+      payload.push({ name: file.name, bytes: await file.arrayBuffer() });
+    }
+    await persistWorkspaceFiles(payload, targetDir);
+  }, [persistWorkspaceFiles]);
 
   const toggleWorkspaceNode = useCallback((path: string) => {
     const next = !wsExpanded[path];
@@ -397,14 +507,28 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
       const path = parent ? `${parent}/${name}` : name;
       const isDir = !name.includes('.');
       const expanded = Boolean(wsExpanded[path]);
+      const selected = selectedWorkspaceFile === path;
       return (
         <div key={path} className="bw-ws-tree-node">
           <button
             type="button"
-            className="bw-ws-tree-row"
+            className={`bw-ws-tree-row${selected ? ' selected' : ''}${dropTarget === path ? ' drop-target' : ''}`}
             style={{ paddingLeft: 8 + depth * 14 }}
-            title={path}
-            onClick={() => isDir && toggleWorkspaceNode(path)}
+            title={isDir ? `拖入文件到 ${path}/` : path}
+            onClick={() => isDir ? toggleWorkspaceNode(path) : setSelectedWorkspaceFile(path)}
+            onDragOver={(e) => {
+              if (!isDir) return;
+              e.preventDefault();
+              e.stopPropagation();
+              setDropTarget(path);
+            }}
+            onDrop={(e) => {
+              if (!isDir) return;
+              e.preventDefault();
+              e.stopPropagation();
+              setDropTarget(null);
+              void importDroppedFiles(e.dataTransfer.files, path);
+            }}
           >
             {isDir
               ? <span className={`bw-ws-caret${expanded ? ' open' : ''}`}>▶</span>
@@ -1028,14 +1152,47 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
             </div>
             <div className="bw-hint">导入的文件写入 input/；文本立即入索引，PDF/Word/图片由会话内文档工具按需解析。任何阶段可导入。</div>
           </div>
-          <div className="bw-ws-drawer-body">
-            <div className="bw-ws-tree-title">文件树</div>
+          <div
+            className={`bw-ws-drawer-body${dropTarget === 'input' ? ' drop-target' : ''}`}
+            onDragOver={(e) => { e.preventDefault(); setDropTarget('input'); }}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTarget(null);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              const target = dropTarget ?? 'input';
+              setDropTarget(null);
+              void importDroppedFiles(e.dataTransfer.files, target);
+            }}
+          >
+            <div className="bw-ws-tree-title">文件树 · 可拖入文件夹</div>
             {(wsEntries[''] ?? []).length > 0
               ? renderWorkspaceTree('', 0)
               : <div className="bw-hint">
                   {wsErrors[''] ? `（无法读取文件树：${wsErrors['']}）` : '（工作区为空）'}
                 </div>}
           </div>
+          {selectedWorkspaceFile && (
+            <div className="bw-ws-preview">
+              <div className="bw-ws-preview-head">
+                <b>预览</b>
+                <span title={selectedWorkspaceFile}>{selectedWorkspaceFile.split('/').pop()}</span>
+                <button type="button" className="bw-ws-close" title="关闭预览" aria-label="关闭预览" onClick={() => setSelectedWorkspaceFile(null)}>×</button>
+              </div>
+              {filePreview?.loading
+                ? <div className="bw-hint">正在读取预览…</div>
+                : filePreview?.kind === 'image' && filePreview.dataUrl
+                  ? <img className="bw-ws-preview-image" src={filePreview.dataUrl} alt="文件预览" />
+                  : filePreview?.kind === 'text' && typeof filePreview.text === 'string'
+                    ? <>
+                        <pre className="bw-ws-preview-text">{filePreview.text.slice(0, 5000)}</pre>
+                        {filePreview.text.length > 5000 && <div className="bw-hint">（仅显示前 5000 字）</div>}
+                      </>
+                    : <div className="bw-hint">
+                        {filePreview?.error ?? '二进制文件：正文由会话内文档工具按需解析。'}
+                      </div>}
+            </div>
+          )}
         </aside>
       )}
       {activeProject?.status === 'setup' && (

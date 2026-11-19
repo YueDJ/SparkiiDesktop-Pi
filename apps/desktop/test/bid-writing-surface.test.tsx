@@ -45,6 +45,12 @@ function makeApi(opts: { project?: ProjectFile | null; sessions?: unknown[] } = 
       }
       return { ok: false, code: 'INVALID', reason: 'none' };
     }),
+    workspaceReadBytes: vi.fn(async ({ path }: { path: string }) => {
+      const stored = store.get(`${path}#bytes`);
+      return stored
+        ? { ok: true, op: 'readBytes', path, bytesBase64: stored }
+        : { ok: false, code: 'INVALID', reason: 'none' };
+    }),
     workspaceWrite: vi.fn(async ({ path, content }: { path: string; content: string }) => {
       store.set(path, content);
       return { ok: true, op: 'write', path };
@@ -392,7 +398,7 @@ describe('bid-writing surface — P10 storage location (setup only)', () => {
     expect(drawer).toBeTruthy();
     expect(drawer!.getAttribute('aria-label')).toBe('工作区抽屉');
     expect(document.querySelector('.bw-workbench')?.classList.contains('bw-drawer-open')).toBe(true);
-    expect(within(drawer!).getByText('文件树')).toBeTruthy();
+    expect(within(drawer!).getByText('文件树 · 可拖入文件夹')).toBeTruthy();
     await waitFor(() => expect(within(drawer!).getByText('project.json')).toBeTruthy());
     expect(within(drawer!).getByTitle('收起')).toBeTruthy();
 
@@ -433,6 +439,68 @@ describe('bid-writing surface — P10 storage location (setup only)', () => {
       expect(manifest[0].content).toContain('- 招标图纸.pdf');
       const index = api.workspaceWrite.mock.calls.find((c: any[]) => c[0].path === 'input/.index/chunks.json');
       expect(index).toBeTruthy();
+    });
+  });
+
+  it('drops a file onto a folder row and writes it into that folder', async () => {
+    const api = makeApi({ sessions: [], project: projectFixture() });
+    (window as any).sparkii = api;
+    renderSurface(api, 's1');
+    await screen.findByText('章节大纲');
+    await act(async () => { fireEvent.click(screen.getByText('工作区')); });
+    const inputRow = screen.getByTitle('拖入文件到 input/');
+    const file = {
+      name: '拖入.txt',
+      size: 4,
+      arrayBuffer: async () => new Uint8Array([0x68, 0x69, 0x21, 0x21]).buffer,
+    } as unknown as File;
+    const dataTransfer = { files: [file], types: ['Files'] };
+    await act(async () => {
+      fireEvent.dragOver(inputRow, { dataTransfer });
+      fireEvent.drop(inputRow, { dataTransfer });
+    });
+    await waitFor(() => expect(api.workspaceWriteBytes).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'input/拖入.txt', bytesBase64: 'aGkhIQ==' }),
+    ));
+  });
+
+  it('shows a text preview when a file row is selected', async () => {
+    const api = makeApi({ sessions: [], project: projectFixture() });
+    (window as any).sparkii = api;
+    renderSurface(api, 's1');
+    await screen.findByText('章节大纲');
+    await act(async () => { fireEvent.click(screen.getByText('工作区')); });
+    await waitFor(() => expect(screen.getByTitle('project.json')).toBeTruthy());
+    await act(async () => { fireEvent.click(screen.getByTitle('project.json')); });
+    await waitFor(() => {
+      const preview = document.querySelector('.bw-ws-preview-text');
+      expect(preview?.textContent).toContain('智慧园区投标文件');
+    });
+    expect(screen.getByText('预览')).toBeTruthy();
+  });
+
+  it('shows an image preview with a data URL', async () => {
+    const api = makeApi({ sessions: [], project: projectFixture() });
+    api.workspaceList.mockImplementation(async ({ path }: { path: string }) => ({
+      ok: true,
+      op: 'list',
+      path,
+      entries: path === 'input'
+        ? ['截图.png']
+        : path === '.' || path === '' ? ['input', 'output', 'project.json'] : [],
+    }));
+    api.workspaceReadBytes.mockResolvedValue({
+      ok: true, op: 'readBytes', path: 'input/截图.png', bytesBase64: 'iVBORw0KGgo=',
+    });
+    (window as any).sparkii = api;
+    renderSurface(api, 's1');
+    await screen.findByText('章节大纲');
+    await act(async () => { fireEvent.click(screen.getByText('工作区')); });
+    await waitFor(() => expect(screen.getByTitle('input/截图.png')).toBeTruthy());
+    await act(async () => { fireEvent.click(screen.getByTitle('input/截图.png')); });
+    await waitFor(() => {
+      const img = document.querySelector('.bw-ws-preview-image') as HTMLImageElement | null;
+      expect(img?.getAttribute('src')).toBe('data:image/png;base64,iVBORw0KGgo=');
     });
   });
 
