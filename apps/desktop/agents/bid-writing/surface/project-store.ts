@@ -43,13 +43,11 @@ export interface ProjectFile {
 
 export const PROJECT_FILE = 'project.json';
 
-const DEFAULT_CHAPTERS: Chapter[] = [
-  { id: '1', title: '投标函', file: '01-投标函.md', status: 'todo' },
-  { id: '2', title: '法定代表人授权书', file: '02-授权书.md', status: 'todo' },
-  { id: '3', title: '技术方案', file: '03-技术方案.md', status: 'todo' },
-  { id: '4', title: '商务报价', file: '04-商务报价.md', status: 'todo' },
-  { id: '5', title: '资质证明', file: '05-资质证明.md', status: 'todo' },
-];
+/**
+ * 大纲不是预置的：新建项目时章节列表为空，由智能体根据招标文件/补充需求
+ * 生成（outline 技能），并通过 write 工具更新 project.json 的 chapters 字段。
+ */
+export const EMPTY_CHAPTERS: Chapter[] = [];
 
 function api(): SparkiiApi {
   return ((window as unknown as { sparkii?: SparkiiApi }).sparkii ?? {}) as SparkiiApi;
@@ -76,8 +74,8 @@ export function newProject(input: {
     status: 'setup',
     workspacePath: input.workspacePath,
     knowledgeBases: input.knowledgeBases ?? [],
-    chapters: DEFAULT_CHAPTERS.map((c) => ({ ...c })),
-    progress: { done: 0, total: DEFAULT_CHAPTERS.length },
+    chapters: EMPTY_CHAPTERS.map((c) => ({ ...c })),
+    progress: { done: 0, total: EMPTY_CHAPTERS.length },
     version: 1,
     createdAt: now,
     updatedAt: now,

@@ -37,6 +37,8 @@ export type StandardChatProps = AgentSurfaceProps & {
   emptyCopy?: { heading?: string; body?: string; hint?: string };
   hideToolNames?: string[];
   composerSkills?: Array<{ name: string; description: string }> | null;
+  /** 附加到每次 promptSession 的 context（如 allowDegradedKnowledge），与内置字段合并。 */
+  promptOptions?: Record<string, unknown>;
   renderAssistantMessage?(args: {
     entry: AssistantChatEntry;
     following: CustomSessionEntry[];
@@ -262,7 +264,7 @@ function modelIdOf(value: string | null | undefined): string {
 }
 
 export function StandardChatSurface(props: StandardChatProps) {
-  const { agent, sessionId, session, actions, title, api: apiOverride, active = true, draft, onSessionCreated, renderApprovalCard, toolbarExtra, hideWorkspace, onBeforeSend, emptyCopy, hideToolNames, composerSkills, renderAssistantMessage, renderCustomEntry } = props;
+  const { agent, sessionId, session, actions, title, api: apiOverride, active = true, draft, onSessionCreated, renderApprovalCard, toolbarExtra, hideWorkspace, onBeforeSend, emptyCopy, hideToolNames, composerSkills, promptOptions, renderAssistantMessage, renderCustomEntry } = props;
   const api = apiOverride ?? (window.sparkii as SparkiiApi);
   const { reportError } = useErrors();
   const [busy, setBusy] = useState(false);
@@ -546,6 +548,13 @@ export function StandardChatSurface(props: StandardChatProps) {
 
   const getLocalPath = (file: File): string => api.getPathForFile(file);
 
+  // 空 promptOptions 保持第 5 参完全省略（既有调用方/测试依赖该调用形状）。
+  const promptOptionsExtra = promptOptions && Object.keys(promptOptions).length > 0 ? promptOptions : undefined;
+  const withExtra = (context: Record<string, unknown> | undefined) => {
+    const merged = context ? { ...context, ...promptOptionsExtra } : promptOptionsExtra;
+    return merged ? (merged as never) : undefined;
+  };
+
   const send = (text: string, attachments: ComposerAttachment[] = []) => {
     jumpToLatest();
     const display = attachments.length ? `${attachments.map((a) => `📎 ${a.name}`).join(' ')}\n${text}` : text;
@@ -561,7 +570,15 @@ export function StandardChatSurface(props: StandardChatProps) {
       : null);
 
     if (isBusy && sessionId) {
-      const followUp = () => api.promptSession(sessionId, display, { behavior: 'followUp' }, chatAttachments.length ? chatAttachments : undefined)
+      // 第 5 参（promptOptions）只在确实有时才出现，保持历史调用形状不变。
+      const followUpExtra = withExtra(undefined);
+      const followUp = () => api.promptSession(
+        sessionId,
+        display,
+        { behavior: 'followUp' },
+        chatAttachments.length ? chatAttachments : undefined,
+        ...(followUpExtra !== undefined ? [followUpExtra] : []),
+      )
         .catch((e: any) => reportError(String(e?.message ?? e), { source: agent.name }));
       if (onBeforeSend) {
         void onBeforeSend().then(followUp).catch((e: any) => reportError(String(e?.message ?? e), { source: agent.name }));
@@ -577,7 +594,7 @@ export function StandardChatSurface(props: StandardChatProps) {
       display,
       undefined,
       chatAttachments.length ? chatAttachments : undefined,
-      sessionId ? undefined : {
+      withExtra(sessionId ? undefined : {
         profileId: agent.id,
         workspacePath,
         workspaceKind,
@@ -586,7 +603,7 @@ export function StandardChatSurface(props: StandardChatProps) {
         // A draft has no session row yet, so the chosen mode travels with the
         // first prompt instead of being written through IPC.
         permissionMode: permissionModeState.mode,
-      },
+      }),
     ).then((res: any) => {
       if (!res?.ok && res?.ok !== undefined) {
         reportError(String(res.error ?? '发送失败'), { source: agent.name });

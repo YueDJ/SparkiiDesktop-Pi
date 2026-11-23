@@ -146,7 +146,15 @@
 }
 .bw-editor-bar { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
 
-.bw-conversation { justify-content: space-between; }
+/* 右栏复用平台 StandardChatSurface（与通用智能体同一套聊天机制）后的适配：
+   .chat-surface 自身是 height:100% 的纵向 flex，列内去掉多余内边距即可贴合。 */
+.bw-conversation { padding: 0; overflow: hidden; }
+.bw-conversation .chat-surface { height: 100%; background: transparent; }
+.bw-conversation .chat-surface-head { border-bottom: 1px solid #E2E8F0; }
+.bw-conversation .chat-list { padding: 12px; }
+.bw-conversation .chat-queue-area { padding: 0 12px; }
+
+.bw-conversation .bw-apply-patch { margin-top: 8px; }
 .bw-messages { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
 .bw-msg {
   background: #F5F7FB;

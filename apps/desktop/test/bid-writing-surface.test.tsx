@@ -83,6 +83,19 @@ function makeApi(opts: { project?: ProjectFile | null; sessions?: unknown[] } = 
     on: vi.fn(() => () => {}),
     chooseDocument: vi.fn().mockResolvedValue({}),
     readDocumentBytes: vi.fn().mockResolvedValue({ error: 'denied' }),
+    parseDocumentPreview: vi.fn().mockResolvedValue({ ok: false, error: '无法解析该文件' }),
+    // StandardChatSurface（右栏复用的平台聊天区）所需的最小 API 面。
+    getChatState: vi.fn().mockResolvedValue({ steering: [], followUp: [] }),
+    getChatSession: vi.fn().mockResolvedValue(null),
+    getModelOptions: vi.fn().mockResolvedValue({ defaultModel: null, models: [], provider: 'deepseek' }),
+    getSettings: vi.fn().mockResolvedValue({}),
+    listAgentSkills: vi.fn().mockResolvedValue({ skills: [] }),
+    listThinkingLevels: vi.fn().mockResolvedValue([]),
+    setChatModel: vi.fn().mockResolvedValue({ ok: true }),
+    setChatThinkingLevel: vi.fn().mockResolvedValue({ ok: true }),
+    abortChat: vi.fn().mockResolvedValue({ ok: true, cleared: { steering: [], followUp: [] } }),
+    queueMutate: vi.fn().mockResolvedValue({ ok: true }),
+    getPathForFile: vi.fn((file: File) => (file as unknown as { path?: string }).path ?? ''),
   };
 }
 
@@ -165,7 +178,8 @@ describe('bid-writing surface (P1 skeleton)', () => {
     (window as any).sparkii = api;
     renderSurface(api, 's1');
     expect(await screen.findByText('章节大纲')).toBeTruthy();
-    expect(await screen.findByText('本次对话')).toBeTruthy();
+    // 右栏对话区复用平台 StandardChatSurface，标题来自会话（无会话标题时为「新对话」）。
+    expect(document.querySelector('[data-testid="chat-title"]')).toBeTruthy();
     expect(screen.getByText('1 · 投标函')).toBeTruthy();
     // B1: WYSIWYG renders blocks; the source textarea appears after "查看源码".
     expect(screen.getByText('所见即所得')).toBeTruthy();
@@ -209,10 +223,10 @@ describe('bid-writing surface — composer & degraded knowledge (runtime fix)', 
     const api = makeApi({ sessions: [], project: projectFixture() });
     (window as any).sparkii = api;
     renderSurface(api, 's1');
-    await screen.findByText('本次对话');
-    const input = screen.getByPlaceholderText(/描述要写或要改的内容/) as HTMLTextAreaElement;
+    await screen.findByText('章节大纲');
+    const input = screen.getByTestId('composer-input') as HTMLTextAreaElement;
     fireEvent.change(input, { target: { value: '帮我写完技术方案' } });
-    await act(async () => { fireEvent.click(screen.getByText('发送')); });
+    await act(async () => { fireEvent.click(screen.getByTestId('composer-send')); });
     await waitFor(() => {
       expect(api.promptSession).toHaveBeenCalledWith(
         's1',
@@ -223,7 +237,7 @@ describe('bid-writing surface — composer & degraded knowledge (runtime fix)', 
       );
     });
     // input clears only after a successful prompt
-    expect((screen.getByPlaceholderText(/描述要写或要改的内容/) as HTMLTextAreaElement).value).toBe('');
+    expect((screen.getByTestId('composer-input') as HTMLTextAreaElement).value).toBe('');
   });
 
   it('surfaces the gateway error instead of silently failing when the session cannot be created', async () => {
@@ -247,9 +261,9 @@ describe('bid-writing surface — P9 setup phase (create ≠ write)', () => {
     expect(await screen.findByText(/准备阶段 · 尚未开始写作/)).toBeTruthy();
     expect(screen.getByText(/确认信息，开始写作/)).toBeTruthy();
     // Composer is present but must not dispatch a prompt while in setup.
-    const input = screen.getByPlaceholderText(/描述要写或要改的内容/) as HTMLTextAreaElement;
+    const input = screen.getByTestId('composer-input') as HTMLTextAreaElement;
     fireEvent.change(input, { target: { value: '先写投标函' } });
-    await act(async () => { fireEvent.click(screen.getByText('发送')); });
+    await act(async () => { fireEvent.click(screen.getByTestId('composer-send')); });
     expect(api.promptSession).not.toHaveBeenCalled();
   });
 
@@ -378,7 +392,7 @@ describe('bid-writing surface — chat Markdown rendering', () => {
     renderSurface(api, 's1', session);
     await screen.findByText('章节大纲');
     await waitFor(() => {
-      const body = document.querySelector('.bw-msg-text');
+      const body = document.querySelector('.ui-chat-message-body');
       expect(body?.querySelector('h2')?.textContent).toBe('方案');
       expect(body?.querySelector('strong')?.textContent).toBe('重点');
       expect(body?.querySelector('ul')).toBeTruthy();

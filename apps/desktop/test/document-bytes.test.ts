@@ -27,7 +27,9 @@ describe('documentKindOf', () => {
     expect(documentKindOf('a.jpg')).toBe('image');
     expect(documentKindOf('photo.JPEG')).toBe('image');
     expect(documentKindOf('a.xlsx')).toBeNull();
-    expect(documentKindOf('a.md')).toBeNull();
+    // 文本类资料（.md/.csv）按 txt 读字节：标书工作台导入需要它们。
+    expect(documentKindOf('a.md')).toBe('txt');
+    expect(documentKindOf('a.csv')).toBe('txt');
     expect(documentKindOf('a.doc')).toBeNull();
   });
 

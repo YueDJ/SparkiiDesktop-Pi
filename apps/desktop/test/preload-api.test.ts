@@ -10,7 +10,7 @@ vi.mock('electron', () => ({
 describe('sparkii api shape', () => {
   it('exposes the expected method names', () => {
     const names = [
-      'getLocalSubject', 'chooseDocument', 'readDocumentBytes', 'runWorkflow', 'prompt', 'listPendingApprovals', 'decideApproval', 'getPermissionModeState', 'setChatPermissionMode', 'queryAudit', 'getSettings', 'saveSettings', 'saveRagSettings', 'saveKnowledgeSettings', 'testRagConnection', 'listRagDatasets', 'testKnowledgeConnection', 'listKnowledgeDatasets', 'getApiKey', 'listModels', 'testConnection', 'listProviders', 'diagnostics', 'on',
+      'getLocalSubject', 'chooseDocument', 'readDocumentBytes', 'parseDocumentPreview', 'runWorkflow', 'prompt', 'listPendingApprovals', 'decideApproval', 'getPermissionModeState', 'setChatPermissionMode', 'queryAudit', 'getSettings', 'saveSettings', 'saveRagSettings', 'saveKnowledgeSettings', 'testRagConnection', 'listRagDatasets', 'testKnowledgeConnection', 'listKnowledgeDatasets', 'getApiKey', 'listModels', 'testConnection', 'listProviders', 'diagnostics', 'on',
       'workspaceRead', 'workspaceReadBytes', 'workspaceWrite', 'workspaceWriteBytes', 'workspaceList', 'workspaceMkdir', 'workspaceDelete', 'workspaceRename', 'workspaceMove', 'renderDiagram', 'compileDocx',
       'relocateWorkspace',
       'listErrors', 'appendError', 'clearError', 'clearErrors', 'markAllErrorsRead',

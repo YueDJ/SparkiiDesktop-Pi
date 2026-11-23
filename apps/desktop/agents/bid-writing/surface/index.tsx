@@ -5,10 +5,10 @@
  * logic lives here in the agent package. Conversation rendering reuses the
  * Live Session Pipeline via the `session` prop — we never build our own pipe.
  */
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import type { AgentSurfaceProps, SessionEntry } from '../../../src/surface/contract.js';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import type { AgentSurfaceProps, CustomSessionEntry, SessionEntry } from '../../../src/surface/contract.js';
+import { StandardChatSurface, type AssistantChatEntry } from '../../../src/surface/standard-chat.js';
+import { ChatMessage, Markdown } from '@sparkii/ui';
 import type { SparkiiApi } from '../../../src/types/sparkii-api.js';
 import {
   ensureSkeleton,
@@ -81,8 +81,8 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
-export default function BidWritingSurface(props: AgentSurfaceProps) {
-  const { sessionId, session, actions } = props;
+export default function BidWritingSurface(props: AgentSurfaceProps & { draft?: boolean; active?: boolean }) {
+  const { sessionId, session, actions, agent, mode, title, draft: draftProp, active } = props;
   const [view, setView] = useState<View>('list');
   const [projects, setProjects] = useState<ProjectFile[]>([]);
   const [activeProject, setActiveProject] = useState<ProjectFile | null>(null);
@@ -103,12 +103,14 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
   const [activeContext, setActiveContext] = useState<ContextBlock[]>([]);
   const [activeChapter, setActiveChapter] = useState<string | null>(null);
   const [chapterText, setChapterText] = useState('');
+  // 用户手动编辑过的章节未保存时，禁止自动刷新覆盖编辑内容。
+  const chapterDirtyRef = useRef(false);
+  const activeChapterRef = useRef<string | null>(null);
+  useEffect(() => { activeChapterRef.current = activeChapter; }, [activeChapter]);
   const [status, setStatus] = useState('');
   const [projectSessions, setProjectSessions] = useState<Array<{ id: string; updatedAt?: number }>>([]);
   const [convQuery, setConvQuery] = useState('');
   const [editingFigure, setEditingFigure] = useState<{ name: string; source: string } | null>(null);
-  const [composerText, setComposerText] = useState('');
-  const [sending, setSending] = useState(false);
   // Setup phase (P9): inputs the user can revise before writing begins.
   const [setupReq, setSetupReq] = useState('');
   const [setupMaterials, setSetupMaterials] = useState<Array<{ name: string; text: string }>>([]);
@@ -129,6 +131,7 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
     dataUrl?: string;
     error?: string;
     loading?: boolean;
+    engine?: string;
   } | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
 
@@ -227,6 +230,28 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
             : { kind: 'binary', error: r && !r.ok ? `${r.code}: ${r.reason}` : '无法读取文件' });
           return;
         }
+        // PDF/DOCX 预览走与 agent 相同的解析管线（扫描版 PDF → OCR），
+        // 不再直接显示「二进制文件」。
+        if (/\.(pdf|docx|xlsx)$/i.test(name)) {
+          const root = (activeProject?.workspacePath ?? '').replace(/[\\/]+$/, '');
+          const abs = root ? `${root}/${selectedWorkspaceFile}` : selectedWorkspaceFile;
+          setFilePreview({ kind: 'text', loading: true });
+          try {
+            const r = await sparkii.parseDocumentPreview?.(abs, sessionId);
+            if (cancelled) return;
+            if (r && 'ok' in r && r.ok) {
+              setFilePreview({ kind: 'text', text: r.text || '（未解析出文本）', engine: r.engine });
+            } else {
+              const reason = r && 'ok' in r && 'error' in r
+                ? String(r.error)
+                : '无法解析该文件';
+              setFilePreview({ kind: 'binary', error: reason });
+            }
+          } catch (e) {
+            if (!cancelled) setFilePreview({ kind: 'binary', error: e instanceof Error ? e.message : String(e) });
+          }
+          return;
+        }
         setFilePreview({ kind: 'binary' });
       } catch (e) {
         if (!cancelled) setFilePreview({ kind: 'binary', error: e instanceof Error ? e.message : String(e) });
@@ -234,7 +259,7 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
     };
     void run();
     return () => { cancelled = true; };
-  }, [workspaceDrawerOpen, selectedWorkspaceFile, sessionId]);
+  }, [workspaceDrawerOpen, selectedWorkspaceFile, sessionId, activeProject?.workspacePath]);
 
   // P10 — 跨窗口/跨会话搬迁同步：平台广播后强制刷新项目列表与当前项目路径，
   // 避免旧 activeProject.workspacePath 被 writeProject 写回旧目录（计划 §5.6）。
@@ -293,6 +318,7 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
         if (chapter?.file) {
           setActiveChapter(chapter.id);
           setChapterText(await readChapter(sessionId, chapter.file));
+          chapterDirtyRef.current = false;
         }
         // Setup phase (P9): restore previously added material + requirements.
         if (p.status === 'setup') {
@@ -326,8 +352,52 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
     setActiveChapter(chId);
     if (activeProject) localStorage.setItem(`bw:chapter:${activeProject.id}`, chId);
     const ch = activeProject?.chapters.find((c) => c.id === chId);
-    if (sessionId && ch?.file) setChapterText(await readChapter(sessionId, ch.file));
+    if (sessionId && ch?.file) {
+      setChapterText(await readChapter(sessionId, ch.file));
+      chapterDirtyRef.current = false;
+    }
   }, [activeProject, sessionId]);
+
+  // 大纲/正文实时跟随（v2 反馈⑤）：智能体通过 write 工具更新 project.json 与
+  // 章节文件后，工作台必须重读权威文件，而不是停在打开会话时的旧快照。
+  // 流式期间 entries 每拍变化，用尾沿去抖：静默 1.5s 后才做一次重读。
+  const reloadFromWorkspace = useCallback(async () => {
+    if (!sessionId || view !== 'workbench') return;
+    const p = await readProject(sessionId);
+    if (!p) return;
+    setActiveProject((prev) => {
+      const same = prev && JSON.stringify({ ...prev, updatedAt: 0 }) === JSON.stringify({ ...p, updatedAt: 0 });
+      return same ? prev : { ...p, workspacePath: prev?.workspacePath ?? p.workspacePath };
+    });
+    void refreshProjects();
+    // 章节跟随：当前选中章节仍在 → 只重读文件内容；大纲被整体重建 → 落到第一章。
+    const currentCh = p.chapters.find((c) => c.id === activeChapterRef.current);
+    const target = currentCh ?? p.chapters[0];
+    if (!target?.file) {
+      if (p.chapters.length === 0 && activeChapterRef.current !== null) {
+        setActiveChapter(null);
+        setChapterText('');
+        chapterDirtyRef.current = false;
+      }
+      return;
+    }
+    const disk = await readChapter(sessionId, target.file);
+    if (!currentCh) {
+      setActiveChapter(target.id);
+      localStorage.setItem(`bw:chapter:${p.id}`, target.id);
+      chapterDirtyRef.current = false;
+      setChapterText(disk);
+      return;
+    }
+    // 用户正在手动编辑且未保存时，绝不覆盖编辑器内容。
+    if (!chapterDirtyRef.current) setChapterText(disk);
+  }, [sessionId, view, refreshProjects]);
+
+  useEffect(() => {
+    if (!sessionId || view !== 'workbench') return;
+    const t = setTimeout(() => { void reloadFromWorkspace(); }, 1500);
+    return () => clearTimeout(t);
+  }, [session.entries, sessionId, view, reloadFromWorkspace]);
 
   // New EMPTY conversation bound to the SAME fixed workspace (one-step binding,
   // §5.3). P9: no prompt is sent — the user decides what to write next.
@@ -619,32 +689,14 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
     setDraftDatasetIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   }, []);
 
-  // Send a message into the Live Session Pipeline on the bound session.
-  // The custom surface owns the composer (the platform does not inject one for
-  // `custom` surfaces), and it opts into degraded knowledge so chat keeps
-  // working when RAG is unconfigured (§15).
-  const sendMessage = useCallback(async () => {
-    const text = composerText.trim();
-    if (!text || !sessionId) return;
-    // P9: a project in setup has not been confirmed for writing yet. The
-    // explicit "开始写作" action flips status to drafting before prompts flow.
+  // 准备阶段（P9）尚未开始写作：阻止 composer 发送，给出与旧版一致引导。
+  // StandardChatSurface 会把该拒绝上报到错误提示，同时保留聊天区其余机制。
+  const guardSetupSend = useCallback(async () => {
     if (activeProject?.status === 'setup') {
       setStatus('请先在上方补充信息并点击「确认信息，开始写作」');
-      return;
+      throw new Error('请先在上方补充信息并点击「确认信息，开始写作」');
     }
-    setSending(true);
-    try {
-      const res = await api().promptSession(sessionId, text, undefined, undefined, {
-        allowDegradedKnowledge: true,
-      } as never) as PromptResult;
-      if (res?.ok === false) setStatus(res.error ?? '发送失败');
-      else setComposerText('');
-    } catch (e) {
-      setStatus(`发送失败：${e instanceof Error ? e.message : String(e)}`);
-    } finally {
-      setSending(false);
-    }
-  }, [composerText, sessionId, activeProject]);
+  }, [activeProject?.status]);
 
   // ── Setup phase (P9) ────────────────────────────────────────────────────
   // All of the following run BEFORE any LLM turn. They only touch workspace
@@ -726,7 +778,7 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
         `公司知识库：${kbNames}。项目参考资料：${matNames}。`,
       ];
       if (req) lines.push(`补充需求与要求：\n${req}`);
-      lines.push('请先阅读 project.json、input/ 下的资料清单与补充需求，确认章节大纲后与我讨论；正文按确认的大纲逐章推进。');
+      lines.push('请先阅读 project.json、input/ 下的资料清单与补充需求，根据标书要求制定章节大纲，把大纲写入 project.json 的 chapters 字段（稳定 id + 标题 + file 文件名，保留其它字段不变），然后与我讨论确认；正文按确认的大纲逐章推进。');
       const res = await sparkii.promptSession(sessionId, lines.join('\n'), undefined, undefined, {
         allowDegradedKnowledge: true,
       } as never) as PromptResult;
@@ -847,6 +899,7 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
     }
     const ok = await writeChapter(sessionId, ch.file, chapterText);
     if (ok) {
+      chapterDirtyRef.current = false;
       const vIndex = await loadVersionIndex(sessionId);
       const project = { ...activeProject, version: vIndex.length ? Math.max(...vIndex.map((v) => v.version)) : activeProject.version };
       await writeProject(sessionId, project);
@@ -895,11 +948,41 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
       await snapshot(sessionId, { [ch.file]: current }, `合并前 · ${ch.title}`);
       const ok = await writeChapter(sessionId, ch.file, result.merged);
       setChapterText(result.merged);
+      chapterDirtyRef.current = false;
       setStatus((prev) => prev.startsWith('检测到冲突') ? prev : (ok ? `已应用补丁（${result.applied.length} 块）` : '应用失败'));
     } else {
       setStatus('补丁无可应用变更');
     }
   }, [sessionId, activeProject, activeChapter, aiPatch]);
+
+  // 复用平台 StandardChatSurface 的助手气泡渲染：Markdown + thinking + 流式
+  // 状态由平台处理，这里只追加标书工作台的领域 UI（块级补丁应用按钮）。
+  const renderAssistantMessage = useCallback(({ entry }: { entry: AssistantChatEntry; following: CustomSessionEntry[] }) => {
+    const hasPatch = entry.text.includes('<!-- block:');
+    return (
+      <ChatMessage role="assistant" text={entry.text} thinking={entry.thinking} streaming={entry.streaming}>
+        <Markdown text={entry.text} />
+        {hasPatch && (
+          <button className="bw-btn bw-apply-patch" onClick={() => void applyAiPatch()}>
+            应用本轮章节补丁（块级合并）
+          </button>
+        )}
+      </ChatMessage>
+    );
+  }, [applyAiPatch]);
+
+  // 引用来源 chips：沿用旧版行为 —— 只要本轮时间线里有可归属来源就显示，
+  // 不依赖助手消息存在；放在 composer 工具栏插槽（消息列表与输入框之间）。
+  const sourcesExtra = useMemo(() => (
+    activeContext.length === 0 ? null : (
+      <div className="bw-sources">
+        <div className="bw-sources-title">引用来源（不可信数据，已隔离标注）</div>
+        {activeContext.map((b, i) => (
+          <span key={i} className="bw-source-chip" title={b.text.slice(0, 160)}>{sourceChip(b)}</span>
+        ))}
+      </div>
+    )
+  ), [activeContext]);
 
   // User-initiated export: compile all manuscript MD + images → DOCX (P4).
   const exportProject = useCallback(async () => {
@@ -1192,6 +1275,7 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
                   ? <img className="bw-ws-preview-image" src={filePreview.dataUrl} alt="文件预览" />
                   : filePreview?.kind === 'text' && typeof filePreview.text === 'string'
                     ? <>
+                        {filePreview.engine === 'structure' && <div className="bw-hint">（扫描/版式文档，已自动识别文字）</div>}
                         <pre className="bw-ws-preview-text">{filePreview.text.slice(0, 5000)}</pre>
                         {filePreview.text.length > 5000 && <div className="bw-hint">（仅显示前 5000 字）</div>}
                       </>
@@ -1265,6 +1349,9 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
                 </button>
               </li>
             ))}
+            {(activeProject?.chapters ?? []).length === 0 && (
+              <li className="bw-hint">大纲尚未生成。开始写作后，智能体会根据标书要求制定章节大纲，并在这里实时显示。</li>
+            )}
           </ul>
           <div className="bw-col-title bw-conv-title">资料检索</div>
           <div className="bw-search">
@@ -1314,7 +1401,7 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
           <WysiwygEditor
             value={chapterText}
             sessionId={sessionId}
-            onChange={setChapterText}
+            onChange={(next: string) => { chapterDirtyRef.current = true; setChapterText(next); }}
             onEditFigure={(src) => void editFigure(src)}
             placeholder="在此撰写章节正文…"
           />
@@ -1325,55 +1412,26 @@ export default function BidWritingSurface(props: AgentSurfaceProps) {
           </div>
         </main>
 
+        {/* 右栏对话区复用平台 StandardChatSurface（与通用智能体同一套机制）：
+            消息显示、详细程度、流式打断、引导/追加队列、模型选择、附件、
+            上下文用量全部由平台提供；标书只注入领域 UI（补丁应用、引用来源）。 */}
         <aside className="bw-col bw-conversation">
-          <div className="bw-col-title">
-            本次对话
-            <button className="bw-btn bw-btn-small" onClick={() => void startNewConversation()} title="新对话（绑定同一项目）">＋</button>
-          </div>
-          <div className="bw-messages">
-            {conversation.map((m) => (
-              <div key={m.key} className="bw-msg">
-                <span className="bw-role">{m.role === 'user' ? '我' : '助手'}</span>
-                <div className="bw-msg-text">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.text}</ReactMarkdown>
-                </div>
-              </div>
-            ))}
-            {conversation.length === 0 && <div className="bw-hint">发送消息开始写作或微调…</div>}
-          </div>
-          {aiPatch && (
-            <button className="bw-btn bw-apply-patch" onClick={() => void applyAiPatch()}>
-              应用本轮章节补丁（块级合并）
-            </button>
-          )}
-          {activeContext.length > 0 && (
-            <div className="bw-sources">
-              <div className="bw-sources-title">引用来源（不可信数据，已隔离标注）</div>
-              {activeContext.map((b, i) => (
-                <span key={i} className="bw-source-chip" title={b.text.slice(0, 160)}>{sourceChip(b)}</span>
-              ))}
-            </div>
-          )}
-          <div className="bw-composer">
-            <textarea
-              className="bw-composer-input"
-              value={composerText}
-              onChange={(e) => setComposerText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void sendMessage(); }
-              }}
-              placeholder="描述要写或要改的内容，Ctrl/⌘+Enter 发送…"
-              rows={2}
-            />
-            <button
-              className="bw-btn bw-btn-primary"
-              disabled={sending || !composerText.trim()}
-              onClick={() => void sendMessage()}
-            >
-              {sending ? '发送中…' : '发送'}
-            </button>
-          </div>
-          <div className="bw-disclaimer">对话复用平台 Live Session Pipeline</div>
+          <StandardChatSurface
+            agent={agent}
+            sessionId={sessionId}
+            mode={mode}
+            session={session}
+            actions={actions}
+            title={title}
+            draft={draftProp}
+            active={active}
+            hideWorkspace
+            promptOptions={{ allowDegradedKnowledge: true }}
+            emptyCopy={{ hint: '发送消息开始写作或微调…' }}
+            onBeforeSend={guardSetupSend}
+            renderAssistantMessage={renderAssistantMessage}
+            toolbarExtra={sourcesExtra}
+          />
         </aside>
       </div>
       {editingFigure && (

@@ -51,6 +51,12 @@ export type ReadDocumentBytesResult =
   | { kind: DocumentKind; fileName: string; fileSize: number; bytes: ArrayBuffer }
   | { error: 'missing' | 'unsupported' | 'too_large' | 'denied' };
 
+/** `sparkii:parseDocumentPreview`：渲染层预览用文档解析（扫描件走 OCR）。 */
+export type ParseDocumentPreviewResult =
+  | { ok: true; text: string; engine?: string; meta?: Record<string, unknown> }
+  | { ok: false; error: string }
+  | { error: 'missing' | 'unsupported' | 'too_large' | 'denied' };
+
 export interface ChatAttachment {
   path: string;
   name: string;
@@ -300,6 +306,8 @@ export interface SparkiiApi {
   getLocalSubject(): Promise<{ userId: string; roles: string[] }>;
   chooseDocument(opts?: ChooseDocumentOptions): Promise<{ path?: string }>;
   readDocumentBytes(path: string, sessionId?: string | null): Promise<ReadDocumentBytesResult>;
+  /** 渲染层预览用文档解析：扫描版 PDF 走 OCR，权限与 readDocumentBytes 一致。 */
+  parseDocumentPreview(path: string, sessionId?: string | null): Promise<ParseDocumentPreviewResult>;
   runWorkflow(id: string, input: Record<string, unknown>): Promise<{ ok: boolean; sessionId?: string }>;
   prompt(text: string): Promise<{ ok: boolean }>;
   openChatSession(sessionId: string): Promise<OpenChatSessionResult>;

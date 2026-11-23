@@ -1236,6 +1236,25 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     }
   });
 
+  /**
+   * 收养孤儿 Pi 会话：磁盘上有会话文件、但 chat_sessions 表里没有记录
+   * （历史版本/异常退出遗留）。这类会话此前会以 profileId=undefined 落到
+   * 渲染层的「空白分组」下，且点击无法打开。自动工作区的路径形如
+   * `<Documents>/Sparkii/workspaces/<agentId>/<key>`，可从中无歧义地反推
+   * profileId —— 通用规则，不含任何业务分支。
+   */
+  async function adoptOrphanPiSession(s: { id: string; cwd: string }): Promise<string | undefined> {
+    const existing = rt.chatSessions.get(s.id);
+    if (existing) return existing.profileId;
+    const match = /[\\/]Sparkii[\\/]workspaces[\\/]([^\\/]+)[\\/][^\\/]+[\\/]?$/.exec(s.cwd);
+    const profileId = match?.[1];
+    if (!profileId) return undefined;
+    try {
+      rt.chatSessions.create({ id: s.id, profileId, workspaceKind: 'auto', workspacePath: s.cwd });
+    } catch { /* 竞态：另一窗口已收养，忽略 */ }
+    return profileId;
+  }
+
   ipcMain.handle('sparkii:listChatSessions', async (
     _e,
     profileId?: string,
@@ -1252,9 +1271,16 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       pinned: boolean;
       archived: boolean;
       sortOrder: number | null;
-    }> = all.map((s) => {
-      const rec = rt.chatSessions.get(s.id);
-      return {
+      empty?: boolean;
+    }> = [];
+    for (const s of all) {
+      let rec = rt.chatSessions.get(s.id);
+      if (!rec) {
+        const adopted = await adoptOrphanPiSession(s);
+        if (!adopted) continue; // 无法推断归属的会话不进入历史列表
+        rec = rt.chatSessions.get(s.id);
+      }
+      mapped.push({
         id: s.id,
         title: s.name,
         firstMessage: s.firstMessage,
@@ -1264,8 +1290,9 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         pinned: rec?.pinned ?? false,
         archived: rec?.archived ?? false,
         sortOrder: rec?.sortOrder ?? null,
-      };
-    });
+        empty: (s.messageCount ?? 0) === 0,
+      });
+    }
     // P9: a workspace-bound session can be real and user-visible before its
     // first Pi message is flushed. Generic callers may opt into those rows;
     // the default keeps the historical "empty chat drafts are invisible" rule.
@@ -1283,6 +1310,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
           pinned: rec.pinned,
           archived: rec.archived,
           sortOrder: rec.sortOrder,
+          empty: true,
         });
       }
     }
@@ -2014,6 +2042,39 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       inputs: parseSessionInputs(rec?.inputs),
       workspacePath: rec?.workspacePath ?? null,
     });
+  });
+  /**
+   * 渲染层预览用文档解析（OCR/结构化）：与 agent 侧 `document.read` 走同一条
+   * 解析管线（扫描版 PDF → structure 引擎 → OCR）。权限与 readDocumentBytes
+   * 一致（已授权路径 / 会话输入 / 会话工作区），40MB 上限同源。
+   */
+  ipcMain.handle('sparkii:parseDocumentPreview', async (_e, path: string, sessionId?: string | null) => {
+    const rec = sessionId ? rt.chatSessions.get(sessionId) : null;
+    const access = {
+      inputs: parseSessionInputs(rec?.inputs),
+      workspacePath: rec?.workspacePath ?? null,
+    };
+    const granted = await readGrantedDocumentBytes(String(path ?? ''), access);
+    if ('error' in granted) return granted;
+    const result = await executeDocumentRead(
+      { documents: [String(path ?? '')] },
+      {
+        profileId: rec?.profileId ?? 'system',
+        sessionId: sessionId ?? '',
+        actor: rt.subject.userId,
+        agentDisplayName: rec?.profileId ?? 'preview',
+      },
+    );
+    if (!result.ok) {
+      return { ok: false as const, error: result.error?.message ?? '文档解析失败' };
+    }
+    const data = result.data as { text?: string; engine?: string; meta?: Record<string, unknown> };
+    return {
+      ok: true as const,
+      text: typeof data?.text === 'string' ? data.text : '',
+      engine: typeof data?.engine === 'string' ? data.engine : undefined,
+      meta: data?.meta ?? {},
+    };
   });
   ipcMain.handle('sparkii:listPendingApprovals', () => rt.gate.listPending());
   ipcMain.handle('sparkii:getPermissionModeState', (_e, agentId: string, sessionId?: string | null) => {

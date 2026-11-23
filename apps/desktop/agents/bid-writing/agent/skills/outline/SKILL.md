@@ -13,3 +13,5 @@ description: 根据甲方招标文件与项目资料，生成标书章节大纲�
 - file 为 output/manuscript/ 下的分章节 Markdown 文件名；
 - 覆盖投标函、授权书、技术方案、商务报价、资质证明等常见部分，可按项目裁剪；
 - 不臆造甲方未要求的章节；不确定处标注 "需确认"。
+
+生成大纲后，必须用 write 工具把 chapters 数组写入工作区的 `project.json`（只替换 chapters 字段，保留其它字段不变），并为每个章节建立对应的 `output/manuscript/<file>` 空文件。用户界面的大纲栏实时读取 `project.json`，写入了才会显示。

@@ -383,18 +383,25 @@ function AppShell() {
 
   const refreshSessions = (agentId?: string) => {
     // 目录只更新元数据 / 补行 / 删行，不写 active。高亮在传给 Shell 前从 current 派生。
-    api.listChatSessions?.()?.then((list: any[]) => {
-      const fetchedById: Record<string, ShellSession & { profileId: string }> = {};
-      const fetchedByProfile: Record<string, Array<ShellSession & { profileId: string }>> = {};
+    // includeEmpty：工作区绑定的自定义智能体（如标书写作）在首条消息落盘前
+    // 就已经是一个真实的、用户可见的项目会话；空会话对 chat 类智能体仍不可见。
+    api.listChatSessions?.(undefined, { includeEmpty: true })?.then((list: any[]) => {
+      const customAgents = new Set(
+        agents.filter((a) => a.surfaceType === 'custom').map((a) => a.id),
+      );
+      const fetchedById: Record<string, ShellSession & { profileId: string; empty?: boolean }> = {};
+      const fetchedByProfile: Record<string, Array<ShellSession & { profileId: string; empty?: boolean }>> = {};
       const work = currentRef.current;
       for (const s of list ?? []) {
         let profileId = s.profileId ?? sessionOverridesRef.current.get(s.id)?.agentId ?? '';
         if (!profileId && isSession(work) && work.sessionId === s.id) profileId = work.agentId;
+        // 空会话只对 custom（工作区绑定）智能体可见：chat 类保持"空草稿不进历史"。
+        if (s.empty && !customAgents.has(profileId)) continue;
         const diskName = sessionDisplayName({ title: s.title, firstMessage: s.firstMessage, updatedAt: s.updatedAt });
         const override = sessionOverridesRef.current.get(s.id);
         const name = override?.name ?? diskName;
         if (override && diskName === override.name) sessionOverridesRef.current.delete(s.id);
-        const item: ShellSession & { profileId: string } = {
+        const item: ShellSession & { profileId: string; empty?: boolean } = {
           id: s.id,
           name,
           state: '',

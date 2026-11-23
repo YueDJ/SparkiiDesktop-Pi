@@ -28,6 +28,7 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
     getLocalSubject: () => invoke('getLocalSubject') as Promise<{ userId: string; roles: string[] }>,
     chooseDocument: (opts) => invoke('chooseDocument', opts) as Promise<{ path?: string }>,
     readDocumentBytes: (path, sessionId) => invoke('readDocumentBytes', path, sessionId) as Promise<import('./api-types.js').ReadDocumentBytesResult>,
+    parseDocumentPreview: (path, sessionId) => invoke('parseDocumentPreview', path, sessionId) as Promise<import('./api-types.js').ParseDocumentPreviewResult>,
     runWorkflow: (id, input) => invoke('runWorkflow', id, input) as Promise<{ ok: boolean; sessionId?: string }>,
     prompt: (text) => invoke('prompt', text) as Promise<{ ok: boolean }>,
     openChatSession: (sessionId) => invoke('openChatSession', sessionId) as Promise<import('./api-types.js').OpenChatSessionResult>,
