@@ -84,6 +84,28 @@ describe('Shell', () => {
     expect(document.querySelector('.ui-drawer')).toBeNull();
   });
 
+  it('collapses projectScoped sessions into one row per workspace with a stable project name', () => {
+    const props = makeProps();
+    props.agents = [{ id: 'bid-writing', name: '标书写作智能体', status: 'idle', projectScoped: true }];
+    props.sessions = {
+      'bid-writing': [
+        { id: 'old-1', name: '用户改名后的单条会话', state: '', updatedAt: 100, workspacePath: 'C:/ws/A', workspaceName: '项目A' },
+        { id: 'new-1', name: '项目A', state: '', updatedAt: 300, workspacePath: 'C:/ws/A', workspaceName: '项目A' },
+        { id: 'other-1', name: '项目B', state: '', updatedAt: 200, workspacePath: 'C:/ws/B', workspaceName: '项目B' },
+      ],
+    };
+    props.onOpenSession = vi.fn();
+    render(<Shell {...props} />);
+    const rail = within(document.querySelector('.ui-rail-sessions') as HTMLElement);
+    expect(rail.getAllByText('项目A')).toHaveLength(1);
+    expect(rail.getByText('项目B')).toBeTruthy();
+    expect(rail.queryByText('用户改名后的单条会话')).toBeNull();
+    // 一个项目一行：没有智能体式分组标题
+    expect(rail.queryByText('标书写作智能体')).toBeNull();
+    fireEvent.click(rail.getByTestId('session-new-1'));
+    expect(props.onOpenSession).toHaveBeenCalledWith('bid-writing', 'new-1');
+  });
+
   it('hides agents without session history from the session history groups', () => {
     render(<Shell {...makeProps()} />);
     const sessionHistory = within(document.querySelector('.ui-rail-sessions') as HTMLElement);

@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { render, screen, fireEvent, waitFor, cleanup, act, within } from '@testing-library/react';
 import BidWritingSurface from '../agents/bid-writing/surface/index.js';
+import { placeholderOf } from '../agents/bid-writing/surface/title.js';
 import type { AgentSession } from '../src/surface/contract.js';
 import type { ProjectFile } from '../agents/bid-writing/surface/project-store.js';
 
@@ -28,10 +31,10 @@ function projectFixture(over: Partial<ProjectFile> = {}): ProjectFile {
   };
 }
 
-function makeApi(opts: { project?: ProjectFile | null; sessions?: unknown[] } = {}) {
+function makeApi(opts: { project?: ProjectFile | null; sessions?: unknown[]; files?: Record<string, string> } = {}) {
   const project = opts.project === undefined ? projectFixture() : opts.project;
   const sessions = opts.sessions ?? [];
-  const store = new Map<string, string>();
+  const store = new Map<string, string>(Object.entries(opts.files ?? {}));
   return {
     on: vi.fn(() => () => {}),
     listChatSessions: vi.fn().mockResolvedValue(sessions),
@@ -162,7 +165,7 @@ describe('bid-writing surface (P1 skeleton)', () => {
     });
     // Empty P9 sessions must still be discoverable and labelled by project name.
     expect(api.listChatSessions).toHaveBeenCalledWith('bid-writing', { includeEmpty: true });
-    expect(api.setChatTitle).toHaveBeenCalledWith('new-session-1', '测试标书', 'user');
+    expect(api.setChatTitle).toHaveBeenCalledWith('new-session-1', '测试标书', 'agent');
     // The core regression guard: creating a project must NOT start writing.
     expect(api.promptSession).not.toHaveBeenCalled();
     // skeleton dirs + project.json (status=setup) + chapter files written
@@ -178,12 +181,12 @@ describe('bid-writing surface (P1 skeleton)', () => {
     (window as any).sparkii = api;
     renderSurface(api, 's1');
     expect(await screen.findByText('章节大纲')).toBeTruthy();
-    // 右栏对话区复用平台 StandardChatSurface，标题来自会话（无会话标题时为「新对话」）。
+    // 右栏对话区使用标书物理副本，标题来自会话。
     expect(document.querySelector('[data-testid="chat-title"]')).toBeTruthy();
     expect(screen.getByText('1 · 投标函')).toBeTruthy();
-    // B1: WYSIWYG renders blocks; the source textarea appears after "查看源码".
-    expect(screen.getByText('所见即所得')).toBeTruthy();
-    await act(async () => { fireEvent.click(screen.getByText('查看源码')); });
+    // 编辑器无 tab：点击正文进入整章源码编辑。
+    expect(screen.queryByText('查看源码')).toBeNull();
+    await act(async () => { fireEvent.click(document.querySelector('.bw-wysiwyg-body') as HTMLElement); });
     expect(screen.getByPlaceholderText('在此撰写章节正文…')).toBeTruthy();
   });
 
@@ -193,11 +196,52 @@ describe('bid-writing surface (P1 skeleton)', () => {
     (window as any).sparkii = api;
     renderSurface(api, 's1');
     await screen.findByText('章节大纲');
-    await act(async () => { fireEvent.click(screen.getByText('查看源码')); });
+    await act(async () => { fireEvent.click(document.querySelector('.bw-wysiwyg-body') as HTMLElement); });
     const editor = screen.getByPlaceholderText('在此撰写章节正文…') as HTMLTextAreaElement;
     fireEvent.change(editor, { target: { value: '# 投标函\n\n正文内容' } });
-    await act(async () => { fireEvent.click(screen.getByText('保存')); });
+    await act(async () => { fireEvent.click(screen.getByLabelText('保存并返回渲染态')); });
     expect(api.workspaceWrite.mock.calls.some((c: any[]) => c[0].path === 'output/manuscript/01-投标函.md')).toBe(true);
+    expect(screen.queryByPlaceholderText('在此撰写章节正文…')).toBeNull();
+  });
+
+  it('builds a dotted chapter tree, scrolls to the anchor, and edits the resolved chapter', async () => {
+    const p = projectFixture({
+      chapters: [
+        { id: '1', title: '投标函', file: '01-投标函.md' },
+        { id: '3', title: '技术方案', file: '03-技术方案.md' },
+        { id: '3.1', title: '总体架构', file: '03-01-总体架构.md' },
+        { id: '3.2', title: '接口设计', file: '03-02-接口设计.md' },
+      ],
+    });
+    const api = makeApi({
+      project: p,
+      files: {
+        'output/manuscript/01-投标函.md': '<!-- block:blk-1 -->\n投标函正文',
+        'output/manuscript/03-技术方案.md': '',
+        'output/manuscript/03-01-总体架构.md': '<!-- block:blk-3-1 -->\n架构正文',
+        'output/manuscript/03-02-接口设计.md': '<!-- block:blk-3-2 -->\n接口正文',
+      },
+    });
+    (window as any).sparkii = api;
+    renderSurface(api, 's1');
+    await screen.findByText('章节大纲');
+    await waitFor(() => expect(document.querySelector('[data-anchor="3.1::blk-3-1"]')).toBeTruthy());
+
+    fireEvent.click(screen.getByLabelText('收起章节 3'));
+    expect(screen.queryByTestId('chapter-3.1')).toBeNull();
+    fireEvent.click(screen.getByLabelText('展开章节 3'));
+    expect(screen.getByTestId('chapter-3.1')).toBeTruthy();
+
+    const anchor = document.querySelector('[data-anchor="3.2::blk-3-2"]') as HTMLElement;
+    const scrollIntoView = vi.fn();
+    anchor.scrollIntoView = scrollIntoView;
+    fireEvent.click(screen.getByTestId('chapter-3.2'));
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' });
+
+    await act(async () => { fireEvent.click(anchor); });
+    const editor = await screen.findByPlaceholderText('在此撰写章节正文…') as HTMLTextAreaElement;
+    expect(editor.value).toContain('接口正文');
+    expect(api.workspaceWrite.mock.calls.some((c: any[]) => String(c[0].content).includes('data-chapter-id'))).toBe(false);
   });
 
   it('starts a new conversation bound to the same fixed workspace (P5)', async () => {
@@ -716,5 +760,19 @@ describe('bid-writing surface — WP3 knowledge binding (top bar, any phase)', (
     await act(async () => { fireEvent.click(boxes[0]); });
     await act(async () => { fireEvent.click(screen.getByText('应用绑定')); });
     await waitFor(() => expect(api.setSessionKnowledge).toHaveBeenCalledWith('s2', { mode: 'ids', datasetIds: ['kb-1'] }));
+  });
+});
+
+describe('bid-writing chat isolation', () => {
+  it('uses forked chat components, never the platform chat surface', () => {
+    const dir = join(process.cwd(), 'apps', 'desktop', 'agents', 'bid-writing', 'surface');
+    const indexSrc = readFileSync(join(dir, 'index.tsx'), 'utf8');
+    expect(indexSrc).not.toContain('src/surface/standard-chat.js');
+    expect(indexSrc).toContain('./bid-chat.js');
+    const fork = readFileSync(join(dir, 'standard-chat-bid.tsx'), 'utf8');
+    expect(fork).toContain('FORKED 2026-11-23');
+    const title = readFileSync(join(dir, 'title.ts'), 'utf8');
+    expect(title).toContain('FORKED 2026-11-23');
+    expect(placeholderOf('')).toBe('标书对话');
   });
 });

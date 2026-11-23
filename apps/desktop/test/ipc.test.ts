@@ -1660,6 +1660,51 @@ describe('ipc provider handlers', () => {
       updatedAt: 456,
     });
     expect(result[0].title).toBeUndefined();
+    expect(result[0].workspacePath).toBe('C:/ws/p9-empty');
+  });
+
+  it('listChatSessions falls back to project.json.name through the fenced service', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    const workspace = join(dataDir, 'ws-project');
+    await mkdir(piAgentDir, { recursive: true });
+    await mkdir(workspace, { recursive: true });
+    await writeFile(join(workspace, 'project.json'), JSON.stringify({ name: '智慧园区投标文件' }), 'utf8');
+
+    const key = (value: string) => value.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+    const pathProbe = {
+      inspect: async (t: string) => ({
+        displayPath: t, canonicalPath: t, identity: `object:${key(t)}`,
+        nearestExistingAncestor: t, isDirectory: true, isReparsePoint: false, exists: true, linkCount: 1,
+      }),
+      isSameOrDescendant: async (root: string, t: string) => key(t) === key(root) || key(t).startsWith(`${key(root)}/`),
+      isSameObject: async (a: string, b: string) => key(a) === key(b),
+    };
+    const rt = await makeRuntime({
+      dataDir, piAgentDir,
+      client: { send: async () => ({ success: true }) },
+      security: {
+        profilePolicies: new Map(), taskGrants: { onRevoke: () => () => {} },
+        hostShellReport: { version: 'v1', status: 'available', backend: 'host', executionBoundary: 'host', limitations: [] },
+        taskLifecycle: { active: vi.fn(() => undefined), end: vi.fn(async () => {}) },
+        pathProbe, protectedRoots: [],
+      },
+      audit: { append: vi.fn(async (e) => e) },
+    });
+    const emptySession = {
+      id: 'p9-named', profileId: 'bid-writing', workspaceKind: 'auto' as const,
+      workspacePath: workspace, model: null, thinkingLevel: null, piSessionFile: null,
+      createdAt: 123, updatedAt: 456,
+    };
+    (rt.chatSessions as unknown as { list: (profileId?: string) => unknown[] }).list = () => [emptySession];
+    (rt.chatSessions as unknown as { get: (id: string) => unknown }).get = (id: string) => id === emptySession.id ? emptySession : null;
+
+    const handlers = await registeredHandlers();
+    const result = await handlers.get('sparkii:listChatSessions')!(
+      null, 'bid-writing', { includeEmpty: true },
+    ) as Array<{ title?: string; workspacePath?: string }>;
+    expect(result[0]).toMatchObject({ title: '智慧园区投标文件', workspacePath: workspace });
   });
 
   it('getChatState does not acquire when a session has no lease', async () => {

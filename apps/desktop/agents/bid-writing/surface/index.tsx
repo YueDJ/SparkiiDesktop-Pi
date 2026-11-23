@@ -7,7 +7,8 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { AgentSurfaceProps, CustomSessionEntry, SessionEntry } from '../../../src/surface/contract.js';
-import { StandardChatSurface, type AssistantChatEntry } from '../../../src/surface/standard-chat.js';
+import BidChatSurface from './bid-chat.js';
+import type { AssistantChatEntry } from './standard-chat-bid.js';
 import { ChatMessage, Markdown } from '@sparkii/ui';
 import type { SparkiiApi } from '../../../src/types/sparkii-api.js';
 import {
@@ -17,15 +18,16 @@ import {
   readProject,
   writeChapter,
   writeProject,
+  type Chapter,
   type ProjectFile,
 } from './project-store.js';
-import { threeWayMerge } from './block-merge.js';
+import { parseBlocks, threeWayMerge } from './block-merge.js';
 import { loadIndex as loadVersionIndex, restoreFile, snapshot } from './version-store.js';
 import { buildIndex, loadIndex as loadMaterialIndex, loadMaterialDocs, retrieve } from './project-index.js';
 import { extractSourceChips, sourceChip, type ContextBlock } from './context-lines.js';
 import { toolDenyLabel } from './denial-label.js';
 import { normalizeSpec, toSvg, toDrawioXml } from './figure-converter.js';
-import WysiwygEditor from './wysiwyg.js';
+import WysiwygEditor, { type ReadonlyChapter, type WysiwygScrollTarget } from './wysiwyg.js';
 import './styles.css';
 
 const AGENT_ID = 'bid-writing';
@@ -56,6 +58,33 @@ function sessionText(entry: SessionEntry): string {
   return String(e.text ?? e.content ?? '');
 }
 
+interface ChapterNode {
+  chapter: Chapter;
+  children: ChapterNode[];
+}
+
+/** Build a hierarchy from dotted chapter ids ("1", "3.2", "3.2.1"). */
+function buildChapterTree(chapters: Chapter[]): ChapterNode[] {
+  const roots: ChapterNode[] = [];
+  const byId = new Map<string, ChapterNode>();
+  for (const chapter of chapters) {
+    const node: ChapterNode = { chapter, children: [] };
+    byId.set(chapter.id, node);
+    const parts = chapter.id.split('.');
+    const parentId = parts.slice(0, -1).join('.');
+    const parent = parts.length > 1 ? byId.get(parentId) : undefined;
+    if (parent) parent.children.push(node);
+    else roots.push(node);
+  }
+  return roots;
+}
+
+/** First block anchor of a chapter, for outline → full-text scroll. */
+function firstAnchorOf(chapterId: string, markdown: string): string {
+  const blocks = parseBlocks(markdown);
+  return `${chapterId}::${(blocks[0]?.id ?? 'blk-1')}`;
+}
+
 const MAX_IMPORT_BYTES = 40 * 1024 * 1024;
 
 function isTextFileName(name: string): boolean {
@@ -81,6 +110,47 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
+function ChapterTree({ nodes, collapsed, onToggle, onSelect, focusedId }: {
+  nodes: ChapterNode[];
+  collapsed: Set<string>;
+  onToggle(id: string): void;
+  onSelect(id: string): void;
+  focusedId?: string | null;
+}) {
+  return (
+    <ul className="bw-outline-tree">
+      {nodes.map(({ chapter, children }) => {
+        const isCollapsed = collapsed.has(chapter.id);
+        return (
+          <li key={chapter.id} className="bw-outline-node">
+            <div className="bw-outline-row">
+              {children.length > 0 ? (
+                <button
+                  type="button"
+                  className="bw-outline-caret"
+                  aria-label={`${isCollapsed ? '展开' : '收起'}章节 ${chapter.id}`}
+                  onClick={() => onToggle(chapter.id)}
+                >{isCollapsed ? '▸' : '▾'}</button>
+              ) : <span className="bw-outline-caret-space" />}
+              <button
+                type="button"
+                data-testid={`chapter-${chapter.id}`}
+                className={focusedId === chapter.id ? 'active' : ''}
+                onClick={() => onSelect(chapter.id)}
+              >
+                {chapter.id} · {chapter.title}
+              </button>
+            </div>
+            {children.length > 0 && !isCollapsed && (
+              <ChapterTree nodes={children} collapsed={collapsed} onToggle={onToggle} onSelect={onSelect} focusedId={focusedId} />
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 export default function BidWritingSurface(props: AgentSurfaceProps & { draft?: boolean; active?: boolean }) {
   const { sessionId, session, actions, agent, mode, title, draft: draftProp, active } = props;
   const [view, setView] = useState<View>('list');
@@ -103,6 +173,12 @@ export default function BidWritingSurface(props: AgentSurfaceProps & { draft?: b
   const [activeContext, setActiveContext] = useState<ContextBlock[]>([]);
   const [activeChapter, setActiveChapter] = useState<string | null>(null);
   const [chapterText, setChapterText] = useState('');
+  // 全文只读视图：每章单独保存 markdown，不拼接成整本内存字符串。
+  const [fullChapters, setFullChapters] = useState<ReadonlyChapter[]>([]);
+  const [editingChapterId, setEditingChapterId] = useState<string | null>(null);
+  const [focusedChapterId, setFocusedChapterId] = useState<string | null>(null);
+  const [collapsedChapters, setCollapsedChapters] = useState<Set<string>>(new Set());
+  const [scrollTarget, setScrollTarget] = useState<WysiwygScrollTarget | null>(null);
   // 用户手动编辑过的章节未保存时，禁止自动刷新覆盖编辑内容。
   const chapterDirtyRef = useRef(false);
   const activeChapterRef = useRef<string | null>(null);
@@ -298,6 +374,16 @@ export default function BidWritingSurface(props: AgentSurfaceProps & { draft?: b
     setActiveContext(extractSourceChips(session.entries));
   }, [session.entries]);
 
+  /** Reload the read-only whole-manuscript view, one fenced read per chapter. */
+  const refreshFullChapters = useCallback(async (sid: string, project: ProjectFile) => {
+    const docs = await Promise.all(
+      project.chapters
+        .filter((c) => Boolean(c.file))
+        .map(async (c): Promise<ReadonlyChapter> => ({ chapterId: c.id, markdown: await readChapter(sid, c.file!) })),
+    );
+    setFullChapters(docs);
+  }, []);
+
   // When a session is bound (draft=false), load its project + first chapter.
   useEffect(() => {
     if (!sessionId) return;
@@ -306,6 +392,7 @@ export default function BidWritingSurface(props: AgentSurfaceProps & { draft?: b
       if (p) {
         setActiveProject(p);
         setView('workbench');
+        void refreshFullChapters(sessionId, p);
         // WP3 — 按 project.json 恢复会话的知识库绑定。平台的
         // sessionKnowledgeSelections 是内存 Map（重启即失），这是持久真相源。
         // 空数组也要显式设置（清空绑定），两条独立通道互不影响（不改 T1 索引）。
@@ -333,7 +420,7 @@ export default function BidWritingSurface(props: AgentSurfaceProps & { draft?: b
         }
       }
     })();
-  }, [sessionId]);
+  }, [sessionId, refreshFullChapters]);
 
   // Load all sessions bound to the active project's workspace, sorted by updatedAt (P5).
   useEffect(() => {
@@ -348,15 +435,32 @@ export default function BidWritingSurface(props: AgentSurfaceProps & { draft?: b
     })();
   }, [activeProject, sessionId]);
 
-  const selectChapterAndRemember = useCallback(async (chId: string) => {
-    setActiveChapter(chId);
-    if (activeProject) localStorage.setItem(`bw:chapter:${activeProject.id}`, chId);
-    const ch = activeProject?.chapters.find((c) => c.id === chId);
-    if (sessionId && ch?.file) {
-      setChapterText(await readChapter(sessionId, ch.file));
-      chapterDirtyRef.current = false;
+  /** Outline click: stay on the full view and scroll the chapter's first block to top. */
+  const focusChapter = useCallback((chId: string) => {
+    setEditingChapterId(null);
+    setFocusedChapterId(chId);
+    const doc = fullChapters.find((d) => d.chapterId === chId);
+    setScrollTarget({ anchor: firstAnchorOf(chId, doc?.markdown ?? ''), nonce: Date.now() });
+  }, [fullChapters]);
+
+  /** Block click: resolve chapterId → chapters[].file, then edit ONLY that file. */
+  const editChapterFromBlock = useCallback(async (requestedId: string) => {
+    const chId = requestedId || activeChapter || activeProject?.chapters[0]?.id;
+    if (!chId) return;
+    if (chapterDirtyRef.current && activeChapter && activeChapter !== chId) {
+      setStatus('当前章节有未保存修改，请先保存后再切换章节');
+      return;
     }
-  }, [activeProject, sessionId]);
+    const ch = activeProject?.chapters.find((c) => c.id === chId);
+    if (!sessionId || !ch?.file) return;
+    const disk = await readChapter(sessionId, ch.file);
+    setActiveChapter(chId);
+    setChapterText(disk);
+    chapterDirtyRef.current = false;
+    setFocusedChapterId(chId);
+    setEditingChapterId(chId);
+    if (activeProject) localStorage.setItem(`bw:chapter:${activeProject.id}`, chId);
+  }, [sessionId, activeProject, activeChapter]);
 
   // 大纲/正文实时跟随（v2 反馈⑤）：智能体通过 write 工具更新 project.json 与
   // 章节文件后，工作台必须重读权威文件，而不是停在打开会话时的旧快照。
@@ -365,6 +469,8 @@ export default function BidWritingSurface(props: AgentSurfaceProps & { draft?: b
     if (!sessionId || view !== 'workbench') return;
     const p = await readProject(sessionId);
     if (!p) return;
+    // 全文只读视图始终跟随磁盘；单章编辑态仍由 chapterDirtyRef 保护。
+    void refreshFullChapters(sessionId, p);
     setActiveProject((prev) => {
       const same = prev && JSON.stringify({ ...prev, updatedAt: 0 }) === JSON.stringify({ ...p, updatedAt: 0 });
       return same ? prev : { ...p, workspacePath: prev?.workspacePath ?? p.workspacePath };
@@ -391,7 +497,7 @@ export default function BidWritingSurface(props: AgentSurfaceProps & { draft?: b
     }
     // 用户正在手动编辑且未保存时，绝不覆盖编辑器内容。
     if (!chapterDirtyRef.current) setChapterText(disk);
-  }, [sessionId, view, refreshProjects]);
+  }, [sessionId, view, refreshProjects, refreshFullChapters]);
 
   useEffect(() => {
     if (!sessionId || view !== 'workbench') return;
@@ -824,7 +930,7 @@ export default function BidWritingSurface(props: AgentSurfaceProps & { draft?: b
       ]);
       // Global chat history scans Pi files, which may not exist before the first
       // message. Naming the session now both labels it and makes it discoverable.
-      try { await sparkii.setChatTitle?.(newSessionId, name, 'user'); } catch { /* keep project */ }
+      try { await sparkii.setChatTitle?.(newSessionId, name, 'agent'); } catch { /* keep project */ }
       // §6.2 line two — persist uploaded material into input/ + build the T1 index.
       if (draftMaterials.length) {
         const docs: Record<string, string> = {};
@@ -900,6 +1006,7 @@ export default function BidWritingSurface(props: AgentSurfaceProps & { draft?: b
     const ok = await writeChapter(sessionId, ch.file, chapterText);
     if (ok) {
       chapterDirtyRef.current = false;
+      setFullChapters((prev) => prev.map((d) => d.chapterId === activeChapter ? { ...d, markdown: chapterText } : d));
       const vIndex = await loadVersionIndex(sessionId);
       const project = { ...activeProject, version: vIndex.length ? Math.max(...vIndex.map((v) => v.version)) : activeProject.version };
       await writeProject(sessionId, project);
@@ -948,6 +1055,7 @@ export default function BidWritingSurface(props: AgentSurfaceProps & { draft?: b
       await snapshot(sessionId, { [ch.file]: current }, `合并前 · ${ch.title}`);
       const ok = await writeChapter(sessionId, ch.file, result.merged);
       setChapterText(result.merged);
+      setFullChapters((prev) => prev.map((d) => d.chapterId === activeChapter ? { ...d, markdown: result.merged } : d));
       chapterDirtyRef.current = false;
       setStatus((prev) => prev.startsWith('检测到冲突') ? prev : (ok ? `已应用补丁（${result.applied.length} 块）` : '应用失败'));
     } else {
@@ -1338,21 +1446,20 @@ export default function BidWritingSurface(props: AgentSurfaceProps & { draft?: b
       <div className="bw-columns">
         <aside className="bw-col bw-outline">
           <div className="bw-col-title">章节大纲</div>
-          <ul>
-            {(activeProject?.chapters ?? []).map((ch) => (
-              <li key={ch.id}>
-                <button
-                  className={activeChapter === ch.id ? 'active' : ''}
-                  onClick={() => void selectChapterAndRemember(ch.id)}
-                >
-                  {ch.id} · {ch.title}
-                </button>
-              </li>
-            ))}
-            {(activeProject?.chapters ?? []).length === 0 && (
-              <li className="bw-hint">大纲尚未生成。开始写作后，智能体会根据标书要求制定章节大纲，并在这里实时显示。</li>
-            )}
-          </ul>
+          <ChapterTree
+            nodes={buildChapterTree(activeProject?.chapters ?? [])}
+            collapsed={collapsedChapters}
+            focusedId={focusedChapterId}
+            onToggle={(id) => setCollapsedChapters((prev) => {
+              const next = new Set(prev);
+              if (next.has(id)) next.delete(id); else next.add(id);
+              return next;
+            })}
+            onSelect={focusChapter}
+          />
+          {(activeProject?.chapters ?? []).length === 0 && (
+            <div className="bw-hint">大纲尚未生成。开始写作后，智能体会根据标书要求制定章节大纲，并在这里实时显示。</div>
+          )}
           <div className="bw-col-title bw-conv-title">资料检索</div>
           <div className="bw-search">
             <input
@@ -1397,12 +1504,21 @@ export default function BidWritingSurface(props: AgentSurfaceProps & { draft?: b
         </aside>
 
         <main className="bw-col bw-manuscript">
-          <div className="bw-col-title">{activeProject?.chapters.find((c) => c.id === activeChapter)?.title ?? '正文'}</div>
+          <div className="bw-col-title">
+            {editingChapterId
+              ? (activeProject?.chapters.find((c) => c.id === editingChapterId)?.title ?? '章节编辑')
+              : '全文 · 只读'}
+          </div>
           <WysiwygEditor
             value={chapterText}
             sessionId={sessionId}
             onChange={(next: string) => { chapterDirtyRef.current = true; setChapterText(next); }}
+            onSave={async () => { await saveChapter(); setEditingChapterId(null); }}
             onEditFigure={(src) => void editFigure(src)}
+            chapters={fullChapters}
+            editingChapterId={editingChapterId}
+            onEditChapter={(id) => void editChapterFromBlock(id)}
+            scrollTarget={scrollTarget ?? undefined}
             placeholder="在此撰写章节正文…"
           />
           <div className="bw-editor-bar">
@@ -1412,11 +1528,10 @@ export default function BidWritingSurface(props: AgentSurfaceProps & { draft?: b
           </div>
         </main>
 
-        {/* 右栏对话区复用平台 StandardChatSurface（与通用智能体同一套机制）：
-            消息显示、详细程度、流式打断、引导/追加队列、模型选择、附件、
-            上下文用量全部由平台提供；标书只注入领域 UI（补丁应用、引用来源）。 */}
+        {/* 右栏对话区使用标书专用物理副本 standard-chat-bid.tsx：
+            与 general chat 不共用组件；标书只注入领域 UI（补丁应用、引用来源）。 */}
         <aside className="bw-col bw-conversation">
-          <StandardChatSurface
+          <BidChatSurface
             agent={agent}
             sessionId={sessionId}
             mode={mode}

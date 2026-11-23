@@ -9,6 +9,7 @@ export interface ProfileManifest {
   surface?: {
     type: 'chat' | 'workflow' | 'dashboard' | 'custom';
     entry?: string;
+    projectScoped?: boolean;
   };
   capabilities?: {
     entry?: string;

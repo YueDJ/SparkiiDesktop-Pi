@@ -341,13 +341,14 @@ function AppShell() {
         if (cancelled) return;
         setUserName(subject.userId);
         setRoles(subject.roles ?? []);
-        api.listAgents?.().then((list: Array<{ id: string; name: string; surfaceType?: string; knowledge?: ShellAgent['knowledge'] }>) => {
+        api.listAgents?.().then((list: Array<{ id: string; name: string; surfaceType?: string; projectScoped?: boolean; knowledge?: ShellAgent['knowledge'] }>) => {
           if (cancelled || !Array.isArray(list) || !list.length) return;
           setAgents(list.map((a) => ({
             id: a.id,
             name: a.name,
             status: 'idle' as const,
             surfaceType: a.surfaceType,
+            projectScoped: a.projectScoped,
             knowledge: a.knowledge,
           })));
         }).catch(() => {});
@@ -385,12 +386,19 @@ function AppShell() {
     // 目录只更新元数据 / 补行 / 删行，不写 active。高亮在传给 Shell 前从 current 派生。
     // includeEmpty：工作区绑定的自定义智能体（如标书写作）在首条消息落盘前
     // 就已经是一个真实的、用户可见的项目会话；空会话对 chat 类智能体仍不可见。
-    api.listChatSessions?.(undefined, { includeEmpty: true })?.then((list: any[]) => {
+    api.listChatSessions?.(undefined, { includeEmpty: true })?.then(async (list: any[]) => {
       const customAgents = new Set(
         agents.filter((a) => a.surfaceType === 'custom').map((a) => a.id),
       );
+      const projectAgents = new Set(
+        agents.filter((a) => a.projectScoped).map((a) => a.id),
+      );
       const fetchedById: Record<string, ShellSession & { profileId: string; empty?: boolean }> = {};
       const fetchedByProfile: Record<string, Array<ShellSession & { profileId: string; empty?: boolean }>> = {};
+      // Group labels come from project.json.name via the same fenced P1 read
+      // path used by the surface — never from a bare filesystem path. Cached
+      // per workspace so a multi-session project is only read once per refresh.
+      const workspaceNames = new Map<string, string | undefined>();
       const work = currentRef.current;
       for (const s of list ?? []) {
         let profileId = s.profileId ?? sessionOverridesRef.current.get(s.id)?.agentId ?? '';
@@ -401,9 +409,27 @@ function AppShell() {
         const override = sessionOverridesRef.current.get(s.id);
         const name = override?.name ?? diskName;
         if (override && diskName === override.name) sessionOverridesRef.current.delete(s.id);
+        let workspaceName: string | undefined;
+        if (projectAgents.has(profileId) && s.workspacePath) {
+          const key = String(s.workspacePath);
+          if (!workspaceNames.has(key)) {
+            let nameFromProject: string | undefined;
+            try {
+              const read = await api.workspaceRead?.({ sessionId: s.id, path: 'project.json' });
+              if (read?.ok && typeof read.content === 'string') {
+                const parsed = JSON.parse(read.content) as { name?: unknown };
+                if (typeof parsed?.name === 'string' && parsed.name.trim()) nameFromProject = parsed.name.trim();
+              }
+            } catch { /* keep the display-name fallback */ }
+            workspaceNames.set(key, nameFromProject);
+          }
+          workspaceName = workspaceNames.get(key);
+        }
         const item: ShellSession & { profileId: string; empty?: boolean } = {
           id: s.id,
           name,
+          workspacePath: s.workspacePath ? String(s.workspacePath) : undefined,
+          workspaceName,
           state: '',
           pinned: s.pinned ?? false,
           archived: s.archived ?? false,

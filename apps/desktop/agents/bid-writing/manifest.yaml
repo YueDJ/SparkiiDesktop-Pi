@@ -4,6 +4,8 @@ sortOrder: 30
 version: 1.0.0
 surface:
   type: custom
+  # Project-scoped surface: sessions sharing a workspace are one project row.
+  projectScoped: true
 capabilities:
   entry: agent/capabilities.ts
   # Working-area file CRUD is provided by generic P1 IPC under Task Grant

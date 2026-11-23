@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, act, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor, cleanup, within } from '@testing-library/react';
 import { App, sessionDisplayName, orderSessions, mapRuntimePool } from '../src/App.js';
 
 afterEach(cleanup);
@@ -52,6 +52,7 @@ function makeApi() {
     ]),
     chooseDocument: vi.fn().mockResolvedValue({}),
     readDocumentBytes: vi.fn().mockResolvedValue({ error: 'denied' }),
+    workspaceRead: vi.fn().mockResolvedValue({ ok: false }),
     listChatSessions: vi.fn().mockResolvedValue([{ id: 'g1', profileId: 'general', title: '会话 08-25 17:10', workspaceKind: 'auto', workspacePath: 'C:/ws/SparkiiXyZ9202608251710', model: null, piSessionFile: null, createdAt: 0, updatedAt: 0 }]),
     getChatSession: vi.fn().mockResolvedValue({ workspacePath: 'C:/ws/SparkiiXyZ9202608251710', workspaceKind: 'auto' }),
     openChatSession: vi.fn().mockResolvedValue({ entries: [], streamingMessage: null, streaming: false }),
@@ -79,6 +80,51 @@ function makeApi() {
 }
 
 describe('App general agent', () => {
+  it('derives one project row per workspace for projectScoped agents only', async () => {
+    const { api } = makeApi();
+    api.listAgents.mockResolvedValue([
+      { id: 'general', name: '通用智能体', surfaceType: 'chat' },
+      { id: 'bid-writing', name: '标书写作智能体', surfaceType: 'custom', projectScoped: true },
+    ]);
+    api.listChatSessions.mockResolvedValue([
+      { id: 'p1', profileId: 'bid-writing', firstMessage: '(no messages)', workspacePath: 'C:/ws/A', updatedAt: 100 },
+      { id: 'p2', profileId: 'bid-writing', firstMessage: '(no messages)', workspacePath: 'C:/ws/A', updatedAt: 200 },
+    ]);
+    api.workspaceRead.mockResolvedValue({ ok: true, content: JSON.stringify({ name: '智慧园区标书' }) });
+    render(<App />);
+    await waitFor(() => expect(screen.getByText('智慧园区标书')).toBeTruthy());
+    expect(api.workspaceRead).toHaveBeenCalledWith({ sessionId: expect.any(String), path: 'project.json' });
+    const rail = within(document.querySelector('.ui-rail-sessions') as HTMLElement);
+    expect(rail.queryByText('(no messages)')).toBeNull();
+    expect(rail.getAllByText('智慧园区标书')).toHaveLength(1);
+    expect(document.querySelectorAll('.ui-session-group')).toHaveLength(1);
+  });
+
+  it('shows the project name in both sidebar and right column after a no-message restart', async () => {
+    const { api } = makeApi();
+    api.listAgents.mockResolvedValue([
+      { id: 'bid-writing', name: '标书写作智能体', surfaceType: 'custom', projectScoped: true },
+    ]);
+    // Main process already applied the fenced project.json.name fallback.
+    api.listChatSessions.mockResolvedValue([
+      { id: 'p1', profileId: 'bid-writing', title: '智慧园区投标文件', firstMessage: '(no messages)', workspacePath: 'C:/ws/A', updatedAt: 1 },
+    ]);
+    api.workspaceRead.mockImplementation(async ({ path }: { path: string }) => path === 'project.json'
+      ? {
+        ok: true,
+        content: JSON.stringify({
+          id: 'bid-p1', name: '智慧园区投标文件', status: 'drafting', workspacePath: 'C:/ws/A',
+          knowledgeBases: [], chapters: [], version: 1, createdAt: 1, updatedAt: 1,
+        }),
+      }
+      : { ok: false });
+    render(<App />);
+    await waitFor(() => expect(screen.getByTestId('session-p1')).toBeTruthy());
+    expect(screen.getByTestId('session-p1').textContent).toContain('智慧园区投标文件');
+    fireEvent.click(screen.getByTestId('session-p1'));
+    await waitFor(() => expect(screen.getByTestId('chat-title').textContent).toBe('智慧园区投标文件'));
+  });
+
   it('lists agents, creates a session, and streams a reply', async () => {
     const { api, channels } = makeApi();
     render(<App />);

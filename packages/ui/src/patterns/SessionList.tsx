@@ -18,6 +18,12 @@ export interface SessionGroup {
   agentId: string;
   agentName: string;
   sessions: SessionListItem[];
+  /** Unique key when one agent yields several derived groups (e.g. projects). */
+  groupKey?: string;
+  /** Project rows are a single line; hide the agent-style group header. */
+  hideHeader?: boolean;
+  /** Project rows cannot be reordered against other sessions of the agent. */
+  noReorder?: boolean;
 }
 
 /** 每个智能体分组默认展示的未归档会话数，超出后靠「更多」展开。 */
@@ -135,14 +141,14 @@ export function SessionList({
     setOverIndex(null);
   };
 
-  const renderRow = (s: SessionListItem, agentId: string, vis: SessionListItem[]) => {
+  const renderRow = (s: SessionListItem, agentId: string, vis: SessionListItem[], noReorder = false) => {
     const isRenaming = renaming?.agentId === agentId && renaming.sessionId === s.id;
     return (
       <div
         key={s.id}
         className={`ui-session-row ${s.active ? 'current' : ''} ${s.archived ? 'archived' : ''}`}
         data-testid={`session-${s.id}`}
-        draggable={!isRenaming}
+        draggable={!isRenaming && !noReorder}
         onClick={() => onOpen(agentId, s.id)}
         onContextMenu={(e) => openMenu(e, s, agentId)}
         onDragStart={(e) => handleDragStart(e, agentId, s.id)}
@@ -198,21 +204,24 @@ export function SessionList({
   return (
     <div className="ui-session-list">
       {groups.map((g) => {
+        const gk = g.groupKey ?? g.agentId;
         const visible = visibleOf(g).filter((s) => !hasFilter || s.name.toLowerCase().includes(filter.trim().toLowerCase()));
         const archived = archivedOf(g).filter((s) => !hasFilter || s.name.toLowerCase().includes(filter.trim().toLowerCase()));
-        const showArchived = expandedArchived.has(g.agentId);
-        const isCollapsed = collapsed.has(g.agentId);
-        const showAllVisible = hasFilter || expandedMore.has(g.agentId);
+        const showArchived = expandedArchived.has(gk);
+        const isCollapsed = !g.hideHeader && collapsed.has(gk);
+        const showAllVisible = hasFilter || expandedMore.has(gk);
         const hiddenCount = showAllVisible ? 0 : Math.max(0, visible.length - previewLimit);
         const shown = hiddenCount > 0 ? visible.slice(0, previewLimit) : visible;
         if (hasFilter && visible.length === 0 && archived.length === 0) return null;
         return (
-          <div key={g.agentId} className="ui-session-group">
-            <button type="button" className="ui-session-group-head" onClick={() => toggleCollapsed(g.agentId)} title={isCollapsed ? '展开' : '收起'}>
-              <AgentGlyph id={g.agentId} className="ui-agent-glyph" />
-              <span className="ui-session-group-label">{g.agentName}</span>
-              <span className="ui-session-group-caret">{isCollapsed ? <ChevronRightIcon /> : <ChevronDownIcon />}</span>
-            </button>
+          <div key={gk} className="ui-session-group">
+            {!g.hideHeader && (
+              <button type="button" className="ui-session-group-head" onClick={() => toggleCollapsed(gk)} title={isCollapsed ? '展开' : '收起'}>
+                <AgentGlyph id={g.agentId} className="ui-agent-glyph" />
+                <span className="ui-session-group-label">{g.agentName}</span>
+                <span className="ui-session-group-caret">{isCollapsed ? <ChevronRightIcon /> : <ChevronDownIcon />}</span>
+              </button>
+            )}
             {!isCollapsed && (
               <div
                 className="ui-session-group-list"
@@ -224,7 +233,7 @@ export function SessionList({
                 {shown.map((s, i) => (
                   <Fragment key={s.id}>
                     {drag?.agentId === g.agentId && overIndex === i && <div className="ui-drop-line" />}
-                    {renderRow(s, g.agentId, visible)}
+                    {renderRow(s, g.agentId, visible, g.noReorder)}
                   </Fragment>
                 ))}
                 {drag?.agentId === g.agentId && overIndex === visible.length && <div className="ui-drop-line" />}
@@ -232,18 +241,18 @@ export function SessionList({
                   <button
                     type="button"
                     className="ui-session-more"
-                    data-testid={`session-more-${g.agentId}`}
-                    onClick={() => toggleMore(g.agentId)}
+                    data-testid={`session-more-${gk}`}
+                    onClick={() => toggleMore(gk)}
                   >
-                    {expandedMore.has(g.agentId) ? '收起' : `更多 (${hiddenCount})`}
+                    {expandedMore.has(gk) ? '收起' : `更多 (${hiddenCount})`}
                   </button>
                 )}
                 {archived.length > 0 && (
-                  <button type="button" className="ui-session-archived-toggle" onClick={() => toggleArchiveGroup(g.agentId)}>
+                  <button type="button" className="ui-session-archived-toggle" onClick={() => toggleArchiveGroup(gk)}>
                     <ArchiveIcon /> {showArchived ? '收起归档' : `已归档 (${archived.length})`}
                   </button>
                 )}
-                {showArchived && archived.map((s) => renderRow(s, g.agentId, visible))}
+                {showArchived && archived.map((s) => renderRow(s, g.agentId, visible, g.noReorder))}
               </div>
             )}
           </div>

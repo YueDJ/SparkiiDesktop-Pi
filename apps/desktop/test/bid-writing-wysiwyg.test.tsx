@@ -44,14 +44,28 @@ describe('WYSIWYG editor (B1 / architect review round 2)', () => {
     });
   });
 
-  it('switches to source mode and preserves markdown byte-for-byte', async () => {
+  it('clicking the rendered body opens whole-chapter source preserving markdown byte-for-byte', async () => {
     (window as any).sparkii = {};
     const md = '# 标题\n\n正文带 **加粗** 与 ![图](figures/a.png)';
     render(
       <WysiwygEditor value={md} sessionId="s1" onChange={() => {}} onEditFigure={() => {}} placeholder="正文" />,
     );
-    await act(async () => { screen.getByText('查看源码').click(); });
+    expect(screen.queryByText('查看源码')).toBeNull();
+    await act(async () => { (document.querySelector('.bw-wysiwyg-body') as HTMLElement).click(); });
     const ta = screen.getByPlaceholderText('正文') as HTMLTextAreaElement;
     expect(ta.value).toBe(md);
+  });
+
+  it('saves via the checkmark and returns to the rendered view', async () => {
+    (window as any).sparkii = {};
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    render(
+      <WysiwygEditor value="# 标题" sessionId="s1" onChange={() => {}} onSave={onSave} onEditFigure={() => {}} placeholder="正文" />,
+    );
+    await act(async () => { (document.querySelector('.bw-wysiwyg-body') as HTMLElement).click(); });
+    await act(async () => { (screen.getByLabelText('保存并返回渲染态') as HTMLButtonElement).click(); });
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('.bw-wysiwyg-body')).toBeTruthy();
+    expect(screen.queryByPlaceholderText('正文')).toBeNull();
   });
 });

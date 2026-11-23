@@ -264,6 +264,23 @@ export interface WorkspaceRelocatedEvent {
   workspacePath: string;
 }
 
+/** A row returned by listChatSessions (generic platform shape, no business semantics). */
+export interface ChatSessionListItem {
+  id: string;
+  /** Pi jsonl name; may be absent for sessions before their first turn. */
+  title?: string;
+  firstMessage: string;
+  profileId?: string;
+  /** Bound workspace root, used by project-scoped surfaces to group sessions. */
+  workspacePath?: string;
+  updatedAt: number;
+  piFile: string | null;
+  pinned: boolean;
+  archived: boolean;
+  sortOrder: number | null;
+  empty?: boolean;
+}
+
 export interface SparkiiApi {
   /**
    * Relocate a session's fixed workspace root to a user-chosen empty directory.
@@ -311,7 +328,7 @@ export interface SparkiiApi {
   runWorkflow(id: string, input: Record<string, unknown>): Promise<{ ok: boolean; sessionId?: string }>;
   prompt(text: string): Promise<{ ok: boolean }>;
   openChatSession(sessionId: string): Promise<OpenChatSessionResult>;
-  listChatSessions(profileId?: string, opts?: { includeEmpty?: boolean }): Promise<unknown[]>;
+  listChatSessions(profileId?: string, opts?: { includeEmpty?: boolean }): Promise<ChatSessionListItem[]>;
   getChatSession(sessionId: string): Promise<unknown>;
   /**
    * Create an empty workspace-bound session WITHOUT dispatching a prompt (P9).
@@ -377,6 +394,7 @@ export interface SparkiiApi {
     id: string;
     name: string;
     surfaceType?: string;
+    projectScoped?: boolean;
     declaresOntologyTools?: boolean;
     knowledge?: { enabled: boolean; picker: 'hidden' | 'session'; backend: 'bm25' | 'sparkiirag' };
   }>>;

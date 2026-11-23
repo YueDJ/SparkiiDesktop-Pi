@@ -1,0 +1,874 @@
+/**
+ * FORKED 2026-11-23 from src/surface/standard-chat.tsx (platform chat).
+ * Physical copy for the bid-writing agent: do not import the shared platform
+ * component here. The bid-writing owner decides when to sync platform fixes.
+ */
+import { Fragment, cloneElement, isValidElement, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import type { WheelEvent as ReactWheelEvent } from 'react';
+import type { AgentSurfaceProps, CustomSessionEntry, SessionEntry } from '../../../src/surface/contract.js';
+import type { ChatAttachment, SparkiiApi } from '../../../src/types/sparkii-api.js';
+import { PermissionModeSelect, usePermissionMode } from '../../../src/trust/PermissionModeSelect.js';
+import {
+  Button,
+  ChatMessage,
+  ChatComposer,
+  ToolCard,
+  LifecycleCard,
+  Markdown,
+  RecognitionQuality,
+  type RecognitionQualityValue,
+  useErrors,
+  THINKING_LEVELS,
+  DEFAULT_CHAT_DETAIL_LEVEL,
+  isChatDetailLevel,
+  isDocumentReadTool,
+  shouldShowEntry,
+  unwrapToolResult,
+  parseLeadingSkillSlash,
+  type ChatEntry,
+  type ChatDetailLevel,
+  type ComposerAttachment,
+} from '@sparkii/ui';
+
+export type StandardChatProps = AgentSurfaceProps & {
+  api?: SparkiiApi;
+  active?: boolean;
+  draft?: boolean;
+  onSessionCreated?(sessionId: string, userText: string): void;
+  renderApprovalCard?(entry: Extract<SessionEntry, { kind: 'tool' }>): ReactNode;
+  toolbarExtra?: ReactNode;
+  hideWorkspace?: boolean;
+  onBeforeSend?(): Promise<void>;
+  emptyCopy?: { heading?: string; body?: string; hint?: string };
+  hideToolNames?: string[];
+  composerSkills?: Array<{ name: string; description: string }> | null;
+  /** 附加到每次 promptSession 的 context（如 allowDegradedKnowledge），与内置字段合并。 */
+  promptOptions?: Record<string, unknown>;
+  renderAssistantMessage?(args: {
+    entry: AssistantChatEntry;
+    following: CustomSessionEntry[];
+  }): ReactNode;
+  renderCustomEntry?(entry: CustomSessionEntry): ReactNode | null;
+};
+
+export type AssistantChatEntry = {
+  kind: 'message';
+  id: string;
+  role: 'assistant';
+  text: string;
+  thinking?: string;
+  streaming: boolean;
+};
+
+function isChatEntry(e: SessionEntry): e is ChatEntry {
+  return e.kind === 'message' || e.kind === 'tool' || e.kind === 'event';
+}
+
+function followingCustomsUntilMessage(entries: SessionEntry[], start: number): CustomSessionEntry[] {
+  const entry = entries[start];
+  if (entry?.kind !== 'message' || entry.role !== 'assistant') return [];
+  for (let j = start + 1; j < entries.length; j++) {
+    const next = entries[j];
+    if (next.kind === 'message' && next.role === 'assistant') return [];
+    if (next.kind === 'message' && next.role === 'user') break;
+  }
+  let lo = 0;
+  for (let j = start - 1; j >= 0; j--) {
+    const candidate = entries[j];
+    if (candidate?.kind === 'message' && candidate.role === 'user') {
+      lo = j + 1;
+      break;
+    }
+  }
+  let hi = entries.length;
+  for (let j = start + 1; j < entries.length; j++) {
+    const candidate = entries[j];
+    if (candidate?.kind === 'message' && candidate.role === 'user') {
+      hi = j;
+      break;
+    }
+  }
+  const following: CustomSessionEntry[] = [];
+  for (let j = lo; j < hi; j++) {
+    if (entries[j].kind === 'custom') following.push(entries[j] as CustomSessionEntry);
+  }
+  return following;
+}
+
+function UserSkillMessage({ text }: { text: string }) {
+  const parsed = parseLeadingSkillSlash(text);
+  if (!parsed) return <ChatMessage role="user" text={text} />;
+  return (
+    <ChatMessage role="user" text={text}>
+      <span className="ui-chat-skill-line">
+        <span className="ui-skill-chip" data-testid="timeline-skill-chip">技能 · {parsed.name}</span>
+        {parsed.rest ? <span>{parsed.rest}</span> : null}
+      </span>
+    </ChatMessage>
+  );
+}
+
+type QueueName = 'steering' | 'followUp';
+type QueueMap = Record<QueueName, string[]>;
+
+interface QueueGroupProps {
+  title: string;
+  queue: QueueName;
+  items: string[];
+  showGuide?: boolean;
+  showReturn?: boolean;
+  onEdit(queue: QueueName, index: number, text: string): void;
+  onDelete(queue: QueueName, index: number): void;
+  onTransfer(queue: QueueName, index: number, targetQueue: QueueName): void;
+  onMove(queue: QueueName, fromIndex: number, toIndex: number): void;
+}
+
+function QueueGroup({
+  title,
+  queue,
+  items,
+  showGuide = false,
+  showReturn = false,
+  onEdit,
+  onDelete,
+  onTransfer,
+  onMove,
+}: QueueGroupProps) {
+  const [editing, setEditing] = useState<number | null>(null);
+  const [draft, setDraft] = useState('');
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+  if (items.length === 0) return null;
+
+  const beginEdit = (index: number, text: string) => {
+    setEditing(index);
+    setDraft(text);
+  };
+
+  const saveEdit = () => {
+    if (editing === null) return;
+    const text = draft.trim();
+    if (text) onEdit(queue, editing, text);
+    setEditing(null);
+    setDraft('');
+  };
+
+  return (
+    <section className="chat-queue-group" data-testid={`queue-${queue}`}>
+      <h4 className="chat-queue-title">{title}</h4>
+      <div className="chat-queue-items">
+        {items.map((text, index) => (
+          <div
+            key={`${queue}:${index}`}
+            className={`chat-queue-item${overIndex === index ? ' chat-queue-item--over' : ''}`}
+            draggable={editing !== index}
+            onDragStart={(e) => {
+              e.dataTransfer.setData('text/plain', String(index));
+              setDragIndex(index);
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              if (dragIndex !== null && dragIndex !== index) setOverIndex(index);
+            }}
+            onDragLeave={() => {
+              if (overIndex === index) setOverIndex(null);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              const fromIndex = Number(e.dataTransfer.getData('text/plain'));
+              if (Number.isInteger(fromIndex) && fromIndex !== index) onMove(queue, fromIndex, index);
+              setDragIndex(null);
+              setOverIndex(null);
+            }}
+            onDragEnd={() => {
+              setDragIndex(null);
+              setOverIndex(null);
+            }}
+          >
+            <span className="chat-queue-drag" title="拖动排序" aria-label="拖动排序">≡</span>
+            {editing === index ? (
+              <span className="chat-queue-edit">
+                <textarea className="chat-queue-editor" value={draft} onChange={(e) => setDraft(e.target.value)} autoFocus />
+                <button type="button" className="chat-queue-action" aria-label="保存" onClick={saveEdit}>保存</button>
+                <button type="button" className="chat-queue-action" aria-label="取消" onClick={() => setEditing(null)}>取消</button>
+              </span>
+            ) : (
+              <>
+                <span className="chat-queue-text">{text}</span>
+                <span className="chat-queue-actions">
+                  {showGuide && (
+                    <button type="button" className="chat-queue-guide" aria-label="引导" onClick={() => onTransfer(queue, index, 'steering')}>✧ 引导</button>
+                  )}
+                  {showReturn && (
+                    <button type="button" className="chat-queue-return" aria-label="移回追加" onClick={() => onTransfer(queue, index, 'followUp')}>⇣ 移回追加</button>
+                  )}
+                  <button type="button" className="chat-queue-icon-btn" aria-label="编辑" title="编辑" onClick={() => beginEdit(index, text)}>✎</button>
+                  <button type="button" className="chat-queue-icon-btn" aria-label="删除" title="删除" onClick={() => onDelete(queue, index)}>🗑</button>
+                </span>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+interface DraftQueueProps {
+  drafts: QueueMap;
+  onRemove(queue: QueueName, index: number): void;
+  onRestore(queue: QueueName, index: number, behavior: 'steer' | 'followUp'): void;
+}
+
+function DraftQueue({ drafts, onRemove, onRestore }: DraftQueueProps) {
+  const rows: Array<{ queue: QueueName; index: number; text: string }> = [
+    ...drafts.steering.map((text, index) => ({ queue: 'steering' as const, index, text })),
+    ...drafts.followUp.map((text, index) => ({ queue: 'followUp' as const, index, text })),
+  ];
+  if (rows.length === 0) return null;
+  return (
+    <section className="chat-draft-queue" data-testid="draft-queue">
+      <h4 className="chat-queue-title">已停止草稿</h4>
+      <div className="chat-queue-items">
+        {rows.map((row) => (
+          <div className="chat-queue-item chat-draft-item" key={`draft:${row.queue}:${row.index}`}>
+            <span className="chat-queue-text">{row.text}</span>
+            <span className="chat-queue-actions">
+              <button type="button" className="chat-queue-return" onClick={() => onRestore(row.queue, row.index, row.queue === 'steering' ? 'steer' : 'followUp')}>
+                {row.queue === 'steering' ? '重新引导' : '重新追加'}
+              </button>
+              <button type="button" className="chat-queue-icon-btn" aria-label="删除草稿" onClick={() => onRemove(row.queue, row.index)}>🗑</button>
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function resolveThinkingTarget(
+  model: string | null,
+  provider: string,
+  defaultModel: string | null,
+): { provider: string; modelId: string } | null {
+  if (model) {
+    const slash = model.indexOf('/');
+    return slash >= 0
+      ? { provider: model.slice(0, slash), modelId: model.slice(slash + 1) }
+      : { provider, modelId: model };
+  }
+  if (defaultModel) return { provider, modelId: defaultModel };
+  return null;
+}
+
+/** Normalize a possibly `provider/modelId` string to the bare model id, for key-based lookups. */
+function modelIdOf(value: string | null | undefined): string {
+  if (!value) return '';
+  const slash = value.indexOf('/');
+  return slash >= 0 ? value.slice(slash + 1) : value;
+}
+
+export function StandardChatSurface(props: StandardChatProps) {
+  const { agent, sessionId, session, actions, title, api: apiOverride, active = true, draft, onSessionCreated, renderApprovalCard, toolbarExtra, hideWorkspace, onBeforeSend, emptyCopy, hideToolNames, composerSkills, promptOptions, renderAssistantMessage, renderCustomEntry } = props;
+  const api = apiOverride ?? (window.sparkii as SparkiiApi);
+  const { reportError } = useErrors();
+  const [busy, setBusy] = useState(false);
+  const [stopping, setStopping] = useState(false);
+  const [queues, setQueues] = useState<QueueMap>({ steering: [], followUp: [] });
+  const [drafts, setDrafts] = useState<QueueMap>({ steering: [], followUp: [] });
+  const [models, setModels] = useState<string[]>([]);
+  const [defaultModel, setDefaultModel] = useState<string | null>(null);
+  const [model, setModel] = useState<string | null>(null);
+  const [provider, setProvider] = useState<string>('deepseek');
+  const [supportsImages, setSupportsImages] = useState<Record<string, boolean>>({});
+  const [visionWarning, setVisionWarning] = useState<string | null>(null);
+  const [compatibleModels, setCompatibleModels] = useState<Set<string>>(new Set());
+  const [modelWarning, setModelWarning] = useState<string | null>(null);
+  const [thinkingLevels, setThinkingLevels] = useState<string[]>([...THINKING_LEVELS]);
+  const [thinkingLevel, setThinkingLevel] = useState<string | null>(null);
+  const [workspacePath, setWorkspacePath] = useState<string | null>(null);
+  const [workspaceKind, setWorkspaceKind] = useState<'auto' | 'user'>('auto');
+  const { state: permissionModeState } = usePermissionMode();
+  const [contextUsage, setContextUsage] = useState<{ tokens?: number | null; contextWindow?: number; percent?: number | null } | null>(null);
+  const [isCompacting, setIsCompacting] = useState(false);
+  const [detailLevel, setDetailLevel] = useState<ChatDetailLevel>(DEFAULT_CHAT_DETAIL_LEVEL);
+  const [skills, setSkills] = useState<Array<{ name: string; description: string }> | null>(null);
+  const modelRef = useRef(model);
+  const sessionIdRef = useRef(sessionId);
+  const isBusy = busy || session.streaming;
+
+  useEffect(() => { modelRef.current = model; }, [model]);
+  useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
+  useEffect(() => {
+    if (composerSkills !== undefined) return;
+    if (!sessionId && !draft) return;
+    setSkills(null);
+    let cancelled = false;
+    let reportedMissing = false;
+    const load = () => {
+      if (typeof api.listAgentSkills !== 'function') {
+        setSkills(null);
+        if (!reportedMissing) {
+          reportedMissing = true;
+          reportError('无法加载技能列表', { source: agent.name });
+        }
+        return;
+      }
+      void api.listAgentSkills(agent.id).then(
+        (result) => {
+          if (cancelled) return;
+          setSkills((result.skills ?? []).map((row) => ({
+            name: row.name,
+            description: row.description,
+          })));
+        },
+        (error: unknown) => {
+          if (cancelled) return;
+          setSkills(null);
+          const message = error instanceof Error ? error.message : String(error);
+          reportError(message, { source: agent.name });
+        },
+      );
+    };
+    load();
+    window.addEventListener('focus', load);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('focus', load);
+    };
+  }, [agent.id, agent.name, api, composerSkills, draft, reportError, sessionId]);
+
+  // ---- 消息列表自动跟随最新内容 ----
+  // 跟随态：新内容到达自动贴底；用户上翻离开底部超过阈值后进入脱离态：绝不抢用户的滚动，
+  // 只在右下角浮现「回到最新」按钮，脱离期间有新内容到达时按钮亮红点。
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const stickRef = useRef(true); // true = 跟随底部
+  const lastCountRef = useRef(0);
+  const [detached, setDetached] = useState(false); // 用户已上翻离开底部
+  const [hasNew, setHasNew] = useState(false); // 脱离期间有新内容到达
+
+  const snapToBottom = () => {
+    const el = listRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  };
+
+  const jumpToLatest = () => {
+    stickRef.current = true;
+    setDetached(false);
+    setHasNew(false);
+    snapToBottom();
+  };
+
+  const onListScroll = () => {
+    const el = listRef.current;
+    if (!el) return;
+    // 距底 24px 内视为「在底部」。阈值很小是安全的：内容增长只会改变 scrollHeight，
+    // 不会移动 scrollTop，所以只有用户主动滚动才会离开底部。
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
+    if (nearBottom !== stickRef.current) {
+      stickRef.current = nearBottom;
+      setDetached(!nearBottom);
+    }
+  };
+
+  const onListWheel = (e: ReactWheelEvent<HTMLDivElement>) => {
+    // 向上滚动（含触控板）说明用户要回看历史：立刻脱离跟随，不等滚动距离累积——
+    // 否则流式期间的逐帧贴底会和用户抢滚动，造成很难往上翻。
+    if (stickRef.current && e.deltaY < 0) {
+      stickRef.current = false;
+      setDetached(true);
+    }
+  };
+
+  // 每次渲染评估跟随状态：跟随中 → 贴底并清红点；脱离中 → 有新条目只亮红点，不滚动。
+  useLayoutEffect(() => {
+    const count = (session.entries ?? []).length;
+    if (stickRef.current) {
+      if (hasNew) setHasNew(false);
+      snapToBottom();
+    } else if (count > lastCountRef.current) {
+      setHasNew(true);
+    }
+    lastCountRef.current = count;
+  });
+
+  // 切换会话：重置为跟随态（首个布局周期即贴底）。
+  useEffect(() => {
+    stickRef.current = true;
+    setDetached(false);
+    setHasNew(false);
+  }, [sessionId]);
+
+  // 忙碌（流式/工具执行）期间逐帧检查：仅当内容实际增长（scrollHeight 变化）才贴底，
+  // 覆盖 React 感知不到的布局增长（图片、代码块等），同时避免与用户滚动抢位置。
+  useEffect(() => {
+    if (!isBusy) return undefined;
+    let raf = 0;
+    let lastHeight = listRef.current?.scrollHeight ?? 0;
+    const tick = () => {
+      const el = listRef.current;
+      if (el && stickRef.current && el.scrollHeight !== lastHeight) {
+        lastHeight = el.scrollHeight;
+        el.scrollTop = el.scrollHeight;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [isBusy]);
+
+  const refreshContext = () => {
+    if (!sessionId) return;
+    api.getChatState(sessionId).then((state: any) => {
+      setContextUsage(state?.contextUsage ?? null);
+      setIsCompacting(Boolean(state?.isCompacting));
+    }).catch(() => {});
+  };
+
+  const refreshThinkingLevels = (m: string | null, prov = provider, def = defaultModel) => {
+    const target = resolveThinkingTarget(m, prov, def);
+    if (!target) { setThinkingLevels([...THINKING_LEVELS]); return; }
+    api.listThinkingLevels(target.provider, target.modelId)
+      .then((levels) => setThinkingLevels(levels?.length ? levels : [...THINKING_LEVELS]))
+      .catch(() => setThinkingLevels([...THINKING_LEVELS]));
+  };
+
+  const refreshMeta = (availableModels: string[], activeProvider: string, defaultModelId: string | null) => {
+    if (!sessionId) return;
+    const requested = sessionId;
+    api.getChatSession(requested).then((rec: any) => {
+      if (sessionIdRef.current !== requested) return;
+      if (rec?.workspacePath) setWorkspacePath(rec.workspacePath);
+      if (rec?.workspaceKind === 'user' || rec?.workspaceKind === 'auto') setWorkspaceKind(rec.workspaceKind);
+      if (rec?.thinkingLevel !== undefined) setThinkingLevel(rec.thinkingLevel ?? null);
+      const storedModel = typeof rec?.model === 'string' ? rec.model : null;
+      const slash = storedModel?.indexOf('/');
+      const storedProvider = slash !== undefined && slash >= 0 ? storedModel.slice(0, slash) : null;
+      const modelId = slash !== undefined && slash >= 0 ? storedModel.slice(slash + 1) : storedModel;
+      const providerMatches = !storedProvider || storedProvider === activeProvider;
+      const modelIsKnown = availableModels.length === 0
+        || (storedModel !== null
+          && providerMatches
+          && (availableModels.includes(storedModel) || (modelId !== undefined && availableModels.includes(modelId))));
+      if (storedModel && modelIsKnown) {
+        setModel(storedModel);
+        refreshThinkingLevels(storedModel, activeProvider, defaultModelId);
+        return;
+      }
+      if (storedModel) void api.setChatModel(sessionId, null).catch(() => {});
+      setModel(null);
+      refreshThinkingLevels(null, activeProvider, defaultModelId);
+    }).catch((e: any) => reportError(String(e?.message ?? e), { source: agent.name }));
+  };
+
+  const refreshModelOptions = () => {
+    api.getModelOptions(agent.id).then((r: any) => {
+      const nextProvider = r.provider ?? 'deepseek';
+      const nextModels = r.models ?? [];
+      const nextDefault = r.defaultModel ?? null;
+      setModels(nextModels);
+      setDefaultModel(nextDefault);
+      setProvider(nextProvider);
+      setSupportsImages(r.supportsImages ?? {});
+      setCompatibleModels(new Set(r.compatibleModels ?? []));
+      if (!sessionId) {
+        setThinkingLevel(null);
+        setThinkingLevels([...THINKING_LEVELS]);
+        return;
+      }
+      refreshMeta(nextModels, nextProvider, nextDefault);
+    }).catch((e: any) => reportError(String(e?.message ?? e), { source: agent.name }));
+  };
+
+  useEffect(() => {
+    setBusy(false);
+    setStopping(false);
+    setQueues({ steering: [], followUp: [] });
+    setDrafts({ steering: [], followUp: [] });
+    setModel(null);
+    setThinkingLevel(null);
+    setThinkingLevels([...THINKING_LEVELS]);
+    setWorkspacePath(null);
+    setWorkspaceKind('auto');
+    setProvider('deepseek');
+    setContextUsage(null);
+    setIsCompacting(false);
+    if (!sessionId) return;
+    api.getChatState(sessionId).then((state: any) => {
+      setQueues({ steering: state?.steering ?? [], followUp: state?.followUp ?? [] });
+      setContextUsage(state?.contextUsage ?? null);
+      setIsCompacting(Boolean(state?.isCompacting));
+      if (state?.streaming) setBusy(true);
+    }).catch((e: any) => reportError(String(e?.message ?? e), { source: agent.name }));
+    const off1 = api.on('chat-event', (p: any) => {
+      if (p?.sessionId !== sessionId) return;
+      if (p?.type === 'queue_update') {
+        setQueues({ steering: p?.steering ?? [], followUp: p?.followUp ?? [] });
+        return;
+      }
+      if (p?.type === 'agent_end') {
+        setBusy(false);
+        setStopping(false);
+        refreshContext();
+        return;
+      }
+      if (p?.type === 'agent_start') {
+        setBusy(true);
+        return;
+      }
+      if (p?.type === 'runtime_error') {
+        // 带 errorId 的是主进程已经写入错误中心的那一行，由 App 统一上报；这里只管 Pi 自己的报错。
+        if (typeof p?.errorId === 'string') return;
+        reportError(typeof p?.message === 'string' ? p.message : 'Pi 运行时错误', { source: agent.name });
+        return;
+      }
+      if (p?.type === 'compaction_start' || p?.type === 'compaction_end' || p?.type === 'agent_settled') refreshContext();
+    });
+    return () => { off1(); };
+  }, [api, sessionId, agent.name]);
+
+  useEffect(() => {
+    if (sessionId) return;
+    let cancelled = false;
+    void Promise.resolve(api.allocateAutoWorkspace?.(agent.id)).then((r) => {
+      if (!cancelled && r?.workspacePath) {
+        setWorkspacePath(r.workspacePath);
+        setWorkspaceKind('auto');
+      }
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [api, agent.id, sessionId]);
+
+  useEffect(() => {
+    if (!active) return;
+    refreshModelOptions();
+  }, [sessionId, draft, active]);
+
+  useEffect(() => {
+    if (!active) return;
+    api.getSettings().then((raw: any) => {
+      if (isChatDetailLevel(raw?.chatDetailLevel)) setDetailLevel(raw.chatDetailLevel);
+    }).catch(() => {});
+  }, [sessionId, draft, api, active]);
+
+  const getLocalPath = (file: File): string => api.getPathForFile(file);
+
+  // 空 promptOptions 保持第 5 参完全省略（既有调用方/测试依赖该调用形状）。
+  const promptOptionsExtra = promptOptions && Object.keys(promptOptions).length > 0 ? promptOptions : undefined;
+  const withExtra = (context: Record<string, unknown> | undefined) => {
+    const merged = context ? { ...context, ...promptOptionsExtra } : promptOptionsExtra;
+    return merged ? (merged as never) : undefined;
+  };
+
+  const send = (text: string, attachments: ComposerAttachment[] = []) => {
+    jumpToLatest();
+    const display = attachments.length ? `${attachments.map((a) => `📎 ${a.name}`).join(' ')}\n${text}` : text;
+    const chatAttachments: ChatAttachment[] = attachments.map(({ path, name, size, type }) => ({ path, name, size, type }));
+    const hasImage = attachments.some((a) => a.type?.startsWith('image/'));
+    const selectedModel = model ?? defaultModel;
+    const selectedModelId = modelIdOf(selectedModel);
+    setVisionWarning(hasImage && selectedModel && supportsImages[selectedModelId] === false
+      ? '当前模型不支持图片输入，发送后图片将被忽略，建议切换为支持视觉的模型。'
+      : null);
+    setModelWarning(selectedModel && compatibleModels.size > 0 && !compatibleModels.has(selectedModelId)
+      ? '当前模型不满足该智能体的能力要求，部分功能可能不可用。'
+      : null);
+
+    if (isBusy && sessionId) {
+      // 第 5 参（promptOptions）只在确实有时才出现，保持历史调用形状不变。
+      const followUpExtra = withExtra(undefined);
+      const followUp = () => api.promptSession(
+        sessionId,
+        display,
+        { behavior: 'followUp' },
+        chatAttachments.length ? chatAttachments : undefined,
+        ...(followUpExtra !== undefined ? [followUpExtra] : []),
+      )
+        .catch((e: any) => reportError(String(e?.message ?? e), { source: agent.name }));
+      if (onBeforeSend) {
+        void onBeforeSend().then(followUp).catch((e: any) => reportError(String(e?.message ?? e), { source: agent.name }));
+        return;
+      }
+      void followUp();
+      return;
+    }
+
+    setBusy(true);
+    const proceed = () => api.promptSession(
+      sessionId,
+      display,
+      undefined,
+      chatAttachments.length ? chatAttachments : undefined,
+      withExtra(sessionId ? undefined : {
+        profileId: agent.id,
+        workspacePath,
+        workspaceKind,
+        model,
+        thinkingLevel,
+        // A draft has no session row yet, so the chosen mode travels with the
+        // first prompt instead of being written through IPC.
+        permissionMode: permissionModeState.mode,
+      }),
+    ).then((res: any) => {
+      if (!res?.ok && res?.ok !== undefined) {
+        reportError(String(res.error ?? '发送失败'), { source: agent.name });
+        setBusy(false);
+        return;
+      }
+      if (!sessionId && res?.sessionId) {
+        actions.openSession(res.sessionId);
+        onSessionCreated?.(res.sessionId, display);
+      }
+    }).catch((e: any) => {
+      reportError(String(e?.message ?? e), { source: agent.name });
+      setBusy(false);
+    });
+
+    if (onBeforeSend) {
+      void onBeforeSend().then(proceed).catch((e: any) => {
+        reportError(String(e?.message ?? e), { source: agent.name });
+        setBusy(false);
+      });
+      return;
+    }
+    void proceed();
+  };
+
+  const stop = () => {
+    if (!sessionId || stopping) return;
+    setStopping(true);
+    api.abortChat(sessionId).then((res: any) => {
+      setDrafts({ steering: res?.cleared?.steering ?? [], followUp: res?.cleared?.followUp ?? [] });
+      setBusy(false);
+      setStopping(false);
+    }).catch((e: any) => {
+      reportError(String(e?.message ?? e), { source: agent.name });
+      setStopping(false);
+    });
+  };
+
+  const mutateQueue = (mutation: { action: 'edit' | 'delete' | 'move' | 'transfer'; queue: QueueName; index?: number; text?: string; fromIndex?: number; toIndex?: number; targetQueue?: QueueName }) => {
+    if (!sessionId) return;
+    api.queueMutate(sessionId, mutation as any).catch((e: any) => reportError(String(e?.message ?? e), { source: agent.name }));
+  };
+
+  const restoreDraft = (queue: QueueName, index: number, behavior: 'steer' | 'followUp') => {
+    if (!sessionId) return;
+    const text = drafts[queue][index];
+    if (!text) return;
+    jumpToLatest();
+    const proceed = () => api.promptSession(sessionId, text, { behavior })
+      .then(() => setDrafts((current) => {
+        const next = { steering: [...current.steering], followUp: [...current.followUp] };
+        next[queue].splice(index, 1);
+        return next;
+      }))
+      .catch((e: any) => reportError(String(e?.message ?? e), { source: agent.name }));
+    if (onBeforeSend) {
+      void onBeforeSend().then(proceed).catch((e: any) => reportError(String(e?.message ?? e), { source: agent.name }));
+      return;
+    }
+    void proceed();
+  };
+
+  const onModelChange = (next: string | null) => {
+    setModel(next);
+    setVisionWarning(null);
+    setModelWarning(next && compatibleModels.size > 0 && !compatibleModels.has(modelIdOf(next))
+      ? '当前模型不满足该智能体的能力要求，部分功能可能不可用。'
+      : null);
+    if (sessionId) void api.setChatModel(sessionId, next);
+    refreshThinkingLevels(next);
+  };
+
+  const onThinkingLevelChange = (next: string | null) => {
+    setThinkingLevel(next);
+    if (sessionId) void api.setChatThinkingLevel(sessionId, next);
+  };
+
+  const chooseWorkspace = () => {
+    api.chooseWorkspace({ defaultPath: workspacePath ?? undefined }).then(({ path }: any) => {
+      if (path) {
+        setWorkspacePath(path);
+        setWorkspaceKind('user');
+        if (sessionId) api.setChatWorkspace(sessionId, path).then(() => refreshMeta(models, provider, defaultModel));
+      }
+    });
+  };
+  const openWorkspace = () => {
+    if (!workspacePath) return;
+    void api.openWorkspace?.(workspacePath);
+  };
+
+  // The authoritative timeline is props.session.entries, normalized once by useAgentSession from
+  // Pi's JSONL (live event increments and history replay produce the same ordered entries). We
+  // render it directly. There is no local/optimistic timeline, so the display stays 1:1 with the
+  // session truth source.
+  const entries = session.entries ?? [];
+  const hideCompletedTools = new Set(hideToolNames ?? []);
+
+  if (!sessionId && !draft) {
+    return (
+      <div className="chat-empty">
+        <h3>{emptyCopy?.heading ?? agent.name}</h3>
+        <p>{emptyCopy?.body ?? '可以对话问答，也可以在工作区内编程：读代码、跑命令、改文件。'}</p>
+        <Button variant="primary" onClick={() => actions.newSession()}>新建会话</Button>
+      </div>
+    );
+  }
+
+  const timeline: ReactNode[] = [];
+  let visibleCount = 0;
+  const foldedCustomIds = new Set<string>();
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i];
+    if (entry.kind === 'message' && entry.role === 'assistant') {
+      const following = followingCustomsUntilMessage(entries, i);
+      if (renderAssistantMessage) {
+        for (const custom of following) foldedCustomIds.add(custom.id);
+      }
+      const rendered = renderAssistantMessage
+        ? renderAssistantMessage({ entry: entry as AssistantChatEntry, following })
+        : <ChatMessage role="assistant" text={entry.text} thinking={entry.thinking} streaming={entry.streaming}><Markdown text={entry.text} /></ChatMessage>;
+      timeline.push(
+        isValidElement(rendered)
+          ? cloneElement(rendered, { key: entry.id })
+          : <Fragment key={entry.id}>{rendered}</Fragment>,
+      );
+      visibleCount += 1;
+      continue;
+    }
+    if (entry.kind === 'custom') {
+      if (foldedCustomIds.has(entry.id)) continue;
+      const custom = renderCustomEntry?.(entry) ?? null;
+      if (custom) {
+        timeline.push(<Fragment key={entry.id}>{custom}</Fragment>);
+        visibleCount += 1;
+      }
+      continue;
+    }
+    if (!isChatEntry(entry) || !shouldShowEntry(entry, detailLevel)) continue;
+    if (entry.kind === 'message') {
+      timeline.push(<UserSkillMessage key={entry.id} text={entry.text} />);
+      visibleCount += 1;
+      continue;
+    }
+    if (entry.kind === 'event') {
+      timeline.push(<LifecycleCard key={entry.id} entry={entry} />);
+      visibleCount += 1;
+      continue;
+    }
+    const completed = entry.result !== undefined && !entry.awaitingApproval;
+    if (hideCompletedTools.has(entry.toolName) && completed && detailLevel !== 'debug') continue;
+    if (isDocumentReadTool(entry.toolName)) {
+      const data = unwrapToolResult(entry.result)?.data as
+        | { engine?: string; meta?: { quality?: RecognitionQualityValue; fileName?: string } }
+        | undefined;
+      const engine = data?.engine === 'native' || data?.engine === 'structure' ? data.engine : undefined;
+      const qualityBar = (
+        <RecognitionQuality
+          quality={data?.meta?.quality}
+          engine={engine}
+          fileName={data?.meta?.fileName}
+          compact={detailLevel === 'minimal'}
+        />
+      );
+      if (detailLevel === 'minimal' && engine === 'structure') {
+        timeline.push(<Fragment key={entry.id}>{qualityBar}</Fragment>);
+        visibleCount += 1;
+        continue;
+      }
+      timeline.push(
+        <Fragment key={entry.id}>
+          <ToolCard toolName={entry.toolName} input={entry.input} result={entry.result} awaitingApproval={entry.awaitingApproval} defaultOpen={detailLevel === 'debug'} />
+          {qualityBar}
+          {entry.awaitingApproval && renderApprovalCard ? renderApprovalCard(entry) : null}
+        </Fragment>,
+      );
+      visibleCount += 1;
+      continue;
+    }
+    timeline.push(
+      <Fragment key={entry.id}>
+        <ToolCard toolName={entry.toolName} input={entry.input} result={entry.result} awaitingApproval={entry.awaitingApproval} defaultOpen={detailLevel === 'debug'} />
+        {entry.awaitingApproval && renderApprovalCard ? renderApprovalCard(entry) : null}
+      </Fragment>,
+    );
+    visibleCount += 1;
+  }
+
+  return (
+    <div className="chat-surface">
+      <header className="chat-surface-head">
+        <b data-testid="chat-title">{title || '新对话'}</b>
+      </header>
+      <div className="chat-list" ref={listRef} onScroll={onListScroll} onWheel={onListWheel}>
+        {timeline}
+        {visibleCount === 0 && !isBusy && <div className="muted chat-hint">{emptyCopy?.hint ?? '开始对话，或让智能体在工作区里做点什么。'}</div>}
+        {detached && (
+          <button type="button" className="chat-scroll-latest" data-testid="scroll-latest" onClick={jumpToLatest} title="回到最新">
+            <span aria-hidden="true">↓</span> 回到最新
+            {hasNew && <span className="chat-scroll-latest-dot" aria-label="有新内容" />}
+          </button>
+        )}
+      </div>
+      <div className="chat-queue-area">
+        <QueueGroup title="引导队列" queue="steering" items={queues.steering} showReturn
+          onEdit={(queue, index, text) => mutateQueue({ action: 'edit', queue, index, text })}
+          onDelete={(queue, index) => mutateQueue({ action: 'delete', queue, index })}
+          onTransfer={(queue, index, targetQueue) => mutateQueue({ action: 'transfer', queue, index, targetQueue })}
+          onMove={(queue, fromIndex, toIndex) => mutateQueue({ action: 'move', queue, fromIndex, toIndex })}
+        />
+        <QueueGroup title="追加队列" queue="followUp" items={queues.followUp} showGuide
+          onEdit={(queue, index, text) => mutateQueue({ action: 'edit', queue, index, text })}
+          onDelete={(queue, index) => mutateQueue({ action: 'delete', queue, index })}
+          onTransfer={(queue, index, targetQueue) => mutateQueue({ action: 'transfer', queue, index, targetQueue })}
+          onMove={(queue, fromIndex, toIndex) => mutateQueue({ action: 'move', queue, fromIndex, toIndex })}
+        />
+        <DraftQueue drafts={drafts} onRemove={(queue, index) => setDrafts((current) => {
+          const next = { steering: [...current.steering], followUp: [...current.followUp] };
+          next[queue].splice(index, 1);
+          return next;
+        })} onRestore={restoreDraft} />
+      </div>
+      {visionWarning && (
+        <div className="muted chat-vision-warning" data-testid="vision-warning" role="alert">{visionWarning}</div>
+      )}
+      {modelWarning && (
+        <div className="muted chat-model-warning" data-testid="model-warning" role="alert">{modelWarning}</div>
+      )}
+      <ChatComposer
+        busy={isBusy}
+        stopping={stopping}
+        workspacePath={workspacePath}
+        getLocalPath={getLocalPath}
+        onChooseWorkspace={chooseWorkspace}
+        onOpenWorkspace={openWorkspace}
+        toolbarExtra={(
+          <>
+            {toolbarExtra}
+            <PermissionModeSelect />
+          </>
+        )}
+        hideWorkspace={hideWorkspace}
+        modelProps={{
+          model,
+          defaultModel,
+          models,
+          thinkingLevel,
+          thinkingLevels,
+          onModelChange,
+          onThinkingLevelChange,
+        }}
+        contextUsage={contextUsage}
+        isCompacting={isCompacting}
+        skills={composerSkills !== undefined ? composerSkills : skills}
+        onSend={send}
+        onStop={stop}
+      />
+    </div>
+  );
+}
+
+export const standardChatSurface = StandardChatSurface;
+export default StandardChatSurface;

@@ -10,6 +10,7 @@ export interface AgentCatalogEntry {
   displayName?: string;
   sortOrder?: number;
   surfaceType?: string;
+  projectScoped?: boolean;
   capabilities?: { tools?: string[] };
   knowledge?: AgentKnowledge;
 }
@@ -18,6 +19,7 @@ export interface AgentListItem {
   id: string;
   name: string;
   surfaceType?: string;
+  projectScoped?: boolean;
   knowledge?: AgentKnowledge;
   /** 由 `manifest.capabilities.tools` 是否含任一 `ontology.*` 派生。 */
   declaresOntologyTools: boolean;
@@ -39,6 +41,7 @@ export function sortAgents(entries: AgentCatalogEntry[]): AgentListItem[] {
       id: entry.id,
       name: entry.displayName ?? entry.name,
       surfaceType: entry.surfaceType,
+      ...(entry.projectScoped ? { projectScoped: true } : {}),
       declaresOntologyTools: declaresOntologyTools(entry.capabilities?.tools),
       ...(entry.knowledge ? { knowledge: entry.knowledge } : {}),
     }));

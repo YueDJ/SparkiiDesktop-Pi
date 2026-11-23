@@ -20,6 +20,8 @@ export interface ShellAgent {
   name: string;
   status: AgentStatus;
   surfaceType?: string;
+  /** Sessions sharing a workspace collapse into one project row. */
+  projectScoped?: boolean;
   queuePosition?: number;
   knowledge?: {
     enabled: boolean;
@@ -38,6 +40,10 @@ export interface ShellSession {
   archived?: boolean;
   updatedAt?: number;
   sortOrder?: number | null;
+  /** Workspace root from listChatSessions; used to derive project groups. */
+  workspacePath?: string;
+  /** Read-only project.json.name for project-scoped surfaces (group label). */
+  workspaceName?: string;
 }
 
 export interface ShellProps {
@@ -151,26 +157,59 @@ export function Shell(props: ShellProps) {
     return new Set((pool.sessions ?? []).filter((s) => isRunningStatus(s.status)).map((s) => s.sessionId));
   }, [runtimePool, fallbackRuntimePool]);
 
-  // 按智能体分组会话历史；没有历史记录的智能体不显示分组
+  // 按智能体分组会话历史；没有历史记录的智能体不显示分组。
+  // projectScoped 智能体按 workspacePath 派生项目行：一个项目一行，组名固定取
+  // project.json.name（不随单条会话改名漂移）；点击行打开 updatedAt 最新会话。
   const groups = useMemo<SessionGroup[]>(() => {
     const agentIds = [...agents.map((a) => a.id), ...Object.keys(sessions).filter((id) => !agents.some((a) => a.id === id))];
-    return agentIds
-      .filter((id, i, arr) => arr.indexOf(id) === i)
-      .map((agentId) => {
-        const agent = agents.find((a) => a.id === agentId);
-        const list: SessionListItem[] = (sessions[agentId] ?? []).map((s) => ({
-          id: s.id,
-          name: s.name,
-          active: s.active,
-          pinned: s.pinned,
-          archived: s.archived,
-          running: runningSessionIds.has(s.id),
-          updatedAt: s.updatedAt,
-          sortOrder: s.sortOrder,
-        }));
-        return { agentId, agentName: agent?.name ?? agentId, sessions: list };
-      })
-      .filter((group) => group.sessions.length > 0);
+    const built: SessionGroup[] = [];
+    for (const agentId of agentIds.filter((id, i, arr) => arr.indexOf(id) === i)) {
+      const agent = agents.find((a) => a.id === agentId);
+      const rows = sessions[agentId] ?? [];
+      if (agent?.projectScoped) {
+        const byWorkspace = new Map<string, ShellSession[]>();
+        for (const row of rows) {
+          const key = row.workspacePath || row.id;
+          byWorkspace.set(key, [...(byWorkspace.get(key) ?? []), row]);
+        }
+        for (const [workspaceKey, bucket] of byWorkspace) {
+          const ordered = [...bucket].sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+          const live = ordered.filter((s) => !s.archived);
+          const latest = (live.length ? live : ordered)[0];
+          const projectName = bucket.find((s) => s.workspaceName)?.workspaceName ?? latest.name;
+          built.push({
+            agentId,
+            groupKey: `${agentId}::${workspaceKey}`,
+            agentName: projectName,
+            hideHeader: true,
+            noReorder: true,
+            sessions: [{
+              id: latest.id,
+              name: projectName,
+              active: bucket.some((s) => s.active),
+              pinned: bucket.some((s) => s.pinned),
+              archived: live.length === 0,
+              running: runningSessionIds.has(latest.id),
+              updatedAt: latest.updatedAt,
+              sortOrder: latest.sortOrder,
+            }],
+          });
+        }
+        continue;
+      }
+      const list: SessionListItem[] = rows.map((s) => ({
+        id: s.id,
+        name: s.name,
+        active: s.active,
+        pinned: s.pinned,
+        archived: s.archived,
+        running: runningSessionIds.has(s.id),
+        updatedAt: s.updatedAt,
+        sortOrder: s.sortOrder,
+      }));
+      built.push({ agentId, agentName: agent?.name ?? agentId, sessions: list });
+    }
+    return built.filter((group) => group.sessions.length > 0);
   }, [agents, sessions, runningSessionIds]);
 
   const toggleTheme = () => {

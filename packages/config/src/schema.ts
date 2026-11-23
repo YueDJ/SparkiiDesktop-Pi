@@ -11,6 +11,7 @@ export const manifestSchema = z.object({
   surface: z.object({
     type: z.enum(['chat', 'workflow', 'dashboard', 'custom']),
     entry: z.string().optional(),
+    projectScoped: z.boolean().optional(),
   }).optional(),
   capabilities: z.object({
     entry: z.string().optional(),

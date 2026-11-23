@@ -5,6 +5,8 @@ export type SurfaceType = 'chat' | 'workflow' | 'dashboard' | 'custom';
 export interface AgentSurfaceDescriptor {
   type: SurfaceType;
   entry?: string;
+  /** Sessions sharing a workspace are one project row in the shell. */
+  projectScoped?: boolean;
 }
 
 export interface AgentCapabilitiesDescriptor {
@@ -35,6 +37,7 @@ export interface AgentManifest {
 const surfaceSchema = z.object({
   type: z.enum(['chat', 'workflow', 'dashboard', 'custom']),
   entry: z.string().optional(),
+  projectScoped: z.boolean().optional(),
 });
 
 const capabilitiesSchema = z.object({

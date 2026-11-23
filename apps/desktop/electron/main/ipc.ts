@@ -1266,6 +1266,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       title?: string;
       firstMessage: string;
       profileId?: string;
+      workspacePath?: string;
       updatedAt: number;
       piFile: string | null;
       pinned: boolean;
@@ -1285,6 +1286,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         title: s.name,
         firstMessage: s.firstMessage,
         profileId: rec?.profileId,
+        workspacePath: rec?.workspacePath ?? s.cwd,
         updatedAt: s.modified.getTime(),
         piFile: s.path,
         pinned: rec?.pinned ?? false,
@@ -1305,6 +1307,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
           title: undefined,
           firstMessage: '(no messages)',
           profileId: rec.profileId,
+          workspacePath: rec.workspacePath,
           updatedAt: rec.updatedAt,
           piFile: rec.piSessionFile,
           pinned: rec.pinned,
@@ -1313,6 +1316,21 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
           empty: true,
         });
       }
+    }
+    // Read-only display fallback for sessions whose Pi jsonl has no name yet
+    // (e.g. a project is created but no message has been sent, then the app is
+    // restarted). Must go through the fenced workspace-file service keyed by
+    // sessionId — never by bare workspacePath. No business/agent branching:
+    // any session workspace containing project.json gets its name field used.
+    // Missing/unreadable files fall through silently to the original logic.
+    for (const row of mapped) {
+      if (row.title) continue;
+      try {
+        const result = await workspaceFiles.execute('read', { sessionId: row.id, path: 'project.json' });
+        if (!result.ok || typeof result.content !== 'string') continue;
+        const parsed = JSON.parse(result.content) as { name?: unknown };
+        if (typeof parsed?.name === 'string' && parsed.name.trim()) row.title = parsed.name.trim();
+      } catch { /* keep the original display fallback */ }
     }
     const filtered = profileId
       ? mapped.filter((m) => m.profileId === profileId || m.profileId === undefined)
@@ -1993,6 +2011,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       displayName: pr.profile.manifest.displayName,
       sortOrder: pr.profile.manifest.sortOrder,
       surfaceType: rt.agentOf(pr.profile.manifest.name).manifest.surface.type,
+      projectScoped: rt.agentOf(pr.profile.manifest.name).manifest.surface.projectScoped,
       capabilities: pr.profile.manifest.capabilities,
       knowledge: pr.profile.manifest.knowledge,
     }))),
