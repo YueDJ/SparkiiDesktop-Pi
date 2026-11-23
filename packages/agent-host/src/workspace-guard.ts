@@ -11,9 +11,18 @@ export type GuardedReadPath =
   | { ok: true; canonicalPath: string }
   | {
       ok: false;
-      code: 'WORKSPACE_NOT_CREATED' | 'OUTSIDE_WORKSPACE' | 'TRUST_ANCHOR' | 'HARDLINK';
+      code: 'WORKSPACE_NOT_CREATED' | 'OUTSIDE_WORKSPACE' | 'TRUST_ANCHOR' | 'HARDLINK' | 'PLATFORM_RESERVED';
       message: string;
     };
+
+/**
+ * 平台保留目录：`.sparkii/` 是记忆模块的工作区侧真相源，agent 工具一律读写拒绝。
+ * 按路径段判断，避免把 `foo.sparkii.md` 之类的普通文件误伤。
+ */
+export function isPlatformReservedPath(target: string): boolean {
+  const segments = resolve(target).replace(/\\/g, '/').split('/');
+  return segments.some((segment) => segment.toLowerCase() === '.sparkii');
+}
 
 async function canonicalOrMissing(target: string): Promise<{
   canonicalPath: string;
@@ -51,6 +60,9 @@ export async function resolveGuardedReadPath(
     canonicalRoot = undefined;
   }
   const candidate = await canonicalOrMissing(resolve(target));
+  if (isPlatformReservedPath(candidate.canonicalPath)) {
+    return { ok: false, code: 'PLATFORM_RESERVED', message: '.sparkii 是平台保留目录' };
+  }
   let canonicalSkills: string | undefined;
   if (skillsDir) {
     try { canonicalSkills = await realpath(skillsDir); } catch { canonicalSkills = undefined; }

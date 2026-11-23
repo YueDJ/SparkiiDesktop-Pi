@@ -11,7 +11,7 @@ import type {
   ActionExecutionResult,
   RuntimeActionRequest,
 } from "./runtime-actions.js";
-import { isPathInside } from "./workspace-guard.js";
+import { isPathInside, isPlatformReservedPath } from "./workspace-guard.js";
 
 export interface CodingToolsContext {
   cwd: string;
@@ -25,6 +25,9 @@ const activeToolCallId = new AsyncLocalStorage<string>();
 function guardPath(ctx: CodingToolsContext, absolutePath: string): void {
   if (!isPathInside(ctx.workspaceRoot, absolutePath)) {
     throw new Error(`拒绝访问:${absolutePath} 不在工作区内`);
+  }
+  if (isPlatformReservedPath(absolutePath)) {
+    throw new Error(`拒绝访问:${absolutePath} .sparkii 是平台保留目录`);
   }
 }
 

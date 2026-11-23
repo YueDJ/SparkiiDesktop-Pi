@@ -5,7 +5,7 @@ import type {
   ActionExecutionResult,
   RuntimeActionRequest,
 } from './runtime-actions.js';
-import { isPathInside } from './workspace-guard.js';
+import { isPathInside, isPlatformReservedPath } from './workspace-guard.js';
 
 export interface WorkspaceToolContext {
   cwd: string;
@@ -19,6 +19,9 @@ function targetPath(ctx: WorkspaceToolContext, value: unknown): string {
   const absolute = resolve(ctx.workspaceRoot, path);
   if (!isPathInside(ctx.workspaceRoot, absolute)) {
     throw new Error(`拒绝访问:${path} 不在工作区内`);
+  }
+  if (isPlatformReservedPath(absolute)) {
+    throw new Error(`拒绝访问:${path} .sparkii 是平台保留目录`);
   }
   return absolute;
 }

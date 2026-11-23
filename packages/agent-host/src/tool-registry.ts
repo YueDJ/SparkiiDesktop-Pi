@@ -21,7 +21,7 @@ import type {
   ActionExecutionResult,
   RuntimeActionRequest,
 } from "./runtime-actions.js";
-import { isPathInside, resolveGuardedReadPath } from "./workspace-guard.js";
+import { isPathInside, isPlatformReservedPath, resolveGuardedReadPath } from "./workspace-guard.js";
 
 export const WORKSPACE_NOT_CREATED = "工作区尚未创建（尚无写操作）。请先让智能体创建文件，或在输入框上方指定工作区。";
 
@@ -52,6 +52,12 @@ function withWorkspaceGuard(
     execute: async (toolCallId: string, params: any, signal: any, onUpdate: any, ctx: any) => {
       const path: unknown = params?.path;
       const absolute = resolve(pathCwd, typeof path === "string" ? path : ".");
+      if (isPlatformReservedPath(absolute)) {
+        return {
+          content: [{ type: "text", text: `拒绝访问:${String(path ?? absolute)} .sparkii 是平台保留目录` }],
+          details: {},
+        };
+      }
       const skillPath = Boolean(
         typeof path === "string"
         && skillsDir

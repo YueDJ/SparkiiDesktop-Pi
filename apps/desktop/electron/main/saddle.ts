@@ -9,12 +9,15 @@ export function buildProfileSaddle(
   workspaceRoot?: string,
   model?: { provider: string; modelId: string },
   thinkingLevel?: string | null,
+  memoryBlock?: string,
 ): SessionSaddle {
   return {
     tools: pr.profile.agent.tools,
     skillsDir: join(pr.dir, 'agent', 'skills'),
     cwd,
-    systemPrompt: pr.profile.agent.prompts.system,
+    systemPrompt: memoryBlock
+      ? `${pr.profile.agent.prompts.system}\n\n${memoryBlock}`
+      : pr.profile.agent.prompts.system,
     workspaceRoot,
     ...(model ? { model } : {}),
     ...(thinkingLevel ? { thinkingLevel } : {}),
@@ -27,12 +30,15 @@ export function buildAgentSaddle(
   workspaceRoot?: string,
   model?: { provider: string; modelId: string },
   thinkingLevel?: string | null,
+  memoryBlock?: string,
 ): SessionSaddle {
   return {
     tools: agent.tools,
     skillsDir: agent.skillsDir,
     cwd,
-    systemPrompt: agent.systemPrompt,
+    systemPrompt: memoryBlock
+      ? `${agent.systemPrompt}\n\n${memoryBlock}`
+      : agent.systemPrompt,
     workspaceRoot,
     ...(model ? { model } : {}),
     ...(thinkingLevel ? { thinkingLevel } : {}),

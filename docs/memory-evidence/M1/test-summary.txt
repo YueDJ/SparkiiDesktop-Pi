@@ -1,0 +1,4 @@
+ FAIL  |1| apps/desktop/test/windows-sandbox-spike.test.ts > Windows native sandbox spike > documents the Git Bash AppContainer limitation instead of enabling it
+Error: cannot grant runtime ACL
+ Test Files  1 failed | 263 passed | 1 skipped (265)
+      Tests  1 failed | 2327 passed | 2 skipped (2330)

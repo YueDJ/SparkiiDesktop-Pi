@@ -17,10 +17,10 @@
  *  6. never throw raw success on any rejected operation.
  */
 import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
-import { dirname, join, resolve, sep } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import type { AuditStore } from '@sparkii/approval';
 import type { ChatSessionStore } from '../chat-session-store.js';
-import { isPathInside } from '@sparkii/agent-host';
+import { isPathInside, isPlatformReservedPath } from '@sparkii/agent-host';
 import { admitWorkspace } from '@sparkii/approval';
 import type { RuntimeSecurity } from '../runtime.js';
 
@@ -186,6 +186,9 @@ export function createWorkspaceFileService(deps: WorkspaceFileServiceDeps) {
     async execute(op: WorkspaceFileOp, req: WorkspaceFileRequest): Promise<WorkspaceFileResult> {
       const rel = workspaceRelative(req.path);
       if (rel === null) return deny(deps, req, op, 'INVALID', 'invalid path');
+      if (isPlatformReservedPath(rel)) {
+        return deny(deps, req, op, 'DENIED', '.sparkii 是平台保留目录，只能通过记忆设置访问');
+      }
 
       const ctxOrErr = await resolveContext(req, op);
       if ('ok' in ctxOrErr && ctxOrErr.ok === false) return ctxOrErr;
@@ -247,7 +250,7 @@ export function createWorkspaceFileService(deps: WorkspaceFileServiceDeps) {
             if (typeof target !== 'string') return target;
             const info = await stat(target);
             if (!info.isDirectory()) return deny(deps, req, op, 'INVALID', 'not a directory', ctx);
-            const entries = await readdir(target);
+            const entries = (await readdir(target)).filter((entry) => entry !== '.sparkii');
             await auditOk(req, op, ctx);
             return { ok: true, op, path: rel, entries };
           }

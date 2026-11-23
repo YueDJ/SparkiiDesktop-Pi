@@ -78,6 +78,12 @@ html, body { margin: 0; height: 100%; overflow-x: hidden; }
 .settings-conn-wait { color: var(--color-warn); }
 .settings-invalid { color: var(--color-risk); }
 .settings-warning { color: var(--color-warn); }
+.memory-note { margin-bottom: var(--spacing-sm); color: var(--color-textSecondary); font-size: var(--font-size-sm); }
+.memory-warning { margin: var(--spacing-xs) 0; color: var(--color-warn); font-size: var(--font-size-sm); }
+.memory-entry { display: flex; flex-direction: column; gap: 4px; padding: var(--spacing-sm) 0; border-bottom: 1px solid var(--color-border); }
+.memory-entry-text { color: var(--color-text); font-size: var(--font-size-sm); overflow-wrap: anywhere; }
+.memory-entry-meta { color: var(--color-textMuted); font-size: var(--font-size-xs); overflow-wrap: anywhere; }
+.memory-entry-actions { display: flex; gap: var(--spacing-xs); flex-wrap: wrap; }
 .settings-logs { display: flex; flex-direction: column; gap: 2px; max-height: 360px; overflow-y: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: var(--font-size-xs); }
 .settings-log-row { display: flex; align-items: baseline; gap: var(--spacing-sm); padding: 3px 0; border-bottom: 1px solid var(--color-border); line-height: 1.5; }
 .settings-log-time { color: var(--color-textMuted); white-space: nowrap; flex-shrink: 0; }

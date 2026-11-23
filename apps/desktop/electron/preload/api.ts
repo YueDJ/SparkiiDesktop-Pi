@@ -1,4 +1,7 @@
-import type { ErrorRecord, ProviderEntryInfo, SparkiiApi, UpdateActionResult, UpdateSettingsPublic, UpdateState } from './api-types.js';
+import type {
+  ErrorRecord, MemoryAddRequestApi, MemoryEntryViewApi, MemoryListResultApi, MemorySearchHitApi,
+  MemorySettingsApi, ProviderEntryInfo, SparkiiApi, UpdateActionResult, UpdateSettingsPublic, UpdateState,
+} from './api-types.js';
 import type { RuntimePoolSnapshot } from '@sparkii/agent-host';
 import { webUtils } from 'electron';
 
@@ -41,6 +44,17 @@ export function buildApi(ipc: IpcLike): SparkiiApi {
     queueMutate: (sessionId, mutation) => invoke('queueMutate', sessionId, mutation) as Promise<{ ok: boolean; steering: string[]; followUp: string[] }>,
     setChatTitle: (sessionId, title, source) => invoke('setChatTitle', sessionId, title, source) as Promise<{ ok: boolean; reason?: 'locked' }>,
     completeText: (sessionId, text) => invoke('completeText', sessionId, text) as Promise<{ ok: boolean; text?: string }>,
+    listMemories: () => invoke('listMemories') as Promise<MemoryListResultApi>,
+    addMemory: (req: MemoryAddRequestApi) => invoke('addMemory', req) as Promise<MemoryEntryViewApi>,
+    updateMemory: (id, patch) => invoke('updateMemory', id, patch) as Promise<MemoryEntryViewApi>,
+    deleteMemory: (id, opts) => invoke('deleteMemory', id, opts) as Promise<{ ok: true; removed: string[] }>,
+    resolvePending: (id, decision) => invoke('resolvePending', id, decision) as Promise<{ ok: true; message?: string; entry?: MemoryEntryViewApi }>,
+    archiveProject: (workspacePath, archived) => invoke('archiveProject', workspacePath, archived) as Promise<{ ok: true }>,
+    getMemorySettings: () => invoke('getMemorySettings') as Promise<MemorySettingsApi>,
+    saveMemorySettings: (partial) => invoke('saveMemorySettings', partial) as Promise<MemorySettingsApi>,
+    rebuildMemoryIndex: () => invoke('rebuildMemoryIndex') as Promise<{ entries: number; corrupt: string[] }>,
+    repairProjectMemory: (workspacePath, mode, content) => invoke('repairProjectMemory', workspacePath, mode, content) as Promise<{ ok: true }>,
+    searchMemory: (query, opts) => invoke('searchMemory', query, opts) as Promise<MemorySearchHitApi[]>,
     setSessionPinned: (sessionId, pinned, profileId) => invoke('setSessionPinned', sessionId, pinned, profileId) as Promise<{ ok: boolean }>,
     setSessionArchived: (sessionId, archived, profileId) => invoke('setSessionArchived', sessionId, archived, profileId) as Promise<{ ok: boolean }>,
     setSessionOrder: (sessionId, sortOrder, profileId) => invoke('setSessionOrder', sessionId, sortOrder, profileId) as Promise<{ ok: boolean }>,

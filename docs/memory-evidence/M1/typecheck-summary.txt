@@ -1,0 +1,6 @@
+
+Scope: 9 of 10 workspace projects
+packages/ui typecheck$ tsc --noEmit -p tsconfig.json
+packages/ui typecheck: Done
+apps/desktop typecheck$ tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.electron.json
+apps/desktop typecheck: Done

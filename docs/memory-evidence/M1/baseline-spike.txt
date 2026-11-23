@@ -1,0 +1,35 @@
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/scratch/baseline
+
+ ❯ |1| apps/desktop/test/windows-sandbox-spike.test.ts (8 tests | 1 failed) 18469ms
+     ✓ allows workspace and scratch writes but blocks writes outside the workspace  1340ms
+     ✓ blocks reading a credential-like file outside the workspace  435ms
+     ✓ blocks direct TCP and localhost connections  2424ms
+     ✓ blocks named-pipe IPC  506ms
+     ✓ isolates task scratch between sandbox profiles  422ms
+     ✓ terminates the whole child process tree on timeout  1737ms
+     ✓ reports availability and quarantines workspace trust anchors through the adapter  920ms
+     × documents the Git Bash AppContainer limitation instead of enabling it 10682ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/windows-sandbox-spike.test.ts > Windows native sandbox spike > documents the Git Bash AppContainer limitation instead of enabling it
+Error: cannot grant runtime ACL
+ ❯ Object.run apps/desktop/electron/main/security/windows-sandbox.ts:459:31
+    457|           });
+    458|         });
+    459|         if (!helper.ok) throw new Error(helper.error ?? 'sandbox helpe…
+       |                               ^
+    460|         const restoreChanges = await isolation.restore();
+    461|         restored = true;
+ ❯ apps/desktop/test/windows-sandbox-spike.test.ts:244:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 7 passed (8)
+   Start at  19:21:55
+   Duration  20.21s (transform 181ms, setup 135ms, import 166ms, tests 18.47s, environment 1.18s)
+

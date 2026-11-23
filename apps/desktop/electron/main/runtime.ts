@@ -23,6 +23,7 @@ import { createUtilityHostHandle, createForkHostHandle } from "../pi-runtime/tra
 import { registerConnectorHandlers } from "./connector-registry.js";
 import { ChatSessionStore } from "./chat-session-store.js";
 import { ErrorStore } from "./error-store.js";
+import { MemoryService } from "./memory/service.js";
 import { Keyring } from "./keyring.js";
 import { resolveRuntimePaths, resolveRuntimeToolsDir } from "./runtime-layout.js";
 import { loadAgentRuntimes, type AgentRuntime } from "./agent-registry.js";
@@ -65,6 +66,8 @@ export interface Runtime {
   gate: ApprovalGate; executor: ConnectorExecutor; audit: AuditStore;
   pool: PiRuntimePool; subject: Subject;
   chatSessions: ChatSessionStore; errors: ErrorStore; dataDir: string; keyring: Keyring; piAgentDir: string;
+  /** 可选：测试里的 Runtime 桩没有记忆层；生产 assemble 一定装配。 */
+  memory?: MemoryService;
   profileOf(id: string): ProfileRuntime;
   agentOf(id: string): AgentRuntime;
   keyFor(providerId: string): Promise<string | null>;
@@ -210,6 +213,15 @@ export async function assemble(opts: {
   registerConnectorHandlers(executor, installedTools);
   const chatSessions = new ChatSessionStore(join(opts.dataDir, "sessions.db"));
   const errors = new ErrorStore(join(opts.dataDir, "errors.db"));
+  const memory = new MemoryService({
+    dataDir: opts.dataDir,
+    errors,
+    logger: opts.logger,
+    sessionExists: (id) => Boolean(chatSessions.get(id)),
+    sessionFileOf: (id) => chatSessions.get(id)?.piSessionFile ?? undefined,
+    deleteChatSession: (id) => chatSessions.delete(id),
+    agents: () => [...agents.values()].map((a) => ({ id: a.manifest.id, name: a.manifest.displayName ?? a.manifest.id })),
+  });
   const keyring = new Keyring(join(opts.dataDir, "keyring"));
   const piAgentDir = join(opts.dataDir, "pi-agent");
   for (const [id, pr] of profiles) {
@@ -327,7 +339,7 @@ export async function assemble(opts: {
   return {
     profiles, agents, gate, executor, audit, pool,
     subject: { userId: userInfo().username, roles: ["admin", "reviewer"] },
-    chatSessions, errors, dataDir: opts.dataDir, keyring, piAgentDir,
+    chatSessions, errors, memory, dataDir: opts.dataDir, keyring, piAgentDir,
     profileOf: (id) => {
       const pr = profiles.get(id);
       if (!pr) throw new Error(`unknown profile ${id}`);

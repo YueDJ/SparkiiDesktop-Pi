@@ -281,6 +281,87 @@ export interface ChatSessionListItem {
   empty?: boolean;
 }
 
+/** ── 记忆模块（renderer 视图类型；主进程是真相源） ─────────────────────── */
+export type MemoryStatusView = 'active' | 'pending' | 'superseded';
+export interface MemorySourceView { sessionId: string; excerpt: string; kind: 'extracted' | 'explicit' }
+export interface MemoryEntryViewApi {
+  id: string;
+  text: string;
+  status: MemoryStatusView;
+  pinned: boolean;
+  importance: number;
+  createdAt: number;
+  updatedAt: number;
+  source: MemorySourceView | null;
+  supersededBy: string | null;
+  pendingOp: {
+    op: 'ADD' | 'UPDATE' | 'SUPERSEDE';
+    targetId?: string;
+    proposedText?: string;
+    projectId?: string;
+    degradedFrom?: string;
+  } | null;
+  scope: string;
+  usage: { lastAccessedAt: number | null; accessCount: number };
+  sourceDeleted: boolean;
+  projectId?: string;
+  workspacePath?: string;
+}
+export interface MemoryScopeViewApi {
+  scope: string;
+  kind: 'user' | 'agent' | 'project' | 'episode';
+  label: string;
+  agentId?: string;
+  projectId?: string;
+  workspacePath?: string;
+  archived?: boolean;
+  corrupt?: boolean;
+  warning?: string;
+  entries: MemoryEntryViewApi[];
+}
+export interface MemorySettingsApi {
+  enabled: boolean;
+  autoExtract: boolean;
+  idleConsolidation: boolean;
+  halfLifeDays: { user: number; agent: number; project: number; episode: number };
+  budgets: { user: number; agent: number; project: number };
+  extractionDebounceMs: number;
+  minUserTurns: number;
+  consolidateIdleMinutes: number;
+  consolidateIntervalHours: number;
+}
+export interface MemoryListResultApi {
+  scopes: MemoryScopeViewApi[];
+  pending: MemoryEntryViewApi[];
+  agents: Array<{ id: string; name: string }>;
+  projects: Array<{ projectId: string; workspacePath: string; name?: string }>;
+  settings: MemorySettingsApi;
+  ftsAvailable: boolean;
+  warnings: string[];
+}
+export interface MemoryAddRequestApi {
+  scope: string;
+  text: string;
+  pinned?: boolean;
+  agentId?: string;
+  workspacePath?: string;
+  workspaceKind?: 'auto' | 'user';
+  sessionId?: string;
+  excerpt?: string;
+}
+export interface MemorySearchHitApi {
+  id: string;
+  scope: string;
+  text: string;
+  kind: 'memory' | 'episode';
+  status?: MemoryStatusView;
+  score: number;
+  projectId?: string;
+  workspacePath?: string;
+  sessionId?: string;
+  summary?: string;
+}
+
 export interface SparkiiApi {
   /**
    * Relocate a session's fixed workspace root to a user-chosen empty directory.
@@ -342,6 +423,17 @@ export interface SparkiiApi {
   queueMutate(sessionId: string, mutation: ChatQueueMutation): Promise<{ ok: boolean; steering: string[]; followUp: string[] }>;
   setChatTitle(sessionId: string, title: string, source?: 'user' | 'agent'): Promise<{ ok: boolean; reason?: 'locked' }>;
   completeText(sessionId: string, text: string): Promise<{ ok: boolean; text?: string }>;
+  listMemories(): Promise<MemoryListResultApi>;
+  addMemory(req: MemoryAddRequestApi): Promise<MemoryEntryViewApi>;
+  updateMemory(id: string, patch: { text?: string; pinned?: boolean; status?: 'active' | 'superseded' }): Promise<MemoryEntryViewApi>;
+  deleteMemory(id: string, opts?: { mode?: 'normal' | 'privacy'; includeHistory?: boolean }): Promise<{ ok: true; removed: string[] }>;
+  resolvePending(id: string, decision: 'approve' | 'reject'): Promise<{ ok: true; message?: string; entry?: MemoryEntryViewApi }>;
+  archiveProject(workspacePath: string, archived: boolean): Promise<{ ok: true }>;
+  getMemorySettings(): Promise<MemorySettingsApi>;
+  saveMemorySettings(partial: Partial<MemorySettingsApi>): Promise<MemorySettingsApi>;
+  rebuildMemoryIndex(): Promise<{ entries: number; corrupt: string[] }>;
+  repairProjectMemory(workspacePath: string, mode: 'empty' | 'replace', content?: string): Promise<{ ok: true }>;
+  searchMemory(query: string, opts?: { limit?: number; includeHistory?: boolean }): Promise<MemorySearchHitApi[]>;
   setSessionPinned(sessionId: string, pinned: boolean, profileId?: string): Promise<{ ok: boolean }>;
   setSessionArchived(sessionId: string, archived: boolean, profileId?: string): Promise<{ ok: boolean }>;
   setSessionOrder(sessionId: string, sortOrder: number | null, profileId?: string): Promise<{ ok: boolean }>;

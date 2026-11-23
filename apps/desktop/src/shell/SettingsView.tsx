@@ -24,6 +24,7 @@ import {
 import { AuditView } from '../audit/AuditView.js';
 import { SettingsSkillsPane, type SkillsPaneApi } from './SettingsSkillsPane.js';
 import { SettingsKnowledgePane } from './SettingsKnowledgePane.js';
+import { SettingsMemoryPane } from './SettingsMemoryPane.js';
 import { SettingsDocumentParsePane } from './SettingsDocumentParsePane.js';
 import { SettingsAppearancePane } from './SettingsAppearancePane.js';
 import { COMPANY_NAME, PRODUCT_NAME, RELEASE_CHANNEL } from '../branding.js';
@@ -96,6 +97,18 @@ export interface SettingsApi {
     status: 'stopped' | 'starting' | 'parsing' | 'idle' | 'resident';
     waiting: unknown[];
   }>;
+  // 记忆：全部可选，避免破坏既有调用方与测试 mock。
+  listMemories?: SparkiiApi['listMemories'];
+  addMemory?: SparkiiApi['addMemory'];
+  updateMemory?: SparkiiApi['updateMemory'];
+  deleteMemory?: SparkiiApi['deleteMemory'];
+  resolvePending?: SparkiiApi['resolvePending'];
+  archiveProject?: SparkiiApi['archiveProject'];
+  getMemorySettings?: SparkiiApi['getMemorySettings'];
+  saveMemorySettings?: SparkiiApi['saveMemorySettings'];
+  rebuildMemoryIndex?: SparkiiApi['rebuildMemoryIndex'];
+  repairProjectMemory?: SparkiiApi['repairProjectMemory'];
+  searchMemory?: SparkiiApi['searchMemory'];
   // 自动更新：全部可选，避免破坏既有调用方与测试 mock。
   getAppVersion?: SparkiiApi['getAppVersion'];
   getUpdateState?: SparkiiApi['getUpdateState'];
@@ -124,7 +137,7 @@ export interface SettingsViewProps {
 }
 
 const PANE_GROUPS = [
-  { label: '模型与知识', panes: ['llm', 'knowledge', 'documentParse'] as const },
+  { label: '模型与知识', panes: ['llm', 'knowledge', 'memory', 'documentParse'] as const },
   { label: '运行', panes: ['runtime', 'skills'] as const },
   { label: '记录与更新', panes: ['audit', 'update'] as const },
   { label: '偏好与关于', panes: ['appearance', 'about'] as const },
@@ -136,6 +149,7 @@ type Pane = (typeof PANES)[number];
 const PANE_LABELS: Record<Pane, string> = {
   llm: '大模型连接',
   knowledge: '知识库',
+  memory: '记忆',
   documentParse: '文档解析',
   runtime: '智能体与运行',
   skills: '技能',
@@ -570,6 +584,7 @@ export function SettingsView(props: SettingsViewProps) {
           onDirtyChange={(dirty) => setChildDirty((prev) => (prev.knowledge === dirty ? prev : { ...prev, knowledge: dirty }))}
         />
       )}
+      {pane === 'memory' && <SettingsMemoryPane api={api} />}
       {pane === 'documentParse' && (
         <SettingsDocumentParsePane
           api={api}

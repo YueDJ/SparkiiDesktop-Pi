@@ -13,6 +13,8 @@ describe('sparkii api shape', () => {
       'getLocalSubject', 'chooseDocument', 'readDocumentBytes', 'parseDocumentPreview', 'runWorkflow', 'prompt', 'listPendingApprovals', 'decideApproval', 'getPermissionModeState', 'setChatPermissionMode', 'queryAudit', 'getSettings', 'saveSettings', 'saveRagSettings', 'saveKnowledgeSettings', 'testRagConnection', 'listRagDatasets', 'testKnowledgeConnection', 'listKnowledgeDatasets', 'getApiKey', 'listModels', 'testConnection', 'listProviders', 'diagnostics', 'on',
       'workspaceRead', 'workspaceReadBytes', 'workspaceWrite', 'workspaceWriteBytes', 'workspaceList', 'workspaceMkdir', 'workspaceDelete', 'workspaceRename', 'workspaceMove', 'renderDiagram', 'compileDocx',
       'relocateWorkspace',
+      'listMemories', 'addMemory', 'updateMemory', 'deleteMemory', 'resolvePending', 'archiveProject',
+      'getMemorySettings', 'saveMemorySettings', 'rebuildMemoryIndex', 'repairProjectMemory', 'searchMemory',
       'listErrors', 'appendError', 'clearError', 'clearErrors', 'markAllErrorsRead',
       'openChatSession', 'listChatSessions', 'getChatSession', 'createSession', 'promptSession', 'abortChat', 'getChatState', 'queueMutate', 'setChatTitle', 'completeText', 'setChatModel', 'setChatThinkingLevel', 'setChatWorkspace', 'updateWorkflowState', 'requestExportReport', 'allocateAutoWorkspace', 'chooseWorkspace', 'openWorkspace', 'getModelOptions', 'listThinkingLevels', 'deleteChatSession', 'setSessionPinned', 'setSessionArchived', 'setSessionOrder', 'listAgents', 'probeOntologyGraph', 'setSessionKnowledge', 'openRagDocument',
       'listUserSkills', 'listAgentSkills', 'previewUserSkill', 'chooseSkillFolder', 'importUserSkill', 'uninstallUserSkill', 'openUserSkillsDir',

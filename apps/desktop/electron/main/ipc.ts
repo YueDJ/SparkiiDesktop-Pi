@@ -196,6 +196,9 @@ function userLibraryAgent(rt: Runtime): AgentRuntime | null {
 
 export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, logger: Logger) {
   const broker = createBroker(rt, getWindow);
+  rt.memory?.setEmitter((type, payload) => {
+    getWindow()?.webContents.send('sparkii:event:memory-event', { type, ...payload });
+  });
   const shellGrants = new ShellGrantStore();
   /** The prompt text of the live Task, trimmed, for the Reviewer only. */
   const userTaskBySession = new Map<string, string>();
@@ -502,6 +505,41 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   ipcMain.handle('sparkii:workspaceDelete', workspaceFileHandler('delete'));
   ipcMain.handle('sparkii:workspaceRename', workspaceFileHandler('rename'));
   ipcMain.handle('sparkii:workspaceMove', workspaceFileHandler('move'));
+
+  // ── 记忆模块（平台能力；文件为真相源，SQLite 为派生索引） ────────────────
+  const memoryService = () => {
+    if (!rt.memory) throw new Error('记忆模块未就绪');
+    return rt.memory;
+  };
+  ipcMain.handle('sparkii:listMemories', () => memoryService().list());
+  ipcMain.handle('sparkii:addMemory', (_e, req: {
+    scope: string; text: string; pinned?: boolean; agentId?: string;
+    workspacePath?: string; workspaceKind?: 'auto' | 'user'; sessionId?: string; excerpt?: string;
+  }) => {
+    const rec = typeof req?.sessionId === 'string' ? rt.chatSessions.get(req.sessionId) : undefined;
+    const workspacePath = req?.workspacePath || rec?.workspacePath || undefined;
+    return memoryService().addMemory({
+      ...req,
+      workspacePath,
+      workspaceKind: req?.workspaceKind ?? (rec && rec.workspaceKind === 'user' ? 'user' : 'auto'),
+    });
+  });
+  ipcMain.handle('sparkii:updateMemory', (_e, id: string, patch: { text?: string; pinned?: boolean; status?: 'active' | 'superseded' }) =>
+    memoryService().updateMemory(String(id), patch ?? {}));
+  ipcMain.handle('sparkii:deleteMemory', (_e, id: string, opts?: { mode?: 'normal' | 'privacy'; includeHistory?: boolean }) =>
+    memoryService().deleteMemory(String(id), opts ?? {}));
+  ipcMain.handle('sparkii:resolvePending', (_e, id: string, decision: 'approve' | 'reject') =>
+    memoryService().resolvePending(String(id), decision === 'approve' ? 'approve' : 'reject'));
+  ipcMain.handle('sparkii:archiveProject', (_e, workspacePath: string, archived: boolean) =>
+    memoryService().archiveProject(String(workspacePath), archived !== false));
+  ipcMain.handle('sparkii:getMemorySettings', () => memoryService().getSettings());
+  ipcMain.handle('sparkii:saveMemorySettings', (_e, partial: Record<string, unknown>) =>
+    memoryService().saveSettings(partial as never));
+  ipcMain.handle('sparkii:rebuildMemoryIndex', () => memoryService().rebuildIndex());
+  ipcMain.handle('sparkii:repairProjectMemory', (_e, workspacePath: string, mode: 'empty' | 'replace', content?: string) =>
+    memoryService().repairProjectMemory(String(workspacePath), mode === 'replace' ? 'replace' : 'empty', content));
+  ipcMain.handle('sparkii:searchMemory', (_e, query: string, opts?: { limit?: number; includeHistory?: boolean }) =>
+    memoryService().searchMemory(String(query ?? ''), opts ?? {}));
   // ── end P1 ────────────────────────────────────────────────────────────────
 
   // ── P7: generic SVG → PNG render (platform capability, no business semantics) ──
@@ -644,7 +682,19 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
 
   function buildSaddle(profileId: string, sessionId: string): SessionSaddle {
     const rec = rt.chatSessions.get(sessionId);
-    return buildAgentSaddle(rt.agentOf(profileId), anchorDir(sessionId), rec?.workspacePath);
+    return buildAgentSaddle(
+      rt.agentOf(profileId),
+      anchorDir(sessionId),
+      rec?.workspacePath,
+      undefined,
+      undefined,
+      rt.memory?.buildBlock({
+        sessionId,
+        profileId,
+        workspacePath: rec?.workspacePath ?? undefined,
+        workspaceKind: rec?.workspaceKind,
+      }),
+    );
   }
 
   async function withProbeSlot<T>(fn: (client: Awaited<ReturnType<typeof rt.pool.acquire>>['client']) => Promise<T>): Promise<T> {
@@ -1126,7 +1176,10 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     const thinkingLevel = context.thinkingLevel ?? resolveThinkingLevel(settings, null, target);
     const tempKey = `new:${randomUUID()}`;
     const slot = await rt.pool.acquire(tempKey, {
-      saddle: buildAgentSaddle(rt.agentOf(profileId), anchorDir(tempKey), workspacePath, target ?? undefined, thinkingLevel),
+      saddle: buildAgentSaddle(
+        rt.agentOf(profileId), anchorDir(tempKey), workspacePath, target ?? undefined, thinkingLevel,
+        rt.memory?.buildBlock({ profileId, workspacePath, workspaceKind }),
+      ),
       meta: profilePoolMeta(rt, profileId),
     });
 
@@ -1170,6 +1223,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         piSessionFile: sessionFile ?? null,
         permissionMode,
       });
+      rt.memory?.ensureProject(workspacePath, workspaceKind);
       if (target) {
         const apiKey = await rt.keyFor(target.provider);
         if (apiKey) {

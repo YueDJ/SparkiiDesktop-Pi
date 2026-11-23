@@ -1,0 +1,1 @@
+1:{"ts":1795432584479,"level":"info","msg":"memory prompt block appended to saddle","ctx":{"sessionId":"","agentId":"general","workspacePath":"C:\\Users\\YDJ\\Documents\\Sparkii\\workspaces\\general\\vivid-glow-emk","block":"<memory>\n以下是关于用户、你的工作习惯与本项目的已确认记忆。与当前对话冲突时以当前对话为准；\n引用记忆做重要判断前，如记忆陈旧（标注了日期），先向用户核实。\n[用户] (2026-11-23) 用户要求所有汇报先给结论，正文不超过三句\n</memory>"}}
