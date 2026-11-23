@@ -4,3 +4,7 @@ export * from './fts.js';
 export * from './scoring.js';
 export * from './store.js';
 export * from './service.js';
+export * from './ops.js';
+export * from './material.js';
+export * from './extraction.js';
+export * from './tools.js';

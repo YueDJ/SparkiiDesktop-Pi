@@ -1,0 +1,70 @@
+
+> sparkii-desktop-pi@ lint C:\Users\YDJ\Desktop\SparkiiDesktop-Pi
+> eslint .
+
+
+C:\Users\YDJ\Desktop\SparkiiDesktop-Pi\apps\desktop\agents\contract-review\surface\index.tsx
+  494:9  warning  'reportBlocks' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\YDJ\Desktop\SparkiiDesktop-Pi\apps\desktop\out\win-unpacked.pre-task0\resources\agents\contract-review\surface\index.tsx
+  494:9  warning  'reportBlocks' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\YDJ\Desktop\SparkiiDesktop-Pi\apps\desktop\out\win-unpacked\resources\agents\contract-review\surface\index.tsx
+  494:9  warning  'reportBlocks' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\YDJ\Desktop\SparkiiDesktop-Pi\apps\desktop\scripts\generate-surface-bindings.mjs
+  1:23  warning  'readFileSync' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\YDJ\Desktop\SparkiiDesktop-Pi\apps\desktop\src\App.tsx
+  385:28  warning  'agentId' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\YDJ\Desktop\SparkiiDesktop-Pi\apps\desktop\test\approval-diff.test.tsx
+  1:32  warning  'vi' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\YDJ\Desktop\SparkiiDesktop-Pi\apps\desktop\test\rag-open.test.ts
+  2:44  warning  'mkdir' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\YDJ\Desktop\SparkiiDesktop-Pi\apps\desktop\test\standard-chat.test.tsx
+   71:18  warning  'channels' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  190:13  warning  'api' is assigned a value but never used. Allowed unused vars must match /^_/u       @typescript-eslint/no-unused-vars
+  306:13  warning  'api' is assigned a value but never used. Allowed unused vars must match /^_/u       @typescript-eslint/no-unused-vars
+
+C:\Users\YDJ\Desktop\SparkiiDesktop-Pi\apps\desktop\test\surface-contract.test.ts
+  6:42  warning  'props' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\YDJ\Desktop\SparkiiDesktop-Pi\apps\desktop\test\update\updater-adapter.test.ts
+    8:22  warning  'randomBytes' is defined but never used. Allowed unused vars must match /^_/u       @typescript-eslint/no-unused-vars
+  179:7   warning  'feedUrl' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\YDJ\Desktop\SparkiiDesktop-Pi\apps\desktop\test\workspace-file-service.test.ts
+   1:34  warning  'readFileSync' is defined but never used. Allowed unused vars must match /^_/u      @typescript-eslint/no-unused-vars
+  74:22  warning  'outside' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  89:13  warning  'service' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  93:11  warning  'base' is assigned a value but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+
+C:\Users\YDJ\Desktop\SparkiiDesktop-Pi\apps\desktop\test\workspace-relocation.test.ts
+  27:9   warning  'newPath' is assigned a value but never used. Allowed unused vars must match /^_/u            @typescript-eslint/no-unused-vars
+  40:7   warning  'reconcileMismatch' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  99:46  warning  'kind' is defined but never used. Allowed unused args must match /^_/u                        @typescript-eslint/no-unused-vars
+
+C:\Users\YDJ\Desktop\SparkiiDesktop-Pi\docs\superpowers\specs\2026-11-06-task0-scripts\probe-updater.cjs
+  166:35  warning  'latestYml' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\YDJ\Desktop\SparkiiDesktop-Pi\docs\superpowers\specs\2026-11-06-task0-scripts\probe-watchdog.mjs
+  25:7  warning  'sleep' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\YDJ\Desktop\SparkiiDesktop-Pi\packages\connectors\test\sparkiionto-client.test.ts
+  35:53  warning  'init' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\YDJ\Desktop\SparkiiDesktop-Pi\packages\connectors\test\sparkiionto-graph.test.ts
+  26:53  warning  'init' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\YDJ\Desktop\SparkiiDesktop-Pi\packages\connectors\test\sparkiionto-read-families.test.ts
+  18:53  warning  'init' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\YDJ\Desktop\SparkiiDesktop-Pi\packages\connectors\test\sparkiirag-client.test.ts
+    3:10  warning  'ConnectorError' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  121:60  warning  'init' is defined but never used. Allowed unused args must match /^_/u            @typescript-eslint/no-unused-vars
+
+✖ 27 problems (0 errors, 27 warnings)
+

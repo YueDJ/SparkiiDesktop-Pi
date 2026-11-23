@@ -1,0 +1,447 @@
+
+> sparkii-desktop-pi@ test C:\Users\YDJ\Desktop\SparkiiDesktop-Pi
+> vitest run
+
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+ [32m✓[39m [30m[43m 0 [49m[39m packages/approval/test/audit.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 122[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi.integration.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 196[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 161[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/connectors/test/sparkiionto-client.test.ts [2m([22m[2m25 tests[22m[2m)[22m[32m 141[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-pool-saddle.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 300[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/config/test/profile-dirs.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 95[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts [2m([22m[2m14 tests[22m[2m)[22m[33m 405[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/config/test/loader.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 174[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/connectors/test/report.test.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 551[2mms[22m[39m
+     [33m[2m✓[22m[39m renders optional section tables into the docx [33m 363[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/config/test/skills.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 120[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/approval/test/invariants.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 76[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 84[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/connectors/test/sparkiionto-graph.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 96[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/config/test/system-prompt.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 117[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/connectors/test/sparkiirag-client.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 79[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/approval/test/gate-multiprofile.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 68[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/profile.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 64[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/connectors/test/sparkiionto-read-families.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 61[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-pool.test.ts [2m([22m[2m22 tests[22m[2m)[22m[32m 92[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/approval/test/executor.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 67[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/approval/test/capability-gateway.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 32[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/connectors/test/document.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/connectors/test/probe-pdf.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/connectors/test/probe-pdf-empty.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/approval/test/proposal.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/config/test/schema.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-session-boundary.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 153[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/workspace-tools.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-tool-loadout.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 175[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/approval/test/security-fingerprint.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-pool-skill-isolation.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 3216[2mms[22m[39m
+     [33m[2m✓[22m[39m reloads Pi getSkills on the reused process after configure + new_session [33m 3213[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-runtime-skill-rebind.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 161[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 193[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/approval/test/workspace-admission.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/config/test/approval-policy.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/config/test/display-name.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-tools.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-host-tools.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 602[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/config/test/agent.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/approval/test/task-grant-registry.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/approval/test/security-policy.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/config/test/integrity.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-command-data.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 77[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/rpc-client.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/connector-read.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/connectors/test/sparkiionto-tools.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/workflow.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/theme/test/sparkii.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/session-catalog.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 41[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/coding-tools.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 77[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/connectors/test/document-route.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-runtime.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 46[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/approval/test/reviewer-contract.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/connectors/test/document-quality.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/write-tool-presentation.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-transport.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/approval/test/platform-conformance.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/model-router/test/router.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/config/test/compose.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-validation-compatibility.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/approval/test/permission-mode.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/bridge.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/model-router/test/capability.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/theme/test/tokens.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/identity/test/rbac.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/connectors/test/knowledge-host.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-runtime-queue.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/approval/test/platform-security-contracts.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-append-entry.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/edit-diff.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/connectors/test/document-host.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/workspace-guard.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/connectors/test/knowledge.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/config/test/smoke.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/skill-prompt.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/runtime-actions.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/workflow-trace.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/document-parse-layout.test.ts [2m([22m[2m16 tests[22m[2m)[22m[33m 645[2mms[22m[39m
+     [33m[2m✓[22m[39m pins a real 64-hex archive sha256 when checksums.json exists [33m 523[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update/install-startup-verify.test.ts [2m([22m[2m49 tests[22m[2m)[22m[33m 3727[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update-bootstrap.test.ts [2m([22m[2m44 tests[22m[2m)[22m[33m 5375[2mms[22m[39m
+     [33m[2m✓[22m[39m ACTIVE_WORK → 固定推迟 15min，且**越过降级阈值后**仍不计入不可用（R14 · Major-1） [33m 653[2mms[22m[39m
+     [33m[2m✓[22m[39m 可自愈的本地 IO 故障不计入不可用：连喂到阈值之后仍排 15min 心跳（I-84 / R20 · Major） [33m 765[2mms[22m[39m
+     [33m[2m✓[22m[39m 真实失败按阶梯退避（30s→5min→30min→2h→12h→24h） [33m 392[2mms[22m[39m
+     [33m[2m✓[22m[39m m6：累计不可用满 7 天 ⇒ 停止自动排期并只告警一次（不是「7 轮」） [33m 868[2mms[22m[39m
+     [33m[2m✓[22m[39m m4：启动首检排在闸门最迟放行时刻（delay + 9s）之后，且加性正散布确实存在 [33m 1276[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update/snapshot.test.ts [2m([22m[2m34 tests[22m[2m)[22m[33m 7831[2mms[22m[39m
+     [33m[2m✓[22m[39m 清单不是纸面账：快照目录里确实有同内容副本，路径与 manifest 逐字对应 [33m 317[2mms[22m[39m
+     [33m[2m✓[22m[39m updates（含 updates/snapshots）绝不进快照，且该排除是无条件叠加的硬护栏 [33m 596[2mms[22m[39m
+     [33m[2m✓[22m[39m 第二次调用直接复用已存在的完整快照，磁盘产物一字不变 [33m 307[2mms[22m[39m
+     [33m[2m✓[22m[39m freeBytes 收到的是快照目标所在卷（dataDir），且注入缺失时不因平台差异误杀快照 [33m 377[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update/install-transaction.test.ts [2m([22m[2m56 tests[22m[2m)[22m[33m 3590[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/settings-knowledge-pane.test.tsx [2m([22m[2m16 tests[22m[2m)[22m[33m 4688[2mms[22m[39m
+     [33m[2m✓[22m[39m shows configured state without putting the stored key in the input [33m 757[2mms[22m[39m
+     [33m[2m✓[22m[39m uses an in-page menu for default-dataset rows including hidden pickers [33m 421[2mms[22m[39m
+     [33m[2m✓[22m[39m renders both knowledge groups and keeps the existing RAG testids [33m 312[2mms[22m[39m
+     [33m[2m✓[22m[39m saves the RAG thresholds from the RAG group [33m 340[2mms[22m[39m
+     [33m[2m✓[22m[39m saves the Onto threshold and never overwrites the token with an empty input [33m 336[2mms[22m[39m
+     [33m[2m✓[22m[39m warns about plaintext non-loopback HTTP addresses without blocking save [33m 354[2mms[22m[39m
+     [33m[2m✓[22m[39m 声明 ontology.search_documents 的智能体出现并写入 sparkiionto.bindings [33m 322[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/contract-surface.test.tsx [2m([22m[2m45 tests[22m[2m)[22m[33m 5262[2mms[22m[39m
+     [33m[2m✓[22m[39m requests export via the approval path after merging [33m 516[2mms[22m[39m
+     [33m[2m✓[22m[39m filters risk cards and applies a batch confirmation [33m 444[2mms[22m[39m
+     [33m[2m✓[22m[39m resets filter, selection, and documents when sessionId changes [33m 557[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/bid-writing-surface.test.tsx [2m([22m[2m31 tests[22m[2m)[22m[33m 5342[2mms[22m[39m
+     [33m[2m✓[22m[39m wizard walks 3 steps and persists selected knowledge bases into project.json [33m 418[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/procurement-surface.test.tsx [2m([22m[2m26 tests[22m[2m)[22m[33m 5236[2mms[22m[39m
+     [33m[2m✓[22m[39m disables start buttons without a plan and keeps pull disabled [33m 705[2mms[22m[39m
+     [33m[2m✓[22m[39m returns to analyze from pack after 返回准备 when findings exist [33m 343[2mms[22m[39m
+     [33m[2m✓[22m[39m starts 开始分析 with open qty after stock and usage files [33m 535[2mms[22m[39m
+     [33m[2m✓[22m[39m clears pack uploads when sessionId changes [33m 315[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps pack window prefs after returning to 准备 [33m 421[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/app-workflow.test.tsx [2m([22m[2m14 tests[22m[2m)[22m[33m 4514[2mms[22m[39m
+     [33m[2m✓[22m[39m inserts a workflow session when session_title arrives [33m 634[2mms[22m[39m
+     [33m[2m✓[22m[39m shows workflow status from chat-event entries [33m 326[2mms[22m[39m
+     [33m[2m✓[22m[39m exports findings count from review step output [33m 919[2mms[22m[39m
+     [33m[2m✓[22m[39m clears the only highlight when opening a new general session [33m 344[2mms[22m[39m
+     [33m[2m✓[22m[39m returns to an empty live workspace after deleting the current contract session [33m 346[2mms[22m[39m
+     [33m[2m✓[22m[39m does not steal focus when a start returns after opening history [33m 314[2mms[22m[39m
+     [33m[2m✓[22m[39m does not replace a bound current session when start is clicked again [33m 334[2mms[22m[39m
+     [33m[2m✓[22m[39m reopens a titled session from the directory after leaving [33m 351[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update/power-cut.test.ts [2m([22m[2m29 tests[22m[2m)[22m[33m 8876[2mms[22m[39m
+     [33m[2m✓[22m[39m 恢复路径真的可执行：直接拿 verdict.txnId 回灌即可，data\ 一字未损时也是幂等的 [33m 364[2mms[22m[39m
+     [33m[2m✓[22m[39m 失败态下恢复介质完好：快照 manifest 仍逐文件可读，data\ 未被客户端改动 [33m 307[2mms[22m[39m
+     [33m[2m✓[22m[39m 结果缺失且未过期 ⇒ 版本未到位时保持现场；版本已到位时收敛（G7c 缺陷 1 的修复点） [33m 313[2mms[22m[39m
+     [33m[2m✓[22m[39m 被改过的文件回灌成快照版本（逐文件 sha256 前后对比，而不是只看返回码） [33m 337[2mms[22m[39m
+     [33m[2m✓[22m[39m 快照里没有的文件不被删除（保护新版本写入的数据） [33m 354[2mms[22m[39m
+     [33m[2m✓[22m[39m 回灌对 updates/ 子树不动手：快照本身不在其中，哨兵/包/审计线索都不被覆盖或删除 [33m 410[2mms[22m[39m
+     [33m[2m✓[22m[39m 快照自身损坏 ⇒ 该文件绝不回灌（fail closed），其余照常恢复 [33m 342[2mms[22m[39m
+     [33m[2m✓[22m[39m 契约导出 recoverFromSnapshot 只返回 {ok,reason}（§6 形状），成功回灌写 update.rolledBack 且链自证完好 [33m 379[2mms[22m[39m
+     [33m[2m✓[22m[39m 半截 install-result.json（断电截断）⇒ 不擅自修复；版本未到位则报缺失，版本到位则收敛但不宣称成功 [33m 498[2mms[22m[39m
+     [33m[2m✓[22m[39m 半截 pending-update.json ⇒ SENTINEL_INVALID，线索保留、包与快照一个不删 [33m 304[2mms[22m[39m
+     [33m[2m✓[22m[39m 哨兵写入是原子替换：事务两次原子写之间的任意时刻，磁盘上的哨兵都是完整可用 JSON [33m 304[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update-watchdog.test.ts [2m([22m[2m12 tests[22m[2m)[22m[33m 10968[2mms[22m[39m
+     [33m[2m✓[22m[39m 成功：父 PID 提前消失 + 假安装器 exit 0 ⇒ ok:true exitCode:0，退出码 0 [33m 447[2mms[22m[39m
+     [33m[2m✓[22m[39m 失败：假安装器 exit 1 ⇒ ok:false exitCode:1，退出码透传 1 [33m 489[2mms[22m[39m
+     [33m[2m✓[22m[39m 超时：父进程长期存活 + --timeout-ms 300 ⇒ PARENT_TIMEOUT 且不 spawn，退出码 2 [33m 550[2mms[22m[39m
+     [33m[2m✓[22m[39m 参数非法：相对路径 / parent-pid 非正整数 ⇒ ARGS_INVALID，退出码 2，只写一份结果 [33m 449[2mms[22m[39m
+     [33m[2m✓[22m[39m 哨兵缺失 ⇒ SENTINEL_INVALID，退出码 2，不 spawn；只写一份结果 [33m 420[2mms[22m[39m
+     [33m[2m✓[22m[39m 哨兵 installDir ⇒ /D=<dir> 作为最后一个透传参数且不带引号 [33m 517[2mms[22m[39m
+     [33m[2m✓[22m[39m 单一写入：并发两个 watchdog 同 result 路径 ⇒ 完整 JSON 且不留临时文件（8 轮） [33m 6002[2mms[22m[39m
+     [33m[2m✓[22m[39m 目标被别的进程读句柄占用时确定性地让位：不覆盖、不留 .tmp、不改判结果（R11 · Major-B） [33m 821[2mms[22m[39m
+     [33m[2m✓[22m[39m M4：安装器字节被换 ⇒ INSTALLER_HASH_MISMATCH，不 spawn、退出码 2 [33m 436[2mms[22m[39m
+     [33m[2m✓[22m[39m 哨兵缺 packageSha512 ⇒ 无法做安装前重哈希 ⇒ SENTINEL_INVALID，不 spawn [33m 410[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/app-general.test.tsx [2m([22m[2m26 tests[22m[2m)[22m[33m 6132[2mms[22m[39m
+     [33m[2m✓[22m[39m derives one project row per workspace for projectScoped agents only [33m 538[2mms[22m[39m
+     [33m[2m✓[22m[39m shows the project name in both sidebar and right column after a no-message restart [33m 326[2mms[22m[39m
+     [33m[2m✓[22m[39m lists agents, creates a session, and streams a reply [33m 415[2mms[22m[39m
+     [33m[2m✓[22m[39m shows an error when the first draft prompt fails [33m 547[2mms[22m[39m
+     [33m[2m✓[22m[39m deletes the active session and returns to empty state [33m 478[2mms[22m[39m
+     [33m[2m✓[22m[39m reloads a history session after leaving to home [33m 442[2mms[22m[39m
+     [33m[2m✓[22m[39m renames a session and updates the history list immediately [33m 322[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/host-shell-integration.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 11455[2mms[22m[39m
+     [33m[2m✓[22m[39m exposes discovered Node and pnpm toolchain commands [33m 2011[2mms[22m[39m
+     [33m[2m✓[22m[39m truncates an oversized stdout stream [33m 864[2mms[22m[39m
+     [33m[2m✓[22m[39m propagates a non-zero exit code [33m 432[2mms[22m[39m
+     [33m[2m✓[22m[39m starts from a scrubbed environment without inherited secrets [33m 309[2mms[22m[39m
+     [33m[2m✓[22m[39m kills the whole process tree on timeout [33m 1746[2mms[22m[39m
+     [33m[2m✓[22m[39m kills a backgrounded grandchild when the timeout fires [33m 4231[2mms[22m[39m
+     [33m[2m✓[22m[39m terminates a running task on request [33m 377[2mms[22m[39m
+     [33m[2m✓[22m[39m terminates every concurrent command owned by the same task [33m 569[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update/service.test.ts [2m([22m[2m36 tests[22m[2m)[22m[33m 3132[2mms[22m[39m
+     [33m[2m✓[22m[39m 检查成功后「记 seen / 写镜像 / 记成功」写不回 ⇒ 结构化拒绝、phase 可见、留审计（R8 · Major-1） [33m 332[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/settings-view.test.tsx [2m([22m[2m16 tests[22m[2m)[22m[33m 2990[2mms[22m[39m
+     [33m[2m✓[22m[39m renders the provider dropdown from listProviders without non-whitelisted builtins [33m 580[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-service.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 2046[2mms[22m[39m
+     [33m[2m✓[22m[39m pending 出口：批准 ADD / 驳回进黑名单 / target 已删降级 ADD / 源会话删除失效 [33m 418[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/permission-mode-conformance.test.ts [2m([22m[2m17 tests[22m[2m)[22m[33m 1533[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts [2m([22m[2m113 tests[22m[2m)[22m[33m 5868[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/knowledge-isolation.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 969[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/shell.test.tsx [2m([22m[2m15 tests[22m[2m)[22m[33m 1836[2mms[22m[39m
+     [33m[2m✓[22m[39m queue panel opens from the status bar with running and queued agents [33m 356[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/settings-redesign.test.tsx [2m([22m[2m9 tests[22m[2m)[22m[33m 2327[2mms[22m[39m
+     [33m[2m✓[22m[39m 主题在设置页真实生效并持久化（与顶栏共用同一份状态） [33m 690[2mms[22m[39m
+     [33m[2m✓[22m[39m 设置页不再出现签名 / 静态清单 / 身份信息 / 审计机制说明 [33m 665[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/standard-chat.test.tsx [2m([22m[2m44 tests[22m[2m)[22m[33m 2837[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps permission selection in the composer without task capability details [33m 318[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/settings.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 2195[2mms[22m[39m
+     [33m[2m✓[22m[39m uses the grouped navigation and no longer exposes the fake privacy / approval panes [33m 493[2mms[22m[39m
+     [33m[2m✓[22m[39m saves settings including canonical route keys via IPC [33m 301[2mms[22m[39m
+     [33m[2m✓[22m[39m has no native select on converted settings panes [33m 458[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update-status-ui.test.tsx [2m([22m[2m26 tests[22m[2m)[22m[33m 1950[2mms[22m[39m
+     [33m[2m✓[22m[39m 重试仍受活跃工作确认约束（不因是「重试」就跳过弹窗） [33m 313[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update/local-artifacts.test.ts [2m([22m[2m20 tests[22m[2m)[22m[33m 1571[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/publish-release.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 978[2mms[22m[39m
+     [33m[2m✓[22m[39m 篡改 release.json / .sig / channel.json / channel.json.sig 后 verifyReleaseTree 失败 [33m 384[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/runtime-assemble.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 1699[2mms[22m[39m
+     [33m[2m✓[22m[39m takes surface and tools from a non-general profile manifest [33m 339[2mms[22m[39m
+     [33m[2m✓[22m[39m resolves user-library skillsDir under dataDir and keeps package skills on the package path [33m 331[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/document-read.test.ts [2m([22m[2m18 tests[22m[2m)[22m[33m 860[2mms[22m[39m
+     [33m[2m✓[22m[39m parses docx natively without enqueueParse [33m 540[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/knowledge-citations.test.tsx [2m([22m[2m15 tests[22m[2m)[22m[33m 1542[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/settings-document-parse.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 1576[2mms[22m[39m
+     [33m[2m✓[22m[39m has a nav button 文档解析 [33m 609[2mms[22m[39m
+     [33m[2m✓[22m[39m shows idle, resident, reload, and module names [33m 343[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/approval-shell.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 1548[2mms[22m[39m
+     [33m[2m✓[22m[39m opens a modal for high-risk and does not leave an empty drawer [33m 536[2mms[22m[39m
+     [33m[2m✓[22m[39m does not open the panel when 详情 is clicked on a high-risk item [33m 409[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/error-center-shell.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 1214[2mms[22m[39m
+     [33m[2m✓[22m[39m shows an empty error drawer without a unread kicker [33m 686[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-extraction.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 1608[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ui-chat-patterns.test.tsx [2m([22m[2m15 tests[22m[2m)[22m[33m 1241[2mms[22m[39m
+     [33m[2m✓[22m[39m model effort menu has two rows with chevrons [33m 313[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/standard-chat-knowledge.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[33m 1006[2mms[22m[39m
+     [33m[2m✓[22m[39m orders the knowledge picker before permission selection [33m 388[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update-dialog.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 959[2mms[22m[39m
+     [33m[2m✓[22m[39m available：展示版本与发布说明，点「立即下载」发一次 downloadUpdate [33m 512[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/skill-library.test.ts [2m([22m[2m22 tests[22m[2m)[22m[33m 1347[2mms[22m[39m
+ [31m❯[39m [30m[46m 1 [49m[39m apps/desktop/test/windows-sandbox-spike.test.ts [2m([22m[2m8 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 26283[2mms[22m[39m
+     [33m[2m✓[22m[39m allows workspace and scratch writes but blocks writes outside the workspace [33m 2249[2mms[22m[39m
+     [33m[2m✓[22m[39m blocks reading a credential-like file outside the workspace [33m 870[2mms[22m[39m
+     [33m[2m✓[22m[39m blocks direct TCP and localhost connections [33m 3789[2mms[22m[39m
+     [33m[2m✓[22m[39m blocks named-pipe IPC [33m 1476[2mms[22m[39m
+     [33m[2m✓[22m[39m isolates task scratch between sandbox profiles [33m 1145[2mms[22m[39m
+     [33m[2m✓[22m[39m terminates the whole child process tree on timeout [33m 2496[2mms[22m[39m
+     [33m[2m✓[22m[39m reports availability and quarantines workspace trust anchors through the adapter [33m 2397[2mms[22m[39m
+[31m     [31m×[31m documents the Git Bash AppContainer limitation instead of enabling it[39m[33m 11847[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update-config-keys.test.ts [2m([22m[2m15 tests[22m[2m)[22m[33m 806[2mms[22m[39m
+     [33m[2m✓[22m[39m 同 kid 重跑默认拒绝覆盖；私钥与 public-key.json 逐字节不变 [33m 575[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/saddle.test.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 623[2mms[22m[39m
+     [33m[2m✓[22m[39m assembles the contract-review saddle with tools, skills dir, prompt, and anchor cwd [33m 310[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update/install-audit-chain.test.ts [2m([22m[2m19 tests[22m[2m)[22m[33m 741[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/knowledge-settings.test.ts [2m([22m[2m18 tests[22m[2m)[22m[33m 493[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/document-parse-python.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 918[2mms[22m[39m
+   [33m[2m✓[22m[39m FAKE python -m sparkii_document_parse emits JSON only then exits 0 [33m 916[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-tools.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 751[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/approval-inbox.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 1012[2mms[22m[39m
+     [33m[2m✓[22m[39m passes task scope for process.exec only [33m 441[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ui-shell-patterns.test.tsx [2m([22m[2m9 tests[22m[2m)[22m[33m 911[2mms[22m[39m
+     [33m[2m✓[22m[39m runtime center renders running and queued items and invokes actions [33m 466[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/permission-mode-ui.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 848[2mms[22m[39m
+     [33m[2m✓[22m[39m shows the selected mode in one trigger and switches from its menu [33m 515[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-settings-pane.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 704[2mms[22m[39m
+     [33m[2m✓[22m[39m 导航有「记忆」；显示隐私明示；手动新增走 IPC [33m 583[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/chat-composer.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 766[2mms[22m[39m
+     [33m[2m✓[22m[39m model effort trigger shows default model and drills into model list [33m 364[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/audit-view.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 705[2mms[22m[39m
+     [33m[2m✓[22m[39m has no native select and filters from the in-page menu [33m 374[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ensure-document-parse.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 624[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update-signature-parity.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 671[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/document-parse-copy.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 779[2mms[22m[39m
+     [33m[2m✓[22m[39m renders RuntimeCenter and StatusBar parsing copy without internal names [33m 481[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update-download-resume.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 641[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update/verifier.test.ts [2m([22m[2m23 tests[22m[2m)[22m[33m 684[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/general-surface.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 772[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/chat-composer-toolbar.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 526[2mms[22m[39m
+     [33m[2m✓[22m[39m uses the shared icon-button layout for upload [33m 377[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/approval-trust.test.tsx [2m([22m[2m9 tests[22m[2m)[22m[33m 822[2mms[22m[39m
+     [33m[2m✓[22m[39m shows the summary and decides without a note [33m 309[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update-version-traversal.test.ts [2m([22m[2m14 tests[22m[2m)[22m[33m 579[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ui-overlay.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[33m 664[2mms[22m[39m
+     [33m[2m✓[22m[39m drawer closes on backdrop and close button [33m 454[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ui-form.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 777[2mms[22m[39m
+     [33m[2m✓[22m[39m select menu portals onto body and reports the chosen value [33m 463[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update-version-parity.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 539[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update/state-store.test.ts [2m([22m[2m13 tests[22m[2m)[22m[33m 482[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update/updater-adapter.test.ts [2m([22m[2m21 tests[22m[2m)[22m[33m 468[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/error-center.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 579[2mms[22m[39m
+     [33m[2m✓[22m[39m reports an error into the list and shows a toast [33m 413[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/chat-session-store.test.ts [2m([22m[2m11 tests[22m[2m)[22m[33m 476[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/chat-workbench.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 541[2mms[22m[39m
+     [33m[2m✓[22m[39m echoes the user draft immediately and does not duplicate runtime user echo [33m 420[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update-artifacts.test.ts [2m([22m[2m13 tests[22m[2m)[22m[33m 402[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workflow-broker.test.ts [2m([22m[2m24 tests[22m[2m)[22m[33m 613[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update-state-mirror.test.ts [2m([22m[2m19 tests[22m[2m)[22m[33m 437[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/document-parse-modules.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 478[2mms[22m[39m
+     [33m[2m✓[22m[39m accepts a local fixture: verifies hash and minBytes then copies to optional/<id>/ [33m 330[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update/downloader.test.ts [2m([22m[2m13 tests[22m[2m)[22m[33m 354[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/contract-helpers.test.ts [2m([22m[2m26 tests[22m[2m)[22m[33m 379[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps lists and tables from the rendered preview [33m 319[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/bid-writing-profile.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 333[2mms[22m[39m
+     [33m[2m✓[22m[39m satisfies every file loadProfile requires and resolves correctly [33m 330[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/docx-compile-service.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 308[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/legacy-shell-retirement.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 283[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/connector-registry.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 273[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/use-agent-session.test.ts [2m([22m[2m20 tests[22m[2m)[22m[33m 384[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/rag-open.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 173[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/app-knowledge.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 454[2mms[22m[39m
+     [33m[2m✓[22m[39m inserts a sidebar row after sending the first message [33m 451[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/gate-expire.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 257[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/settings-store.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 207[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-executor.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 252[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/approval-diff.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 340[2mms[22m[39m
+ [31m❯[39m [30m[46m 1 [49m[39m apps/desktop/test/update/watchdog-command-line.test.ts [2m([22m[2m4 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 31854[2mms[22m[39m
+[31m     [31m×[31m 安装目录含空格 ⇒ $INSTDIR 精确等于该路径（没有被加引号）[39m[33m 30032[2mms[22m[39m
+     [33m[2m✓[22m[39m 安装目录含 & 也不被截断（cmd /c 包装会把 A&B 截成 A） [33m 728[2mms[22m[39m
+     [33m[2m✓[22m[39m 无空格目录同样正确（对照组） [33m 592[2mms[22m[39m
+     [32m✓[39m 真实安装器分支启用 windowsVerbatimArguments，脚本分支不启用[32m 2[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/procurement-isolation.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 184[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/document-parse-quit.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 201[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/error-store.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 192[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/bid-writing-wysiwyg.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 264[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/document-parse-rpc.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 234[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/windows-sandbox-adapter.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 222[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/session-list.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 220[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update-service-settings.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 176[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/shell-reviewer.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 164[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/document-bytes.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 195[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/runtime-provision.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 155[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/markdown.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 165[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/runtime-action-router.test.ts [2m([22m[2m36 tests[22m[2m)[22m[32m 124[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/tool-card.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 183[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/attachments.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 219[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/windows-platform.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 92[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/document-preview.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 86[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/home-view.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 149[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/recognition-quality.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[32m 136[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ui-business-patterns.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[32m 126[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/procurement-parse.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 74[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ui-primitives.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 116[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ui-workbench-patterns.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 107[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/diff-view.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 87[2mms[22m[39m
+[90mstderr[2m | apps/desktop/test/workspace-file-service.integration.test.ts[2m > [22m[2mworkspace file service — REAL probe integration (symlink / hard-link)[2m > [22m[2mrejects a REAL symlink pointing outside the workspace
+[22m[39m[ws-boundary] symlink fixture unavailable (Error: EPERM: operation not permitted, symlink 'C:\Users\YDJ\AppData\Local\Temp\bid-wsreal-CJdhjz\outside\secret.txt' -> 'C:\Users\YDJ\AppData\Local\Temp\bid-wsreal-CJdhjz\workspace\escape.txt'); symlink-escape case skipped — run CI with Developer Mode to cover it for real
+
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.integration.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 134[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/file-upload.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 97[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 111[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/document-parse-supervisor.test.ts [2m([22m[2m23 tests[22m[2m)[22m[32m 111[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/approval.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 98[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/host-shell-adapter.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 85[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/knowledge-probe.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 68[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workflow-status.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 75[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/pi-model-config.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 51[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workflow-knowledge.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 107[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/shell-theme.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 60[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ui-icons.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 61[2mms[22m[39m
+[90mstdout[2m | apps/desktop/test/logger.test.ts[2m > [22m[2mLogger[2m > [22m[2mappends structured jsonl and exports
+[22m[39mstart { profile: [32m'contract-review'[39m }
+
+[90mstderr[2m | apps/desktop/test/logger.test.ts[2m > [22m[2mLogger[2m > [22m[2mdrops entries below the configured level
+[22m[39mkept 
+
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 71[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/action-normalizer.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 70[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/countdown.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 109[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ontology-tools.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 53[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/keyring.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 56[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/create-release-manifest.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 51[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/session-store.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 44[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/install-native-deps.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 66[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/runtime-key.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 75[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/runtime-layout.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 63[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/pi-timeline.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update/install-directory.test.ts [2m([22m[2m45 tests[22m[2m)[22m[32m 60[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/agent-registry.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 74[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-relocation.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 34[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/sign-release.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/release-config.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/runtime-checksums.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/agent-catalog.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 41[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/procurement-engine.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/rag-search.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/bid-writing-p2.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-fence.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 65[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/surface-normalize.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 34[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 32[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update/installer-nsh.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/approval-present.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update-ipc.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 53[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update/decision.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/provider-probe.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/rag-grounding.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/agent-surface-binding.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/shutdown-order.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 32[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/bid-writing-figure.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/open-session.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/task-lifecycle.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/task-grant-factory.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/approval-timeline.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/chat-detail-level.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/general-title.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/document-parse-kill.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/update/scheduler.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/preload-api.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/current-work.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/profile-policy.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/image-resize.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-scoring.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/procurement-findings.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/queue-mutation.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/paths.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/document-access.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/rag-settings.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/provider-catalog.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/export-path.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/pool-meta.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/skill-slash.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/trust-helpers.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/session-permission-mode.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/bid-writing-denial.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/shell-grant-store.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/contract-title.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/menu-placement.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/composer.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/surface-contract.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 5[2mms[22m[39m
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/ontology-e2e.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/surface-registry.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/surface-bindings.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workflow-document-read.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/thinking-level.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/windows-sandbox-spike.test.ts[2m > [22mWindows native sandbox spike[2m > [22mdocuments the Git Bash AppContainer limitation instead of enabling it
+[31m[1mError[22m: cannot grant runtime ACL[39m
+[36m [2m❯[22m Object.run apps/desktop/electron/main/security/windows-sandbox.ts:[2m459:31[22m[39m
+    [90m457|[39m           })[33m;[39m
+    [90m458|[39m         })[33m;[39m
+    [90m459|[39m         if (!helper.ok) throw new Error(helper.error ?? 'sandbox helpe…
+    [90m   |[39m                               [31m^[39m
+    [90m460|[39m         [35mconst[39m restoreChanges [33m=[39m [35mawait[39m isolation[33m.[39m[34mrestore[39m()[33m;[39m
+    [90m461|[39m         restored [33m=[39m [35mtrue[39m[33m;[39m
+[90m [2m❯[22m apps/desktop/test/windows-sandbox-spike.test.ts:[2m244:20[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/update/watchdog-command-line.test.ts[2m > [22mM1 · /D= 的进程边界（真实 NSIS 探针）[2m > [22m安装目录含空格 ⇒ $INSTDIR 精确等于该路径（没有被加引号）
+[31m[1mError[22m: Test timed out in 30000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".[39m
+[36m [2m❯[22m apps/desktop/test/update/watchdog-command-line.test.ts:[2m168:3[22m[39m
+    [90m166|[39m   [34mbeforeAll[39m([35masync[39m () [33m=>[39m { probe [33m=[39m [35mawait[39m [34mbuildProbe[39m()[33m;[39m }[33m,[39m [34m120_000[39m)[33m;[39m
+    [90m167|[39m
+    [90m168|[39m   [34mit[39m([32m'安装目录含空格 ⇒ $INSTDIR 精确等于该路径（没有被加引号）'[39m[33m,[39m [35masync[39m () [33m=>[39m {
+    [90m   |[39m   [31m^[39m
+    [90m169|[39m     const spaced = ['C:', 'Users', 'John Smith', 'AppData', 'Local', '…
+    [90m170|[39m     [35mconst[39m run [33m=[39m [35mawait[39m [34mrunWatchdogWithProbe[39m(probe[33m.[39mexe[33m,[39m spaced)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m264 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (267)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m2342 passed[39m[22m[2m | [22m[33m2 skipped[39m[90m (2346)[39m
+[2m   Start at [22m 20:55:20
+[2m   Duration [22m 83.80s[2m (transform 23.24s, setup 7.39s, import 274.50s, tests 227.55s, environment 571.97s)[22m
+
+ ELIFECYCLE  Test failed. See above for more details.

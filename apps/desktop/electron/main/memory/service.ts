@@ -138,6 +138,25 @@ export class MemoryService {
     return ref;
   }
 
+  /** 提炼候选解析实际 scope；auto 工作区的项目候选归用户层。 */
+  previewScope(ctx: { profileId: string; workspacePath?: string; workspaceKind?: 'auto' | 'user' }, scope: string): string | null {
+    if (scope === 'user') return 'user';
+    if (scope === 'agent') return `agent:${ctx.profileId}`;
+    if (scope === 'project') {
+      if (ctx.workspaceKind !== 'user' || !ctx.workspacePath) return 'user';
+      const file = projectMemoryFile(ctx.workspacePath);
+      // 首条项目记忆由提炼产生时文件还不存在：与 resolveScope 一致地分配 projectId（§126 创建时生成），
+      // 否则候选会被静默丢弃。文件存在但损坏时仍返回 null（损坏即拒绝，绝不覆盖）。
+      if (!existsSync(file)) return `project:proj_${newMemoryId().slice(4)}`;
+      try {
+        return `project:${parseProjectMemoryFile(readFileSync(file, 'utf8'), file).projectId}`;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+
   private userRef(): ScopeFileRef {
     return { scope: 'user', file: join(memoryDir(this.deps.dataDir), 'user.json') };
   }
@@ -393,14 +412,22 @@ export class MemoryService {
   }
 
   /** 隐私删除：条目+FTS+episodes+黑名单+JSONL+chat_sessions 全清。 */
-  privacyDeleteBySession(sessionId: string): { ok: true; removed: string[] } {
+  privacyDeleteBySession(sessionId: string): { ok: true; removed: string[]; invalidatedPending: number } {
+    const pending = this.store.rowsBySession(sessionId).filter((row) => row.status === 'pending');
     const removed = this.store.deleteMemoryEntriesBySession(sessionId);
     const file = this.deps.sessionFileOf?.(sessionId);
     if (file) rmSync(file, { force: true });
     this.deps.deleteChatSession?.(sessionId);
     this.store.db.prepare('DELETE FROM extraction_state WHERE session_id = ?').run(sessionId);
-    this.emit('memory_changed', { sessionId, op: 'privacy-delete', removed });
-    return { ok: true, removed };
+    const invalidatedPending = pending.length;
+    this.emit('memory_changed', { sessionId, op: 'privacy-delete', removed, invalidatedPending });
+    return { ok: true, removed, invalidatedPending };
+  }
+
+  /** 普通删除会话：保留记忆但把来源链接标成“来源已删除”。 */
+  markSourcesDeleted(sessionId: string): void {
+    this.store.markSourcesDeleted(sessionId);
+    this.emit('memory_changed', { sessionId, op: 'source-deleted' });
   }
 
   /** pending 出口穷举：批准/驳回/目标失效/源会话删除/搬迁/索引重建。 */

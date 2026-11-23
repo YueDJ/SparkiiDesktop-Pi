@@ -528,7 +528,8 @@ export class MemoryStore {
       let changed = false;
       for (const entry of parsed.entries) {
         if (entry.source?.sessionId !== sessionId) continue;
-        entry.source = null;
+        // 保留 sessionId 作为审计线索，改写 excerpt 作为界面“来源已删除”标记；不物理丢证据链。
+        entry.source = { ...entry.source, excerpt: '来源已删除' };
         changed = true;
       }
       if (!changed) continue;

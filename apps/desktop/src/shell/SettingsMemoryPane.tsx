@@ -31,6 +31,7 @@ export type MemoryPaneApi = {
   rebuildMemoryIndex?(): Promise<{ entries: number; corrupt: string[] }>;
   repairProjectMemory?(workspacePath: string, mode: 'empty' | 'replace', content?: string): Promise<{ ok: true }>;
   searchMemory?(query: string, opts?: { limit?: number; includeHistory?: boolean }): Promise<MemorySearchHitApi[]>;
+  on?: (channel: string, cb: (payload: unknown) => void) => () => void;
 };
 
 function dateLabel(ts: number): string {
@@ -68,6 +69,28 @@ export function SettingsMemoryPane({ api, onDirtyChange }: { api?: MemoryPaneApi
   }, [api, agentId, workspacePath]);
 
   useEffect(() => { void refresh(); }, [api]);
+
+  useEffect(() => {
+    const off = api?.on?.('memory-event', (payload) => {
+      const event = payload as { type?: string; op?: string; invalidatedPending?: number };
+      if (event?.type === 'repair_needed') {
+        setStatus('有记忆文件需要修复，已暂停使用该部分记忆');
+        void refresh();
+      } else if (event?.type === 'pending_added') {
+        // 后台提炼出的新候选：面板开着也要当场出现，否则用户以为没有待确认。
+        setStatus('有新的记忆候选待确认');
+        void refresh();
+      } else if (event?.type === 'memory_changed') {
+        if (event.op === 'privacy-delete' && event.invalidatedPending) {
+          setStatus(`来源会话已删除，${event.invalidatedPending} 条待确认记忆已失效`);
+        } else if (event.op === 'source-deleted') {
+          setStatus('来源会话已删除');
+        }
+        void refresh();
+      }
+    });
+    return () => off?.();
+  }, [api, refresh]);
 
   const run = async (fn: () => Promise<unknown>, ok: string) => {
     try {

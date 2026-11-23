@@ -1,0 +1,71 @@
+# 真实实例终态快照（隔离环境，非单测）
+
+## memories 全表
+[
+ {
+  "id": "mem_f80a79d0-0ae6-4089-bcd2-9059576efe12",
+  "scope": "project:proj_92a6e423-13bc-4c7a-9e13-a07400dcc523",
+  "status": "active",
+  "source_session": "01a20851-f9a1-7372-a3b4-aa8e5f731b53",
+  "text": "本项目报价一律使用人民币"
+ }
+]
+
+## pending 计数
+{"c":0}
+
+## episodes（会话摘要）
+[
+ {
+  "session_id": "01a20851-f9a1-7372-a3b4-aa8e5f731b53",
+  "s": "用户偏好先给结论的简短汇报，且报价一律用人民币"
+ },
+ {
+  "session_id": "01a20854-19fd-7372-a3b4-aa992fdf2909",
+  "s": "用户偏好先给结论的简短汇报，且报价一律用人民币"
+ },
+ {
+  "session_id": "01a20856-aab5-7372-a3b4-aa9efdfd0eab",
+  "s": "用户偏好先给结论的简短汇报，且报价一律用人民币"
+ }
+]
+
+## rejected_hashes（驳回黑名单）
+[
+ {
+  "hash": "nlfy375",
+  "session_id": "01a20854-19fd-7372-a3b4-aa992fdf2909"
+ },
+ {
+  "hash": "n14r9s0q",
+  "session_id": "01a20854-19fd-7372-a3b4-aa992fdf2909"
+ }
+]
+
+## extraction_state（提炼位点）
+[
+ {
+  "session_id": "01a20851-f9a1-7372-a3b4-aa8e5f731b53",
+  "last_entry_id": "299af74d"
+ },
+ {
+  "session_id": "01a20854-19fd-7372-a3b4-aa992fdf2909",
+  "last_entry_id": "99d62308"
+ },
+ {
+  "session_id": "01a20856-aab5-7372-a3b4-aa9efdfd0eab",
+  "last_entry_id": "791a3c1d"
+ }
+]
+
+## errors.db（mem 前缀）
+[
+ {
+  "id": "memory:extract-parse:1795436275346:byly8g",
+  "source": "memory.extract-parse",
+  "m": "提炼输出不是合法 JSON：Unexpected token '好', \"好的，我提炼如下：\n\"... is not valid JSON"
+ }
+]
+
+## chat_sessions 计数
+{"c":7}

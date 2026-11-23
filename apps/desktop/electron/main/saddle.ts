@@ -3,6 +3,8 @@ import type { SessionSaddle } from '@sparkii/agent-host';
 import type { ProfileRuntime } from './runtime.js';
 import type { AgentRuntime } from './agent-registry.js';
 
+const MEMORY_TOOLS = ['memory_remember', 'memory_forget', 'memory_search'];
+
 export function buildProfileSaddle(
   pr: ProfileRuntime,
   cwd: string,
@@ -10,9 +12,10 @@ export function buildProfileSaddle(
   model?: { provider: string; modelId: string },
   thinkingLevel?: string | null,
   memoryBlock?: string,
+  withMemoryTools = false,
 ): SessionSaddle {
   return {
-    tools: pr.profile.agent.tools,
+    tools: withMemoryTools ? [...pr.profile.agent.tools, ...MEMORY_TOOLS] : pr.profile.agent.tools,
     skillsDir: join(pr.dir, 'agent', 'skills'),
     cwd,
     systemPrompt: memoryBlock
@@ -31,9 +34,10 @@ export function buildAgentSaddle(
   model?: { provider: string; modelId: string },
   thinkingLevel?: string | null,
   memoryBlock?: string,
+  withMemoryTools = false,
 ): SessionSaddle {
   return {
-    tools: agent.tools,
+    tools: withMemoryTools ? [...agent.tools, ...MEMORY_TOOLS] : agent.tools,
     skillsDir: agent.skillsDir,
     cwd,
     systemPrompt: memoryBlock

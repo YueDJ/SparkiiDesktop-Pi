@@ -138,6 +138,28 @@ describe('memory foundation', () => {
     expect(service.store.rowFor(old.id)).toBeUndefined();
   });
 
+  it('索引重建不丢 pending；隐私删除清黑名单；普通删除会话标记来源已删除', () => {
+    service.saveSettings({});
+    const pending = service.addMemory({
+      scope: 'user', text: '重建后仍在的候选', status: 'pending', sessionId: 'sess-a',
+      pendingOp: { op: 'ADD', proposedText: '重建后仍在的候选' },
+    });
+    service.store.addRejectedHash(normalizeTextHash('来源同一会话的驳回'), 'sess-a');
+    service.rebuildIndex();
+    expect(service.store.rowFor(pending.id)?.status).toBe('pending');
+
+    sessions.set('sess-a', { workspacePath: join(root, 'a'), workspaceKind: 'user', piSessionFile: join(root, 'a.jsonl') });
+    const invalidated = service.privacyDeleteBySession('sess-a');
+    expect(invalidated.invalidatedPending).toBe(1);
+    expect(service.store.hasRejectedHash(normalizeTextHash('来源同一会话的驳回'))).toBe(false);
+
+    const stillThere = service.addMemory({ scope: 'user', text: '来源会话稍后普通删除', sessionId: 'sess-b' });
+    sessions.set('sess-b', { workspacePath: join(root, 'b'), workspaceKind: 'user' });
+    sessions.delete('sess-b');
+    service.markSourcesDeleted('sess-b');
+    expect(service.list().scopes[0].entries.find((e) => e.id === stillThere.id)?.sourceDeleted).toBe(true);
+  });
+
   it('pending 出口：批准 ADD / 驳回进黑名单 / target 已删降级 ADD / 源会话删除失效', () => {
     const add = service.addMemory({
       scope: 'user', text: '待确认的用户偏好', status: 'pending', sessionId: 'sess-src',

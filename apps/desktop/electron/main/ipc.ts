@@ -55,6 +55,7 @@ import { buildProviderList, findReservedProviderConflict, isReservedKnowledgePro
 import { allocateAutoWorkspace, assertAgentId, ensureWorkspaceDir } from './workspace.js';
 import { relocateWorkspace, type RelocateResult } from './workspace-relocation.js';
 import { buildAgentSaddle } from './saddle.js';
+import { ExtractionScheduler, handleMemoryToolAction } from './memory/index.js';
 import { buildAttachmentPrompt, stageAttachments } from './attachments.js';
 import { resizeImageForAttachment } from './image-resize.js';
 import { writePiModelsConfig } from './pi-model-config.js';
@@ -199,6 +200,49 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   rt.memory?.setEmitter((type, payload) => {
     getWindow()?.webContents.send('sparkii:event:memory-event', { type, ...payload });
   });
+  /** 提炼走用户已配置的大模型（同路由/同 key），但用自借内部槽位，不打扰交互队列。 */
+  const memoryExtraction = rt.memory ? new ExtractionScheduler({
+    service: rt.memory,
+    errors: rt.errors,
+    logger,
+    contextOf: (sessionId) => {
+      const rec = rt.chatSessions.get(sessionId);
+      if (!rec) return null;
+      return {
+        sessionId,
+        profileId: rec.profileId,
+        workspacePath: rec.workspacePath ?? undefined,
+        workspaceKind: rec.workspaceKind === 'user' ? 'user' : 'auto',
+        piSessionFile: rec.piSessionFile ?? undefined,
+      };
+    },
+    target: async () => {
+      const settings = await loadSettings(rt.dataDir);
+      return resolveModelTarget(settings, 'memory') ?? resolveModelTarget(settings, 'default');
+    },
+    acquireInternalSlot: async (target) => {
+      const key = `memory:${randomUUID()}`;
+      const slot = await rt.pool.acquireIfIdle(key, {
+        meta: { profileId: 'internal', profileName: '内部记忆整理', label: '内部记忆整理', internal: true },
+      });
+      if (!slot) return null;
+      await injectProbeKey(slot.client, target.provider);
+      return {
+        release: async () => { await rt.pool.release(key); },
+        complete: async (text: string, modelTarget: { provider: string; modelId: string }) => {
+          const resp = await slot.client.send({
+            type: 'complete',
+            provider: modelTarget.provider,
+            modelId: modelTarget.modelId,
+            text,
+          });
+          if (!resp.success) throw new Error(resp.error ?? 'memory complete failed');
+          return String(resp.data ?? '').trim();
+        },
+      };
+    },
+    complete: async () => { throw new Error('memory extraction requires an internal slot'); },
+  }) : null;
   const shellGrants = new ShellGrantStore();
   /** The prompt text of the live Task, trimmed, for the Reviewer only. */
   const userTaskBySession = new Map<string, string>();
@@ -390,6 +434,20 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   ): void => {
     if (typeof slot.supervisor.onAction !== 'function') return;
     slot.supervisor.onAction(async (request) => {
+      // 平台可信分支：记忆工具不进 action-normalizer、不依赖 rt.security（非 win32 也可用）。
+      if (rt.memory && typeof request.toolName === 'string' && request.toolName.startsWith('memory_')) {
+        const rec = rt.chatSessions.get(sessionId);
+        return handleMemoryToolAction(request, {
+          service: rt.memory,
+          audit: rt.audit,
+          actor: rt.subject.userId,
+          sessionId,
+          profileId: rec?.profileId ?? '',
+          workspacePath: rec?.workspacePath ?? undefined,
+          workspaceKind: rec?.workspaceKind === 'user' ? 'user' : 'auto',
+          propose: (proposal) => broker.route(proposal, { sessionId, profileId: rec?.profileId ?? '' }),
+        });
+      }
       if (!actionRouter) {
         return {
           requestId: request.requestId,
@@ -694,6 +752,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
         workspacePath: rec?.workspacePath ?? undefined,
         workspaceKind: rec?.workspaceKind,
       }),
+      rt.memory?.getSettings().enabled === true,
     );
   }
 
@@ -806,6 +865,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
             .catch(() => {});
         }
         void persistHitTurn(sessionId);
+        memoryExtraction?.noteSettled(sessionId);
         // 迟到的 settled 不属于本轮，仍可调度 idle 释放空闲槽位，但绝不碰 Grant。
         if (!inFlightWorkflowRuns.has(sessionId)) {
           scheduleIdleRelease(sessionId);
@@ -1179,6 +1239,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       saddle: buildAgentSaddle(
         rt.agentOf(profileId), anchorDir(tempKey), workspacePath, target ?? undefined, thinkingLevel,
         rt.memory?.buildBlock({ profileId, workspacePath, workspaceKind }),
+        rt.memory?.getSettings().enabled === true,
       ),
       meta: profilePoolMeta(rt, profileId),
     });
@@ -1940,6 +2001,8 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       appliedModelBySession.delete(sessionId);
     }
     rt.chatSessions.delete(sessionId);
+    memoryExtraction?.cancel(sessionId);
+    rt.memory?.markSourcesDeleted(sessionId);
     // 同步删除 Pi 会话文件，避免“已删除会话”仍出现在历史列表中
     try {
       const found = (await listPiSessions(join(rt.piAgentDir, 'sessions'))).find((s) => s.id === sessionId);

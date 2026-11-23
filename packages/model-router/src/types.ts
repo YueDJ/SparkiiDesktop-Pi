@@ -1,4 +1,4 @@
-export type ModelTask = 'chat' | 'extract' | 'report' | 'default' | 'coding' | 'title';
+export type ModelTask = 'chat' | 'extract' | 'report' | 'default' | 'coding' | 'title' | 'memory';
 export interface ModelTarget { provider: string; modelId: string; }
 export type ModelCapability = 'chat' | 'reasoning' | 'longContext' | 'vision' | 'fast' | 'toolCall' | 'thinking';
 export interface ModelDescriptor {

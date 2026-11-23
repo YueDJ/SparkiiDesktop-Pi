@@ -1,0 +1,9 @@
+
+> sparkii-desktop-pi@ typecheck C:\Users\YDJ\Desktop\SparkiiDesktop-Pi
+> pnpm -r --if-present run typecheck
+
+Scope: 9 of 10 workspace projects
+packages/ui typecheck$ tsc --noEmit -p tsconfig.json
+packages/ui typecheck: Done
+apps/desktop typecheck$ tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.electron.json
+apps/desktop typecheck: Done

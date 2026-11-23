@@ -1,0 +1,67 @@
+# 提炼/注入/丢弃的原始日志（来自隔离实例 data/logs/sparkii.log.jsonl）
+
+- ts=1795435950269 level=info msg=memory extraction applied
+    {"sessionId":"01a20851-f9a1-7372-a3b4-aa8e5f731b53","opsApplied":2,"summary":"用户偏好先给结论的简短汇报，且报价一律用人民币"}
+- ts=1795436059133 level=info msg=memory prompt block appended to saddle
+    <memory>
+    以下是关于用户、你的工作习惯与本项目的已确认记忆。与当前对话冲突时以当前对话为准；
+    引用记忆做重要判断前，如记忆陈旧（标注了日期），先向用户核实。
+    [用户] (2026-11-23) 用户偏好先给结论，正文不超过三句
+    [项目] (2026-11-23) 本项目报价一律使用人民币
+    </memory>
+- ts=1795436075156 level=info msg=memory extraction applied
+    {"sessionId":"01a20854-19fd-7372-a3b4-aa992fdf2909","opsApplied":2,"summary":"用户偏好先给结论的简短汇报，且报价一律用人民币"}
+- ts=1795436227254 level=info msg=memory prompt block appended to saddle
+    <memory>
+    以下是关于用户、你的工作习惯与本项目的已确认记忆。与当前对话冲突时以当前对话为准；
+    引用记忆做重要判断前，如记忆陈旧（标注了日期），先向用户核实。
+    [用户] (2026-11-23) 用户偏好先给结论，正文不超过三句
+    [项目] (2026-11-23) 本项目报价一律使用人民币
+    </memory>
+- ts=1795436236432 level=info msg=memory extraction applied
+    {"sessionId":"01a20856-aab5-7372-a3b4-aa9efdfd0eab","opsApplied":0,"summary":"用户偏好先给结论的简短汇报，且报价一律用人民币"}
+- ts=1795436268519 level=info msg=memory prompt block appended to saddle
+    <memory>
+    以下是关于用户、你的工作习惯与本项目的已确认记忆。与当前对话冲突时以当前对话为准；
+    引用记忆做重要判断前，如记忆陈旧（标注了日期），先向用户核实。
+    [用户] (2026-11-23) 用户偏好先给结论，正文不超过三句
+    [项目] (2026-11-23) 本项目报价一律使用人民币
+    </memory>
+- ts=1795436275353 level=warn msg=memory extraction batch discarded
+    {"sessionId":"01a20857-4be6-7372-a3b4-aaa2525cc802","reason":"提炼输出不是合法 JSON：Unexpected token '好', \"好的，我提炼如下：\n\"... is not valid JSON"}
+- ts=1795436325215 level=info msg=memory prompt block appended to saddle
+    <memory>
+    以下是关于用户、你的工作习惯与本项目的已确认记忆。与当前对话冲突时以当前对话为准；
+    引用记忆做重要判断前，如记忆陈旧（标注了日期），先向用户核实。
+    [用户] (2026-11-23) 用户偏好先给结论，正文不超过三句
+    [项目] (2026-11-23) 本项目报价一律使用人民币
+    </memory>
+- ts=1795436376234 level=info msg=memory prompt block appended to saddle
+    <memory>
+    以下是关于用户、你的工作习惯与本项目的已确认记忆。与当前对话冲突时以当前对话为准；
+    引用记忆做重要判断前，如记忆陈旧（标注了日期），先向用户核实。
+    [用户] (2026-11-23) 用户偏好先给结论，正文不超过三句
+    [项目] (2026-11-23) 本项目报价一律使用人民币
+    </memory>
+- ts=1795436460231 level=info msg=memory prompt block appended to saddle
+    <memory>
+    以下是关于用户、你的工作习惯与本项目的已确认记忆。与当前对话冲突时以当前对话为准；
+    引用记忆做重要判断前，如记忆陈旧（标注了日期），先向用户核实。
+    [项目] (2026-11-23) 本项目报价一律使用人民币
+    </memory>
+- ts=1795436468417 level=info msg=memory extraction applied
+    {"sessionId":"01a2085a-38c7-7372-a3b4-aaaac38b8884","opsApplied":2,"summary":"用户要求报价单只保留总价，并以周为单位报交付周期"}
+- ts=1795436498988 level=info msg=memory prompt block appended to saddle
+    <memory>
+    以下是关于用户、你的工作习惯与本项目的已确认记忆。与当前对话冲突时以当前对话为准；
+    引用记忆做重要判断前，如记忆陈旧（标注了日期），先向用户核实。
+    [项目] (2026-11-23) 本项目报价一律使用人民币
+    </memory>
+- ts=1795436505861 level=info msg=memory extraction applied
+    {"sessionId":"01a2085a-38c7-7372-a3b4-aaaac38b8884","opsApplied":2,"summary":"用户要求报价单只保留总价，并以周为单位报交付周期"}
+- ts=1795437991439 level=info msg=memory prompt block appended to saddle
+    <memory>
+    以下是关于用户、你的工作习惯与本项目的已确认记忆。与当前对话冲突时以当前对话为准；
+    引用记忆做重要判断前，如记忆陈旧（标注了日期），先向用户核实。
+    [项目] (2026-11-23) 本项目报价一律使用人民币
+    </memory>

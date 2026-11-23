@@ -16,6 +16,7 @@ import {
   createDeleteToolDefinition,
   createMoveToolDefinition,
 } from "./workspace-tools.js";
+import { createMemoryToolDefinitions } from "./memory-tools.js";
 import type { ProposalDecision, ConnectorReadRequest, ConnectorReadResult } from "./pi-runtime-transport.js";
 import type {
   ActionExecutionResult,
@@ -137,8 +138,13 @@ export function resolveToolDefinitions(toolNames: string[], ctx: RegistryContext
     workspaceRoot: ctx.workspaceRoot ?? pathCwd,
     requestAction,
   }));
+  const memoryTools = new Map(createMemoryToolDefinitions({ requestAction }).map((d) => [d.name, d]));
   const out: ToolDefinition[] = [];
   for (const name of toolNames) {
+    if (memoryTools.has(name)) {
+      out.push(memoryTools.get(name)!);
+      continue;
+    }
     if (
       name === "bash"
       || name === "edit"

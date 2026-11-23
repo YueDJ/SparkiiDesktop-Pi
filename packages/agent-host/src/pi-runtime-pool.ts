@@ -107,6 +107,17 @@ export class PiRuntimePool {
     for (const listener of this.listeners) listener(next);
   }
 
+  /**
+   * 内部轻量任务（记忆提炼/整合）的礼让入口：没有空闲槽就当场返回 null，
+   * 绝不排到交互会话前面。判断与 acquire 的首次检查在同一个同步段里完成，无让位点。
+   */
+  async acquireIfIdle(sessionId: string, opts: AcquireOptions = {}): Promise<PiRuntimeSlot | null> {
+    if (this.stopped) return null;
+    const free = this.slots.some((s) => s.sessionId === null);
+    if (!free && this.slots.length >= this.opts.maxAgents) return null;
+    return this.acquire(sessionId, opts);
+  }
+
   async acquire(sessionId: string, opts: AcquireOptions = {}): Promise<PiRuntimeSlot> {
     if (this.stopped) throw new Error('pool stopped');
     const free = this.slots.find((s) => s.sessionId === null);

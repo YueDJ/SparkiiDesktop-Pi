@@ -168,6 +168,7 @@ const ROUTE_TASKS = [
   { key: 'extract', label: '抽取' },
   { key: 'report', label: '报告' },
   { key: 'default', label: '默认' },
+  { key: 'memory', label: '记忆' },
 ] as const;
 
 type ConnStatus = { cls: '' | 'ok' | 'fail' | 'wait'; text: string };
