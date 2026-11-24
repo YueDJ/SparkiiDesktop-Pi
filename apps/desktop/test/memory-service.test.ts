@@ -60,6 +60,48 @@ describe('memory foundation', () => {
     expect(service.store.usageFor(added.id).accessCount).toBe(2);
   });
 
+  it('跨项目模糊回忆：情景摘要命中并带项目线索，同一检索两次命中与增量一致', () => {
+    // 两个项目各留一条情景摘要，只有一条谈"上个月那个报价"。
+    service.store.appendEpisode({
+      sessionId: 'sess-a', agentId: 'general', workspacePath: '/ws/alpha', projectId: 'proj_alpha',
+      ts: Date.UTC(2026, 9, 20), summary: '上个月那个项目在做园区闸机改造，报价还没有最终签字',
+      topics: ['闸机', '报价'],
+    });
+    service.store.appendEpisode({
+      sessionId: 'sess-b', agentId: 'general', workspacePath: '/ws/beta', projectId: 'proj_beta',
+      ts: Date.UTC(2026, 10, 2), summary: '本月新增的工控机采购清单核对完毕，等客户确认',
+      topics: ['采购'],
+    });
+
+    const first = service.searchMemory('上个月那个项目的报价');
+    expect(first.length).toBeGreaterThan(0);
+    const episodeHit = first.find((h) => h.kind === 'episode');
+    expect(episodeHit).toBeDefined();
+    expect(episodeHit?.projectId).toBe('proj_alpha');
+    expect(episodeHit?.workspacePath).toBe('/ws/alpha');
+    expect(episodeHit?.sessionId).toBe('sess-a');
+    // 只命中了相关那条，没把另一个项目也抖出来
+    expect(first.filter((h) => h.kind === 'episode').map((h) => h.sessionId)).toEqual(['sess-a']);
+
+    // 连跑两次：命中集合一致；情景摘要的命中同样强化（每轮 +1，时钟重置）
+    const episodeUsage = () => service.store.db
+      .prepare('SELECT access_count, last_accessed_at FROM episodes WHERE session_id = ?')
+      .get('sess-a') as { access_count: number; last_accessed_at: number | null };
+    expect(episodeUsage().access_count).toBe(1);
+    expect(episodeUsage().last_accessed_at).not.toBeNull();
+    const second = service.searchMemory('上个月那个项目的报价');
+    expect(second.map((h) => h.id)).toEqual(first.map((h) => h.id));
+    const afterSecond = episodeUsage();
+    expect(afterSecond.access_count).toBe(2);
+    const countAfter = episodeUsage();
+    const secondAgain = service.searchMemory('上个月那个项目的报价');
+    expect(secondAgain.map((h) => h.id)).toEqual(second.map((h) => h.id));
+    const countFinal = episodeUsage();
+    // 两次检索之间的增量恒为 1（同一批条目，不重复累加、也不漏计）
+    expect(countFinal.access_count).toBe(countAfter.access_count + 1);
+    expect(countFinal.last_accessed_at).toBeGreaterThanOrEqual(afterSecond.last_accessed_at ?? 0);
+  });
+
   it('检索命中才重置时钟，且同一检索连跑两次命中与增量一致', () => {
     service.addMemory({ scope: 'user', text: '用户偏好先在开头给结论' });
     const first = service.searchMemory('开头给结论');

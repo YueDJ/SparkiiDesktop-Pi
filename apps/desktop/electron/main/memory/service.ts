@@ -52,7 +52,7 @@ export interface AddMemoryRequest {
   excerpt?: string;
   importance?: number;
   status?: 'active' | 'pending';
-  sourceKind?: 'extracted' | 'explicit';
+  sourceKind?: 'extracted' | 'explicit' | 'consolidated';
   pendingOp?: MemoryEntry['pendingOp'];
 }
 
@@ -348,7 +348,10 @@ export class MemoryService {
       updatedAt: ts,
       source: req.sessionId
         ? { sessionId: req.sessionId, excerpt: String(req.excerpt ?? text).slice(0, 120), kind: req.sourceKind ?? 'explicit' }
-        : null,
+        // 整合提案不来自某次会话：留空 sessionId 只作来源说明，不参与按会话清理。
+        : req.sourceKind === 'consolidated'
+          ? { sessionId: '', excerpt: String(req.excerpt ?? '整合提案').slice(0, 120), kind: 'consolidated' }
+          : null,
       supersededBy: null,
       pendingOp: req.pendingOp ?? null,
     };
@@ -489,12 +492,23 @@ export class MemoryService {
     target.status = 'superseded';
     target.supersededBy = id;
     target.updatedAt = ts;
+    // 整合提案可能一次合并多条：被合并掉的兄弟条目一并作废，避免留下重复的 active。
+    const mergeIds = Array.isArray(entry.pendingOp?.mergeIds)
+      ? (entry.pendingOp?.mergeIds as unknown[]).filter((v): v is string => typeof v === 'string')
+      : [];
+    for (const mergeId of mergeIds) {
+      const sibling = entries.find((e) => e.id === mergeId);
+      if (!sibling || sibling.status !== 'active') continue;
+      sibling.status = 'superseded';
+      sibling.supersededBy = id;
+      sibling.updatedAt = ts;
+    }
     entry.status = 'active';
     entry.text = entry.pendingOp?.proposedText ?? entry.text;
     entry.pendingOp = null;
     entry.updatedAt = ts;
     this.writeRef(ref, entries, archived);
-    this.store.touchAccess([id, targetId!], true);
+    this.store.touchAccess([id, targetId!, ...mergeIds], true);
     this.emit('memory_changed', { id, scope: ref.scope, op: 'approve-supersede' });
     return { ok: true, entry: this.view(this.store.rowFor(id)) ?? undefined };
   }
@@ -543,7 +557,8 @@ export class MemoryService {
   searchMemory(query: string, opts: { limit?: number; includeHistory?: boolean } = {}): MemorySearchHit[] {
     if (!this.settings.enabled) return [];
     const hits = this.store.search(query, opts);
-    this.store.touchAccess(hits.filter((h) => h.kind === 'memory').map((h) => h.id), true);
+    // 命中即强化：记忆条目与情景摘要都算（情景摘要的 id 带 `episode:` 前缀，store 按前缀分派）。
+    this.store.touchAccess(hits.map((h) => h.id), true);
     return hits;
   }
 

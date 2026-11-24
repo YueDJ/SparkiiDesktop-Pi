@@ -68,4 +68,28 @@ describe('memory scoring', () => {
     expect(buildMemoryBlock([])).toBe('');
     expect(sanitizeInjectionText('a\u001fb')).toBe('a b');
   });
+
+  it('强化重置时钟后可复算：分数回到满值，再按新锚点继续衰减', () => {
+    const createdAt = NOW - 200 * DAY;
+    // 从未强化：200 天前创建，半年半衰期 → 0.5^(200/180)
+    const cold = decayScore({
+      importance: 3, pinned: false, lastAccessedAt: null, createdAt, now: NOW, halfLifeDays: 180,
+    });
+    expect(cold).toBeCloseTo(3 * Math.pow(0.5, 200 / 180), 10);
+
+    // 强化发生在 10 天前：时钟被重置到那时，只剩 10 天衰减
+    const reinforcedAt = NOW - 10 * DAY;
+    const warm = decayScore({
+      importance: 3, pinned: false, lastAccessedAt: reinforcedAt, createdAt, now: NOW, halfLifeDays: 180,
+    });
+    expect(warm).toBeCloseTo(3 * Math.pow(0.5, 10 / 180), 10);
+    expect(warm).toBeGreaterThan(cold);
+
+    // 同一锚点再走 180 天：恰好剩满值的一半（可复算）
+    const half = decayScore({
+      importance: 3, pinned: false, lastAccessedAt: reinforcedAt, createdAt,
+      now: reinforcedAt + 180 * DAY, halfLifeDays: 180,
+    });
+    expect(half).toBeCloseTo(3 / 2, 10);
+  });
 });

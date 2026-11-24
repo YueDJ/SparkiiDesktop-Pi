@@ -1,0 +1,46 @@
+# 跨项目模糊回忆：真实会话里的 memory_search 工具往返
+
+会话：2026-11-23T13-17-25-910Z_01a2088d-e216-720f-99ae-23f4ad9b7a0a.jsonl（当前工作区 scratch/e2e-ws，属于项目 proj_92a6e423）
+
+## 模型发起的工具调用
+{
+ "type": "toolCall",
+ "id": "call_mock_1",
+ "name": "memory_search",
+ "arguments": {
+  "query": "对外文件模板"
+ }
+}
+
+## 平台返回的工具结果（节选：前两条命中）
+{
+ "ok": true,
+ "hits": [
+  {
+   "kind": "episode",
+   "id": "episode:01a20884-21a5-7100-97e9-7ae3d5c0d875",
+   "text": "用户要求对外文件用公司模板抬头，项目验收以客户签字为准",
+   "projectId": "proj_92a6e423-13bc-4c7a-9e13-a07400dcc523",
+   "workspacePath": "C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/scratch/e2e-ws",
+   "sessionId": "01a20884-21a5-7100-97e9-7ae3d5c0d875"
+  },
+  {
+   "kind": "episode",
+   "id": "episode:01a2088d-6094-720f-99ae-23f123036138",
+   "text": "用户要求对外文件用公司模板抬头，项目验收以客户签字为准",
+   "projectId": "proj_d0187bfa-e1dd-438d-bf60-410a609f91dc",
+   "workspacePath": "C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/scratch/e2e-ws-b",
+   "sessionId": "01a2088d-6094-720f-99ae-23f123036138"
+  },
+  {
+   "kind": "memory",
+   "id": "mem_eadd3e46-8c22-48b5-902d-98d6db35939b",
+   "text": "用户要求所有对外文件使用公司模板抬头",
+   "sessionId": "01a20884-21a5-7100-97e9-7ae3d5c0d875"
+  }
+ ]
+}
+
+说明：命中的第二条情景摘要来自 **另一个项目**（projectId proj_d0187bfa、workspace e2e-ws-b），即当前项目的会话通过检索定位到了别的项目的旧事；命中的情景条目自带 projectId 与 workspacePath，足以回到项目。
+
+注：本次桩对每条消息都返回工具调用，导致会话里重复了 400 次同样的调用（桩的缺陷，非平台行为）。上面只取第一次往返。

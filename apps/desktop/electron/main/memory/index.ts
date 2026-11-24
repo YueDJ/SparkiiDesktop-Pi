@@ -7,4 +7,5 @@ export * from './service.js';
 export * from './ops.js';
 export * from './material.js';
 export * from './extraction.js';
+export * from './consolidation.js';
 export * from './tools.js';

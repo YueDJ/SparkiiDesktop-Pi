@@ -12,7 +12,7 @@ import {
   projectMemoryFile,
   userMemoryFile,
 } from './settings.js';
-import { canUseTrigram, ftsMatchQuery, probeFts5Trigram, recordMemoryError } from './fts.js';
+import { canUseTrigram, ftsMatchQuery, ftsWindowQuery, probeFts5Trigram, recordMemoryError } from './fts.js';
 import type {
   EpisodeRecord,
   MemoryEntry,
@@ -32,6 +32,9 @@ export class CorruptMemoryError extends Error {
 }
 
 const STATUSES: MemoryStatus[] = ['active', 'pending', 'superseded'];
+
+/** 情景摘要的条目 id 前缀（表主键是 session_id）。 */
+const EPISODE_ID_PREFIX = 'episode:';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -62,7 +65,9 @@ function parseEntries(raw: unknown, file: string): MemoryEntry[] {
         ? {
             sessionId: String(value.source.sessionId ?? ''),
             excerpt: String(value.source.excerpt ?? ''),
-            kind: value.source.kind === 'explicit' ? 'explicit' as const : 'extracted' as const,
+            kind: value.source.kind === 'explicit'
+              ? 'explicit' as const
+              : value.source.kind === 'consolidated' ? 'consolidated' as const : 'extracted' as const,
           }
         : (() => { throw new CorruptMemoryError(file, `第 ${index + 1} 条 source 非法`); })();
     return {
@@ -331,6 +336,35 @@ export class MemoryStore {
     return row ? { lastAccessedAt: row.last_accessed_at, accessCount: row.access_count } : { lastAccessedAt: null, accessCount: 0 };
   }
 
+  /** FTS 检索：记忆与情景摘要各查一遍，按 bm25 排序。 */
+  private searchFts(match: string, limit: number, statusClause: string): MemorySearchHit[] {
+    const out: MemorySearchHit[] = [];
+    const rows = this.db.prepare(`
+      SELECT m.*, bm25(memories_fts) AS rank FROM memories_fts
+      JOIN memories m ON m.rowid = memories_fts.rowid
+      WHERE memories_fts MATCH ?${statusClause} ORDER BY rank ASC, m.id ASC LIMIT ?
+    `).all(match, limit) as Array<IndexedRow & { rank: number }>;
+    for (const row of rows) out.push({
+      id: row.id, scope: row.scope, text: row.text, kind: 'memory',
+      status: row.status, score: -row.rank,
+      ...(row.project_id ? { projectId: row.project_id } : {}),
+      ...(row.workspace_path ? { workspacePath: row.workspace_path } : {}),
+      ...(row.source_session ? { sessionId: row.source_session } : {}),
+    });
+    const episodes = this.db.prepare(`
+      SELECT e.*, bm25(episodes_fts) AS rank FROM episodes_fts
+      JOIN episodes e ON e.rowid = episodes_fts.rowid
+      WHERE episodes_fts MATCH ? ORDER BY rank ASC, e.session_id ASC LIMIT ?
+    `).all(match, limit) as Array<{ session_id: string; summary: string; project_id: string | null; workspace_path: string; rank: number }>;
+    for (const row of episodes) out.push({
+      id: `episode:${row.session_id}`, scope: `episode:${row.session_id}`, text: row.summary,
+      kind: 'episode', score: -row.rank, summary: row.summary,
+      ...(row.project_id ? { projectId: row.project_id } : {}),
+      workspacePath: row.workspace_path, sessionId: row.session_id,
+    });
+    return out;
+  }
+
   rowFor(id: string): IndexedRow | undefined {
     return this.db.prepare('SELECT * FROM memories WHERE id = ?').get(id) as IndexedRow | undefined;
   }
@@ -339,17 +373,34 @@ export class MemoryStore {
     return this.db.prepare('SELECT * FROM memories WHERE source_session = ?').all(sessionId) as IndexedRow[];
   }
 
-  /** 注入只加计数；reset=true（检索命中/显式操作）才重置时钟。 */
+  /**
+   * 注入只加计数；reset=true（检索命中/显式操作）才重置时钟。
+   * 条目 id 可能是记忆（mem_…）也可能是情景摘要（episode:<sessionId>）——情景摘要
+   * 的表主键是 session_id，必须剥掉 `episode:` 前缀再匹配，否则更新落空。
+   */
   touchAccess(ids: string[], resetClock: boolean): void {
     if (!ids.length) return;
     const ts = this.now();
+    const bumpMemory = this.db.prepare(
+      resetClock
+        ? 'UPDATE memories SET access_count = access_count + 1, last_accessed_at = ? WHERE id = ?'
+        : 'UPDATE memories SET access_count = access_count + 1 WHERE id = ?',
+    );
+    const bumpEpisode = this.db.prepare(
+      resetClock
+        ? 'UPDATE episodes SET access_count = access_count + 1, last_accessed_at = ? WHERE session_id = ?'
+        : 'UPDATE episodes SET access_count = access_count + 1 WHERE session_id = ?',
+    );
     const tx = this.db.transaction(() => {
       for (const id of new Set(ids)) {
-        if (resetClock) {
-          this.db.prepare('UPDATE memories SET access_count = access_count + 1, last_accessed_at = ? WHERE id = ?').run(ts, id);
-          this.db.prepare('UPDATE episodes SET access_count = access_count + 1, last_accessed_at = ? WHERE session_id = ?').run(ts, id);
+        if (id.startsWith(EPISODE_ID_PREFIX)) {
+          const sessionId = id.slice(EPISODE_ID_PREFIX.length);
+          if (resetClock) bumpEpisode.run(ts, sessionId);
+          else bumpEpisode.run(sessionId);
+        } else if (resetClock) {
+          bumpMemory.run(ts, id);
         } else {
-          this.db.prepare('UPDATE memories SET access_count = access_count + 1 WHERE id = ?').run(id);
+          bumpMemory.run(id);
         }
       }
     });
@@ -386,30 +437,12 @@ export class MemoryStore {
     const statusClause = opts.includeHistory ? '' : " AND m.status != 'superseded'";
     const hits: MemorySearchHit[] = [];
     if (canUseTrigram(term, this.ftsAvailable)) {
-      const match = ftsMatchQuery(term);
-      const rows = this.db.prepare(`
-        SELECT m.*, bm25(memories_fts) AS rank FROM memories_fts
-        JOIN memories m ON m.rowid = memories_fts.rowid
-        WHERE memories_fts MATCH ?${statusClause} ORDER BY rank ASC, m.id ASC LIMIT ?
-      `).all(match, limit) as Array<IndexedRow & { rank: number }>;
-      for (const row of rows) hits.push({
-        id: row.id, scope: row.scope, text: row.text, kind: 'memory',
-        status: row.status, score: -row.rank,
-        ...(row.project_id ? { projectId: row.project_id } : {}),
-        ...(row.workspace_path ? { workspacePath: row.workspace_path } : {}),
-        ...(row.source_session ? { sessionId: row.source_session } : {}),
-      });
-      const episodes = this.db.prepare(`
-        SELECT e.*, bm25(episodes_fts) AS rank FROM episodes_fts
-        JOIN episodes e ON e.rowid = episodes_fts.rowid
-        WHERE episodes_fts MATCH ? ORDER BY rank ASC, e.session_id ASC LIMIT ?
-      `).all(match, limit) as Array<{ session_id: string; summary: string; project_id: string | null; workspace_path: string; rank: number }>;
-      for (const row of episodes) hits.push({
-        id: `episode:${row.session_id}`, scope: `episode:${row.session_id}`, text: row.summary,
-        kind: 'episode', score: -row.rank, summary: row.summary,
-        ...(row.project_id ? { projectId: row.project_id } : {}),
-        workspacePath: row.workspace_path, sessionId: row.session_id,
-      });
+      hits.push(...this.searchFts(ftsMatchQuery(term), limit, statusClause));
+      if (!hits.length) {
+        // 整句问法（"上个月那个项目的报价"）短语匹配必然落空：退到三字窗口 OR。
+        const windows = ftsWindowQuery(term);
+        if (windows) hits.push(...this.searchFts(windows, limit, statusClause));
+      }
     } else {
       const like = `%${term}%`;
       const rows = this.db.prepare(`
@@ -462,6 +495,32 @@ export class MemoryStore {
       ...(row.project_id ? { projectId: row.project_id } : {}),
       ts: row.ts, summary: row.summary, topics: JSON.parse(row.topics) as string[],
     }));
+  }
+
+  /**
+   * 情景摘要二次压缩（§9 空闲整合）：只改系统生成的情景摘要，不动用户记忆。
+   * 追加式日志按行重写成原子文件，保留其余行原文。
+   */
+  updateEpisodeSummary(sessionId: string, summary: string): void {
+    this.db.prepare('UPDATE episodes SET summary = ? WHERE session_id = ?').run(summary, sessionId);
+    if (this.ftsAvailable) {
+      this.db.prepare('UPDATE episodes_fts SET summary = ? WHERE session_id = ?').run(summary, sessionId);
+    }
+    const path = episodesFile(this.dataDir);
+    if (!existsSync(path)) return;
+    const lines = readFileSync(path, 'utf8').split('\n').filter((line) => line.trim());
+    let hit = false;
+    const next = lines.map((line) => {
+      try {
+        const rec = JSON.parse(line) as EpisodeRecord;
+        if (rec.sessionId !== sessionId) return line;
+        hit = true;
+        return JSON.stringify({ ...rec, summary, compressedAt: Date.now() });
+      } catch {
+        return line;
+      }
+    });
+    if (hit) atomicWrite(path, `${next.join('\n')}\n`);
   }
 
   deleteEpisodesForSession(sessionId: string): void {

@@ -1,0 +1,14 @@
+# 空闲整合（真实实例）
+
+## 主进程日志
+- {"msg":"memory consolidation finished","ctx":{"calls":1,"proposals":1,"digests":0}}
+- {"msg":"memory consolidation finished","ctx":{"calls":0,"proposals":0,"digests":0}}
+
+## 整合提案与批准结果
+- 提案：text=「用户要求汇报先给结论且不超过三句（整合）」 op=SUPERSEDE target=mem_304e1d47… mergeIds=[mem_8c6a72c1…] source.kind=consolidated
+- 批准后（resolvePending approve）：
+  - mem_8c6a72c1「用户要求汇报先给结论，正文不超过三句」→ superseded，supersededBy=mem_3094a9c8…
+  - mem_304e1d47「用户要求汇报先给结论，正文不超过三句话」→ superseded，supersededBy=mem_3094a9c8…
+  - mem_3094a9c8「用户要求汇报先给结论且不超过三句（整合）」→ active
+
+整合前这两条都是 active（提案阶段未自动改动），只有批准后才作废——符合「所有产出走 pending」。

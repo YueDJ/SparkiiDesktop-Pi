@@ -37,6 +37,23 @@ export function ftsMatchQuery(query: string): string {
   return `"${query.replace(/"/g, '""')}"`;
 }
 
+/**
+ * 短语没命中时的退路：把查询切成若干三字窗口做 OR，交给 bm25 排序。
+ * 中文没有空格，用户"上个月那个项目的报价"这种整句问法用短语匹配必然落空；
+ * 切片后「上个月」「那个项」「项目的」「的报价」至少能撞上情景摘要里的原话。
+ */
+export function ftsWindowQuery(query: string, maxTerms = 6): string | null {
+  const compact = query.replace(/\s+/g, '');
+  if (compact.length < 4) return null;
+  const windows: string[] = [];
+  for (let i = 0; i + 3 <= compact.length && windows.length < maxTerms; i += 2) {
+    const piece = compact.slice(i, i + 3);
+    if (!windows.includes(piece)) windows.push(piece);
+  }
+  if (!windows.length) return null;
+  return windows.map((w) => `"${w.replace(/"/g, '""')}"`).join(' OR ');
+}
+
 export function recordMemoryError(errors: ErrorStore | undefined, source: string, message: string): void {
   errors?.append({
     id: `memory:${source}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,

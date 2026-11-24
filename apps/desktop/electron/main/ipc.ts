@@ -55,7 +55,7 @@ import { buildProviderList, findReservedProviderConflict, isReservedKnowledgePro
 import { allocateAutoWorkspace, assertAgentId, ensureWorkspaceDir } from './workspace.js';
 import { relocateWorkspace, type RelocateResult } from './workspace-relocation.js';
 import { buildAgentSaddle } from './saddle.js';
-import { ExtractionScheduler, handleMemoryToolAction } from './memory/index.js';
+import { ExtractionScheduler, IdleConsolidator, handleMemoryToolAction } from './memory/index.js';
 import { buildAttachmentPrompt, stageAttachments } from './attachments.js';
 import { resizeImageForAttachment } from './image-resize.js';
 import { writePiModelsConfig } from './pi-model-config.js';
@@ -200,7 +200,38 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   rt.memory?.setEmitter((type, payload) => {
     getWindow()?.webContents.send('sparkii:event:memory-event', { type, ...payload });
   });
-  /** 提炼走用户已配置的大模型（同路由/同 key），但用自借内部槽位，不打扰交互队列。 */
+  /**
+   * 提炼与整合共用的模型目标与内部槽位：模型走用户已配置的大模型（同路由/同 key），
+   * 槽位自借 idle 的，拿不到就顺延——绝不挤占交互队列。
+   */
+  const memoryTarget = async () => {
+    const settings = await loadSettings(rt.dataDir);
+    return resolveModelTarget(settings, 'memory') ?? resolveModelTarget(settings, 'default');
+  };
+  const acquireMemorySlot = async (
+    target: { provider: string; modelId: string },
+    label = '内部记忆整理',
+  ) => {
+    const key = `memory:${randomUUID()}`;
+    const slot = await rt.pool.acquireIfIdle(key, {
+      meta: { profileId: 'internal', profileName: label, label, internal: true },
+    });
+    if (!slot) return null;
+    await injectProbeKey(slot.client, target.provider);
+    return {
+      release: async () => { await rt.pool.release(key); },
+      complete: async (text: string, modelTarget: { provider: string; modelId: string }) => {
+        const resp = await slot.client.send({
+          type: 'complete',
+          provider: modelTarget.provider,
+          modelId: modelTarget.modelId,
+          text,
+        });
+        if (!resp.success) throw new Error(resp.error ?? 'memory complete failed');
+        return String(resp.data ?? '').trim();
+      },
+    };
+  };
   const memoryExtraction = rt.memory ? new ExtractionScheduler({
     service: rt.memory,
     errors: rt.errors,
@@ -216,33 +247,24 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
         piSessionFile: rec.piSessionFile ?? undefined,
       };
     },
-    target: async () => {
-      const settings = await loadSettings(rt.dataDir);
-      return resolveModelTarget(settings, 'memory') ?? resolveModelTarget(settings, 'default');
-    },
-    acquireInternalSlot: async (target) => {
-      const key = `memory:${randomUUID()}`;
-      const slot = await rt.pool.acquireIfIdle(key, {
-        meta: { profileId: 'internal', profileName: '内部记忆整理', label: '内部记忆整理', internal: true },
-      });
-      if (!slot) return null;
-      await injectProbeKey(slot.client, target.provider);
-      return {
-        release: async () => { await rt.pool.release(key); },
-        complete: async (text: string, modelTarget: { provider: string; modelId: string }) => {
-          const resp = await slot.client.send({
-            type: 'complete',
-            provider: modelTarget.provider,
-            modelId: modelTarget.modelId,
-            text,
-          });
-          if (!resp.success) throw new Error(resp.error ?? 'memory complete failed');
-          return String(resp.data ?? '').trim();
-        },
-      };
-    },
+    target: memoryTarget,
+    acquireInternalSlot: (target) => acquireMemorySlot(target),
     complete: async () => { throw new Error('memory extraction requires an internal slot'); },
   }) : null;
+  /** 空闲整合：与提炼同一个内部槽位入口，同样绝不排队。 */
+  const memoryConsolidation = rt.memory ? new IdleConsolidator({
+    service: rt.memory,
+    errors: rt.errors,
+    logger,
+    isBusy: () => rt.pool.snapshot().slots.some((slot) => slot.status === 'streaming'),
+    target: memoryTarget,
+    acquireInternalSlot: (target) => acquireMemorySlot(target, '内部记忆整合'),
+    complete: async () => { throw new Error('memory consolidation requires an internal slot'); },
+  }) : null;
+  if (memoryConsolidation) {
+    memoryConsolidation.start();
+    app.once('will-quit', () => memoryConsolidation.stop());
+  }
   const shellGrants = new ShellGrantStore();
   /** The prompt text of the live Task, trimmed, for the Reviewer only. */
   const userTaskBySession = new Map<string, string>();
@@ -851,6 +873,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       if (!sessionId) return;
       getWindow()?.webContents.send('sparkii:event:chat-event', { ...ev, sessionId });
       if (ev.type === 'agent_settled') {
+        memoryConsolidation?.noteActivity();
         // B1 — 只认领「确属本轮 prompt」的 settled。
         // 迟到的 settled（createSession 建槽位 / 复用旧进程发出的 new_session）
         // 若无条件 end，会撤销刚 startSessionTask 建立的 Grant，使文件工具 TASK_REVOKED。

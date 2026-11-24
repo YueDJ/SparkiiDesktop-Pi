@@ -7,7 +7,7 @@ export type MemoryScopeKind = 'user' | 'agent' | 'project' | 'episode';
 export interface MemorySource {
   sessionId: string;
   excerpt: string;
-  kind: 'extracted' | 'explicit';
+  kind: 'extracted' | 'explicit' | 'consolidated';
 }
 
 export interface PendingOperation {
