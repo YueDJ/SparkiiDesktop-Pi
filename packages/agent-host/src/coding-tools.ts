@@ -11,7 +11,7 @@ import type {
   ActionExecutionResult,
   RuntimeActionRequest,
 } from "./runtime-actions.js";
-import { isPathInside, isPlatformReservedPath } from "./workspace-guard.js";
+import { isPathInside, isPlatformReservedPath, resolveGuardedReadPath } from "./workspace-guard.js";
 
 export interface CodingToolsContext {
   cwd: string;
@@ -52,18 +52,11 @@ function executionError(
   return new Error(`${toolName}未执行:${result.status}:${detail}`);
 }
 
-function shellExec(ctx: CodingToolsContext) {
-  return async (command: string, cwd: string, opts: { onData: (data: Buffer) => void }) => {
-    const result = await requestToolAction(ctx, "bash", {
-      command,
-    });
-    if (result.status === "denied" || result.status === "failed") {
-      opts.onData(Buffer.from(`${result.decision.reason}\n`));
-      return { exitCode: 1 };
-    }
-    const data = (result.result ?? {}) as { exitCode?: number | null; output?: string };
-    if (data.output) opts.onData(Buffer.from(data.output));
-    return { exitCode: data.exitCode ?? 0 };
+function shellExec() {
+  return async (_command: string, _cwd: string, opts: { onData: (data: Buffer) => void }) => {
+    // Arbitrary host commands cannot prove they will not access .sparkii through aliases.
+    opts.onData(Buffer.from('模型 Shell 已禁用：宿主命令无法证明不访问 .sparkii 保留目录\n'));
+    return { exitCode: 1 };
   };
 }
 
@@ -83,7 +76,7 @@ export function createCodingToolDefinitions(ctx: CodingToolsContext): Array<Tool
 
   const bash = createBashToolDefinition(pathCwd, {
     operations: {
-      exec: shellExec(ctx),
+      exec: shellExec(),
     },
   });
 
@@ -91,7 +84,16 @@ export function createCodingToolDefinitions(ctx: CodingToolsContext): Array<Tool
     operations: {
       readFile: async (absolutePath: string) => {
         guardPath(ctx, absolutePath);
-        return readFile(absolutePath);
+        // Native edit reads and matches oldText before requesting its write.
+        // Authorize the source read in Main first so aliases cannot act as a
+        // protected-content oracle; access() above is metadata-only.
+        const result = await requestToolAction(ctx, "read", {
+          path: absolutePath,
+        });
+        if (result.status !== "executed") throw executionError("读取", result);
+        const guarded = await resolveGuardedReadPath(ctx.workspaceRoot, absolutePath);
+        if (!guarded.ok) throw new Error(`拒绝读取:${guarded.message}`);
+        return readFile(guarded.canonicalPath);
       },
       access: async (absolutePath: string) => {
         guardPath(ctx, absolutePath);

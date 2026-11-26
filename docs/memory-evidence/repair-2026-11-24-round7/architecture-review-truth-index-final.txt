@@ -1,0 +1,12 @@
+APPROVE
+Task-id: R7-REVIEW-TRUTH-INDEX
+
+Independent read-only source and assertion inspection; no files edited and no full suite run.
+
+- recoverableProjectWorkspaces() unions privacy_recovery.workspace_path, non-null memories.workspace_path, and zero-entry project paths derived from scope_files.file_ref, normalized and deduplicated with workspacePathKey (store.ts:498-513).
+- Replacement and source deletion obtain that snapshot before reconciliation/commit; conflicts fail before writeRef, commitTruthBatch, and success events (store.ts:478-495, store.ts:1026-1052, service.ts:1009-1011, service.ts:840-843).
+- Source deletion passes the complete project allowlist to the truth batch and reconciles after commit, so valid unregistered truth is updated without becoming searchable again (store.ts:1049-1052).
+- Reconciliation removes memories and scope_files for conflicts, invalidating hashes; unchanged truth reindexes after resolution (store.ts:642-684).
+- Unregistered projects do not enter list/search; privacy recovery is discovery-only; deleted truth plus registry cleanup still removes index/recovery metadata (store.ts:647-672, store.ts:776-811, store.ts:1055-1059).
+- IPC markSourcesDeleted ordering propagates conflicts before session/Pi-file deletion (ipc.ts:2034-2043).
+- New assertions cover unchanged corrupt bytes, no success event, zero-entry identity conflict, unregistered source-delete success, privacy discovery, and reindex after conflict resolution (memory-round7-regression.test.ts:369-570).

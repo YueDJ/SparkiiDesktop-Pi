@@ -1,0 +1,23 @@
+Independent narrow-domain read-only reviews after round 4
+========================================================
+
+runtime-shutdown-review: CHANGES_REQUIRED
+- Focused tests: 3 files / 48 passed.
+- Production PiRuntimePool + injected FakeHandle: after maxAgents 1 -> 2, a queued acquire remained pending (active:1, queued:1). setMaxAgents did not call servePending.
+- Production Logger + injected circular ctx: log rejected with "Converting circular structure to JSON" because console context serialization occurred outside the try block.
+
+fence-truth-review: CHANGES_REQUIRED
+- Focused tests: 7 files / 104 passed / 1 skipped (real symlink capability unavailable).
+- Source analysis of production recoverTruthBatch: if dataDir/memory is a real junction and the corrupt-journal path is rejected, unrecoverable -> blockWrites/quarantine can still write or rename outside the authorized memory root.
+- The reviewer's independent tsx probe could not run in their environment; this finding required local reproduction before repair.
+
+memory-semantics-review: CHANGES_REQUIRED
+- Source hashes: 38/38 matched. Evidence hashes: 52/52 matched.
+- UI source hash matched round 3; both screenshots inspected; console/network clean.
+- Focused tests: 7 files / 75 passed.
+- Independent production-path probes:
+  - addMemoriesBatch wrote a pending memory despite an existing cross-file duplicate identity; single-add was correctly rejected.
+  - After deleting a project truth file and registry reference, searchMemory still returned its indexed sensitive text.
+  - An EPISODE_UPDATE pending proposal with mergeIds:[42] bypassed mergeIds validation and modified both episode summary and proposal status.
+
+All three reviewers confirmed unchanged worktree state and no edits, staging, commits, pushes, or git configuration changes.

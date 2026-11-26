@@ -16,6 +16,7 @@ import {
   promptWorkingDirectory,
   type SkillPromptMergeInput,
 } from "./skill-prompt.js";
+import { AsyncLocalStorage } from "node:async_hooks";
 import { join } from "node:path";
 import type { ToolDef } from "@sparkii/connectors";
 import { resolveToolDefinitions } from "./tool-registry.js";
@@ -29,14 +30,28 @@ import {
   runtimeActionEnvelope,
   type ActionExecutionResult,
   type RuntimeActionRequest,
+  type RuntimeOriginToken,
 } from "./runtime-actions.js";
 import type { ProposalRequest } from "@sparkii/approval";
 import type { ImageContent, SessionSaddle } from "./types.js";
 import type {
   PiRuntimeChildTransport,
+  PiRuntimeError,
+  PiRuntimePromptOptions,
   PiRuntimeSession,
   PiRuntimeSessionHost,
 } from "./pi-runtime.js";
+
+const promptOriginStorage = new AsyncLocalStorage<RuntimeOriginToken>();
+
+export function currentPromptOriginToken(): RuntimeOriginToken | undefined {
+  return promptOriginStorage.getStore();
+}
+
+export function runWithPromptOrigin<T>(originToken: RuntimeOriginToken, run: () => T): T {
+  if (!originToken.trim()) throw new Error("prompt originToken is required");
+  return promptOriginStorage.run(originToken, run);
+}
 
 export interface PiSdkRuntimeOptions {
   transport: PiRuntimeChildTransport;
@@ -140,15 +155,19 @@ export function clearSessionQueue(session: {
 export function startPromptWithoutBlocking(
   session: { prompt: (text: string, options?: any) => Promise<unknown> },
   text: string,
-  options?: { streamingBehavior?: "steer" | "followUp"; images?: ImageContent[] },
-  onError?: (error: { message: string; command?: string; stack?: string }, command?: string) => void,
+  options?: PiRuntimePromptOptions,
+  onError?: (error: PiRuntimeError, command?: string) => void,
 ): Promise<void> {
+  const promptId = typeof options?.promptId === "string" && options.promptId.trim().length > 0
+    ? options.promptId
+    : undefined;
   void session.prompt(text, options).catch((error) => {
     const normalized = error instanceof Error ? error : new Error(String(error));
     onError?.({
       message: normalized.message,
       command: "prompt",
       stack: normalized.stack,
+      ...(promptId ? { promptId, terminal: true } : {}),
     }, "prompt");
   });
   return Promise.resolve();
@@ -196,15 +215,15 @@ export async function createPiSdkSessionHost(
   let extensionApi: ExtensionAPI | null = null;
   const pendingProposals = new Map<
     string,
-    { resolve: (decision: ProposalDecision) => void; reject: (error: Error) => void }
+    { resolve: (decision: ProposalDecision) => void; reject: (error: Error) => void; sessionGeneration: number }
   >();
   const pendingConnectorReads = new Map<
     string,
-    { resolve: (result: ConnectorReadResult) => void; reject: (error: Error) => void }
+    { resolve: (result: ConnectorReadResult) => void; reject: (error: Error) => void; sessionGeneration: number }
   >();
   const pendingActions = new Map<
     string,
-    { resolve: (result: ActionExecutionResult) => void; reject: (error: Error) => void }
+    { resolve: (result: ActionExecutionResult) => void; reject: (error: Error) => void; sessionGeneration: number }
   >();
 
   options.transport.onMessage((envelope) => {
@@ -212,18 +231,30 @@ export async function createPiSdkSessionHost(
       const pending = pendingProposals.get(envelope.requestId);
       if (!pending) return;
       pendingProposals.delete(envelope.requestId);
+      if (envelope.sessionGeneration !== pending.sessionGeneration) {
+        pending.reject(new Error('proposal decision belongs to a replaced session'));
+        return;
+      }
       pending.resolve(envelope.proposalDecision);
     }
     if ("connectorReadResult" in envelope) {
       const pending = pendingConnectorReads.get(envelope.requestId);
       if (!pending) return;
       pendingConnectorReads.delete(envelope.requestId);
+      if (envelope.sessionGeneration !== pending.sessionGeneration) {
+        pending.reject(new Error('connector read result belongs to a replaced session'));
+        return;
+      }
       pending.resolve(envelope.connectorReadResult);
     }
     if ("actionResult" in envelope) {
       const pending = pendingActions.get(envelope.requestId);
       if (!pending) return;
       pendingActions.delete(envelope.requestId);
+      if (envelope.sessionGeneration !== pending.sessionGeneration) {
+        pending.reject(new Error('action result belongs to a replaced session'));
+        return;
+      }
       pending.resolve(envelope.actionResult);
     }
   });
@@ -233,22 +264,34 @@ export async function createPiSdkSessionHost(
   const agentDir = resolveAgentDir(options.agentDir);
   const sessionDir = join(agentDir, "sessions");
 
+  const requireOrigin = (): RuntimeOriginToken => {
+    const originToken = currentPromptOriginToken();
+    if (!originToken) throw new Error("SDK tool request has no prompt-turn origin");
+    return originToken;
+  };
+
   const proposeFromTool = (request: ProposalRequest & { requestId: string }) =>
     new Promise<ProposalDecision>((resolve, reject) => {
-      pendingProposals.set(request.requestId, { resolve, reject });
-      options.transport.postMessage(proposalEnvelope(request));
+      const originToken = requireOrigin();
+      const sessionGeneration = options.transport.sessionGeneration ?? 0;
+      pendingProposals.set(request.requestId, { resolve, reject, sessionGeneration });
+      options.transport.postMessage(proposalEnvelope(request, sessionGeneration, originToken));
     });
 
   const connectorReadFromTool = (request: Parameters<typeof connectorReadEnvelope>[0]) =>
     new Promise<ConnectorReadResult>((resolve, reject) => {
-      pendingConnectorReads.set(request.requestId, { resolve, reject });
-      options.transport.postMessage(connectorReadEnvelope(request));
+      const originToken = requireOrigin();
+      const sessionGeneration = options.transport.sessionGeneration ?? 0;
+      pendingConnectorReads.set(request.requestId, { resolve, reject, sessionGeneration });
+      options.transport.postMessage(connectorReadEnvelope(request, sessionGeneration, originToken));
     });
 
   const requestActionFromTool = (request: RuntimeActionRequest) =>
     new Promise<ActionExecutionResult>((resolve, reject) => {
-      pendingActions.set(request.requestId, { resolve, reject });
-      options.transport.postMessage(runtimeActionEnvelope(request));
+      const originToken = requireOrigin();
+      const sessionGeneration = options.transport.sessionGeneration ?? 0;
+      pendingActions.set(request.requestId, { resolve, reject, sessionGeneration });
+      options.transport.postMessage(runtimeActionEnvelope(request, sessionGeneration, originToken));
     });
 
   /**
@@ -422,17 +465,21 @@ export async function createPiSdkSessionHost(
     sessionManager: SessionManager.create(fallbackCwd, sessionDir),
   });
 
+  const runtimeErrorListeners = new Set<(error: PiRuntimeError) => void>();
   function adaptSession(): PiRuntimeSession {
     const session: any = runtime.session;
     liveSession = session;
-    const runtimeErrorListeners = new Set<(error: { message: string; command?: string; stack?: string }) => void>();
     return {
-      prompt: (text, promptOptions) => startPromptWithoutBlocking(
-        session,
-        text,
-        promptOptions,
-        (error) => runtimeErrorListeners.forEach((listener) => listener(error)),
-      ),
+      prompt: (text, promptOptions) => {
+        const originToken = promptOptions?.originToken;
+        if (!originToken) return Promise.reject(new Error("prompt originToken is required"));
+        return runWithPromptOrigin(originToken, () => startPromptWithoutBlocking(
+          session,
+          text,
+          promptOptions,
+          (error) => runtimeErrorListeners.forEach((listener) => listener(error)),
+        ));
+      },
       steer: (text, images) => session.steer(text, images),
       followUp: (text, images) => session.followUp(text, images),
       clearQueue: async () => clearSessionQueue(session),

@@ -1,0 +1,74 @@
+(node:31900) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:3448) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:4576) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22mapproves by an authorized actor and audits both events
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22mdenies unauthorized approver
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22mrefuses to decide or execute a privacy-redacted proposal
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22matomically updates only the current approved payload and rejects stale or redacted objects
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22mpersistently fences submit, note and approved payload ingress (restart=false)
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22mpersistently fences submit, note and approved payload ingress (restart=true)
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22minvalidates proposals by registered pattern hits for 已删除
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22minvalidates proposals by registered pattern hits for [已删除]
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22minvalidates proposals by registered pattern hits for marker
+ [31m×[39m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22mR8 round3 fences physical-newline fragments in existing and future proposals (restart=false)[32m 28[2mms[22m[39m
+[31m   → expected +0 to be 1 // Object.is equality[39m
+ [31m×[39m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22mR8 round3 fences physical-newline fragments in existing and future proposals (restart=true)[32m 22[2mms[22m[39m
+[31m   → expected undefined to be true // Object.is equality[39m
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22mR8 round3 submit returns the canonical proposal after invalidation during a pending audit append
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22mcancels only the pending proposals for one session
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22mR8 round3 fences physical-newline fragments in existing and future proposals (restart=false)
+[31m[1mAssertionError[22m: expected +0 to be 1 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 1[39m
+[31m+ 0[39m
+
+[36m [2m❯[22m packages/approval/test/gate.test.ts:[2m206:42[22m[39m
+    [90m204|[39m       [34mexpect[39m(existing[33m.[39mprivacyRedacted)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m205|[39m     } [35melse[39m {
+    [90m206|[39m       [34mexpect[39m(gate[33m.[39m[34mredactTexts[39m([secret]))[33m.[39m[34mtoBe[39m([34m1[39m)[33m;[39m
+    [90m   |[39m                                          [31m^[39m
+    [90m207|[39m     }
+    [90m208|[39m     [35mconst[39m canonical [33m=[39m gate[33m.[39m[35mget[39m(existing[33m.[39mid)[33m![39m[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22mR8 round3 fences physical-newline fragments in existing and future proposals (restart=true)
+[31m[1mAssertionError[22m: expected undefined to be true // Object.is equality[39m
+
+[32m- Expected:[39m
+true
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m packages/approval/test/gate.test.ts:[2m204:40[22m[39m
+    [90m202|[39m     }[33m,[39m { profileId[33m:[39m [32m'p'[39m[33m,[39m sessionId[33m:[39m [32m's'[39m[33m,[39m actor[33m:[39m [32m'agent'[39m })[33m;[39m
+    [90m203|[39m     [35mif[39m (restart) {
+    [90m204|[39m       [34mexpect[39m(existing[33m.[39mprivacyRedacted)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   |[39m                                        [31m^[39m
+    [90m205|[39m     } [35melse[39m {
+    [90m206|[39m       [34mexpect[39m(gate[33m.[39m[34mredactTexts[39m([secret]))[33m.[39m[34mtoBe[39m([34m1[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[33m11 skipped[39m[90m (13)[39m
+[2m   Start at [22m 23:39:00
+[2m   Duration [22m 501ms[2m (transform 80ms, setup 0ms, import 260ms, tests 51ms, environment 0ms)[22m
+
+
+exit=1

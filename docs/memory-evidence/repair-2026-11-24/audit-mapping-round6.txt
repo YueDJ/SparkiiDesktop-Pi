@@ -1,0 +1,93 @@
+FINAL AUDIT MAPPING — round 6
+Baseline: 101487d3f612764766cc024d4b28dbf846a926cf
+Acceptance gate: all three independent architect domains explicitly APPROVE.
+
+P0-1 .sparkii alias/junction/canonical/hardlink/reparse fence bypass
+- Source: apps/desktop/electron/main/security/action-normalizer.ts:224-266; workspace-file-service.ts:106-181; workspace-executor.ts:142-274; windows-platform.ts:172-205; runtime-action-router.ts:435; packages/agent-host/src/coding-tools.ts:87-89; tool-registry.ts.
+- Tests: memory-fence-canonical.test.ts; workspace-file-service.integration.test.ts; workspace-file-service.test.ts; workspace-executor.test.ts; windows-platform.test.ts; coding-tools.test.ts; tool-registry.test.ts; runtime-action-router.test.ts.
+- Evidence: real junction/hardlink/canonical-path and injected generic-reparse cases ran; real symlink fixture explicitly skipped after EPERM capability probe.
+
+P1-1 privacy deletion resurrection and diagnostic body retention
+- Source: extraction.ts:98-184; service.ts:120,453-510,695-740; error-store.ts; logger.ts:42-82; ops.ts:22-83.
+- Tests: memory-audit-regression.test.ts P1-1 cases (in-flight response, pending target, corrupt registry, duplicate ids, unregistered indexed workspace, diagnostics and old prompt logs); logger.test.ts; memory-extraction.test.ts.
+- Result: generation/tombstone checks stop model send and commit; deleted bodies are redacted/removed; stateful/circular log context cannot lose the basic message.
+
+P1-2 FTS fallback errors and corrupt SQLite startup blockage
+- Source: store.ts:240-290; memory-index-fallback.test.ts.
+- Tests: P1-2 LIKE fallback CRUD/search/rebuild; corrupt SQLite quarantine/rebuild; disk open/query failure fallback.
+- Result: JSON/JSONL remain truth; SQLite is rebuildable and can fall back to memory without blocking truth reads/writes.
+
+P1-3 copied workspace with duplicate projectId cross-writing
+- Source: settings.ts:137-190; store.ts:431-462,566-587; service.ts:462-463,508-510,695-740; truth-batch.ts:185-253.
+- Tests: copied workspace fail-closed; cross-file duplicate ids; batch conflict rejection; copied-project privacy deletion.
+- Result: duplicate identity blocks listing/injection/write/privacy mutation instead of selecting an arbitrary truth source.
+
+P1-4 memory_search exposing pending memories
+- Source: service.ts:906-912; store.ts:681-686; tools.ts:98.
+- Tests: default search and includeHistory never expose pending; independent project/agent injection isolation probe.
+- Result: default search is active only; includeHistory admits active/superseded but never pending.
+
+P1-5 invalid project UPDATE/SUPERSEDE and partial extraction batches
+- Source: extraction.ts:151-189; service.ts:498-576; truth-batch.ts:268-283,366-436.
+- Tests: one invalid project UPDATE rejects whole batch; truth-batch rollback/recovery suite; malformed model output zero-write tests.
+- Result: memory, episode and extraction cursor commit together or not at all; rollback no longer recreates parent directories before revalidation.
+
+P1-6 truncated material cursor skipping unread content
+- Source: material.ts:42-101.
+- Tests: missing cursor rejection; intra-entry cursor beyond actual text rejection; truncation advances only through included messages.
+- Result: entryId@offset is bounded by actual entry text and never skips an unread tail.
+
+P1-7 cold-start acquireIfIdle exceeding capacity
+- Source: packages/agent-host/src/pi-runtime-pool.ts:98-101,124-167,282-370; pi-runtime-supervisor.ts:224-317.
+- Tests: pi-runtime-pool.test.ts; pi-runtime-supervisor.test.ts.
+- Result: cold starts reserve capacity; internal work does not queue; capacity increases wake queued work; shutdown rejects new work and aggregates unconfirmed exits.
+
+P1-8 idle consolidation re-entry and pair validation
+- Source: consolidation.ts:47-129,144-321; service.ts:742-878.
+- Tests: single-flight across first await; malformed element rejects whole phase; mergeIds all-or-nothing; malformed episode mergeIds; call-count and no-idle-slot tests.
+- Result: one runner, exact pair/scope/file validation, idempotent pending proposals and all-or-nothing phase validation.
+
+P2-1 stale index after external truth edits
+- Source: store.ts:566-587; service.ts:906-912.
+- Tests: external truth edits reconcile list/injection/search; deleted project truth plus removed registry clears searchable index.
+- Result: changed truth is reindexed; deleted truth rows are removed without hiding still-existing unregistered truth needed for privacy deletion.
+
+P2-2 agent-scope manual memory failure
+- Source: tools.ts:35-65; service.ts resolveScope/addMemory path.
+- Tests: memory-tools.test.ts agent scope uses current profileId and validates agent existence; tool signature remains same-source.
+- Result: agent memory writes use the current profile and fail closed for an invalid agent.
+
+P2-3 manual add while disabled
+- Source: service.ts:453-454,498-507; tools.ts:35.
+- Tests: master switch rejects manual add; all three tools denied with no writes/searches.
+- Result: disabled memory rejects manual and batch writes.
+
+P2-4 archived state lost after derived index rebuild
+- Source: store.ts:147,364,402-426,566-587.
+- Tests: project archived state survives derived index rebuild.
+- Result: archived truth metadata is retained across rebuild and excluded from injection.
+
+P2-5 repair state shared across projects
+- Source: SettingsMemoryPane.tsx:48-68,313-334; service.ts:879-903.
+- Tests: memory-settings-pane.test.tsx per-workspace repair drafts and confirmations; round-3 real-Chrome UI probe and screenshots.
+- Result: draft state is keyed by workspace; empty/replace repair requires confirmation and receives exact workspace arguments.
+
+P2-6 episode compression overwriting directly or exceeding limit
+- Source: consolidation.ts:201-258; service.ts episode pending approval branch.
+- Tests: memory-consolidation.test.ts compression <=40 characters, pending-only, mixed invalid output discarded; malformed mergeIds non-mutation.
+- Result: original episode remains unchanged until approval; invalid/oversized output creates no partial proposal.
+
+Shared final verification:
+- verification-round6-run-1.txt: 24 files / 298 passed / 1 skipped.
+- verification-round6-run-2.txt: 24 files / 298 passed / 1 skipped.
+- typecheck-round6.txt: renderer and Electron passed.
+- source-round6-sha256.txt: 39 changed source/test files.
+- evidence-round6-sha256.txt: 88 evidence files at architect-review freeze; refreshed again after final summaries.
+- architect-round6-summary.txt: fence/truth APPROVE, runtime/logger APPROVE, memory schema/semantics APPROVE.
+
+Known limitations and fallbacks:
+- Real symlink creation is unavailable under this Windows account (EPERM); that one fixture is explicitly skipped. Real junction, hardlink, canonical path and injected generic-reparse coverage ran.
+- Windows path-based filesystem operations retain a local concurrent path-replacement TOCTOU risk. The reviewed check-before-parent-mkdir defect was removed; no claim is made that handle-relative race elimination was implemented.
+- Runtime architect probes used injected FakeHandle supervisors, not real child processes; the production pool/supervisor test suites passed 44/44.
+- UI browser evidence is carried forward by exact SettingsMemoryPane.tsx hash equality, not by claiming a new round-6 browser run.
+- No commit, push, staging, git configuration change, destructive git command, real installation/data mutation or user-memory mutation was performed.

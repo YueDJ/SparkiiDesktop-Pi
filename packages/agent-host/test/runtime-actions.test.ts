@@ -18,6 +18,7 @@ describe('runtime action transport', () => {
     expect(runtimeActionEnvelope(request)).toEqual({
       direction: 'runtime-to-main',
       action: request,
+      sessionGeneration: 0,
     });
     expect(request).not.toHaveProperty('risk');
     expect(request).not.toHaveProperty('summary');
@@ -40,6 +41,7 @@ describe('runtime action transport', () => {
       direction: 'main-to-runtime',
       requestId: 'r1',
       actionResult: result,
+      sessionGeneration: 0,
     });
   });
 

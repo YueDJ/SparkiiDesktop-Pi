@@ -1,0 +1,57 @@
+(node:40548) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:35524) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:13540) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [31m❯[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts [2m([22m[2m22 tests[22m[2m | [22m[31m1 failed[39m[2m | [22m[33m19 skipped[39m[2m)[22m[33m 3616[2mms[22m[39m
+     [2m[90m↓[39m[22m R8 final review fences same-process and restarted reads when the privacy journal cannot be persisted
+     [2m[90m↓[39m[22m R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext
+     [2m[90m↓[39m[22m R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext
+     [2m[90m↓[39m[22m R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext
+     [2m[90m↓[39m[22m R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext
+     [2m[90m↓[39m[22m R8-P0-1 resumes from journal context after the chat row and Pi file are already gone
+     [2m[90m↓[39m[22m R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers
+     [2m[90m↓[39m[22m R8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent
+     [2m[90m↓[39m[22m R8 review B3 registers chat secrets before sink cleanup and protects later chat writes after failure
+[31m     [31m×[31m R8-P0-1 restores privacy sink fences before truth recovery can restore plaintext[39m[33m 1702[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 review B3 cleans Pi and chat carriers before a safe-root truth write-block aborts startup [33m 1548[2mms[22m[39m
+     [2m[90m↓[39m[22m R8 review B5 rejects dangling privacy journal directory and file links without reading targets
+     [2m[90m↓[39m[22m R8 review B5 refuses to clear a privacy journal whose identity changed during cleanup
+     [2m[90m↓[39m[22m R8 review B4 rotates memory markers when the deleted text collides with 已删除
+     [2m[90m↓[39m[22m R8 review B4 rotates memory markers when the deleted text collides with [已删除]
+     [2m[90m↓[39m[22m R8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret
+     [33m[2m✓[22m[39m R8-P1-3 refuses to construct MemoryService through an unsafe memory-root junction [33m 364[2mms[22m[39m
+     [2m[90m↓[39m[22m R8-P1-3 fences project repair before registry or truth reads
+     [2m[90m↓[39m[22m R8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker
+     [2m[90m↓[39m[22m R8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state
+     [2m[90m↓[39m[22m R8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state
+     [2m[90m↓[39m[22m R8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 restores privacy sink fences before truth recovery can restore plaintext
+[31m[1mAssertionError[22m: expected 'R8_PRIVATE_private-session_71C' not to contain 'R8_PRIVATE_private-session_71C'[39m
+[36m [2m❯[22m expectPrivateGone apps/desktop/test/memory-r8-regression.test.ts:[2m96:61[22m[39m
+    [90m 94|[39m
+    [90m 95|[39m async function expectPrivateGone(secret: string, excerpt: string, sess…
+    [90m 96|[39m   expect(readFileSync(userMemoryFile(dataDir), 'utf8')).not.toContain(…
+    [90m   |[39m                                                             [31m^[39m
+    [90m 97|[39m   expect(service.list().scopes.flatMap((scope) => scope.entries).map((…
+    [90m 98|[39m   expect(service.searchMemory(secret, { includeHistory: true })).toEqu…
+[90m [2m❯[22m apps/desktop/test/memory-r8-regression.test.ts:[2m262:11[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m2 passed[39m[22m[2m | [22m[33m19 skipped[39m[90m (22)[39m
+[2m   Start at [22m 22:57:02
+[2m   Duration [22m 5.48s[2m (transform 261ms, setup 35ms, import 884ms, tests 3.62s, environment 779ms)[22m
+
+
+exit=1

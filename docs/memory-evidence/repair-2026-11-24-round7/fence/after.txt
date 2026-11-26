@@ -1,0 +1,44 @@
+(node:32844) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:28660) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:18660) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mresolves coding and connector tool names
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mfails closed on unknown tool names
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mwires coding writes to the Runtime action requester
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mresolves the ontology connector tool surface
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mread tool returns WORKSPACE_NOT_CREATED when workspace missing
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mresolves relative read paths against workspaceRoot instead of anchor cwd
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mread tool returns inline image content for an image file
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mreads a skill-root file when the workspace does not exist
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mstill reads workspace files when the workspace exists
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mdenies another agent's skill path even when workspace exists
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mdenies trust-anchor reads even when the file is inside the workspace
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mdenies symlink escapes from the workspace
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mdenies directly reading a hard-linked file
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22masks Main before reading a workspace file
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrejects a canonical .sparkii path returned by the runtime authorization boundary
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mstill returns WORKSPACE_NOT_CREATED for workspace paths when workspace is missing
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mlists a skill-root directory when the workspace does not exist
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mgrep excludes root and nested .sparkii content before formatting output[32m 33[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mgrep cannot reinclude .sparkii through an explicit positive glob[32m 24[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mgrep preserves caller glob filtering without reopening retained directories[32m 25[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mfind excludes retained directories while returning ordinary workspace files[32m 30[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mfind cannot target .sparkii with its glob pattern[32m 30[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mls filters .sparkii before entries are counted or formatted[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mgrep rejects direct .sparkii paths before approval[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mfind rejects direct .sparkii paths before approval[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mls rejects direct .sparkii paths before approval[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mdoes not follow a real directory link into retained content[32m 53[2mms[22m[39m
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22misolates user-library and package skill roots across two agent saddles
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m10 passed[39m[22m[2m | [22m[33m18 skipped[39m[90m (28)[39m
+[2m   Start at [22m 19:19:26
+[2m   Duration [22m 2.45s[2m (transform 260ms, setup 0ms, import 2.03s, tests 214ms, environment 0ms)[22m
+

@@ -1,0 +1,27 @@
+(node:29348) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:41036) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:36660) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | apps/desktop/test/r8-probe-profile.tmp.test.ts > profiles legacy episode privacy deletion
+R8_PHASE constructor count=15 elapsedMs=501.2137
+R8_PHASE add-current count=99 elapsedMs=2313.6554
+R8_PHASE add-legacy count=195 elapsedMs=2660.1377
+R8_PHASE restart count=206 elapsedMs=383.02329999999984
+R8_PHASE privacy-current count=361 elapsedMs=4466.4898
+R8_PHASE privacy-legacy count=514 elapsedMs=4345.7768
+R8_PHASE list count=555 elapsedMs=1167.3303000000014
+
+ ✓ |1| apps/desktop/test/r8-probe-profile.tmp.test.ts (1 test) 15854ms
+   ✓ profiles legacy episode privacy deletion  15853ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  10:42:57
+   Duration  17.45s (transform 169ms, setup 33ms, import 542ms, tests 15.85s, environment 845ms)
+

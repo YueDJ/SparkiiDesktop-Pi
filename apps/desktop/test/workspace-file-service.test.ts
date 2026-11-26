@@ -118,6 +118,94 @@ describe('workspace file service — P1 hard conditions (product §14 R1)', () =
     expect(r.ok).toBe(false);
   });
 
+  it.each([
+    ['delete', '.sparkii'],
+    ['rename', '.sparkii'],
+    ['move', '.sparkii'],
+    ['delete', '.SpArKiI'],
+    ['rename', '.SpArKiI'],
+    ['move', '.SpArKiI'],
+  ] as const)(
+    'rejects %s of an ordinary parent containing nested %s/secret',
+    async (op, reservedName) => {
+      const { service, workspace } = setup();
+      const parent = join(workspace, 'generated');
+      const secret = join(parent, 'nested', reservedName, 'secret');
+      mkdirSync(dirname(secret), { recursive: true });
+      writeFileSync(secret, 'keep');
+
+      const result = await service.execute(op, {
+        sessionId: 's1',
+        path: 'generated',
+        ...(op === 'delete' ? {} : { to: 'moved' }),
+      });
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.code).toBe('DENIED');
+      expect(existsSync(parent)).toBe(true);
+      expect(existsSync(join(workspace, 'moved'))).toBe(false);
+      expect(readFileSync(secret, 'utf8')).toBe('keep');
+    },
+  );
+
+  it('continues to reject direct reserved delete and rename/move requests', async () => {
+    const { service, workspace } = setup();
+    const reserved = join(workspace, '.sparkii');
+    const secret = join(reserved, 'secret');
+    mkdirSync(reserved);
+    writeFileSync(secret, 'keep');
+
+    for (const op of ['delete', 'rename', 'move'] as const) {
+      const result = await service.execute(op, {
+        sessionId: 's1',
+        path: '.sparkii',
+        ...(op === 'delete' ? {} : { to: 'moved-secret' }),
+      });
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.code).toBe('DENIED');
+    }
+    expect(readFileSync(secret, 'utf8')).toBe('keep');
+    expect(existsSync(join(workspace, 'moved-secret'))).toBe(false);
+  });
+
+  it('deletes and moves ordinary trees without reserved descendants', async () => {
+    const { service, workspace } = setup();
+    const deleteParent = join(workspace, 'delete-me');
+    const deleteFile = join(deleteParent, 'nested', 'a.txt');
+    mkdirSync(dirname(deleteFile), { recursive: true });
+    writeFileSync(deleteFile, 'delete');
+
+    const deleted = await service.execute('delete', { sessionId: 's1', path: 'delete-me' });
+    expect(deleted.ok).toBe(true);
+    expect(existsSync(deleteParent)).toBe(false);
+
+    const from = join(workspace, 'move-me');
+    const file = join(from, 'nested', 'a.txt');
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, 'keep');
+    for (const op of ['rename', 'move'] as const) {
+      const source = op === 'rename' ? 'move-me' : 'renamed';
+      const to = op === 'rename' ? 'renamed' : 'moved';
+      const result = await service.execute(op, { sessionId: 's1', path: source, to });
+      expect(result.ok).toBe(true);
+    }
+    expect(existsSync(from)).toBe(false);
+    expect(readFileSync(join(workspace, 'moved', 'nested', 'a.txt'), 'utf8')).toBe('keep');
+  });
+
+  it.each(['.sparkii', '.SpArKiI'])(
+    'continues to list ordinary root entries while hiding %s',
+    async (reservedName) => {
+      const { service, workspace } = setup();
+      mkdirSync(join(workspace, 'input'));
+      writeFileSync(join(workspace, 'project.json'), '{}');
+      mkdirSync(join(workspace, reservedName));
+
+      const result = await service.execute('list', { sessionId: 's1', path: '.' });
+      expect(result.ok).toBe(true);
+      if (result.ok) expect(result.entries?.slice().sort()).toEqual(['input', 'project.json']);
+    },
+  );
+
   it('rename/move require a valid destination inside the workspace', async () => {
     const { service } = setup();
     await service.execute('write', { sessionId: 's1', path: 'a.md', content: 'x' });

@@ -1,0 +1,136 @@
+(node:17200) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:18304) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:34664) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:4488) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [31m❯[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-pool.test.ts [2m([22m[2m48 tests[22m[2m | [22m[31m1 failed[39m[2m | [22m[33m47 skipped[39m[2m)[22m[32m 12[2mms[22m[39m
+     [2m[90m↓[39m[22m P1-7 reserves cold-start capacity before supervisor startup
+     [2m[90m↓[39m[22m reuses a free slot across release
+     [2m[90m↓[39m[22m queues beyond maxAgents and wakes on release
+     [2m[90m↓[39m[22m wakes queued sessions when maxAgents increases
+     [2m[90m↓[39m[22m sends new_session on release
+     [2m[90m↓[39m[22m retires a slot whose new_session fails instead of reusing it
+     [2m[90m↓[39m[22m R7 keeps a resetting slot unavailable and queues a concurrent acquire until reset succeeds
+     [2m[90m↓[39m[22m R7 drops pre-reset events after rebind and accepts new-generation events
+     [2m[90m↓[39m[22m R7 retires a slot when a successful new_session returns a missing generation
+     [2m[90m↓[39m[22m R7 retires a slot when a successful new_session returns a equal generation
+     [2m[90m↓[39m[22m R7 retires a bound slot when the exposed facade sends new_session with a missing generation
+     [2m[90m↓[39m[22m R7 retires a bound slot when the exposed facade sends new_session with a equal generation
+     [2m[90m↓[39m[22m R7 retires a bound slot when the exposed facade sends switch_session with a missing generation
+     [2m[90m↓[39m[22m R7 retires a bound slot when the exposed facade sends switch_session with a equal generation
+     [2m[90m↓[39m[22m R7 retires an uncertain slot once for concurrent exposed facade sends
+     [2m[90m↓[39m[22m R7 does not validate generation data on an unsuccessful exposed facade new_session response
+     [2m[90m↓[39m[22m R7 does not validate generation data on an unsuccessful exposed facade switch_session response
+     [2m[90m↓[39m[22m R7 rejects session-changing new_session broadcasts without sending them
+     [2m[90m↓[39m[22m R7 rejects session-changing switch_session broadcasts without sending them
+     [2m[90m↓[39m[22m R7 rejects an equal switch_session generation and retires the uncertain slot
+     [2m[90m↓[39m[22m R7 does not validate generation data on an unsuccessful switch_session response
+     [2m[90m↓[39m[22m R7 drops stale events throughout switch_session and accepts only the confirmed generation
+     [2m[90m↓[39m[22m R7 clears a concurrent binding on reset failure and gives the waiter a healthy new client
+     [2m[90m↓[39m[22m R7 retires the slot when new_session rejects and does not resolve a waiter with its killed client
+     [2m[90m↓[39m[22m reports the live session id through getSessionId
+     [2m[90m↓[39m[22m clears sessionId before sending new_session on release
+     [2m[90m↓[39m[22m stamps the next session on the same slot after release
+     [2m[90m↓[39m[22m renames a session id while keeping the same client
+     [2m[90m↓[39m[22m renameSession is a no-op when the source id is unknown
+     [2m[90m↓[39m[22m broadcasts a command to every live runtime process
+     [2m[90m↓[39m[22m emits a snapshot after acquire, release and rename
+     [2m[90m↓[39m[22m wakes a queued session with its original saddle and meta
+     [2m[90m↓[39m[22m reuses one process and sends the next session's skillsDir on configure_session
+     [2m[90m↓[39m[22m updateMeta patches a live slot label and emits a snapshot
+     [2m[90m↓[39m[22m updateMeta patches a queued session without waking it
+     [2m[90m↓[39m[22m snapshot uses 新会话 when acquire has no label, not the session id
+     [2m[90m↓[39m[22m updateMeta follows renameSession so a temp key can receive the real title
+     [2m[90m↓[39m[22m updateMeta is a no-op for an unknown session
+     [2m[90m↓[39m[22m hides internal probe slots and queue items from the snapshot
+     [2m[90m↓[39m[22m drops a crashed slot instead of handing it to the next acquire
+     [2m[90m↓[39m[22m m9：await start() 期间池被 stopAll ⇒ acquire 复检 stopped、停掉新 supervisor 并拒绝
+     [2m[90m↓[39m[22m stopAll waits for every cold-start supervisor and repeated calls share the same shutdown
+     [2m[90m↓[39m[22m releases cold-start capacity when supervisor creation fails
+[31m     [31m×[31m R7 rejects a switch binding retired before its continuation and serves the next acquire[39m[32m 10[2mms[22m[39m
+     [2m[90m↓[39m[22m stopAll during a queued bind rejects the request instead of returning a stopped slot
+     [2m[90m↓[39m[22m continues queued binds after configure_session fails without rebinding the failed request
+     [2m[90m↓[39m[22m stopAll rejects when a child never confirms process exit
+     [2m[90m↓[39m[22m M3：stopAll 等到子进程 exit 才 resolve（kill 不自动退出时由超时兜底）
+ [31m❯[39m [30m[46m 1 [49m[39m apps/desktop/test/workflow-broker.test.ts [2m([22m[2m28 tests[22m[2m | [22m[31m1 failed[39m[2m | [22m[33m27 skipped[39m[2m)[22m[32m 33[2mms[22m[39m
+   [2m[90m↓[39m[22m settles a caller waiter as denied when privacy redaction invalidates its proposal
+   [2m[90m↓[39m[22m canonicalizes a stale approved broker completion against privacy-redacted gate state
+   [2m[90m↓[39m[22m acquires the workflow slot with the agent display name, not the session id
+   [2m[90m↓[39m[22m uses the runtime session id for the workflow session record
+   [2m[90m↓[39m[22m keeps only workflow tool-step tools plus read on the runtime saddle
+   [2m[90m↓[39m[22m persists the caller workspace and model on the workflow session
+   [2m[90m↓[39m[22m resolves skill ref and llm template to prompt content
+   [2m[90m↓[39m[22m resolves the two visible business skills plus hidden tools
+     [2m[90m↓[39m[22m rejects forged legacy coding proposals before they reach ApprovalGate
+     [2m[90m↓[39m[22m completes the human step when the shared broker decides approval
+     [2m[90m↓[39m[22m runs the workflow for the requested profile instead of contract-review
+     [2m[90m↓[39m[22m returns the session id before the runner finishes
+     [2m[90m↓[39m[22m persists step output on workflow_step_end and does not write a report-named result blob
+     [2m[90m↓[39m[22m persists workflow_step_end failed status when a step throws
+     [2m[90m↓[39m[22m stops the workflow and reports when a step_end append fails
+     [2m[90m↓[39m[22m stops the workflow when even the small failed end cannot be appended
+     [2m[90m↓[39m[22m does not swallow start/end append failures with empty catch
+     [2m[90m↓[39m[22m does not let a rebound session consume the previous workflow prompt
+[31m     [31m×[31m does not let a same-client same-id rebinding consume the previous workflow prompt[39m[32m 31[2mms[22m[39m
+     [2m[90m↓[39m[22m stores full assistant text from message_update/message_end in step output
+     [2m[90m↓[39m[22m does not revive proposal-first edit/write semantics from Runtime requests
+     [2m[90m↓[39m[22m does not scan payload.diff to invent preview for other tools
+     [2m[90m↓[39m[22m does not resolve an approved write as 操作未执行:approved when the timeout elapses mid-execution
+     [2m[90m↓[39m[22m still resolves an untouched pending proposal as expired after the timeout
+     [2m[90m↓[39m[22m pushes the expired proposal to the renderer only when truly expired
+     [2m[90m↓[39m[22m does not push expired while an approved write is still executing
+     [2m[90m↓[39m[22m carries the approval scope back to the awaiting action router
+     [2m[90m↓[39m[22m cancels pending broker waits for one session
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/workflow-broker.test.ts[2m > [22mrunWorkflow session id and JSONL[2m > [22mdoes not let a same-client same-id rebinding consume the previous workflow prompt
+[31m[1mAssertionError[22m: expected { stepId: 'review', …(3) } to match object { status: 'failed', …(1) }
+(3 matching properties omitted from actual)[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[32m-   "error": ObjectContaining {[39m
+[32m-     "message": StringMatching /no longer bound/i,[39m
+[32m-   },[39m
+[32m-   "status": "failed",[39m
+[31m+   "status": "completed",[39m
+[2m  }[22m
+
+[36m [2m❯[22m apps/desktop/test/workflow-broker.test.ts:[2m740:23[22m[39m
+    [90m738|[39m
+    [90m739|[39m     const end = appends.find((a) => a.customType === 'workflow_step_en…
+    [90m740|[39m     [34mexpect[39m(end[33m?.[39mdata)[33m.[39m[34mtoMatchObject[39m({
+    [90m   |[39m                       [31m^[39m
+    [90m741|[39m       status[33m:[39m [32m'failed'[39m[33m,[39m
+    [90m742|[39m       error: expect.objectContaining({ message: expect.stringMatching(…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-pool.test.ts[2m > [22mPiRuntimePool[2m > [22mR7 rejects a switch binding retired before its continuation and serves the next acquire
+[31m[1mAssertionError[22m: expected { client: { …(3) }, …(2) } to be an instance of Error[39m
+[36m [2m❯[22m packages/agent-host/test/pi-runtime-pool.test.ts:[2m1057:30[22m[39m
+    [90m1055|[39m
+    [90m1056|[39m       [34mexpect[39m(handles[[34m0[39m][33m.[39mkilled)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m1057|[39m       [34mexpect[39m(bindingOutcome)[33m.[39m[34mtoBeInstanceOf[39m([33mError[39m)[33m;[39m
+    [90m   |[39m                              [31m^[39m
+    [90m1058|[39m       expect(bindingOutcome).toMatchObject({ message: expect.stringMat…
+    [90m1059|[39m       [34mexpect[39m(pool[33m.[39m[35mget[39m([32m"a"[39m))[33m.[39m[34mtoBeUndefined[39m()[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m2 failed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[33m74 skipped[39m[90m (76)[39m
+[2m   Start at [22m 21:49:14
+[2m   Duration [22m 3.72s[2m (transform 588ms, setup 20ms, import 2.80s, tests 45ms, environment 838ms)[22m
+

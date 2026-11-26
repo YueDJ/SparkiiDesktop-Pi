@@ -1,0 +1,14 @@
+CHANGES_REQUIRED
+Task-id: R7-REVIEW-FENCE-PRIVACY
+
+Blocking finding:
+
+- Privacy deletion leaves plaintext in surviving memory truth through pendingOp.idempotencyKey.
+- service.ts:648-652 and consolidation.ts:187,249,313 embed proposed text directly in this field.
+- store.ts:1082-1088 scrubs entry.text, source.excerpt, and pendingOp.proposedText, but not pendingOp.idempotencyKey; store.ts:1090-1100 writes the result back to JSONL truth.
+- A surviving pending proposal can therefore retain an old-only target secret in idempotencyKey even when visible fields are redacted. SQLite does not index that field, so reconciliation does not remove it.
+- Required repair: recursively redact every content-bearing string in retained entries, or at minimum pendingOp.idempotencyKey. Add a real surviving pending episode/consolidation proposal regression and assert absence from raw truth JSONL, rebuilt SQLite/FTS, approvals, audits, errors, logs, chat, and retry journals.
+
+No additional blocking findings were verified in recursive fencing, destructive/move fencing, canonical approval revalidation, Gate CAS/invalidation, privacy retry, episode rebuilding, audit summaries, or transient prompt ownership.
+
+Accepted limitations: Windows main-process TOCTOU, symlink EPERM skips, untested recursive hard-link aliases outside .sparkii. Reviewer edited no files and ran no suites.

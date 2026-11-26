@@ -1,0 +1,133 @@
+(node:27284) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:35764) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8 review privacy B5 zeroes a plaintext journal temp file before a failed removal
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8 final review fences same-process and restarted reads when the privacy journal cannot be persisted
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 resumes from journal context after the chat row and Pi file are already gone
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8 review B3 registers chat secrets before sink cleanup and protects later chat writes after failure
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 restores privacy sink fences before truth recovery can restore plaintext
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8 review B3 cleans Pi and chat carriers before a safe-root truth write-block aborts startup
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8 review B5 rejects dangling privacy journal directory and file links without reading targets
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8 review B5 refuses to clear a privacy journal whose identity changed during cleanup
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-REPAIR-MEMORY refuses to delete a journal when the zero-write readback contains a nonzero byte
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-REPAIR-MEMORY digest-mismatch startup temp evidence persists a privacy write-block without deleting context[33m 1969[2mms[22m[39m
+[31m   → expected false to be true // Object.is equality[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-REPAIR-MEMORY session-mismatch startup temp evidence persists a privacy write-block without deleting context[33m 2176[2mms[22m[39m
+[31m   → expected false to be true // Object.is equality[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-REPAIR-MEMORY malformed startup temp evidence persists a privacy write-block without deleting context[33m 2236[2mms[22m[39m
+[31m   → expected false to be true // Object.is equality[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-REPAIR-MEMORY promotes a valid startup temp journal and automatically resumes its privacy deletion[33m 2625[2mms[22m[39m
+[31m   → expected '{\n  "version": 1,\n  "entries": [\n …' not to contain 'R8_PRIVATE_private-session_71C'[39m
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-REPAIR-MEMORY fences Windows non-symlink reparse attributes on the privacy directory before temp reads and cleanup
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-REPAIR-MEMORY fences Windows non-symlink reparse attributes on the privacy file before temp reads and cleanup
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-REPAIR-MEMORY continues Gate Audit Error Logger cleanup when store privacy registration fails
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8 review B4 rotates memory markers when the deleted text collides with %s
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 truth write-block regressions[2m > [22mR8-P1-3 refuses to construct MemoryService through an unsafe memory-root junction
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 truth write-block regressions[2m > [22mR8-P1-3 fences project repair before registry or truth reads
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 truth write-block regressions[2m > [22mR8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 truth write-block regressions[2m > [22mR8 privacy review reads the raw Pi path before chat redaction can alter it
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 truth write-block regressions[2m > [22mR8 privacy review resumes a secret-named Pi carrier after restart
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 truth write-block regressions[2m > [22mR8 privacy review retries independent carriers after a same-process truth rollback block
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 truth write-block regressions[2m > [22mR8 privacy review removes a plaintext journal temp file left before rename
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy preflight regressions[2m > [22mR8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy preflight regressions[2m > [22mR8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy preflight regressions[2m > [22mR8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 4 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-REPAIR-MEMORY digest-mismatch startup temp evidence persists a privacy write-block without deleting context
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-REPAIR-MEMORY session-mismatch startup temp evidence persists a privacy write-block without deleting context
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-REPAIR-MEMORY malformed startup temp evidence persists a privacy write-block without deleting context
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m apps/desktop/test/memory-r8-regression.test.ts:[2m421:30[22m[39m
+    [90m419|[39m     (service [35mas[39m any)[33m.[39m[34mloadPendingPrivacyJournals[39m()[33m;[39m
+    [90m420|[39m
+    [90m421|[39m     [34mexpect[39m([34mexistsSync[39m(temp))[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   |[39m                              [31m^[39m
+    [90m422|[39m     [34mexpect[39m([34mreadFileSync[39m(temp[33m,[39m [32m'utf8'[39m))[33m.[39m[34mtoBe[39m(payload)[33m;[39m
+    [90m423|[39m     expect(existsSync(join(memoryDir(dataDir), '.privacy-write-block.j…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-REPAIR-MEMORY promotes a valid startup temp journal and automatically resumes its privacy deletion
+[31m[1mAssertionError[22m: expected '{\n  "version": 1,\n  "entries": [\n …' not to contain 'R8_PRIVATE_private-session_71C'[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- R8_PRIVATE_private-session_71C[39m
+[31m+ {[39m
+[31m+   "version": 1,[39m
+[31m+   "entries": [[39m
+[31m+     {[39m
+[31m+       "id": "mem_04e4a4e0-70f1-41e9-8f6f-5ce4922be72a",[39m
+[31m+       "text": "R8_PRIVATE_private-session_71C",[39m
+[31m+       "status": "active",[39m
+[31m+       "pinned": false,[39m
+[31m+       "importance": 2,[39m
+[31m+       "createdAt": 1795641172890,[39m
+[31m+       "updatedAt": 1795641172890,[39m
+[31m+       "source": {[39m
+[31m+         "sessionId": "private-session",[39m
+[31m+         "excerpt": "R8_EXCERPT_private-session_92D",[39m
+[31m+         "kind": "explicit"[39m
+[31m+       },[39m
+[31m+       "supersededBy": null,[39m
+[31m+       "pendingOp": null[39m
+[31m+     },[39m
+[31m+     {[39m
+[31m+       "id": "mem_980364f7-b299-48d1-8f3e-37a299c73d59",[39m
+[31m+       "text": "cross-session R8_EXCERPT_private-session_92D",[39m
+[31m+       "status": "active",[39m
+[31m+       "pinned": false,[39m
+[31m+       "importance": 2,[39m
+[31m+       "createdAt": 1795641173732,[39m
+[31m+       "updatedAt": 1795641173732,[39m
+[31m+       "source": {[39m
+[31m+         "sessionId": "carrier-session",[39m
+[31m+         "excerpt": "cross-session R8_EXCERPT_private-session_92D",[39m
+[31m+         "kind": "explicit"[39m
+[31m+       },[39m
+[31m+       "supersededBy": null,[39m
+[31m+       "pendingOp": null[39m
+[31m+     }[39m
+[31m+   ][39m
+[31m+ }[39m
+[31m+[39m
+
+[36m [2m❯[22m expectPrivateGone apps/desktop/test/memory-r8-regression.test.ts:[2m98:61[22m[39m
+    [90m 96|[39m
+    [90m 97|[39m async function expectPrivateGone(secret: string, excerpt: string, sess…
+    [90m 98|[39m   expect(readFileSync(userMemoryFile(dataDir), 'utf8')).not.toContain(…
+    [90m   |[39m                                                             [31m^[39m
+    [90m 99|[39m   expect(service.list().scopes.flatMap((scope) => scope.entries).map((…
+    [90m100|[39m   expect(service.searchMemory(secret, { includeHistory: true })).toEqu…
+[90m [2m❯[22m apps/desktop/test/memory-r8-regression.test.ts:[2m443:11[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m4 failed[39m[22m[2m | [22m[33m30 skipped[39m[90m (34)[39m
+[2m   Start at [22m 05:12:44
+[2m   Duration [22m 10.82s[2m (transform 271ms, setup 31ms, import 810ms, tests 9.01s, environment 801ms)[22m
+

@@ -1,0 +1,17 @@
+(node:33420) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:39620) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:16524) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/ipc.test.ts (166 tests | 165 skipped) 106ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 165 skipped (166)
+   Start at  07:50:04
+   Duration  7.93s (transform 1.95s, setup 32ms, import 6.83s, tests 106ms, environment 785ms)
+

@@ -233,6 +233,27 @@ describe("resolveToolDefinitions", () => {
     });
   });
 
+  it("rejects a canonical .sparkii path returned by the runtime authorization boundary", async () => {
+    const ws = mkdtempSync(join(tmpdir(), "ws-reserved-"));
+    mkdirSync(join(ws, ".sparkii"));
+    writeFileSync(join(ws, ".sparkii", "memory.json"), "reserved-secret", "utf8");
+    writeFileSync(join(ws, "a.txt"), "ordinary", "utf8");
+    const defs = resolveToolDefinitions(["read"], {
+      cwd: ws,
+      workspaceRoot: ws,
+      propose,
+      requestAction: async () => ({
+        requestId: "r1",
+        status: "executed" as const,
+        decision: { decision: "allow" as const, ruleId: "workspace.read", reason: "test" },
+        result: { authorized: true, canonicalPath: join(ws, ".sparkii", "memory.json") },
+      }),
+    });
+    const result = await (defs[0] as any).execute("t1", { path: "a.txt" }, undefined, undefined, {});
+    expect(result.content?.[0]?.text).toMatch(/拒绝访问/);
+    expect(result.content?.[0]?.text).not.toContain("reserved-secret");
+  });
+
   it("still returns WORKSPACE_NOT_CREATED for workspace paths when workspace is missing", async () => {
     const skillsDir = mkdtempSync(join(tmpdir(), "skills-"));
     const ws = join(tmpdir(), "missing-ws-still-" + Date.now());
@@ -255,6 +276,160 @@ describe("resolveToolDefinitions", () => {
     const text = (result as any).content?.[0]?.text ?? "";
     expect(text).toContain("SKILL.md");
     expect(text).not.toBe(WORKSPACE_NOT_CREATED);
+  });
+
+  describe("recursive path fence", () => {
+    const canary = "R7-RETAINED-CONTENT-CANARY";
+
+    function workspaceFixture() {
+      const ws = mkdtempSync(join(tmpdir(), "ws-r7-fence-"));
+      mkdirSync(join(ws, ".sparkii", "code.txt.sparkii"), { recursive: true });
+      mkdirSync(join(ws, "src", "nested", ".sparkii"), { recursive: true });
+      mkdirSync(join(ws, "src", "upper", ".SPARKII"), { recursive: true });
+      writeFileSync(join(ws, ".sparkii", "code.txt.sparkii", "memory.json"), canary, "utf8");
+      writeFileSync(join(ws, "src", "nested", ".sparkii", "memory.json"), canary, "utf8");
+      writeFileSync(join(ws, "src", "upper", ".SPARKII", "memory.json"), canary, "utf8");
+      writeFileSync(join(ws, "src", "app.ts"), `export const visible = "${canary}";`, "utf8");
+      writeFileSync(join(ws, "notes.txt"), `${canary}\nordinary workspace notes`, "utf8");
+      return ws;
+    }
+
+    function approvingAdapter() {
+      return vi.fn(async (request: any) => ({
+        requestId: request.requestId,
+        status: "executed" as const,
+        decision: { decision: "allow" as const, ruleId: "workspace.read", reason: "root approved" },
+        result: { authorized: true, canonicalPath: request.args.path },
+      }));
+    }
+
+    async function execute(
+      name: string,
+      ws: string,
+      params: Record<string, unknown>,
+      requestAction = approvingAdapter(),
+    ) {
+      const tool = resolveToolDefinitions([name], {
+        cwd: ws,
+        workspaceRoot: ws,
+        propose,
+        requestAction,
+      }).find((definition) => definition.name === name)!;
+      const result = await (tool as any).execute(
+        `call-${name}`,
+        params,
+        undefined,
+        undefined,
+        {},
+      );
+      return { result, requestAction };
+    }
+
+    it("grep excludes root and nested .sparkii content before formatting output", async () => {
+      const ws = workspaceFixture();
+      const { result, requestAction } = await execute("grep", ws, { pattern: canary, path: "." });
+      const text = result.content?.[0]?.text ?? "";
+      expect(text).toContain("src/app.ts");
+      expect(text).not.toContain(".sparkii");
+      expect(text).not.toContain("memory.json");
+      expect(requestAction).toHaveBeenCalledWith(expect.objectContaining({
+        toolName: "grep",
+        args: expect.objectContaining({ path: ws }),
+      }));
+    });
+
+    it("grep cannot reinclude .sparkii through an explicit positive glob", async () => {
+      const ws = workspaceFixture();
+      const { result } = await execute("grep", ws, {
+        pattern: canary,
+        path: ".",
+        glob: "**/.sparkii/**",
+      });
+      expect(result.content?.[0]?.text).not.toContain(canary);
+      expect(result.content?.[0]?.text).not.toContain(".sparkii");
+    });
+
+    it("grep preserves caller glob filtering without reopening retained directories", async () => {
+      const ws = workspaceFixture();
+      const { result } = await execute("grep", ws, { pattern: canary, path: ".", glob: "*.txt" });
+      const text = result.content?.[0]?.text ?? "";
+      expect(text).toContain("notes.txt");
+      expect(text).not.toContain("src/app.ts");
+      expect(text).not.toContain(".sparkii");
+    });
+
+    it("find excludes retained directories while returning ordinary workspace files", async () => {
+      const ws = workspaceFixture();
+      const { result } = await execute("find", ws, { pattern: "**/*", path: "." });
+      const text = result.content?.[0]?.text ?? "";
+      expect(text).toContain("src/app.ts");
+      expect(text).toContain("notes.txt");
+      expect(text).not.toContain(".sparkii");
+      expect(text).not.toContain("memory.json");
+    });
+
+    it("find cannot target .sparkii with its glob pattern", async () => {
+      const ws = workspaceFixture();
+      const { result } = await execute("find", ws, { pattern: "**/.sparkii/**", path: "." });
+      expect(result.content?.[0]?.text).not.toContain("memory.json");
+      expect(result.content?.[0]?.text).not.toContain(".sparkii");
+    });
+
+    it("ls filters .sparkii before entries are counted or formatted", async () => {
+      const ws = workspaceFixture();
+      const { result } = await execute("ls", ws, { path: ".", limit: 2 });
+      const text = result.content?.[0]?.text ?? "";
+      expect(text).toContain("notes.txt");
+      expect(text).toContain("src/");
+      expect(text).not.toContain(".sparkii");
+    });
+
+    it.each(["grep", "find", "ls"])("%s rejects direct .sparkii paths before approval", async (name) => {
+      const ws = workspaceFixture();
+      const { result, requestAction } = await execute(name, ws, {
+        path: ".sparkii",
+        pattern: canary,
+      });
+      expect(result.content?.[0]?.text).toMatch(/拒绝访问/);
+      expect(result.content?.[0]?.text).not.toContain(canary);
+      expect(requestAction).not.toHaveBeenCalled();
+    });
+
+    it.each(["grep", "find", "ls"])("%s rejects an approved directory alias into .sparkii", async (name) => {
+      const ws = workspaceFixture();
+      const alias = join(ws, "retained-link");
+      symlinkSync(join(ws, ".sparkii"), alias, process.platform === "win32" ? "junction" : "dir");
+      const { result } = await execute(name, ws, { path: alias, pattern: canary });
+      expect(result.content?.[0]?.text).toMatch(/拒绝访问/);
+      expect(result.content?.[0]?.text).not.toContain(canary);
+      expect(result.content?.[0]?.text).not.toContain("memory.json");
+    });
+
+    it("grep revalidates an approved alias when Main omits canonicalPath", async () => {
+      const ws = workspaceFixture();
+      const alias = join(ws, "retained-link");
+      symlinkSync(join(ws, ".sparkii"), alias, process.platform === "win32" ? "junction" : "dir");
+      const requestAction = vi.fn(async (request: any) => ({
+        requestId: request.requestId,
+        status: "executed" as const,
+        decision: { decision: "allow" as const, ruleId: "workspace.read", reason: "root approved" },
+        result: { authorized: true },
+      }));
+      const { result } = await execute("grep", ws, { path: alias, pattern: canary }, requestAction);
+      expect(requestAction).toHaveBeenCalledOnce();
+      expect(result.content?.[0]?.text).toMatch(/拒绝访问/);
+      expect(result.content?.[0]?.text).not.toContain(canary);
+    });
+
+    it("does not follow a real directory link into retained content", async () => {
+      const ws = workspaceFixture();
+      symlinkSync(join(ws, ".sparkii"), join(ws, "retained-link"), process.platform === "win32" ? "junction" : "dir");
+      const grep = await execute("grep", ws, { pattern: canary, path: "." });
+      const find = await execute("find", ws, { pattern: "**/*", path: "." });
+      expect(grep.result.content?.[0]?.text).not.toContain("retained-link");
+      expect(find.result.content?.[0]?.text).not.toContain("retained-link/");
+      expect(find.result.content?.[0]?.text).not.toContain("memory.json");
+    });
   });
 
   it("isolates user-library and package skill roots across two agent saddles", async () => {

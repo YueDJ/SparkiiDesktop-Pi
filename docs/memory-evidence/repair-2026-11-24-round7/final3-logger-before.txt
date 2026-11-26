@@ -1,0 +1,64 @@
+(node:34332) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:34856) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:26992) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/logger.test.ts (21 tests | 1 failed | 18 skipped) 75ms
+     ↓ R7 never preserves the registered marker secret 已删除
+     ↓ R7 never preserves the registered marker secret [已删除]
+     ✓ R7 redaction cannot recreate a registered secret across the marker boundary: "x\"[已删除]" 31ms
+     ✓ R7 redaction cannot recreate a registered secret across the marker boundary: "x\\[已删除]" 19ms
+     × R7 redaction cannot recreate a registered secret across the marker boundary: "x\n[已删除]" 23ms
+     ↓ appends structured jsonl and exports
+     ↓ drops entries below the configured level
+     ↓ echoes to console with level mapping
+     ↓ does not echo to console when echo is disabled
+     ↓ constructor and logging stay non-blocking when the log file path is a directory
+     ↓ circular console context cannot reject logging or lose the message
+     ↓ redactSession terminates a rewritten nonempty JSONL file before the next append
+     ↓ redactMemoryPromptLogs terminates a rewritten nonempty JSONL file before the next append
+     ↓ redacts string values without changing JSON schema field names during session redaction or export
+     ↓ uses structured redaction for future writes and exports
+     ↓ memory-prompt redaction keeps normal logs as valid JSONL with structured value redaction
+     ↓ retains malformed normal log lines while removing their registered secrets
+     ↓ redactSession scrubs every JSON escape encoding in malformed history without changing valid record schemas
+     ↓ redactMemoryPromptLogs scrubs every JSON escape encoding in malformed history without changing valid record schemas
+     ↓ export scrubs every JSON escape encoding in malformed history without changing valid record schemas
+     ↓ serializes context once so a stateful toJSON cannot lose the basic message
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/logger.test.ts > Logger > R7 redaction cannot recreate a registered secret across the marker boundary: "x\n[已删除]"
+AssertionError: expected '{"level":"info","msg":"x[已删除]","ctx":…' not to contain 'x\n[已删除]'
+
+- Expected
++ Received
+
+- x
++ {"level":"info","msg":"x[已删除]","ctx":{"detail":"x[已删除]"}}
++ not-json xx
+  [已删除]
++ {"ts":1795536407170,"level":"info","msg":"x[已删除]","ctx":{"detail":"x[已删除]"}}
++
+
+ ❯ apps/desktop/test/logger.test.ts:69:28
+     67|
+     68|       for (const output of [readFileSync(path, 'utf8'), await logger.e…
+     69|         expect(output).not.toContain(secret);
+       |                            ^
+     70|         expect(output).not.toContain(encodeEveryJsonEscape(secret).sli…
+     71|         expect(output.endsWith('\n')).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 2 passed | 18 skipped (21)
+   Start at  00:06:46
+   Duration  1.14s (transform 55ms, setup 32ms, import 87ms, tests 75ms, environment 771ms)
+

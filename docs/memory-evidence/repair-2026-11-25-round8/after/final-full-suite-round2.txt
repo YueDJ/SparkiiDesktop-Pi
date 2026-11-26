@@ -1,0 +1,1204 @@
+FINAL_ROUND=2
+COMMAND=NO_COLOR=1 pnpm exec vitest run apps/desktop/test/*memory*.test.* apps/desktop/test/workspace*.test.* apps/desktop/test/action-normalizer.test.ts apps/desktop/test/runtime-action-router.test.ts apps/desktop/test/logger.test.ts apps/desktop/test/windows-platform.test.ts apps/desktop/test/task-lifecycle.test.ts apps/desktop/test/workflow-broker.test.ts packages/agent-host/test/tool-registry.test.ts packages/agent-host/test/coding-tools.test.ts packages/agent-host/test/pi-runtime-pool.test.ts packages/agent-host/test/pi-runtime-supervisor.test.ts --maxWorkers=1 --no-file-parallelism
+(node:19516) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:29028) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:15496) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime-supervisor.test.ts (16 tests) 582ms
+(node:39492) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/tool-registry.test.ts (32 tests) 285ms
+(node:20728) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime-pool.test.ts (53 tests) 303ms
+(node:39324) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/coding-tools.test.ts (10 tests) 62ms
+(node:40480) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-audit-regression.test.ts (31 tests | 18 failed) 209196ms
+     × P1-2 LIKE fallback supports CRUD, search and rebuild 13425ms
+     × P1-2 corrupt SQLite is quarantined and rebuilt from truth without blocking startup 5868ms
+     × P1-3 copied workspace with the same projectId fails closed and preserves the first truth source 5937ms
+     ✓ P1-4 default search and includeHistory never expose pending memories  5429ms
+     × P2 external truth edits reconcile list, injection and search 6686ms
+     ✓ P2 master switch rejects manual add while disabled  715ms
+     × P2 project archived state survives derived index rebuild 11361ms
+     ✓ P1-6 a missing cursor is rejected and truncation advances only through included messages  430ms
+     ✓ P1-6 rejects an intra-entry cursor beyond the actual entry text  457ms
+     ✓ P1-5 one invalid project UPDATE rejects the whole extraction batch  1944ms
+     ✓ P1-1 privacy deletion wins over an in-flight model response and redacts diagnostics  3702ms
+     ✓ P1-1 privacy deletion while target resolution is pending prevents the model send  2239ms
+     ✓ P1-1 corrupt project registry makes privacy deletion fail closed  4043ms
+     × P1-1 duplicate ids corrupt the whole truth file instead of exposing both rows 6106ms
+     × P1-1 privacy deletion discovers the indexed workspace even when the registry omits it 8534ms
+     ✓ P1-3 privacy deletion fails closed when a copied project duplicates identity  5087ms
+     × P1-1 privacy deletion redacts retained diagnostic messages 7417ms
+     ✓ P1-1 model and parse failures do not copy session content into diagnostics  1331ms
+     ✓ P1-1 old prompt-log cleanup failures surface as repair warnings  1326ms
+     × P1-8 consolidation is single-flight across the first await 8493ms
+     × P1-8 a malformed consolidation element rejects the entire merge phase 11134ms
+     ✓ truth parser rejects object-valued id instead of stringifying it  429ms
+     ✓ truth parser rejects object-valued text instead of stringifying it  414ms
+     × cross-file duplicate ids are excluded from listing and injection until repaired 14486ms
+     × batch writes fail closed while a cross-file duplicate identity exists 10104ms
+     × removing a project truth file and registry reference clears its searchable index 7482ms
+     × episode approval rejects malformed mergeIds before changing episode or proposal state 7115ms
+     × privacy deletion removes both current and legacy episode proposals 10049ms
+     × ordinary source deletion removes legacy pending episode proposals and repairs active source metadata 16222ms
+     × malformed mergeIds are rejected before any pending or target mutation 15218ms
+     × P1-8 mergeIds approval is all-or-nothing 16006ms
+(node:13496) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-consolidation.test.ts (19 tests | 14 failed) 173381ms
+     × R8 final review rechecks the truth fence after the async target boundary 7771ms
+     × R8 final review rechecks the truth fence after the async slot boundary 7832ms
+     × R8 final review rechecks the truth fence after the async model boundary 7874ms
+     × R8 final review stops all later consolidation phases when privacy cleanup becomes pending during a model call 11420ms
+     × R8-P1-3 never sends indexed plaintext to consolidation while truth writes are blocked 7093ms
+     × 相似记忆只产出 pending 提案，绝不自动改 active 15004ms
+     × 批准合并提案后：保留条作废、被合并条作废、新条生效 18531ms
+     × 一次整合的模型调用不超过 3 次 7777ms
+     × 三个阶段全都有活时仍然 ≤3 次调用，第四件事顺延 34888ms
+     × 拒绝合并阶段的对象字段而不是字符串化 10651ms
+     ✓ 拒绝压缩阶段的对象字段而不是字符串化  3770ms
+     × 拒绝复核阶段的对象字段而不是字符串化 7824ms
+     ✓ P2 情景压缩混合越界输出时整阶段丢弃，不留下部分提案  3704ms
+     ✓ 空闲不足或距上次整合不足：不调用模型  615ms
+     ✓ 开关关闭或有交互会话在跑：不整合  1190ms
+     × 没有空闲槽：跳过并顺延，不排队、不做任何写入 8006ms
+     × 整合输出畸形：该阶段整批丢弃 + errors.db 记录 + 不产生提案 8537ms
+     ✓ 没有可用模型，或确实无事可做：不调模型、不写库，各自返回对应出口  2019ms
+     × 模型给不存在的 targetId 或越界文本：忽略该条，不落提案 8871ms
+(node:32708) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-service.test.ts (11 tests | 8 failed) 144045ms
+     ✓ M1 step 0: FTS5 trigram 运行时可用  367ms
+     ✓ 手动新增用户记忆 → 注入块真的含 <memory> 与文本；注入不重置时钟  4910ms
+     × 跨项目模糊回忆：情景摘要命中并带项目线索，同一检索两次命中与增量一致 6199ms
+     ✓ 检索命中才重置时钟，且同一检索连跑两次命中与增量一致  5418ms
+     × 项目记忆只建在 user 工作区；auto 不建；归档停注入 13544ms
+     × 项目搬迁：文件移动后按 projectId 自愈重索引 7474ms
+     × 损坏文件停止该 scope 注入并出修复入口；修复后恢复 18650ms
+     × 置顶、编辑、删除、重建索引全通 13180ms
+     × 普通删除保留历史版本，includeHistory 才真删 21793ms
+     × 索引重建不丢 pending；隐私删除清黑名单；普通删除会话标记来源已删除 15515ms
+     × pending 出口：批准 ADD / 驳回进黑名单 / target 已删降级 ADD / 源会话删除失效 36992ms
+(node:17556) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-extraction.test.ts (21 tests | 1 failed) 9539ms
+     ✓ R8-P1-3 never sends indexed plaintext to the extraction model while truth writes are blocked 291ms
+     ✓ R8-P0-1 never sends indexed plaintext to another session while privacy cleanup is pending  350ms
+     ✓ JSON 协议 fail closed：畸形/越界/非法 op 整批抛错 160ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":{},"topics":[],"ops":[]} 168ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":["ADD"],"scope":"user","text":"事实"}]} 211ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":["user"],"text":"事实"}]} 222ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":"user","text":{},"excerpt":{}}]} 228ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":"user","text":"事实","importance":"2"}]} 227ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"UPDATE","targetId":["mem_x"],"text":{}}]} 240ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"SUPERSEDE","targetId":"mem_x","replacementText":{},"reason":{}}]} 206ms
+     ✓ 端到端：对话增量 → pending（含来源 excerpt）→ 批准 → 下一条会话注入  829ms
+     ✓ 驳回后进黑名单，同候选不再提案  971ms
+     ✓ 同 scope 高相似 ADD 降级为 UPDATE 候选  854ms
+     ✓ 畸形输出：整批丢弃 + errors.db 有记录 + 真相源无半批写入  378ms
+     ✓ 对象字段被拒绝时不写 pending、episode、真相文件或提取位点  375ms
+     ✓ auto 工作区的项目候选只落用户层  553ms
+     ✓ user 工作区的首条项目候选：项目文件尚不存在也能落 pending 并生成 projectId  816ms
+     ✓ 同一候选重复提炼：已有高相似 pending 时不再重复提案  804ms
+     ✓ 开关关闭：零模型调用  481ms
+     × R8 round7 redacts a registered secret reintroduced by production extraction episode output 931ms
+     ✓ 槽位礼让：池满跳过、无排队；交互 acquire 不受影响 241ms
+(node:33848) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-tools.test.ts (7 tests | 1 failed) 27794ms
+     ✓ memory_remember 直接写入 active 并审计  3706ms
+     × memory_forget 先弹审批；拒绝不删，批准才三处真删 9031ms
+     ✓ R8 memory_forget 不删除审批等待期间被同 ID 替换 admission 拥有的记忆  4080ms
+     ✓ memory_search 只读命中并强化（不重置其他记忆）  4643ms
+     ✓ 总开关关闭时三工具均被拒，无写入无检索  768ms
+     ✓ memory_remember(scope: agent) 使用当前 profileId 并校验智能体存在  5139ms
+     ✓ 工具名与鞍附加同源：签名 agent 清单不变，平台统一追加  426ms
+(node:37088) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-index-fallback.test.ts (2 tests | 2 failed) 15471ms
+     × keeps truth writes and reads working after disk open failure 7701ms
+     × keeps truth writes and reads working after disk query failure 7768ms
+(node:36948) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/runtime-action-router.test.ts (43 tests | 3 failed) 50ms
+     ✓ denies host shell before approval or execution unless explicitly enabled 6ms
+     ✓ executes an ordinary workspace write without requesting approval 4ms
+     ✓ executes delete and move inside the workspace with no proposal 1ms
+     ✓ passes workspace CRUD straight through in auto_review as well 1ms
+     ✓ denies a structured write outside the workspace without asking 1ms
+     ✓ hard-denies critical targets before approval or execution 1ms
+     ✓ denies process execution when the platform is not ready 1ms
+     ✓ asks a human for shell and never starts the Reviewer 1ms
+     ✓ denies Ask mode shell when no human can approve 1ms
+     ✓ asks a human for an external write 0ms
+     ✓ does not execute when the user denies 0ms
+     ✓ grants ordinary shell for the rest of the task after a task-scoped approval 1ms
+     ✓ still asks again for a high-risk command under a task grant 0ms
+     ✓ refuses a task scope for anything that is not ordinary shell 0ms
+     ✓ drops the task grant for a new task 1ms
+     ✓ rejects execution when the task is revoked while approval is pending 0ms
+     × rejects execution when a same-ID admission replaces the owner during approval 7ms
+     ✓ rejects execution when a same-ID admission replaces the owner during review 1ms
+     × rejects execution when a same-ID admission replaces the owner during revalidation 1ms
+     × rejects execution when a same-ID admission replaces the owner during the allow audit 1ms
+     ✓ rejects execution when the target identity changes after approval 1ms
+     ✓ re-fetches the canonical action after the final allow audit and executes that object 1ms
+     ✓ fails closed when canonical approval is missing after the final allow audit 0ms
+     ✓ uses the Reviewer for shell and still re-checks before executing 1ms
+     ✓ sends only the minimal review context 1ms
+     ✓ carries at most four compact tool evidence entries 1ms
+     ✓ escalates a reviewer ask to a high-risk human approval 1ms
+     ✓ rejects task scope when Reviewer requested high-risk confirmation 0ms
+     ✓ does not execute on a reviewer deny 1ms
+     ✓ opens the circuit breaker after three consecutive denials 1ms
+     ✓ resets the denial counter after one allow 1ms
+     ✓ refuses an identical denied action without asking the Reviewer again 0ms
+     ✓ falls back to human approval when the Reviewer is unavailable 0ms
+     ✓ does not send an oversized command to the Reviewer 1ms
+     ✓ denies an unattended task when the Reviewer is unavailable 1ms
+     ✓ denies an unattended Reviewer ask instead of opening human approval 1ms
+     ✓ does not fall back to approval when the Reviewer is canceled by Task revoke 2ms
+     ✓ never sends an external write or a remote push to the Reviewer 1ms
+     ✓ records the policy version and timing in the audit summary 1ms
+     ✓ keeps denials and evidence inside one task only 1ms
+     ✓ clears task state when the task is revoked 1ms
+     ✓ returns a failed result when the execution plane throws 1ms
+     ✓ denies when the runtime action belongs to no live task 0ms
+(node:21172) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-round7-regression.test.ts (34 tests | 6 failed) 50635ms
+     ✓ R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files  1459ms
+     ✓ R7 privacy retry recovers an empty episode topic after restart and completes chat cleanup  2274ms
+     ✓ R7 privacy deletion discovers secrets nested only in pending operation extensions  1535ms
+     ✓ R7 privacy deletion scrubs an invalid structural targetId field  1334ms
+     ✓ R7 privacy deletion scrubs an invalid structural projectId field  1133ms
+     ✓ R7 privacy deletion scrubs an invalid structural mergeIds field  1113ms
+     ✓ R7 privacy deletion ignores whitespace-only episode topics without corrupting retained content  1276ms
+     ✓ R7 privacy deletion preserves pending UPDATE control fields when deleted text equals the op  1701ms
+     ✓ R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds  1866ms
+     ✓ R7 privacy deletion includes superseded episode records in the global redaction corpus  963ms
+     ✓ R7 caller-mode memory deletion rechecks canonical approval after privacy redaction  512ms
+     ✓ R7 production privacy retry succeeds in the same process after truth rows are gone  1442ms
+     ✓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body  543ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes  1947ms
+     ✓ R7-P1-2 replacement preflight sees an indexed project after its registry entry is removed  1487ms
+     ✓ R7-P1-2 replacement preflight derives zero-entry project identity from scope_files  1952ms
+     ✓ R7-P1-3 source deletion detects indexed unregistered conflicts without an explicit workspace  1598ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes  1534ms
+     ✓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file  1910ms
+     ✓ R7-P1-3 valid source deletion updates unregistered project truth without reindexing it  2498ms
+     ✓ R8-REPAIR-MEMORY truth A1 source deletion ignores auto-list-only truth while updating registered and indexed projects  2078ms
+     ✓ R8-REPAIR-MEMORY truth A2 privacy deletion ignores auto-list-only truth while deleting registered and indexed projects  2347ms
+     ✓ R7-P1-4 privacy deletion discovers indexed unregistered truth before reconciliation  1630ms
+     ✓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion  1820ms
+     ✓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution  2889ms
+     ✓ retains the production privacy journal until a failed Gate listener succeeds on retry  1015ms
+     ✓ collects deleted, survivor and nested dynamic keys, preserves controls, and scrubs later writes after restart  1948ms
+     ✓ fails closed instead of overwriting two dynamic keys that redact to the same marker  951ms
+     × scrubs legal-looking nested structural fields in survivor and future pending operations 985ms
+     × registers deleted-only top-level structural IDs and scrubs the same value in survivor text 1006ms
+     × fails closed when a retained or future top-level structural ID matches a registered secret 977ms
+     × rejects a future top-level structural ID that matches an already registered secret 898ms
+     × redacts addMemoriesBatch episode truth, index, FTS, search and restart reads 931ms
+     × redacts direct appendEpisode and updateEpisodeSummary ingress after privacy deletion 1076ms
+(node:26908) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-r8-regression.test.ts (50 tests) 40903ms
+     ✓ R8-REPAIR-MEMORY truth B non-symlink-reparse replacement makes production rebuild fail closed  343ms
+     ✓ R8-REPAIR-MEMORY truth C default fence and rebuilt SandboxProbe batch mode stay integrated  378ms
+     ✓ R8 review privacy B5 zeroes a plaintext journal temp file before a failed removal  906ms
+     ✓ R8 final review fences same-process and restarted reads when the privacy journal cannot be persisted  815ms
+     ✓ R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext  1299ms
+     ✓ R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext  1325ms
+     ✓ R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext  1269ms
+     ✓ R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext  1257ms
+     ✓ R8-P0-1 resumes from journal context after the chat row and Pi file are already gone  1235ms
+     ✓ R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers  1746ms
+     ✓ R8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent  1140ms
+     ✓ R8 review B3 registers chat secrets before sink cleanup and protects later chat writes after failure  1275ms
+     ✓ R8-P0-1 restores privacy sink fences before truth recovery can restore plaintext  1178ms
+     ✓ R8 review B3 cleans Pi and chat carriers before a safe-root truth write-block aborts startup  705ms
+     ✓ R8 review B5 rejects dangling privacy journal directory and file links without reading targets  403ms
+     ✓ R8 review B5 refuses to clear a privacy journal whose identity changed during cleanup  1165ms
+     ✓ R8-REPAIR-MEMORY refuses to delete a journal when the zero-write readback contains a nonzero byte  769ms
+     ✓ R8-REPAIR-MEMORY digest-mismatch startup temp evidence persists a privacy write-block without deleting context  645ms
+     ✓ R8-REPAIR-MEMORY session-mismatch startup temp evidence persists a privacy write-block without deleting context  705ms
+     ✓ R8-REPAIR-MEMORY malformed startup temp evidence persists a privacy write-block without deleting context  640ms
+     ✓ R8-REPAIR-MEMORY promotes a valid startup temp journal and automatically resumes its privacy deletion  1264ms
+     ✓ R8-REPAIR-MEMORY fences Windows non-symlink reparse attributes on the privacy directory before temp reads and cleanup  646ms
+     ✓ R8-REPAIR-MEMORY fences Windows non-symlink reparse attributes on the privacy file before temp reads and cleanup  637ms
+     ✓ R8-REPAIR-MEMORY continues Gate Audit Error Logger cleanup when store privacy registration fails  679ms
+     ✓ R8 review B4 rotates memory markers when the deleted text collides with %s  744ms
+     ✓ R8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret  1173ms
+     ✓ R8-P1-3 fences project repair before registry or truth reads  320ms
+     ✓ R8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker  550ms
+     ✓ R8 privacy review reads the raw Pi path before chat redaction can alter it  998ms
+     ✓ R8 privacy review resumes a secret-named Pi carrier after restart  1144ms
+     ✓ R8 privacy review retries independent carriers after a same-process truth rollback block  1149ms
+     ✓ R8 privacy review removes a plaintext journal temp file left before rename  1187ms
+     ✓ R8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state  738ms
+     ✓ R8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state  713ms
+     ✓ R8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state  819ms
+     ✓ re-fences a privacy journal before zeroing even when cleanup already verified its identity  939ms
+     ✓ fences a real ancestor junction before Pi carrier deletion and retries normally after it is removed  1207ms
+     ✓ fences a non-symlink reparse Pi carrier directory before rmSync  1092ms
+     ✓ fences a non-symlink reparse Pi carrier file before rmSync  1011ms
+     ✓ detects Pi carrier identity replacement before deletion and preserves external bytes across retry  1117ms
+     ✓ detects Pi carrier identity replacement before deletion and preserves external bytes across restart  1614ms
+(node:40360) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-truth-batch.test.ts (53 tests | 4 failed) 7049ms
+     ✓ restores every prior truth file and removes new files when a later write fails 129ms
+     ✓ R8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth 144ms
+     ✓ R8 final review never rolls back truth after the committed journal is durable 118ms
+     × R8 review truth round7 B1 keeps committed truth when post-rename journal probe fails once 92ms
+     × R8 review truth round7 B1 keeps committed truth when post-rename journal probe fails persistent 89ms
+     × R8 review truth round7 B2 rejects a source replaced during the last destination probe before recovery copy 106ms
+     × R8 review truth round7 B2 leaves destination bytes unchanged when verified copy source is replaced at the copy boundary 7ms
+     ✓ R8-P1-4 preserves rollback backups when the unverified journal cannot be removed 67ms
+     ✓ recovers an interrupted batch at startup before truth files are opened 38ms
+     ✓ recovers a new project batch from the registry committed before its truth file 41ms
+     ✓ R8 final review resumes a partially rolled-back new project with startup-injected authorization 40ms
+     ✓ R8 final review keeps rollback backups when journal removal fails after truth restoration 171ms
+     ✓ R8 final review does not roll back committed truth when post-commit backup cleanup fails 111ms
+     ✓ R8 final review retries orphan backup cleanup without quarantining restored truth 10ms
+     ✓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing 116ms
+     ✓ rollback never recreates a missing project parent before path revalidation 43ms
+     ✓ does not write or quarantine outside a junctioned memory root during failed recovery 6ms
+     ✓ R8 final review rejects an empty uncommitted journal without deleting the only original backup 74ms
+     ✓ quarantines a malformed journal and reports a warning instead of blocking startup 55ms
+     ✓ rejects journal paths outside memory truth and backup locations 68ms
+     ✓ rejects a truthy non-boolean committed marker without deleting uncommitted truth 64ms
+     ✓ rejects a committed journal that still contains rollback file items 57ms
+     ✓ rejects an unregistered outside project truth target during commit and recovery 67ms
+     ✓ rejects a project truth target reached through a junction even when its workspace is registered 6ms
+     ✓ treats a dangling write-block junction as a persistent block 3ms
+     ✓ keeps the only recovery evidence when the write-block marker cannot be persisted 59ms
+     ✓ keeps a committed batch and removes its recovery journal 33ms
+     ✓ rolls back the project registry when a later truth write fails  551ms
+     ✓ R8 truth round3 B1 rejects canonical duplicate change targets before journal creation 13ms
+     ✓ R8 truth round3 B1 merges canonical project aliases into one truth and index bucket  408ms
+     ✓ R8 final review fences registered project reads and self-healing through an ancestor junction  438ms
+     ✓ R8 final review rejects unregistered duplicate project identity before single or batch commits  430ms
+     ✓ R8 review truth B1 does not authorize auto-workspace truth from session discovery alone 251ms
+     ✓ R8 review truth B2 rejects nested agents journal targets 93ms
+     ✓ R8 review truth B2 rejects nested episode-proposals journal targets 119ms
+     ✓ R8 review truth B3 rechecks attributes when a verified path becomes a reparse point 5ms
+     ✓ R8 truth round3 B2 ignores journal projectFiles as recovery authorization 130ms
+     ✓ R8 truth round3 B3 rebuild fails closed when truth changes before index commit and then indexes one snapshot 271ms
+     ✓ R8 truth round3 B3 reconcile fails closed when truth changes before index commit and then indexes one snapshot 225ms
+     ✓ R8 truth round3 B3 replaceScopeIndex fails closed when truth changes before index commit and then indexes one snapshot 241ms
+     ✓ R8 truth round3 B5 rejects a hard-linked main database without changing external SQLite 66ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -wal sidecar before SQLite opens 230ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -shm sidecar before SQLite opens 249ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -journal sidecar before SQLite opens 228ms
+     ✓ R8 truth round3 B5 refuses corrupt-database isolation and fallback while a sidecar is hard-linked 43ms
+     ✓ R8 truth round3 B5 rejects a main-database symlink and stays fail closed on Windows symlink EPERM 69ms
+     ✓ rejects a target converted to an external hardlink after the pre-backup probe 69ms
+     ✓ rechecks restore identity after the rollback preflight and never overwrites an external hardlink 131ms
+     ✓ fails closed when reconcile observes a reparse conversion after its first safe per-file probe 181ms
+     ✓ fails closed when rebuild observes a reparse conversion after its first safe per-file probe 191ms
+     ✓ viewOf freshly fences the row path and never returns external hardlink content 216ms
+     ✓ re-probes the second markSourcesDeleted read after allScopeFiles 201ms
+     ✓ re-probes the second deleteMemoryEntriesBySession read after allScopeFiles 178ms
+(node:29124) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/workspace-file-service.integration.test.ts (6 tests | 1 skipped) 4646ms
+     ✓ allows a normal in-workspace write/read and audits sessionId→projectPath  1450ms
+     ✓ lists the workspace root with path "." (P1 rejects an empty path)  528ms
+     ✓ writes and reads back binary bytes through the fenced workspace  1801ms
+     ✓ rejects a REAL hard-link alias (nlink > 1) inside the workspace  646ms
+(node:20544) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | apps/desktop/test/logger.test.ts > Logger > appends structured jsonl and exports
+start {"profile":"contract-review"}
+
+stderr | apps/desktop/test/logger.test.ts > Logger > drops entries below the configured level
+kept ""
+
+ ✓ |1| apps/desktop/test/logger.test.ts (38 tests) 1449ms
+(node:28564) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/workflow-broker.test.ts (40 tests) 717ms
+(node:24100) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-settings-pane.test.tsx (3 tests) 614ms
+(node:30240) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/windows-platform.test.ts (9 tests) 203ms
+(node:21868) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/workspace-executor.test.ts (17 tests) 117ms
+(node:39040) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/workspace-file-service.test.ts (17 tests) 79ms
+(node:21600) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-fence-canonical.test.ts (11 tests) 63ms
+(node:2596) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/action-normalizer.test.ts (12 tests) 14ms
+(node:22904) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-fence.test.ts (4 tests) 13ms
+(node:28428) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/task-lifecycle.test.ts (14 tests) 11ms
+(node:5892) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/workspace-relocation.test.ts (11 tests) 11ms
+(node:6116) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/workspace.test.ts (5 tests) 8ms
+(node:27312) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-scoring.test.ts (6 tests) 4ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 57 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > P1-2 LIKE fallback supports CRUD, search and rebuild
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:49:3
+     47|
+     48| describe('memory audit regressions', () => {
+     49|   it('P1-2 LIKE fallback supports CRUD, search and rebuild', async () …
+       |   ^
+     50|     service!.close();
+     51|     service = new MemoryService({ dataDir, errors, forceLike: true, se…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > P1-2 corrupt SQLite is quarantined and rebuilt from truth without blocking startup
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:61:3
+     59|   });
+     60|
+     61|   it('P1-2 corrupt SQLite is quarantined and rebuilt from truth withou…
+       |   ^
+     62|     service!.addMemory({ scope: 'user', text: '真相源里的记忆' });
+     63|     service!.close();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > P1-3 copied workspace with the same projectId fails closed and preserves the first truth source
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:71:3
+     69|   });
+     70|
+     71|   it('P1-3 copied workspace with the same projectId fails closed and p…
+       |   ^
+     72|     const a = join(root, 'workspace-a');
+     73|     const b = join(root, 'workspace-b');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > P2 external truth edits reconcile list, injection and search
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:93:3
+     91|   });
+     92|
+     93|   it('P2 external truth edits reconcile list, injection and search', (…
+       |   ^
+     94|     const added = service!.addMemory({ scope: 'user', text: '外部修改前' });
+     95|     const parsed = parseMemoryFile(readFileSync(userMemoryFile(dataDir…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > P2 project archived state survives derived index rebuild
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:110:3
+    108|   });
+    109|
+    110|   it('P2 project archived state survives derived index rebuild', () =>…
+       |   ^
+    111|     const workspace = join(root, 'workspace');
+    112|     mkdirSync(workspace, { recursive: true });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > P1-1 duplicate ids corrupt the whole truth file instead of exposing both rows
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:226:3
+    224|   });
+    225|
+    226|   it('P1-1 duplicate ids corrupt the whole truth file instead of expos…
+       |   ^
+    227|     const added = service!.addMemory({ scope: 'user', text: '原始条目' });
+    228|     service!.close();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > P1-1 privacy deletion discovers the indexed workspace even when the registry omits it
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:241:3
+    239|   });
+    240|
+    241|   it('P1-1 privacy deletion discovers the indexed workspace even when …
+       |   ^
+    242|     const workspace = join(root, 'workspace-unregistered');
+    243|     mkdirSync(workspace, { recursive: true });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > P1-1 privacy deletion redacts retained diagnostic messages
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:278:3
+    276|   });
+    277|
+    278|   it('P1-1 privacy deletion redacts retained diagnostic messages', () …
+       |   ^
+    279|     const secret = '诊断里不得保留的隐私正文';
+    280|     service!.addMemory({ scope: 'user', text: secret, sessionId: 'sess…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > P1-8 consolidation is single-flight across the first await
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:330:3
+    328|   });
+    329|
+    330|   it('P1-8 consolidation is single-flight across the first await', asy…
+       |   ^
+    331|     service!.saveSettings({ consolidateIdleMinutes: 0, consolidateInte…
+    332|     service!.addMemory({ scope: 'user', text: '用户喜欢先给结论再说明理由' });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > P1-8 a malformed consolidation element rejects the entire merge phase
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:344:3
+    342|   });
+    343|
+    344|   it('P1-8 a malformed consolidation element rejects the entire merge …
+       |   ^
+    345|     service!.saveSettings({ consolidateIdleMinutes: 0, consolidateInte…
+    346|     const keep = service!.addMemory({ scope: 'user', text: '用户喜欢先给结论再说…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > cross-file duplicate ids are excluded from listing and injection until repaired
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:376:3
+    374|   });
+    375|
+    376|   it('cross-file duplicate ids are excluded from listing and injection…
+       |   ^
+    377|     const original = service!.addMemory({ scope: 'user', text: '跨文件隐私正…
+    378|     const duplicate = service!.addMemory({ scope: 'agent', agentId: 'g…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > batch writes fail closed while a cross-file duplicate identity exists
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:394:3
+    392|   });
+    393|
+    394|   it('batch writes fail closed while a cross-file duplicate identity e…
+       |   ^
+    395|     const original = service!.addMemory({ scope: 'user', text: '批次写入冲突…
+    396|     service!.addMemory({ scope: 'agent', agentId: 'general', text: '另一…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > removing a project truth file and registry reference clears its searchable index
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:408:3
+    406|   });
+    407|
+    408|   it('removing a project truth file and registry reference clears its …
+       |   ^
+    409|     const workspace = join(root, 'deleted-project');
+    410|     mkdirSync(workspace, { recursive: true });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > episode approval rejects malformed mergeIds before changing episode or proposal state
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:421:3
+    419|   });
+    420|
+    421|   it('episode approval rejects malformed mergeIds before changing epis…
+       |   ^
+    422|     service!.store.appendEpisode({
+    423|       sessionId: 'sess-malformed-episode', agentId: 'general', workspa…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > privacy deletion removes both current and legacy episode proposals
+Error: 隐私脱敏导致动态对象键碰撞或冲突：[已删除]
+ ❯ MemoryStore.redactPendingValue apps/desktop/electron/main/memory/store.ts:1184:15
+    1182|
+    1183|   getConsolidationLastRun(): number {
+    1184|     this.assertAvailable();
+       |               ^
+    1185|     const row = this.db.prepare("SELECT last_run_at FROM consolidation…
+    1186|     return row?.last_run_at ?? 0;
+ ❯ MemoryStore.redactPendingOperationForPrivacy apps/desktop/electron/main/memory/store.ts:1192:17
+ ❯ MemoryStore.redactEntryForPrivacy apps/desktop/electron/main/memory/store.ts:1200:47
+ ❯ MemoryStore.deleteMemoryEntriesBySession apps/desktop/electron/main/memory/store.ts:1366:33
+ ❯ apps/desktop/electron/main/memory/service.ts:1230:20
+ ❯ MemoryStore.runPrivacyCleanup apps/desktop/electron/main/memory/store.ts:420:18
+ ❯ MemoryService.privacyDeleteBySession apps/desktop/electron/main/memory/service.ts:1229:28
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:449:21
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > ordinary source deletion removes legacy pending episode proposals and repairs active source metadata
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:461:3
+    459|   });
+    460|
+    461|   it('ordinary source deletion removes legacy pending episode proposal…
+       |   ^
+    462|     const pending = service!.addEpisodeProposal('sess-ordinary-pending…
+    463|     const active = service!.addMemory({ scope: 'episode:sess-ordinary-…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > malformed mergeIds are rejected before any pending or target mutation
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:480:3
+    478|   });
+    479|
+    480|   it('malformed mergeIds are rejected before any pending or target mut…
+       |   ^
+    481|     const keep = service!.addMemory({ scope: 'user', text: '原目标' });
+    482|     const proposal = service!.addMemory({
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > P1-8 mergeIds approval is all-or-nothing
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:501:3
+    499|   });
+    500|
+    501|   it('P1-8 mergeIds approval is all-or-nothing', () => {
+       |   ^
+    502|     const keep = service!.addMemory({ scope: 'user', text: '保留结论' });
+    503|     const drop = service!.addMemory({ scope: 'user', text: '合并重复' });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-consolidation.test.ts > idle consolidation > R8 final review rechecks the truth fence after the async target boundary
+ FAIL  |1| apps/desktop/test/memory-consolidation.test.ts > idle consolidation > R8 final review rechecks the truth fence after the async slot boundary
+ FAIL  |1| apps/desktop/test/memory-consolidation.test.ts > idle consolidation > R8 final review rechecks the truth fence after the async model boundary
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-consolidation.test.ts:54:48
+     52|
+     53| describe('idle consolidation', () => {
+     54|   it.each(['target', 'slot', 'model'] as const)('R8 final review reche…
+       |                                                ^
+     55|     service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正文不超过三句' });
+     56|     service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正文不超过三句话' }…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-consolidation.test.ts > idle consolidation > R8 final review stops all later consolidation phases when privacy cleanup becomes pending during a model call
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-consolidation.test.ts:86:3
+     84|   });
+     85|
+     86|   it('R8 final review stops all later consolidation phases when privac…
+       |   ^
+     87|     service.close();
+     88|     service = new MemoryService({
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-consolidation.test.ts > idle consolidation > R8-P1-3 never sends indexed plaintext to consolidation while truth writes are blocked
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-consolidation.test.ts:114:3
+    112|   });
+    113|
+    114|   it('R8-P1-3 never sends indexed plaintext to consolidation while tru…
+       |   ^
+    115|     service.addMemory({ scope: 'user', text: 'R8_CONSOLIDATION_SECRET_…
+    116|     service.addMemory({ scope: 'user', text: 'R8_CONSOLIDATION_SECRET_…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-consolidation.test.ts > idle consolidation > 相似记忆只产出 pending 提案，绝不自动改 active
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-consolidation.test.ts:126:3
+    124|   });
+    125|
+    126|   it('相似记忆只产出 pending 提案，绝不自动改 active', async () => {
+       |   ^
+    127|     const a = service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正…
+    128|     const b = service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-consolidation.test.ts > idle consolidation > 批准合并提案后：保留条作废、被合并条作废、新条生效
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-consolidation.test.ts:149:3
+    147|   });
+    148|
+    149|   it('批准合并提案后：保留条作废、被合并条作废、新条生效', async () => {
+       |   ^
+    150|     const a = service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正…
+    151|     const b = service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-consolidation.test.ts > idle consolidation > 一次整合的模型调用不超过 3 次
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-consolidation.test.ts:166:3
+    164|   });
+    165|
+    166|   it('一次整合的模型调用不超过 3 次', async () => {
+       |   ^
+    167|     service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正文不超过三句' });
+    168|     service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正文不超过三句话' }…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-consolidation.test.ts > idle consolidation > 三个阶段全都有活时仍然 ≤3 次调用，第四件事顺延
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-consolidation.test.ts:180:3
+    178|   });
+    179|
+    180|   it('三个阶段全都有活时仍然 ≤3 次调用，第四件事顺延', async () => {
+       |   ^
+    181|     const project = service.addMemory({
+    182|       scope: 'project', text: '本项目报价为 2024 年报价单口径',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-consolidation.test.ts > idle consolidation > 拒绝合并阶段的对象字段而不是字符串化
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-consolidation.test.ts:214:3
+    212|   });
+    213|
+    214|   it('拒绝合并阶段的对象字段而不是字符串化', async () => {
+       |   ^
+    215|     const a = service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正…
+    216|     const b = service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-consolidation.test.ts > idle consolidation > 拒绝复核阶段的对象字段而不是字符串化
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-consolidation.test.ts:246:3
+    244|   });
+    245|
+    246|   it('拒绝复核阶段的对象字段而不是字符串化', async () => {
+       |   ^
+    247|     const project = service.addMemory({
+    248|       scope: 'project', text: '本项目报价为 2024 年报价单口径',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[27/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-consolidation.test.ts > idle consolidation > 没有空闲槽：跳过并顺延，不排队、不做任何写入
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-consolidation.test.ts:310:3
+    308|   });
+    309|
+    310|   it('没有空闲槽：跳过并顺延，不排队、不做任何写入', async () => {
+       |   ^
+    311|     service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正文不超过三句' });
+    312|     service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正文不超过三句话' }…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[28/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-consolidation.test.ts > idle consolidation > 整合输出畸形：该阶段整批丢弃 + errors.db 记录 + 不产生提案
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-consolidation.test.ts:327:3
+    325|   });
+    326|
+    327|   it('整合输出畸形：该阶段整批丢弃 + errors.db 记录 + 不产生提案', async () => {
+       |   ^
+    328|     service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正文不超过三句' });
+    329|     service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正文不超过三句话' }…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[29/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-consolidation.test.ts > idle consolidation > 模型给不存在的 targetId 或越界文本：忽略该条，不落提案
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-consolidation.test.ts:355:3
+    353|   });
+    354|
+    355|   it('模型给不存在的 targetId 或越界文本：忽略该条，不落提案', async () => {
+       |   ^
+    356|     const a = service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正…
+    357|     const b = service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[30/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-extraction.test.ts > memory extraction > R8 round7 redacts a registered secret reintroduced by production extraction episode output
+AssertionError: expected '{"sessionId":"future-extraction-sessi…' not to contain 'FUTURE_EXTRACTION_EPISODE_SECRET_94D3'
+
+- Expected
++ Received
+
+- FUTURE_EXTRACTION_EPISODE_SECRET_94D3
++ {"sessionId":"future-extraction-session","agentId":"general","workspacePath":"","ts":1795652258445,"summary":"FUTURE_EXTRACTION_EPISODE_SECRET_94D3","topics":["FUTURE_EXTRACTION_EPISODE_SECRET_94D3"]}
++
+
+ ❯ apps/desktop/test/memory-extraction.test.ts:238:61
+    236|       .map((file) => readFileSync(file).toString('utf8'))
+    237|       .join('\n');
+    238|     expect(readFileSync(episodesFile(dataDir), 'utf8')).not.toContain(…
+       |                                                             ^
+    239|     expect(databaseBytes).not.toContain(secret);
+    240|     expect(JSON.stringify(service.store.listEpisodes())).not.toContain…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[31/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-index-fallback.test.ts > memory index fallback > keeps truth writes and reads working after disk open failure
+ FAIL  |1| apps/desktop/test/memory-index-fallback.test.ts > memory index fallback > keeps truth writes and reads working after disk query failure
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-index-fallback.test.ts:54:48
+     52|
+     53| describe('memory index fallback', () => {
+     54|   it.each(['disk open', 'disk query'] as const)('keeps truth writes an…
+       |                                                ^
+     55|     fault.failDisk = failure === 'disk open';
+     56|     fault.failDiskCount = failure === 'disk query';
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[32/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R8 round7 privacy structural-field fence > scrubs legal-looking nested structural fields in survivor and future pending operations
+AssertionError: expected '{\n  "version": 1,\n  "entries": [\n …' not to contain 'NESTED_STRUCTURAL_FIELD_SECRET_94D3'
+
+- Expected
++ Received
+
+- NESTED_STRUCTURAL_FIELD_SECRET_94D3
++ {
++   "version": 1,
++   "entries": [
++     {
++       "id": "mem_bad4bf89-42d5-425e-8d72-54ddc75f9296",
++       "text": "surviving [已删除] structure",
++       "status": "pending",
++       "pinned": false,
++       "importance": 2,
++       "createdAt": 1795652353104,
++       "updatedAt": 1795652353104,
++       "source": {
++         "sessionId": "other-session",
++         "excerpt": "surviving [已删除] structure",
++         "kind": "explicit"
++       },
++       "supersededBy": null,
++       "pendingOp": {
++         "op": "ADD",
++         "[已删除]": {
++           "[已删除]": {
++             "targetId": "NESTED_STRUCTURAL_FIELD_SECRET_94D3"
++           }
++         }
++       }
++     }
++   ]
++ }
++
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:904:63
+    902|
+    903|     expect(() => service.privacyDeleteBySession('private-session')).no…
+    904|     expect(readFileSync(userMemoryFile(dataDir), 'utf8')).not.toContai…
+       |                                                               ^
+    905|     expect(JSON.stringify(service.list())).not.toContain(secret);
+    906|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[33/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R8 round7 privacy structural-field fence > registers deleted-only top-level structural IDs and scrubs the same value in survivor text
+AssertionError: expected '{\n  "version": 1,\n  "entries": [\n …' not to contain 'DELETED_TOP_LEVEL_STRUCTURAL_SECRET_9…'
+
+- Expected
++ Received
+
+- DELETED_TOP_LEVEL_STRUCTURAL_SECRET_94D3
++ {
++   "version": 1,
++   "entries": [
++     {
++       "id": "mem_40ff00bc-3ac7-400c-958d-f38fcbda9c4a",
++       "text": "survivor repeats DELETED_TOP_LEVEL_STRUCTURAL_SECRET_94D3",
++       "status": "active",
++       "pinned": false,
++       "importance": 2,
++       "createdAt": 1795652354085,
++       "updatedAt": 1795652354085,
++       "source": {
++         "sessionId": "other-session",
++         "excerpt": "survivor repeats DELETED_TOP_LEVEL_STRUCTURAL_SECRET_94D3",
++         "kind": "explicit"
++       },
++       "supersededBy": null,
++       "pendingOp": null
++     }
++   ]
++ }
++
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:926:63
+    924|
+    925|     expect(() => service.privacyDeleteBySession('private-session')).no…
+    926|     expect(readFileSync(userMemoryFile(dataDir), 'utf8')).not.toContai…
+       |                                                               ^
+    927|     expect(JSON.stringify(service.list())).not.toContain(secret);
+    928|     expect(databaseBytes(memoryDbPath(dataDir))).not.toContain(secret);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[34/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R8 round7 privacy structural-field fence > fails closed when a retained or future top-level structural ID matches a registered secret
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:940:69
+    938|     const before = readFileSync(userMemoryFile(dataDir));
+    939|
+    940|     expect(() => service.privacyDeleteBySession('private-session')).to…
+       |                                                                     ^
+    941|     expect(readFileSync(userMemoryFile(dataDir))).toEqual(before);
+    942|     const dir = join(dataDir, 'memory', 'privacy-pending');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[35/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R8 round7 privacy structural-field fence > rejects a future top-level structural ID that matches an already registered secret
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:956:9
+    954|       scope: 'user', text: 'future structural collision', sessionId: '…
+    955|       pendingOp: { op: 'ADD', targetId: secret },
+    956|     })).toThrow(/结构字段|登记模式/);
+       |         ^
+    957|     expect(readFileSync(userMemoryFile(dataDir))).toEqual(before);
+    958|     expect(JSON.stringify(service.list())).not.toContain(secret);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[36/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R8 round7 future episode privacy ingress > redacts addMemoriesBatch episode truth, index, FTS, search and restart reads
+AssertionError: expected '{"sessionId":"future-batch-episode","…' not to contain 'FUTURE_BATCH_EPISODE_SECRET_94D3'
+
+- Expected
++ Received
+
+- FUTURE_BATCH_EPISODE_SECRET_94D3
++ {"sessionId":"future-batch-episode","agentId":"general","workspacePath":"","ts":2,"summary":"FUTURE_BATCH_EPISODE_SECRET_94D3","topics":["FUTURE_BATCH_EPISODE_SECRET_94D3"]}
++
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:975:61
+    973|     });
+    974|
+    975|     expect(readFileSync(episodesFile(dataDir), 'utf8')).not.toContain(…
+       |                                                             ^
+    976|     expect(databaseBytes(memoryDbPath(dataDir))).not.toContain(secret);
+    977|     expect(JSON.stringify(service.store.listEpisodes())).not.toContain…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[37/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R8 round7 future episode privacy ingress > redacts direct appendEpisode and updateEpisodeSummary ingress after privacy deletion
+AssertionError: expected '{"sessionId":"future-direct-episode",…' not to contain 'FUTURE_DIRECT_EPISODE_SECRET_94D3'
+
+- Expected
++ Received
+
+- FUTURE_DIRECT_EPISODE_SECRET_94D3
++ {"sessionId":"future-direct-episode","agentId":"general","workspacePath":"","ts":3,"summary":"safe initial summary","topics":["safe topic"]}
++ {"sessionId":"future-direct-episode","agentId":"general","workspacePath":"","ts":3,"summary":"FUTURE_DIRECT_EPISODE_SECRET_94D3","topics":["safe topic"],"compressedAt":1795652358307}
++ {"sessionId":"future-direct-topics","agentId":"general","workspacePath":"","ts":4,"summary":"safe summary","topics":["FUTURE_DIRECT_EPISODE_SECRET_94D3"]}
++
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:1004:61
+    1002|     });
+    1003|
+    1004|     expect(readFileSync(episodesFile(dataDir), 'utf8')).not.toContain(…
+       |                                                             ^
+    1005|     expect(databaseBytes(memoryDbPath(dataDir))).not.toContain(secret);
+    1006|     expect(JSON.stringify(service.store.listEpisodes())).not.toContain…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[38/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-service.test.ts > memory foundation > 跨项目模糊回忆：情景摘要命中并带项目线索，同一检索两次命中与增量一致
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-service.test.ts:63:3
+     61|   });
+     62|
+     63|   it('跨项目模糊回忆：情景摘要命中并带项目线索，同一检索两次命中与增量一致', () => {
+       |   ^
+     64|     // 两个项目各留一条情景摘要，只有一条谈"上个月那个报价"。
+     65|     service.store.appendEpisode({
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[39/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-service.test.ts > memory foundation > 项目记忆只建在 user 工作区；auto 不建；归档停注入
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-service.test.ts:116:3
+    114|   });
+    115|
+    116|   it('项目记忆只建在 user 工作区；auto 不建；归档停注入', () => {
+       |   ^
+    117|     const workspace = join(root, 'project');
+    118|     const added = service.addMemory({
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[40/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-service.test.ts > memory foundation > 项目搬迁：文件移动后按 projectId 自愈重索引
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-service.test.ts:129:3
+    127|   });
+    128|
+    129|   it('项目搬迁：文件移动后按 projectId 自愈重索引', () => {
+       |   ^
+    130|     const from = join(root, 'before');
+    131|     const to = join(root, 'after');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[41/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-service.test.ts > memory foundation > 损坏文件停止该 scope 注入并出修复入口；修复后恢复
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-service.test.ts:139:3
+    137|   });
+    138|
+    139|   it('损坏文件停止该 scope 注入并出修复入口；修复后恢复', () => {
+       |   ^
+    140|     const workspace = join(root, 'broken');
+    141|     service.addMemory({ scope: 'project', text: '这条在修复后应消失', workspace…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[42/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-service.test.ts > memory foundation > 置顶、编辑、删除、重建索引全通
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-service.test.ts:153:3
+    151|   });
+    152|
+    153|   it('置顶、编辑、删除、重建索引全通', () => {
+       |   ^
+    154|     const added = service.addMemory({ scope: 'user', text: '置顶前的内容' });
+    155|     service.updateMemory(added.id, { pinned: true, text: '编辑后的置顶内容' });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[43/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-service.test.ts > memory foundation > 普通删除保留历史版本，includeHistory 才真删
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-service.test.ts:168:3
+    166|   });
+    167|
+    168|   it('普通删除保留历史版本，includeHistory 才真删', () => {
+       |   ^
+    169|     const old = service.addMemory({ scope: 'user', text: '旧口径' });
+    170|     const fresh = service.addMemory({
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[44/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-service.test.ts > memory foundation > 索引重建不丢 pending；隐私删除清黑名单；普通删除会话标记来源已删除
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-service.test.ts:183:3
+    181|   });
+    182|
+    183|   it('索引重建不丢 pending；隐私删除清黑名单；普通删除会话标记来源已删除', () => {
+       |   ^
+    184|     service.saveSettings({});
+    185|     const pending = service.addMemory({
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[45/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-service.test.ts > memory foundation > pending 出口：批准 ADD / 驳回进黑名单 / target 已删降级 ADD / 源会话删除失效
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-service.test.ts:205:3
+    203|   });
+    204|
+    205|   it('pending 出口：批准 ADD / 驳回进黑名单 / target 已删降级 ADD / 源会话删除失效', () => {
+       |   ^
+    206|     const add = service.addMemory({
+    207|       scope: 'user', text: '待确认的用户偏好', status: 'pending', sessionId: '…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[46/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-tools.test.ts > memory tools — platform trusted branch > memory_forget 先弹审批；拒绝不删，批准才三处真删
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-tools.test.ts:58:3
+     56|   });
+     57|
+     58|   it('memory_forget 先弹审批；拒绝不删，批准才三处真删', async () => {
+       |   ^
+     59|     const added = service.addMemory({ scope: 'user', text: '这条将被忘掉' });
+     60|     propose.mockResolvedValueOnce({ approved: false, proposalId: 'p0',…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[47/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > truth batch journal > R8 review truth round7 B1 keeps committed truth when post-rename journal probe fails once
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > truth batch journal > R8 review truth round7 B1 keeps committed truth when post-rename journal probe fails persistent
+AssertionError: expected undefined to be an instance of Error
+ ❯ apps/desktop/test/memory-truth-batch.test.ts:171:25
+    169|     const backup = join(backups, '0.backup');
+    170|     const journal = join(dir, '.truth-batch-journal.json');
+    171|     const external = join(root, 'external-copy-source.txt');
+       |                         ^
+    172|     const partial = 'PARTIAL_TRUTH_B2_71C\n';
+    173|     const original = 'ORIGINAL_TRUTH_B2_92D\n';
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[48/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > truth batch journal > R8 review truth round7 B2 rejects a source replaced during the last destination probe before recovery copy
+AssertionError: expected 'EXTERNAL_COPY_SOURCE_SECRET_B2_83E\n' to be 'PARTIAL_TRUTH_B2_71C\n' // Object.is equality
+
+- Expected
++ Received
+
+- PARTIAL_TRUTH_B2_71C
++ EXTERNAL_COPY_SOURCE_SECRET_B2_83E
+
+
+ ❯ apps/desktop/test/memory-truth-batch.test.ts:229:42
+    227|     let sourceProbedAfterDestination = false;
+    228|     let replaced = false;
+    229|     nativeProbeHarness.afterAttributes = (paths) => {
+       |                                          ^
+    230|       if (paths.includes(destination)) {
+    231|         destinationProbes += 1;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[49/57]⎯
+
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > truth batch journal > R8 review truth round7 B2 leaves destination bytes unchanged when verified copy source is replaced at the copy boundary
+AssertionError: expected 'EXTERNAL_COPY_BYTES_B2_83E\n' to be 'DESTINATION_BYTES_B2_92D\n' // Object.is equality
+
+- Expected
++ Received
+
+- DESTINATION_BYTES_B2_92D
++ EXTERNAL_COPY_BYTES_B2_83E
+
+
+ ❯ apps/desktop/test/memory-truth-batch.test.ts:270:47
+    268|   });
+    269|
+    270|   it('recovers an interrupted batch at startup before truth files are …
+       |                                               ^
+    271|     const a = userMemoryFile(dataDir);
+    272|     const b = episodeProposalFile(dataDir, 'new');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[50/57]⎯
+
+ FAIL  |1| apps/desktop/test/runtime-action-router.test.ts > ask mode > rejects execution when a same-ID admission replaces the owner during approval
+AssertionError: expected { requestId: 'r1', …(3) } to match object { status: 'denied', …(1) }
+(6 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "error": {
+-     "code": "TASK_REVOKED",
++     "code": "APPROVAL_FAILED",
+    },
+    "status": "denied",
+  }
+
+ ❯ apps/desktop/test/runtime-action-router.test.ts:401:20
+    399|       h.admission,
+    400|     );
+    401|     expect(result).toMatchObject({ status: 'denied', error: { code: 'T…
+       |                    ^
+    402|     expect(h.execute).not.toHaveBeenCalled();
+    403|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[51/57]⎯
+
+ FAIL  |1| apps/desktop/test/runtime-action-router.test.ts > ask mode > rejects execution when a same-ID admission replaces the owner during revalidation
+Error: task grant already exists; task id cannot be reused: t1
+ ❯ TaskGrantRegistry.start packages/approval/src/security/task-grant-registry.ts:42:13
+     40|   start(grant: TaskGrant): void {
+     41|     if (this.usedTaskIds.has(grant.taskId)) {
+     42|       throw new Error(`task grant already exists; task id cannot be re…
+       |             ^
+     43|     }
+     44|     this.usedTaskIds.add(grant.taskId);
+ ❯ TaskLifecycle.start apps/desktop/electron/main/security/task-lifecycle.ts:84:21
+ ❯ Object.startTask apps/desktop/test/runtime-action-router.test.ts:148:5
+ ❯ Object.<anonymous> apps/desktop/test/runtime-action-router.test.ts:418:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[52/57]⎯
+
+ FAIL  |1| apps/desktop/test/runtime-action-router.test.ts > ask mode > rejects execution when a same-ID admission replaces the owner during the allow audit
+Error: task grant already exists; task id cannot be reused: t1
+ ❯ TaskGrantRegistry.start packages/approval/src/security/task-grant-registry.ts:42:13
+     40|   start(grant: TaskGrant): void {
+     41|     if (this.usedTaskIds.has(grant.taskId)) {
+     42|       throw new Error(`task grant already exists; task id cannot be re…
+       |             ^
+     43|     }
+     44|     this.usedTaskIds.add(grant.taskId);
+ ❯ TaskLifecycle.start apps/desktop/electron/main/security/task-lifecycle.ts:84:21
+ ❯ Object.startTask apps/desktop/test/runtime-action-router.test.ts:148:5
+ ❯ Object.onAudit apps/desktop/test/runtime-action-router.test.ts:436:11
+ ❯ Object.append apps/desktop/test/runtime-action-router.test.ts:141:9
+ ❯ auditDecision apps/desktop/electron/main/security/runtime-action-router.ts:132:5
+ ❯ Object.route apps/desktop/electron/main/security/runtime-action-router.ts:553:7
+ ❯ apps/desktop/test/runtime-action-router.test.ts:440:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[53/57]⎯
+
+
+ Test Files  9 failed | 19 passed (28)
+      Tests  57 failed | 517 passed | 1 skipped (575)
+   Start at  08:08:28
+   Duration  736.42s (transform 3.45s, setup 343ms, import 22.20s, tests 687.24s, environment 21.20s)
+
+EXIT_CODE=1

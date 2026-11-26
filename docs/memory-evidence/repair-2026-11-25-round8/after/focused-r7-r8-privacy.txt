@@ -1,0 +1,55 @@
+(node:18140) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:34852) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:15548) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-round7-regression.test.ts (23 tests) 24213ms
+     ✓ R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files  1023ms
+     ✓ R7 privacy retry recovers an empty episode topic after restart and completes chat cleanup  1204ms
+     ✓ R7 privacy deletion discovers secrets nested only in pending operation extensions  738ms
+     ✓ R7 privacy deletion scrubs an invalid structural targetId field  774ms
+     ✓ R7 privacy deletion scrubs an invalid structural projectId field  779ms
+     ✓ R7 privacy deletion scrubs an invalid structural mergeIds field  802ms
+     ✓ R7 privacy deletion ignores whitespace-only episode topics without corrupting retained content  1014ms
+     ✓ R7 privacy deletion preserves pending UPDATE control fields when deleted text equals the op  803ms
+     ✓ R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds  1074ms
+     ✓ R7 privacy deletion includes superseded episode records in the global redaction corpus  1029ms
+     ✓ R7 caller-mode memory deletion rechecks canonical approval after privacy redaction  625ms
+     ✓ R7 production privacy retry succeeds in the same process after truth rows are gone  1111ms
+     ✓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body  618ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes  1225ms
+     ✓ R7-P1-2 replacement preflight sees an indexed project after its registry entry is removed  1202ms
+     ✓ R7-P1-2 replacement preflight derives zero-entry project identity from scope_files  1242ms
+     ✓ R7-P1-3 source deletion detects indexed unregistered conflicts without an explicit workspace  1294ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes  1191ms
+     ✓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file  1221ms
+     ✓ R7-P1-3 valid source deletion updates unregistered project truth without reindexing it  1526ms
+     ✓ R7-P1-4 privacy deletion discovers indexed unregistered truth before reconciliation  1125ms
+     ✓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion  1218ms
+     ✓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution  1372ms
+(node:36268) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-r8-regression.test.ts (12 tests) 19186ms
+     ✓ R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext  1784ms
+     ✓ R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext  1982ms
+     ✓ R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext  1883ms
+     ✓ R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext  2059ms
+     ✓ R8-P0-1 resumes from journal context after the chat row and Pi file are already gone  1501ms
+     ✓ R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers  1526ms
+     ✓ R8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent  1418ms
+     ✓ R8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret  1525ms
+     ✓ R8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker  1455ms
+     ✓ R8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state  1360ms
+     ✓ R8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state  1334ms
+     ✓ R8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state  1356ms
+
+ Test Files  2 passed (2)
+      Tests  35 passed (35)
+   Start at  13:34:53
+   Duration  46.41s (transform 304ms, setup 40ms, import 1.09s, tests 43.40s, environment 1.53s)
+

@@ -1,5 +1,5 @@
 import { mkdtempSync } from 'node:fs';
-import { writeFile } from 'node:fs/promises';
+import { link, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
@@ -65,25 +65,20 @@ describe('createCodingToolDefinitions', () => {
       .toEqual(['bash', 'edit', 'write']);
   });
 
-  it('sends bash as a raw Runtime action and streams Main output', async () => {
+  it('disables model shell before it can reach the runtime action router', async () => {
     const h = harness();
     const bash = createCodingToolDefinitions(h.context)
       .find((definition) => definition.name === 'bash')!;
     const result = await (bash as any).execute(
       'call-1',
-      { command: 'printf hello' },
+      { command: 'cat alias/memory.json' },
       undefined,
       () => {},
       toolCtx,
     );
 
-    expect(h.requestAction).toHaveBeenCalledWith({
-      requestId: expect.any(String),
-      toolCallId: 'call-1',
-      toolName: 'bash',
-      args: { command: 'printf hello' },
-    });
-    expect((result as any).content?.[0]?.text).toContain('ok');
+    expect(h.requestAction).not.toHaveBeenCalled();
+    expect((result as any).content?.[0]?.text).toContain('模型 Shell 已禁用');
     expect(h.records).toEqual([]);
   });
 
@@ -135,7 +130,96 @@ describe('createCodingToolDefinitions', () => {
         content: 'new',
       },
     }));
+    expect(h.requests.map((request) => request.toolName)).toEqual(['read', 'edit']);
     expect(h.records).toEqual([]);
+  });
+
+  it('does not read or match oldText until Main authorizes the edit source', async () => {
+    const h = harness();
+    const path = join(h.context.workspaceRoot, 'a.txt');
+    await writeFile(path, 'before-authorization');
+    h.requestAction.mockImplementationOnce(async (request: RuntimeActionRequest) => {
+      h.requests.push(request);
+      await writeFile(path, 'after-authorization');
+      return executed(request.requestId, { authorized: true });
+    });
+    const edit = createCodingToolDefinitions(h.context)
+      .find((definition) => definition.name === 'edit')!;
+
+    await (edit as any).execute(
+      'call-edit',
+      {
+        path,
+        edits: [{ oldText: 'after-authorization', newText: 'new' }],
+      },
+      undefined,
+      undefined,
+      toolCtx,
+    );
+
+    expect(h.requests.map((request) => request.toolName)).toEqual(['read', 'edit']);
+    expect(h.requests[0]).toEqual(expect.objectContaining({
+      toolName: 'read',
+      toolCallId: 'call-edit',
+      args: { path },
+    }));
+    expect(h.requests[1].args).toEqual({ path, content: 'new' });
+  });
+
+  it('does not expose oldText matches through a protected hard-link alias', async () => {
+    const h = harness();
+    const reserved = join(h.context.workspaceRoot, '.sparkii');
+    const protectedFile = join(reserved, 'memory.json');
+    const alias = join(h.context.workspaceRoot, 'memory-alias.json');
+    await mkdir(reserved);
+    await writeFile(protectedFile, '{"secret":"protected-value"}');
+    await link(protectedFile, alias);
+    h.requestAction.mockImplementation(async (request: RuntimeActionRequest) => {
+      h.requests.push(request);
+      return {
+        requestId: request.requestId,
+        status: 'denied',
+        decision: {
+          decision: 'deny' as const,
+          ruleId: 'platform.trust-anchor',
+          reason: 'protected alias',
+        },
+      };
+    });
+    const edit = createCodingToolDefinitions(h.context)
+      .find((definition) => definition.name === 'edit')!;
+    const attempt = (oldText: string) => (edit as any).execute(
+      'call-alias',
+      { path: alias, edits: [{ oldText, newText: 'changed' }] },
+      undefined,
+      undefined,
+      toolCtx,
+    );
+
+    await expect(attempt('protected-value')).rejects.toThrow('未执行:denied');
+    await expect(attempt('not-in-the-file')).rejects.toThrow('未执行:denied');
+    expect(h.requests.map((request) => request.toolName)).toEqual(['read', 'read']);
+    expect(await readFile(protectedFile, 'utf8')).toBe('{"secret":"protected-value"}');
+  });
+
+  it('rejects a hard-linked source after read authorization without matching it', async () => {
+    const h = harness();
+    const source = join(h.context.workspaceRoot, 'source.txt');
+    const alias = join(h.context.workspaceRoot, 'alias.txt');
+    await writeFile(source, 'protected-value');
+    await link(source, alias);
+    const edit = createCodingToolDefinitions(h.context)
+      .find((definition) => definition.name === 'edit')!;
+
+    await expect((edit as any).execute(
+      'call-hardlink',
+      { path: alias, edits: [{ oldText: 'protected-value', newText: 'changed' }] },
+      undefined,
+      undefined,
+      toolCtx,
+    )).rejects.toThrow(/hard-linked/);
+    expect(h.requests.map((request) => request.toolName)).toEqual(['read']);
+    expect(await readFile(source, 'utf8')).toBe('protected-value');
   });
 
   it('blocks writes outside the workspace before requesting an action', async () => {

@@ -1,0 +1,75 @@
+--- final archive date ---
+2026-11-25T00:48:30+08:00
+--- branch ---
+main
+--- diff check ---
+exit=0
+--- staged ---
+--- status ---
+ M apps/desktop/electron/main/chat-session-store.ts
+ M apps/desktop/electron/main/error-store.ts
+ M apps/desktop/electron/main/ipc.ts
+ M apps/desktop/electron/main/logger.ts
+ M apps/desktop/electron/main/memory/consolidation.ts
+ M apps/desktop/electron/main/memory/extraction.ts
+ M apps/desktop/electron/main/memory/material.ts
+ M apps/desktop/electron/main/memory/ops.ts
+ M apps/desktop/electron/main/memory/service.ts
+ M apps/desktop/electron/main/memory/settings.ts
+ M apps/desktop/electron/main/memory/store.ts
+ M apps/desktop/electron/main/memory/tools.ts
+ M apps/desktop/electron/main/memory/types.ts
+ M apps/desktop/electron/main/runtime.ts
+ M apps/desktop/electron/main/security/action-normalizer.ts
+ M apps/desktop/electron/main/security/runtime-action-router.ts
+ M apps/desktop/electron/main/security/task-lifecycle.ts
+ M apps/desktop/electron/main/security/windows-platform.ts
+ M apps/desktop/electron/main/security/workspace-executor.ts
+ M apps/desktop/electron/main/security/workspace-file-service.ts
+ M apps/desktop/electron/main/workflow.ts
+ M apps/desktop/src/shell/SettingsMemoryPane.tsx
+ M apps/desktop/test/ipc.test.ts
+ M apps/desktop/test/logger.test.ts
+ M apps/desktop/test/memory-consolidation.test.ts
+ M apps/desktop/test/memory-extraction.test.ts
+ M apps/desktop/test/memory-settings-pane.test.tsx
+ M apps/desktop/test/memory-tools.test.ts
+ M apps/desktop/test/runtime-action-router.test.ts
+ M apps/desktop/test/task-lifecycle.test.ts
+ M apps/desktop/test/windows-platform.test.ts
+ M apps/desktop/test/workflow-broker.test.ts
+ M apps/desktop/test/workspace-executor.test.ts
+ M apps/desktop/test/workspace-file-service.integration.test.ts
+ M apps/desktop/test/workspace-file-service.test.ts
+ M packages/agent-host/src/coding-tools.ts
+ M packages/agent-host/src/pi-runtime-pool.ts
+ M packages/agent-host/src/pi-runtime-supervisor.ts
+ M packages/agent-host/src/pi-runtime-transport.ts
+ M packages/agent-host/src/pi-runtime.ts
+ M packages/agent-host/src/tool-registry.ts
+ M packages/agent-host/src/workspace-tools.ts
+ M packages/agent-host/test/coding-tools.test.ts
+ M packages/agent-host/test/pi-runtime-pool.test.ts
+ M packages/agent-host/test/pi-runtime-supervisor.test.ts
+ M packages/agent-host/test/pi-runtime.test.ts
+ M packages/agent-host/test/tool-registry.test.ts
+ M packages/agent-host/test/workspace-tools.test.ts
+ M packages/approval/src/audit.ts
+ M packages/approval/src/executor.ts
+ M packages/approval/src/gate.ts
+ M packages/approval/src/proposal.ts
+ M packages/approval/test/gate.test.ts
+?? apps/desktop/electron/main/memory/truth-batch.ts
+?? apps/desktop/electron/main/security/workspace-tree-fence.ts
+?? apps/desktop/test/memory-audit-regression.test.ts
+?? apps/desktop/test/memory-fence-canonical.test.ts
+?? apps/desktop/test/memory-index-fallback.test.ts
+?? apps/desktop/test/memory-round7-regression.test.ts
+?? apps/desktop/test/memory-truth-batch.test.ts
+?? docs/memory-evidence/repair-2026-11-24-round7/
+?? docs/memory-evidence/repair-2026-11-24/
+?? packages/agent-host/src/workspace-search-tools.ts
+--- head ---
+101487d3f612764766cc024d4b28dbf846a926cf
+--- tracked patch sha256 ---
+84a5929b97f68c00a1ed3f5aee842449626608f05f66b03d28bc88b77f8c50dc *-

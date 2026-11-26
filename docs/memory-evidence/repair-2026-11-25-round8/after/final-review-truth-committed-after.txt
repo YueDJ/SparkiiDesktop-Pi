@@ -1,0 +1,49 @@
+(node:5060) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26668) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:13088) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-truth-batch.test.ts (38 tests) 29136ms
+     ✓ restores every prior truth file and removes new files when a later write fails  771ms
+     ✓ R8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth  511ms
+     ✓ R8 final review never rolls back truth after the committed journal is durable  769ms
+     ✓ R8-P1-4 preserves rollback backups when the unverified journal cannot be removed  530ms
+     ✓ recovers an interrupted batch at startup before truth files are opened  786ms
+     ✓ recovers a new project batch from the registry committed before its truth file  799ms
+     ✓ R8 final review resumes a partially rolled-back new project with startup-injected authorization  761ms
+     ✓ R8 final review keeps rollback backups when journal removal fails after truth restoration  767ms
+     ✓ R8 final review does not roll back committed truth when post-commit backup cleanup fails  504ms
+     ✓ R8 final review retries orphan backup cleanup without quarantining restored truth  502ms
+     ✓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing  746ms
+     ✓ rollback never recreates a missing project parent before path revalidation  758ms
+     ✓ R8 final review rejects an empty uncommitted journal without deleting the only original backup  752ms
+     ✓ quarantines a malformed journal and reports a warning instead of blocking startup  494ms
+     ✓ rejects journal paths outside memory truth and backup locations  750ms
+     ✓ rejects a truthy non-boolean committed marker without deleting uncommitted truth  510ms
+     ✓ rejects a committed journal that still contains rollback file items  505ms
+     ✓ rejects an unregistered outside project truth target during commit and recovery  749ms
+     ✓ keeps the only recovery evidence when the write-block marker cannot be persisted  503ms
+     ✓ keeps a committed batch and removes its recovery journal  767ms
+     ✓ rolls back the project registry when a later truth write fails  2154ms
+     ✓ R8 truth round3 B1 merges canonical project aliases into one truth and index bucket  1922ms
+     ✓ R8 final review fences registered project reads and self-healing through an ancestor junction  1435ms
+     ✓ R8 final review rejects unregistered duplicate project identity before single or batch commits  1202ms
+     ✓ R8 truth round3 B2 ignores journal projectFiles as recovery authorization  748ms
+     ✓ R8 truth round3 B3 rebuild fails closed when truth changes before index commit and then indexes one snapshot  1346ms
+     ✓ R8 truth round3 B3 reconcile fails closed when truth changes before index commit and then indexes one snapshot  1579ms
+     ✓ R8 truth round3 B3 replaceScopeIndex fails closed when truth changes before index commit and then indexes one snapshot  1326ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -wal sidecar before SQLite opens  829ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -shm sidecar before SQLite opens  840ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -journal sidecar before SQLite opens  853ms
+     ✓ R8 truth round3 B5 refuses corrupt-database isolation and fallback while a sidecar is hard-linked  525ms
+
+ Test Files  1 passed (1)
+      Tests  38 passed (38)
+   Start at  01:52:46
+   Duration  30.69s (transform 192ms, setup 30ms, import 550ms, tests 29.14s, environment 808ms)
+

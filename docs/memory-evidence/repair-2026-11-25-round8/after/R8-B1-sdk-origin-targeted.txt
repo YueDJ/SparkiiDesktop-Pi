@@ -1,0 +1,58 @@
+(node:29064) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26568) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:15424) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |0| packages/agent-host/test/pi-sdk-runtime.test.ts (11 tests | 1 failed | 10 skipped) 265ms
+     ↓ maps skillsDir to additionalSkillPaths
+     ↓ exports the SDK host factory
+     ↓ R8 round7 B2 turns a real SDK no-model rejection into a correlated terminal event
+     ↓ R8 round7 B2 turns a real SDK prepare rejection into a correlated terminal event
+     × R8 B1 stamps every real SDK tool envelope with its overlapping prompt origin 263ms
+     ↓ does not let a saddle system prompt drop the skill catalog
+     ↓ passes prompt/steer/followUp text through without /skill: rewrite
+     ↓ does not enable Pi 1.0 prompt cache warming (per-call billing)
+     ↓ prefers explicit agentDir over env and fallback
+     ↓ falls back to PI_CODING_AGENT_DIR when no explicit value is provided
+     ↓ falls back to the SDK agent dir when neither is set
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |0| packages/agent-host/test/pi-sdk-runtime.test.ts > pi-sdk-runtime skill loader options > R8 B1 stamps every real SDK tool envelope with its overlapping prompt origin
+AssertionError: expected [ …(6) ] to deeply equal [ 'A-document_read', 'A-read', …(4) ]
+
+- Expected
++ Received
+
+  [
++   "2c8ef737-f276-4b37-8617-b125a16cd6b7",
+    "A-document_read",
+-   "A-read",
+    "A-report_export",
+    "B-document_read",
+-   "B-read",
+    "B-report_export",
++   "a49df754-7b28-4d2d-96f2-c4e577fa46e9",
+  ]
+
+ ❯ packages/agent-host/test/pi-sdk-runtime.test.ts:197:42
+    195|       await vi.waitFor(() => expect(origins.size).toBe(6));
+    196|
+    197|       expect([...origins.keys()].sort()).toEqual([
+       |                                          ^
+    198|         "A-document_read", "A-read", "A-report_export",
+    199|         "B-document_read", "B-read", "B-report_export",
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 10 skipped (11)
+   Start at  12:08:11
+   Duration  3.10s (transform 423ms, setup 0ms, import 2.51s, tests 265ms, environment 0ms)
+

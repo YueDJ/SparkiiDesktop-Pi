@@ -1,0 +1,96 @@
+(node:41604) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:6076) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:31172) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [31m❯[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts [2m([22m[2m44 tests[22m[2m | [22m[31m1 failed[39m[2m | [22m[33m43 skipped[39m[2m)[22m[33m 6766[2mms[22m[39m
+     [2m[90m↓[39m[22m R8-REPAIR-MEMORY truth B symlink replacement makes production list fail closed
+     [2m[90m↓[39m[22m R8-REPAIR-MEMORY truth B symlink replacement makes production search fail closed
+     [2m[90m↓[39m[22m R8-REPAIR-MEMORY truth B symlink replacement makes production rebuild fail closed
+     [2m[90m↓[39m[22m R8-REPAIR-MEMORY truth B hardlink replacement makes production list fail closed
+     [2m[90m↓[39m[22m R8-REPAIR-MEMORY truth B hardlink replacement makes production search fail closed
+     [2m[90m↓[39m[22m R8-REPAIR-MEMORY truth B hardlink replacement makes production rebuild fail closed
+     [2m[90m↓[39m[22m R8-REPAIR-MEMORY truth B non-symlink-reparse replacement makes production list fail closed
+     [2m[90m↓[39m[22m R8-REPAIR-MEMORY truth B non-symlink-reparse replacement makes production search fail closed
+     [2m[90m↓[39m[22m R8-REPAIR-MEMORY truth B non-symlink-reparse replacement makes production rebuild fail closed
+     [2m[90m↓[39m[22m R8-REPAIR-MEMORY truth C default fence and rebuilt SandboxProbe batch mode stay integrated
+     [2m[90m↓[39m[22m R8 review privacy B5 zeroes a plaintext journal temp file before a failed removal
+     [2m[90m↓[39m[22m R8 final review fences same-process and restarted reads when the privacy journal cannot be persisted
+     [2m[90m↓[39m[22m R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext
+     [2m[90m↓[39m[22m R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext
+     [2m[90m↓[39m[22m R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext
+     [2m[90m↓[39m[22m R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext
+     [2m[90m↓[39m[22m R8-P0-1 resumes from journal context after the chat row and Pi file are already gone
+[31m     [31m×[31m R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers[39m[33m 6764[2mms[22m[39m
+     [2m[90m↓[39m[22m R8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent
+     [2m[90m↓[39m[22m R8 review B3 registers chat secrets before sink cleanup and protects later chat writes after failure
+     [2m[90m↓[39m[22m R8-P0-1 restores privacy sink fences before truth recovery can restore plaintext
+     [2m[90m↓[39m[22m R8 review B3 cleans Pi and chat carriers before a safe-root truth write-block aborts startup
+     [2m[90m↓[39m[22m R8 review B5 rejects dangling privacy journal directory and file links without reading targets
+     [2m[90m↓[39m[22m R8 review B5 refuses to clear a privacy journal whose identity changed during cleanup
+     [2m[90m↓[39m[22m R8-REPAIR-MEMORY refuses to delete a journal when the zero-write readback contains a nonzero byte
+     [2m[90m↓[39m[22m R8-REPAIR-MEMORY digest-mismatch startup temp evidence persists a privacy write-block without deleting context
+     [2m[90m↓[39m[22m R8-REPAIR-MEMORY session-mismatch startup temp evidence persists a privacy write-block without deleting context
+     [2m[90m↓[39m[22m R8-REPAIR-MEMORY malformed startup temp evidence persists a privacy write-block without deleting context
+     [2m[90m↓[39m[22m R8-REPAIR-MEMORY promotes a valid startup temp journal and automatically resumes its privacy deletion
+     [2m[90m↓[39m[22m R8-REPAIR-MEMORY fences Windows non-symlink reparse attributes on the privacy directory before temp reads and cleanup
+     [2m[90m↓[39m[22m R8-REPAIR-MEMORY fences Windows non-symlink reparse attributes on the privacy file before temp reads and cleanup
+     [2m[90m↓[39m[22m R8-REPAIR-MEMORY continues Gate Audit Error Logger cleanup when store privacy registration fails
+     [2m[90m↓[39m[22m R8 review B4 rotates memory markers when the deleted text collides with %s
+     [2m[90m↓[39m[22m R8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret
+     [2m[90m↓[39m[22m R8-P1-3 refuses to construct MemoryService through an unsafe memory-root junction
+     [2m[90m↓[39m[22m R8-P1-3 fences project repair before registry or truth reads
+     [2m[90m↓[39m[22m R8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker
+     [2m[90m↓[39m[22m R8 privacy review reads the raw Pi path before chat redaction can alter it
+     [2m[90m↓[39m[22m R8 privacy review resumes a secret-named Pi carrier after restart
+     [2m[90m↓[39m[22m R8 privacy review retries independent carriers after a same-process truth rollback block
+     [2m[90m↓[39m[22m R8 privacy review removes a plaintext journal temp file left before rename
+     [2m[90m↓[39m[22m R8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state
+     [2m[90m↓[39m[22m R8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state
+     [2m[90m↓[39m[22m R8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state
+(node:31172) PromiseRejectionHandledWarning: Promise rejection was handled asynchronously (rejection id: 2)
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers
+[31m[1mError[22m: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".[39m
+[36m [2m❯[22m apps/desktop/test/memory-r8-regression.test.ts:[2m315:3[22m[39m
+    [90m313|[39m   })[33m;[39m
+    [90m314|[39m
+    [90m315|[39m   it('R8-P0-1 keeps a failed privacy cleanup fenced after restart and …
+    [90m   |[39m   [31m^[39m
+    [90m316|[39m     [35mconst[39m { secret[33m,[39m excerpt } [33m=[39m [35mawait[39m [34mseedPrivacy[39m()[33m;[39m
+    [90m317|[39m     [35mlet[39m failChat [33m=[39m [35mtrue[39m[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Unhandled Errors [49m[22m[31m⎯⎯⎯⎯⎯⎯[39m
+[31m[1m
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.[22m[39m
+
+[31m⎯⎯⎯⎯[39m[1m[41m Unhandled Rejection [49m[22m[31m⎯⎯⎯⎯⎯[39m
+[31m[1mTypeError[22m: The database connection is not open[39m
+[90m [2m❯[22m Database.prepare node_modules/.pnpm/better-sqlite3@13.0.3/node_modules/better-sqlite3/lib/methods/wrappers.js:[2m5:21[22m[39m
+[90m [2m❯[22m AuditStore.patterns packages/approval/src/audit.ts:[2m168:62[22m[39m
+[90m [2m❯[22m AuditStore.query packages/approval/src/audit.ts:[2m318:27[22m[39m
+[90m [2m❯[22m expectPrivateGone apps/desktop/test/memory-r8-regression.test.ts:[2m168:29[22m[39m
+[90m [2m❯[22m apps/desktop/test/memory-r8-regression.test.ts:[2m332:5[22m[39m
+[90m [2m❯[22m node_modules/.pnpm/@vitest+runner@4.1.11/node_modules/@vitest/runner/dist/chunk-artifact.js:[2m1903:20[22m[39m
+
+[31mThis error originated in "[1mapps/desktop/test/memory-r8-regression.test.ts[22m" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.[39m
+[31m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[33m43 skipped[39m[90m (44)[39m
+[2m     Errors [22m [1m[31m1 error[39m[22m
+[2m   Start at [22m 05:53:08
+[2m   Duration [22m 8.78s[2m (transform 327ms, setup 31ms, import 990ms, tests 6.77s, environment 791ms)[22m
+

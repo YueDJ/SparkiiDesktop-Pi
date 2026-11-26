@@ -1,0 +1,87 @@
+(node:34152) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:8660) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:9416) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32780) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:18352) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:2920) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:23252) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:18992) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[90mstdout[2m | apps/desktop/test/logger.test.ts[2m > [22m[2mLogger[2m > [22m[2mappends structured jsonl and exports
+[22m[39mstart {"profile":"contract-review"}
+
+[90mstderr[2m | apps/desktop/test/logger.test.ts[2m > [22m[2mLogger[2m > [22m[2mdrops entries below the configured level
+[22m[39mkept ""
+
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/task-lifecycle.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts [2m([22m[2m30 tests[22m[2m)[22m[33m 371[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts [2m([22m[2m135 tests[22m[2m)[22m[33m 1479[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-consolidation.test.ts [2m([22m[2m15 tests[22m[2m)[22m[33m 10371[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-3 never sends indexed plaintext to consolidation while truth writes are blocked [33m 992[2mms[22m[39m
+     [33m[2m✓[22m[39m 相似记忆只产出 pending 提案，绝不自动改 active [33m 754[2mms[22m[39m
+     [33m[2m✓[22m[39m 批准合并提案后：保留条作废、被合并条作废、新条生效 [33m 785[2mms[22m[39m
+     [33m[2m✓[22m[39m 一次整合的模型调用不超过 3 次 [33m 674[2mms[22m[39m
+     [33m[2m✓[22m[39m 三个阶段全都有活时仍然 ≤3 次调用，第四件事顺延 [33m 1742[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝合并阶段的对象字段而不是字符串化 [33m 676[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝压缩阶段的对象字段而不是字符串化 [33m 378[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝复核阶段的对象字段而不是字符串化 [33m 895[2mms[22m[39m
+     [33m[2m✓[22m[39m P2 情景压缩混合越界输出时整阶段丢弃，不留下部分提案 [33m 370[2mms[22m[39m
+     [33m[2m✓[22m[39m 空闲不足或距上次整合不足：不调用模型 [33m 344[2mms[22m[39m
+     [33m[2m✓[22m[39m 开关关闭或有交互会话在跑：不整合 [33m 361[2mms[22m[39m
+     [33m[2m✓[22m[39m 没有空闲槽：跳过并顺延，不排队、不做任何写入 [33m 664[2mms[22m[39m
+     [33m[2m✓[22m[39m 整合输出畸形：该阶段整批丢弃 + errors.db 记录 + 不产生提案 [33m 671[2mms[22m[39m
+     [33m[2m✓[22m[39m 没有可用模型，或确实无事可做：不调模型、不写库，各自返回对应出口 [33m 361[2mms[22m[39m
+     [33m[2m✓[22m[39m 模型给不存在的 targetId 或越界文本：忽略该条，不落提案 [33m 700[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-extraction.test.ts [2m([22m[2m20 tests[22m[2m)[22m[33m 10249[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-3 never sends indexed plaintext to the extraction model while truth writes are blocked [33m 960[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 never sends indexed plaintext to another session while privacy cleanup is pending [33m 678[2mms[22m[39m
+     [33m[2m✓[22m[39m JSON 协议 fail closed：畸形/越界/非法 op 整批抛错 [33m 348[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝被强制字符串化的提取字段：{"sessionSummary":{},"topics":[],"ops":[]} [33m 347[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":["ADD"],"scope":"user","text":"事实"}]} [33m 335[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":["user"],"text":"事实"}]} [33m 347[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":"user","text":{},"excerpt":{}}]} [33m 344[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":"user","text":"事实","importance":"2"}]} [33m 340[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"UPDATE","targetId":["mem_x"],"text":{}}]} [33m 354[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"SUPERSEDE","targetId":"mem_x","replacementText":{},"reason":{}}]} [33m 323[2mms[22m[39m
+     [33m[2m✓[22m[39m 端到端：对话增量 → pending（含来源 excerpt）→ 批准 → 下一条会话注入 [33m 759[2mms[22m[39m
+     [33m[2m✓[22m[39m 驳回后进黑名单，同候选不再提案 [33m 748[2mms[22m[39m
+     [33m[2m✓[22m[39m 同 scope 高相似 ADD 降级为 UPDATE 候选 [33m 686[2mms[22m[39m
+     [33m[2m✓[22m[39m 畸形输出：整批丢弃 + errors.db 有记录 + 真相源无半批写入 [33m 351[2mms[22m[39m
+     [33m[2m✓[22m[39m 对象字段被拒绝时不写 pending、episode、真相文件或提取位点 [33m 356[2mms[22m[39m
+     [33m[2m✓[22m[39m auto 工作区的项目候选只落用户层 [33m 656[2mms[22m[39m
+     [33m[2m✓[22m[39m user 工作区的首条项目候选：项目文件尚不存在也能落 pending 并生成 projectId [33m 944[2mms[22m[39m
+     [33m[2m✓[22m[39m 同一候选重复提炼：已有高相似 pending 时不再重复提案 [33m 698[2mms[22m[39m
+     [33m[2m✓[22m[39m 开关关闭：零模型调用 [33m 340[2mms[22m[39m
+     [33m[2m✓[22m[39m 槽位礼让：池满跳过、无排队；交互 acquire 不受影响 [33m 332[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts [2m([22m[2m14 tests[22m[2m)[22m[33m 21226[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext [33m 2049[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext [33m 2049[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext [33m 2062[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext [33m 2066[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes from journal context after the chat row and Pi file are already gone [33m 1529[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers [33m 1584[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent [33m 1535[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret [33m 1437[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-3 refuses to construct MemoryService through an unsafe memory-root junction [33m 349[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-3 fences project repair before registry or truth reads [33m 1162[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker [33m 1415[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state [33m 1310[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state [33m 1358[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state [33m 1318[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m6 passed[39m[22m[90m (6)[39m
+[2m      Tests [22m [1m[32m220 passed[39m[22m[90m (220)[39m
+[2m   Start at [22m 19:54:10
+[2m   Duration [22m 23.23s[2m (transform 3.44s, setup 146ms, import 8.74s, tests 43.70s, environment 6.56s)[22m
+

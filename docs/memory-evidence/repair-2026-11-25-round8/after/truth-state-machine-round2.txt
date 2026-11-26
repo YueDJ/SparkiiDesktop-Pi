@@ -1,0 +1,57 @@
+(node:36700) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:40484) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:35192) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-truth-batch.test.ts (22 tests | 1 failed) 20225ms
+     ✓ restores every prior truth file and removes new files when a later write fails  860ms
+     ✓ R8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth  524ms
+     ✓ R8-P1-4 preserves rollback backups when the unverified journal cannot be removed  561ms
+     ✓ recovers an interrupted batch at startup before truth files are opened  841ms
+     ✓ recovers a new project batch from the registry committed before its truth file  811ms
+     ✓ R8 final review resumes a partially rolled-back new project after the registry was already restored  812ms
+     ✓ R8 final review keeps rollback backups when journal removal fails after truth restoration  835ms
+     ✓ R8 final review retries orphan backup cleanup without quarantining restored truth  545ms
+     ✓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing  931ms
+     ✓ rollback never recreates a missing project parent before path revalidation  1583ms
+     ✓ does not write or quarantine outside a junctioned memory root during failed recovery 27ms
+     ✓ R8 final review rejects an empty uncommitted journal without deleting the only original backup  841ms
+     ✓ quarantines a malformed journal and reports a warning instead of blocking startup  606ms
+     × rejects journal paths outside memory truth and backup locations 5090ms
+     ✓ rejects a truthy non-boolean committed marker without deleting uncommitted truth  728ms
+     ✓ rejects a committed journal that still contains rollback file items  581ms
+     ✓ rejects an unregistered outside project truth target during commit and recovery  818ms
+     ✓ rejects a project truth target reached through a junction even when its workspace is registered 276ms
+     ✓ treats a dangling write-block junction as a persistent block 269ms
+     ✓ keeps the only recovery evidence when the write-block marker cannot be persisted  535ms
+     ✓ keeps a committed batch and removes its recovery journal  856ms
+     ✓ rolls back the project registry when a later truth write fails  1293ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > truth batch journal > rejects journal paths outside memory truth and backup locations
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-truth-batch.test.ts:326:3
+    324|   });
+    325|
+    326|   it('rejects journal paths outside memory truth and backup locations'…
+       |   ^
+    327|     const victim = join(root, 'victim.txt');
+    328|     const dir = memoryDir(dataDir);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 21 passed (22)
+   Start at  21:47:00
+   Duration  21.73s (transform 186ms, setup 35ms, import 438ms, tests 20.22s, environment 853ms)
+
+
+exit=1

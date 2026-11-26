@@ -1,0 +1,40 @@
+(node:24292) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:30848) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:40364) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-round7-regression.test.ts (23 tests) 21947ms
+     ✓ R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files  1052ms
+     ✓ R7 privacy retry recovers an empty episode topic after restart and completes chat cleanup  964ms
+     ✓ R7 privacy deletion discovers secrets nested only in pending operation extensions  652ms
+     ✓ R7 privacy deletion scrubs an invalid structural targetId field  648ms
+     ✓ R7 privacy deletion scrubs an invalid structural projectId field  648ms
+     ✓ R7 privacy deletion scrubs an invalid structural mergeIds field  739ms
+     ✓ R7 privacy deletion ignores whitespace-only episode topics without corrupting retained content  901ms
+     ✓ R7 privacy deletion preserves pending UPDATE control fields when deleted text equals the op  704ms
+     ✓ R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds  954ms
+     ✓ R7 privacy deletion includes superseded episode records in the global redaction corpus  963ms
+     ✓ R7 caller-mode memory deletion rechecks canonical approval after privacy redaction  588ms
+     ✓ R7 production privacy retry succeeds in the same process after truth rows are gone  935ms
+     ✓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body  564ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes  1166ms
+     ✓ R7-P1-2 replacement preflight sees an indexed project after its registry entry is removed  1106ms
+     ✓ R7-P1-2 replacement preflight derives zero-entry project identity from scope_files  1112ms
+     ✓ R7-P1-3 source deletion detects indexed unregistered conflicts without an explicit workspace  1106ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes  1085ms
+     ✓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file  1127ms
+     ✓ R7-P1-3 valid source deletion updates unregistered project truth without reindexing it  1412ms
+     ✓ R7-P1-4 privacy deletion discovers indexed unregistered truth before reconciliation  1142ms
+     ✓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion  1206ms
+     ✓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution  1170ms
+
+ Test Files  1 passed (1)
+      Tests  23 passed (23)
+   Start at  00:19:37
+   Duration  24.01s (transform 283ms, setup 32ms, import 1.07s, tests 21.95s, environment 784ms)
+

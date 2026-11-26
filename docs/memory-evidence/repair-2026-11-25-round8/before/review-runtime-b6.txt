@@ -1,0 +1,76 @@
+(node:21204) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:35544) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:31396) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/workflow-broker.test.ts (36 tests | 2 failed | 34 skipped) 131ms
+   × R8 review runtime B6 keeps the original workflow admission when Task becomes task-a 70ms
+   × R8 review runtime B6 keeps the original workflow admission when Task becomes task-b 58ms
+   ↓ settles a caller waiter as denied when privacy redaction invalidates its proposal
+   ↓ canonicalizes a stale approved broker completion against privacy-redacted gate state
+   ↓ acquires the workflow slot with the agent display name, not the session id
+   ↓ uses the runtime session id for the workflow session record
+   ↓ keeps only workflow tool-step tools plus read on the runtime saddle
+   ↓ persists the caller workspace and model on the workflow session
+   ↓ resolves skill ref and llm template to prompt content
+   ↓ resolves the two visible business skills plus hidden tools
+     ↓ rejects forged legacy coding proposals before they reach ApprovalGate
+     ↓ completes the human step when the shared broker decides approval
+     ↓ runs the workflow for the requested profile instead of contract-review
+     ↓ returns the session id before the runner finishes
+     ↓ persists step output on workflow_step_end and does not write a report-named result blob
+     ↓ persists workflow_step_end failed status when a step throws
+     ↓ stops the workflow and reports when a step_end append fails
+     ↓ stops the workflow when even the small failed end cannot be appended
+     ↓ R8-P1-1 rejects a workflow whose original lease is replaced during new_session
+     ↓ R8-P1-1 does not send model commands to a stale lease after an awaited key lookup
+     ↓ R8-P1-1 stops before prompt when the original lease is replaced during set_model
+     ↓ R8-P1-1 stops before prompt when the original lease is replaced during set_thinking_level
+     ↓ R8-P1-1 does not start the next workflow step after an between-step rebind
+     ↓ R8-P1-1 denies a tool approval completed after the original lease is replaced
+     ↓ does not swallow start/end append failures with empty catch
+     ↓ does not let a rebound session consume the previous workflow prompt
+     ↓ does not let a same-client same-id rebinding consume the previous workflow prompt
+     ↓ stores full assistant text from message_update/message_end in step output
+     ↓ does not revive proposal-first edit/write semantics from Runtime requests
+     ↓ does not scan payload.diff to invent preview for other tools
+     ↓ does not resolve an approved write as 操作未执行:approved when the timeout elapses mid-execution
+     ↓ still resolves an untouched pending proposal as expired after the timeout
+     ↓ pushes the expired proposal to the renderer only when truly expired
+     ↓ does not push expired while an approved write is still executing
+     ↓ carries the approval scope back to the awaiting action router
+     ↓ cancels pending broker waits for one session
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/workflow-broker.test.ts > R8 review runtime B6 keeps the original workflow admission when Task becomes task-a
+ FAIL  |1| apps/desktop/test/workflow-broker.test.ts > R8 review runtime B6 keeps the original workflow admission when Task becomes task-b
+AssertionError: expected [ { …(6) }, { …(6) } ] to have a length of 1 but got 2
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ apps/desktop/test/workflow-broker.test.ts:141:21
+    139|   await running;
+    140|
+    141|   expect(submitted).toHaveLength(1);
+       |                     ^
+    142|   expect(submitted[0].taskId).toBe('task-a');
+    143|   expect(lifecycle.active(sessionId)?.taskId).toBe(replacementTaskId);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 34 skipped (36)
+   Start at  03:31:15
+   Duration  3.90s (transform 614ms, setup 30ms, import 2.72s, tests 131ms, environment 821ms)
+

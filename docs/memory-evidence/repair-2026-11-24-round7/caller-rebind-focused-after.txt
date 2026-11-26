@@ -1,0 +1,265 @@
+(node:20112) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:9532) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:30264) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:38148) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:15984) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/workflow-broker.test.ts (27 tests | 1 failed) 560ms
+   ✓ settles a caller waiter as denied when privacy redaction invalidates its proposal 11ms
+   ✓ canonicalizes a stale approved broker completion against privacy-redacted gate state 27ms
+   ✓ acquires the workflow slot with the agent display name, not the session id 7ms
+   ✓ uses the runtime session id for the workflow session record 7ms
+   ✓ keeps only workflow tool-step tools plus read on the runtime saddle 1ms
+   ✓ persists the caller workspace and model on the workflow session 4ms
+   ✓ resolves skill ref and llm template to prompt content 1ms
+   ✓ resolves the two visible business skills plus hidden tools 1ms
+     ✓ rejects forged legacy coding proposals before they reach ApprovalGate 3ms
+     ✓ completes the human step when the shared broker decides approval 39ms
+     ✓ runs the workflow for the requested profile instead of contract-review 2ms
+     ✓ returns the session id before the runner finishes 28ms
+     ✓ persists step output on workflow_step_end and does not write a report-named result blob 32ms
+     ✓ persists workflow_step_end failed status when a step throws 16ms
+     ✓ stops the workflow and reports when a step_end append fails 34ms
+     ✓ stops the workflow when even the small failed end cannot be appended 29ms
+     ✓ does not swallow start/end append failures with empty catch 2ms
+     × does not let a rebound session consume the previous workflow prompt 17ms
+     ✓ stores full assistant text from message_update/message_end in step output 28ms
+     ✓ does not revive proposal-first edit/write semantics from Runtime requests 3ms
+     ✓ does not scan payload.diff to invent preview for other tools 2ms
+     ✓ does not resolve an approved write as 操作未执行:approved when the timeout elapses mid-execution 72ms
+     ✓ still resolves an untouched pending proposal as expired after the timeout 32ms
+     ✓ pushes the expired proposal to the renderer only when truly expired 32ms
+     ✓ does not push expired while an approved write is still executing 79ms
+     ✓ carries the approval scope back to the awaiting action router 31ms
+     ✓ cancels pending broker waits for one session 16ms
+ ❯ |1| apps/desktop/test/ipc.test.ts (114 tests | 1 failed) 1359ms
+     ✓ lists builtin whitelist plus custom providers through a probe slot 30ms
+     ✓ saveSettings writes only custom providers to models.json and stores the per-provider key 47ms
+     ✓ getApiKey returns the per-provider key and getSettings includes the active provider key 19ms
+     ✓ getSettings reports hasApiKey without returning the secret 5ms
+     ✓ getApiKey(sparkiirag) returns null even when keyring has the secret 3ms
+     ✓ getApiKey also hides sparkiionto and both knowledge keyring names 3ms
+     ✓ saveSettings rejects a custom provider whose id collides with a knowledge credential id 15ms
+     ✓ testKnowledgeConnection probes healthz → info → datasets with the onto settings and token 21ms
+     ✓ testKnowledgeConnection honours an unsaved override 6ms
+     ✓ listKnowledgeDatasets tells 401 (credential) from 403 (permission) and flags an /info mismatch 25ms
+     ✓ keeps testRagConnection as a thin sparkiirag wrapper 5ms
+     ✓ testRagConnection keeps the legacy "no key" wording 3ms
+     ✓ empty saveRagSettings apiKey keeps the keyring value 6ms
+     ✓ saveSettings does not wipe rag 28ms
+     ✓ saveSettings does not wipe documentParse 42ms
+     ✓ download huggingface URL is rejected 6ms
+     ✓ promptSession refuses sparkiirag profiles when RAG is unconfigured 6ms
+     ✓ promptSession does not create a session when sparkiirag is unconfigured 5ms
+     ✓ promptSession opens the session when allowDegradedKnowledge is set (product §15) 23ms
+     ✓ setSessionKnowledge stores selection and promptSession migrates draft key before prompt 32ms
+     ✓ empty retrieval returns first then aborts and appends refused knowledge_turn 45ms
+     ✓ does not copy leftover draft selection onto an existing session 11ms
+     ✓ aborts when the session dataset is no longer visible 37ms
+     ✓ empty search after a sealed hit aborts a new turn 30ms
+     ✓ openRagDocument with an Onto backend still fetches through the ontology client cache segment 28ms
+     ✓ openRagDocument defaults to sparkiirag and returns a bounded error when the credential is missing 3ms
+     ✓ setSessionKnowledge rejects invalid payload 4ms
+     ✓ getRuntimePool returns the pool snapshot 4ms
+     ✓ listModels uses the caller-provided key instead of the stored keyring key 14ms
+     ✓ promptSession routes to settings active provider and default model when the session has no model 20ms
+     ✓ promptSession creates a session and sends the first prompt 8ms
+     ✓ createSession binds a workspace WITHOUT sending a prompt (P9, holds slot + 15s idle release) 11ms
+     ✓ B1: a late agent_settled never revokes a Grant that is not this prompt's 7ms
+     ✓ setChatWorkspace(null) allocates a new Documents auto path 3ms
+     ✓ promptSession does not duplicate model application when the model is already in the saddle 18ms
+     ✓ listChatSessions excludes empty sessions from the local store 4ms
+     ✓ listChatSessions includes DB-only P9 sessions when includeEmpty is true 5ms
+     ✓ listChatSessions falls back to project.json.name through the fenced service 19ms
+     ✓ getChatState does not acquire when a session has no lease 3ms
+     ✓ schedules idle release after agent_settled and releases after timeout 6ms
+     ✓ does not idle-release a knowledge session on agent_end before agent_settled 14ms
+     ✓ does not idle-release or title a workflow session after agent_settled 9ms
+     ✓ rejects a transient prompt waiter after its slot is rebound instead of forwarding the new session event 4ms
+     ✓ stamps chat-events with the live slot sessionId, not the subscribe-time id 5ms
+     ✓ stamps over an inner sessionId carried by the event 5ms
+     ✓ drops events while the slot has no session bound 4ms
+     ✓ sends session_unbound before releasing the slot so the spinner stops 4ms
+     ✓ logs and stops stamping when the pi child exits 5ms
+     ✓ stops forwarding client events after the workflow slot is released 32ms
+     ✓ idle-releases a post-run workflow slot so a later runWorkflow is not blocked 31ms
+     ✓ workflow selectModel routes to settings active provider and default model 8ms
+     ✓ workflow selectModel prefers the session-selected model 16ms
+     ✓ listThinkingLevels probes a model and returns available thinking levels 6ms
+     ✓ setChatThinkingLevel stores the session level and remembers it per model 31ms
+     ✓ promptSession applies the session thinking level before prompt 22ms
+     ✓ setChatModel applies the selected model to the open Pi session 8ms
+     ✓ setChatThinkingLevel applies the selected level to the open Pi session 9ms
+     ✓ queues a follow_up by default while the Pi session is streaming 7ms
+     ✓ abortChat clears the queue before aborting and returns the cleared items 7ms
+     ✓ connector_read document.read is handled by executeDocumentRead 8ms
+     ✓ connector_read rejects an ontology tool name outside the whitelist 19ms
+     ✓ connector_read writes exactly one audit per ontology tool call and records the query text 8ms
+     ✓ reports document-parse spawn failures to the error center as 文档解析 4ms
+     ✓ abortChat calls failSession before Pi abort 6ms
+     ✓ releaseSessionSlot calls failSession before unbind 4ms
+     ✓ getDocumentParse handler exists 4ms
+     ✓ downloadDocumentParseModule without production hashes fails with offline import hint 15ms
+     ✓ queueMutate rebuilds both queues from the current Pi snapshot 7ms
+     ✓ promptSession stages attachments into the session workspace before prompting 23ms
+     ✓ promptSession sends images directly and stages only non-image attachments 35ms
+     ✓ promptSession creates a session and stages attachments into the chosen workspace 26ms
+     ✓ promptSession registers the proposal broker when creating a session 8ms
+     ✓ getModelOptions without agentId uses generic chat requirements instead of a default agent 5ms
+     ✓ classifies current DeepSeek models with orthogonal capabilities 4ms
+     ✓ promptSession refuses to create a session without profileId 5ms
+     ✓ ensureSessionRecord does not invent profileId general when pinning a Pi-only session 4ms
+     ✓ chooseDocument grants the selected path for readDocumentBytes 11ms
+     ✓ openChatSession ENOENT still returns session inputs 4ms
+     ✓ opens a live session from getBranch + streamingMessage, not get_messages 4ms
+     ✓ recovers the micro-gap assistant from get_messages only while streaming without a slot message 5ms
+     ✓ skips the micro-gap when the last assistant is already on the branch 5ms
+     ✓ does not read get_messages when the live session is idle 4ms
+     ✓ dead session reads JSONL entries only (no preview) 14ms
+     ✓ setChatTitle notifies the renderer so the sidebar can show the filename 4ms
+     ✓ setChatTitle updates the runtime pool label instead of leaving the session id 4ms
+     ✓ reopening a session acquires the pool with displayName and Pi title, not the uuid prefix 4ms
+     ✓ reopening a nameless workflow session uses 新会话, not the skill body 4ms
+     ✓ reopening still acquires display meta when listing Pi sessions fails 4ms
+     ✓ setChatTitle rejects empty titles and agent writes after a user lock 4ms
+     ✓ listChatSessions does not put firstMessage into title 7ms
+     ✓ completeText forwards text to complete without renaming the session 38ms
+     ✓ does not auto-title a chat session on agent_end 6ms
+     ✓ imports, lists, audits, and uninstalls a user skill 57ms
+     ✓ returns no-user-library when no skillLibrary user agent is assembled 5ms
+     ✓ prefers SPARKII_E2E_SKILL_DIR for chooseSkillFolder 3ms
+     ✓ opens the user skills dir after creating it 5ms
+     ✓ lists skills for an agent id from that agent skillsDir only 32ms
+     ✓ allocateAutoWorkspace returns a Documents path and does not create it 4ms
+     ✓ allocateAutoWorkspace rejects unknown agent 3ms
+     ✓ chooseWorkspace mkdirs an absolute defaultPath and forwards it 5ms
+     ✓ chooseWorkspace ignores a relative defaultPath without mkdir 4ms
+     ✓ openWorkspace mkdirs an absolute path and opens it 5ms
+     ✓ openWorkspace ignores a relative path without mkdir 3ms
+     ✓ runWorkflow without workspacePath allocates Documents path and does not mkdir 4ms
+     ✓ runWorkflow with an allocated path keeps workspaceKind auto 3ms
+     ✓ does not expose task capability or user revocation handlers 4ms
+     ✓ reads the session permission mode and host semantics without leaking credentials 5ms
+     ✓ writes the mode, ends the running task and audits the change 3ms
+     ✓ revokes the shell task grant when the mode changes 3ms
+     ✓ refuses a permission mode the profile does not allow 3ms
+     ✓ reports the reviewer as unavailable when Main has no worker 3ms
+     ✓ does not expose the Reviewer worker in the user runtime pool 3ms
+     × runs an approved shell command through the host adapter and reports host semantics 38ms
+     ✓ registers the channel, moves files, updates all session records and broadcasts 18ms
+ ❯ |1| apps/desktop/test/memory-round7-regression.test.ts (12 tests | 1 failed) 14682ms
+     ✓ R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files  1521ms
+     ✓ R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds  1279ms
+     ✓ R7 privacy deletion includes superseded episode records in the global redaction corpus  1067ms
+     × R7 caller-mode memory deletion rechecks canonical approval after privacy redaction 691ms
+     ✓ R7 production privacy retry succeeds in the same process after truth rows are gone  1155ms
+     ✓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body  690ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes  1307ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes  1242ms
+     ✓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file  1311ms
+     ✓ R7-P1-3 valid source deletion updates unregistered project truth without reindexing it  1637ms
+     ✓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion  1338ms
+     ✓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution  1440ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/ipc.test.ts > permission mode IPC > runs an approved shell command through the host adapter and reports host semantics
+AssertionError: expected { requestId: 'r1', …(3) } to match object { requestId: 'r1', …(2) }
+(4 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "decision": {
+-     "decision": "allow",
+-     "ruleId": "reviewer.allow",
++     "decision": "deny",
++     "ruleId": "platform.shell-disabled",
+    },
+    "requestId": "r1",
+-   "status": "executed",
++   "status": "denied",
+  }
+
+ ❯ apps/desktop/test/ipc.test.ts:4728:20
+    4726|     const result = await onAction({ requestId: 'r1', toolName: 'bash',…
+    4727|
+    4728|     expect(result).toMatchObject({
+       |                    ^
+    4729|       requestId: 'r1',
+    4730|       status: 'executed',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7 caller-mode memory deletion rechecks canonical approval after privacy redaction
+AssertionError: expected undefined to match object { ok: false }
+
+- Expected:
+{
+  "ok": false,
+}
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:292:25
+    290|     });
+    291|
+    292|     expect(out.details).toMatchObject({ ok: false });
+       |                         ^
+    293|     expect(service.store.rowFor(target.id)).toBeTruthy();
+    294|     expect(gate.get(proposalId)?.privacyRedacted).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  |1| apps/desktop/test/workflow-broker.test.ts > runWorkflow session id and JSONL > does not let a rebound session consume the previous workflow prompt
+AssertionError: expected 'completed' to be 'failed' // Object.is equality
+
+Expected: "failed"
+Received: "completed"
+
+ ❯ apps/desktop/test/workflow-broker.test.ts:693:30
+    691|
+    692|     const end = appends.find((a) => a.customType === 'workflow_step_en…
+    693|     expect(end?.data.status).toBe('failed');
+       |                              ^
+    694|     expect(JSON.stringify(end?.data)).not.toContain('属于新会话的输出');
+    695|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+Error: session wf-session is no longer bound
+ ❯ apps/desktop/electron/main/workflow.ts:250:14
+ ❯ apps/desktop/test/workflow-broker.test.ts:671:41
+ ❯ node:internal/process/task_queues:149:7
+ ❯ AsyncResource.runInAsyncScope node:async_hooks:214:14
+ ❯ AsyncResource.runMicrotask node:internal/process/task_queues:146:8
+
+This error originated in "apps/desktop/test/workflow-broker.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "does not let a rebound session consume the previous workflow prompt". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  3 failed (3)
+      Tests  3 failed | 150 passed (153)
+     Errors  1 error
+   Start at  21:17:33
+   Duration  16.96s (transform 2.78s, setup 96ms, import 8.25s, tests 16.60s, environment 2.97s)
+

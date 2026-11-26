@@ -1,4 +1,5 @@
 let configured = false;
+let sessionGeneration = 0;
 process.on("message", (env) => {
   if (!env || env.direction !== "main-to-runtime") return;
   const cmd = env.command;
@@ -22,8 +23,13 @@ process.on("message", (env) => {
     respond(false, undefined, "switch before configure");
     return;
   }
+  if (cmd.type === "new_session" || cmd.type === "switch_session") {
+    sessionGeneration += 1;
+    respond(true, { sessionGeneration });
+    return;
+  }
   if (cmd.type === "get_state") {
-    respond(true, { sessionId: "s1", sessionFile: "/tmp/session.json" });
+    respond(true, { sessionId: "s1", sessionFile: "/tmp/session.json", sessionGeneration });
     return;
   }
   respond(true);

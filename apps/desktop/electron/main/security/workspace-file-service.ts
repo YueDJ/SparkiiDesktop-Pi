@@ -23,6 +23,10 @@ import type { ChatSessionStore } from '../chat-session-store.js';
 import { isPathInside, isPlatformReservedPath } from '@sparkii/agent-host';
 import { admitWorkspace } from '@sparkii/approval';
 import type { RuntimeSecurity } from '../runtime.js';
+import {
+  collectWorkspaceTree,
+  WorkspaceTreeFenceError,
+} from './workspace-tree-fence.js';
 
 export type WorkspaceFileOp =
   | 'read'
@@ -150,6 +154,17 @@ export function createWorkspaceFileService(deps: WorkspaceFileServiceDeps) {
       return deny(deps, req, op, 'DENIED', 'target escaped the workspace', ctx);
     }
     const inspected = await security.pathProbe.inspect(absolute);
+    if (isPlatformReservedPath(inspected.canonicalPath)) {
+      return deny(deps, req, op, 'DENIED', '.sparkii 是平台保留目录', ctx);
+    }
+    let component = absolute;
+    while (component !== ctx.workspaceRoot && isPathInside(ctx.workspaceRoot, component)) {
+      const info = await security.pathProbe.inspect(component);
+      if (info.isReparsePoint) {
+        return deny(deps, req, op, 'DENIED', 'target path component is a reparse point', ctx);
+      }
+      component = dirname(component);
+    }
     if (inspected.isReparsePoint) {
       return deny(deps, req, op, 'DENIED', 'target is a reparse point', ctx);
     }
@@ -167,8 +182,13 @@ export function createWorkspaceFileService(deps: WorkspaceFileServiceDeps) {
     if (!isPathInside(ctx.canonicalRoot, resolve(inspected.canonicalPath))) {
       return deny(deps, req, op, 'DENIED', 'canonical target escaped the workspace', ctx);
     }
-    return absolute;
+    return inspected.canonicalPath;
   };
+
+  const fenceTree = (target: string) => collectWorkspaceTree(
+    target,
+    async (path) => (await deps.security!.pathProbe.inspect(path)).isReparsePoint,
+  );
 
   const auditOk = async (req: WorkspaceFileRequest, op: WorkspaceFileOp, ctx: ResolvedContext) => {
     await deps.audit.append({
@@ -250,16 +270,17 @@ export function createWorkspaceFileService(deps: WorkspaceFileServiceDeps) {
             if (typeof target !== 'string') return target;
             const info = await stat(target);
             if (!info.isDirectory()) return deny(deps, req, op, 'INVALID', 'not a directory', ctx);
-            const entries = (await readdir(target)).filter((entry) => entry !== '.sparkii');
+            const entries = (await readdir(target)).filter((entry) => entry.toLowerCase() !== '.sparkii');
             await auditOk(req, op, ctx);
             return { ok: true, op, path: rel, entries };
           }
           case 'delete': {
             const target = await verifyTarget(req, op, ctx, rel, false);
             if (typeof target !== 'string') return target;
-            if (resolve(target) === ctx.workspaceRoot) {
+            if (resolve(target) === ctx.canonicalRoot) {
               return deny(deps, req, op, 'DENIED', 'workspace root cannot be deleted', ctx);
             }
+            await fenceTree(target);
             await rm(target, { recursive: true, force: false });
             await auditOk(req, op, ctx);
             return { ok: true, op, path: rel };
@@ -272,9 +293,10 @@ export function createWorkspaceFileService(deps: WorkspaceFileServiceDeps) {
             if (toRel === null) return deny(deps, req, op, 'INVALID', 'invalid destination', ctx);
             const to = await verifyTarget(req, op, ctx, toRel, true);
             if (typeof to !== 'string') return to;
-            if (resolve(from) === ctx.workspaceRoot || resolve(to) === ctx.workspaceRoot) {
+            if (resolve(from) === ctx.canonicalRoot || resolve(to) === ctx.canonicalRoot) {
               return deny(deps, req, op, 'DENIED', 'workspace root cannot be moved', ctx);
             }
+            await fenceTree(from);
             await mkdir(dirname(to), { recursive: true });
             await rename(from, to);
             await auditOk(req, op, ctx);
@@ -284,6 +306,9 @@ export function createWorkspaceFileService(deps: WorkspaceFileServiceDeps) {
             return deny(deps, req, op, 'INVALID', 'unsupported operation', ctx);
         }
       } catch (error) {
+        if (error instanceof WorkspaceTreeFenceError) {
+          return deny(deps, req, op, 'DENIED', error.message, ctx);
+        }
         return deny(
           deps, req, op, 'IO_FAILED',
           error instanceof Error ? error.message : String(error),

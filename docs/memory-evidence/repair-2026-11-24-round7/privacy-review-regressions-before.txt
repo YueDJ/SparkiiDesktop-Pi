@@ -1,0 +1,61 @@
+(node:30316) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:25656) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:36076) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-round7-regression.test.ts (9 tests | 2 failed | 7 skipped) 2113ms
+     × R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files 1016ms
+     × R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds 1095ms
+     ↓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body
+     ↓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes
+     ↓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes
+     ↓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file
+     ↓ R7-P1-3 valid source deletion updates unregistered project truth without reindexing it
+     ↓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion
+     ↓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files
+AssertionError: expected '{"summary":"PRIVATE_MEMORY_92F3C","to…' not to contain 'PRIVATE_MEMORY_92F3C'
+
+Expected: "PRIVATE_MEMORY_92F3C"
+Received: "{"summary":"PRIVATE_MEMORY_92F3C","topics":"[\"PRIVATE_PROPOSED_B47D2\"]"}"
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:131:50
+    129|
+    130|     const survivingEpisode = service.store.db.prepare('SELECT summary,…
+    131|     expect(JSON.stringify(survivingEpisode)).not.toContain(memoryText);
+       |                                                  ^
+    132|     expect(JSON.stringify(survivingEpisode)).not.toContain(proposedTex…
+    133|     if (service.ftsAvailable) {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds
+AssertionError: expected '{"text":"PRIVATE_OTHER_CARRIER_27B4A"}' not to contain 'PRIVATE_OTHER_CARRIER_27B4A'
+
+Expected: "PRIVATE_OTHER_CARRIER_27B4A"
+Received: "{"text":"PRIVATE_OTHER_CARRIER_27B4A"}"
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:223:53
+    221|
+    222|     expect(sessions.get('retry-session')).toBeUndefined();
+    223|     expect(sessions.get('other-retry')?.inputs).not.toContain(otherSec…
+       |                                                     ^
+    224|     expect(JSON.stringify(await audit.query({}))).not.toContain(secret…
+    225|     expect(await logger.export()).not.toContain(otherSecret);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 7 skipped (9)
+   Start at  20:39:09
+   Duration  3.98s (transform 262ms, setup 35ms, import 805ms, tests 2.11s, environment 837ms)
+

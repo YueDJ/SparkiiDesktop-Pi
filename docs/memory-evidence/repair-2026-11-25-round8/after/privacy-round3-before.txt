@@ -1,0 +1,97 @@
+(node:30196) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:2912) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:20272) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-r8-regression.test.ts (25 tests | 3 failed | 22 skipped) 5880ms
+     ↓ R8 final review fences same-process and restarted reads when the privacy journal cannot be persisted
+     ↓ R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext
+     ↓ R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext
+     ↓ R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext
+     ↓ R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext
+     ↓ R8-P0-1 resumes from journal context after the chat row and Pi file are already gone
+     ↓ R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers
+     ↓ R8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent
+     ↓ R8 review B3 registers chat secrets before sink cleanup and protects later chat writes after failure
+     ↓ R8-P0-1 restores privacy sink fences before truth recovery can restore plaintext
+     ↓ R8 review B3 cleans Pi and chat carriers before a safe-root truth write-block aborts startup
+     ↓ R8 review B5 rejects dangling privacy journal directory and file links without reading targets
+     ↓ R8 review B5 refuses to clear a privacy journal whose identity changed during cleanup
+     ↓ R8 review B4 rotates memory markers when the deleted text collides with 已删除
+     ↓ R8 review B4 rotates memory markers when the deleted text collides with [已删除]
+     ↓ R8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret
+     ↓ R8-P1-3 refuses to construct MemoryService through an unsafe memory-root junction
+     ↓ R8-P1-3 fences project repair before registry or truth reads
+     ↓ R8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker
+     × R8 privacy review reads the raw Pi path before chat redaction can alter it 2294ms
+     × R8 privacy review retries independent carriers after a same-process truth rollback block 2193ms
+     × R8 privacy review removes a plaintext journal temp file left before rename 1392ms
+     ↓ R8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state
+     ↓ R8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state
+     ↓ R8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 truth write-block regressions > R8 privacy review reads the raw Pi path before chat redaction can alter it
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:443:32
+    441|     service.privacyDeleteBySession('private-session');
+    442|
+    443|     expect(existsSync(piFile)).toBe(false);
+       |                                ^
+    444|     expect(pendingJournals()).toEqual([]);
+    445|     expect(sessions.get('private-session')).toBeUndefined();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 truth write-block regressions > R8 privacy review retries independent carriers after a same-process truth rollback block
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:471:32
+    469|
+    470|     expect(() => service.privacyDeleteBySession('private-session')).to…
+    471|     expect(existsSync(piFile)).toBe(false);
+       |                                ^
+    472|     expect(sessions.get('private-session')).toBeUndefined();
+    473|     expect(pendingJournals()).toHaveLength(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 truth write-block regressions > R8 privacy review removes a plaintext journal temp file left before rename
+Error: ENOENT: no such file or directory, open 'C:\Users\YDJ\AppData\Local\Temp\sparkii-r8-memory-GTrtzB\data\memory\privacy-pending\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.json.11111111-1111-4111-8111-111111111111.tmp'
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:481:5
+    479|     const dir = join(memoryDir(dataDir), 'privacy-pending');
+    480|     const temp = join(dir, `${'a'.repeat(64)}.json.11111111-1111-4111-…
+    481|     writeFileSync(temp, JSON.stringify({ version: 1, sessionId: 'priva…
+       |     ^
+    482|
+    483|     restart();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 22 skipped (25)
+   Start at  00:17:09
+   Duration  7.88s (transform 286ms, setup 58ms, import 929ms, tests 5.88s, environment 830ms)
+
+
+exit=1

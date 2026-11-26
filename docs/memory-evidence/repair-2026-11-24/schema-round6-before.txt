@@ -1,0 +1,128 @@
+(node:35724) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37008) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:13972) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12276) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-extraction.test.ts (18 tests | 8 failed) 11815ms
+     ✓ JSON 协议 fail closed：畸形/越界/非法 op 整批抛错  398ms
+     × 拒绝被强制字符串化的提取字段：{"sessionSummary":{},"topics":[],"ops":[]} 344ms
+     × 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":["ADD"],"scope":"user","text":"事实"}]} 352ms
+     × 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":["user"],"text":"事实"}]} 322ms
+     × 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":"user","text":{},"excerpt":{}}]} 313ms
+     × 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":"user","text":"事实","importance":"2"}]} 332ms
+     × 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"UPDATE","targetId":["mem_x"],"text":{}}]} 339ms
+     × 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"SUPERSEDE","targetId":"mem_x","replacementText":{},"reason":{}}]} 327ms
+     ✓ 端到端：对话增量 → pending（含来源 excerpt）→ 批准 → 下一条会话注入  1261ms
+     ✓ 驳回后进黑名单，同候选不再提案  1497ms
+     ✓ 同 scope 高相似 ADD 降级为 UPDATE 候选  1166ms
+     ✓ 畸形输出：整批丢弃 + errors.db 有记录 + 真相源无半批写入  353ms
+     × 对象字段被拒绝时不写 pending、episode、真相文件或提取位点 862ms
+     ✓ auto 工作区的项目候选只落用户层  875ms
+     ✓ user 工作区的首条项目候选：项目文件尚不存在也能落 pending 并生成 projectId  1187ms
+     ✓ 同一候选重复提炼：已有高相似 pending 时不再重复提案  1226ms
+     ✓ 开关关闭：零模型调用  327ms
+     ✓ 槽位礼让：池满跳过、无排队；交互 acquire 不受影响  325ms
+ ❯ |1| apps/desktop/test/memory-audit-regression.test.ts (31 tests | 1 failed) 31949ms
+     ✓ P1-2 LIKE fallback supports CRUD, search and rebuild  1584ms
+     ✓ P1-2 corrupt SQLite is quarantined and rebuilt from truth without blocking startup  950ms
+     ✓ P1-3 copied workspace with the same projectId fails closed and preserves the first truth source  1172ms
+     ✓ P1-4 default search and includeHistory never expose pending memories  892ms
+     ✓ P2 external truth edits reconcile list, injection and search  924ms
+     ✓ P2 master switch rejects manual add while disabled  338ms
+     ✓ P2 project archived state survives derived index rebuild  1697ms
+     ✓ P1-6 a missing cursor is rejected and truncation advances only through included messages  324ms
+     ✓ P1-6 rejects an intra-entry cursor beyond the actual entry text  310ms
+     ✓ P1-5 one invalid project UPDATE rejects the whole extraction batch  348ms
+     ✓ P1-1 privacy deletion wins over an in-flight model response and redacts diagnostics  610ms
+     ✓ P1-1 privacy deletion while target resolution is pending prevents the model send  591ms
+     ✓ P1-1 corrupt project registry makes privacy deletion fail closed  1172ms
+     ✓ P1-1 duplicate ids corrupt the whole truth file instead of exposing both rows  898ms
+     ✓ P1-1 privacy deletion discovers the indexed workspace even when the registry omits it  1637ms
+     ✓ P1-3 privacy deletion fails closed when a copied project duplicates identity  1184ms
+     ✓ P1-1 privacy deletion redacts retained diagnostic messages  1146ms
+     ✓ P1-1 model and parse failures do not copy session content into diagnostics  329ms
+     ✓ P1-1 old prompt-log cleanup failures surface as repair warnings  575ms
+     ✓ P1-8 consolidation is single-flight across the first await  1107ms
+     ✓ P1-8 a malformed consolidation element rejects the entire merge phase  1129ms
+     ✓ truth parser rejects object-valued id instead of stringifying it  307ms
+     × truth parser rejects object-valued text instead of stringifying it 335ms
+     ✓ cross-file duplicate ids are excluded from listing and injection until repaired  1420ms
+     ✓ batch writes fail closed while a cross-file duplicate identity exists  1417ms
+     ✓ removing a project truth file and registry reference clears its searchable index  1140ms
+     ✓ episode approval rejects malformed mergeIds before changing episode or proposal state  1122ms
+     ✓ privacy deletion removes both current and legacy episode proposals  2196ms
+     ✓ ordinary source deletion removes legacy pending episode proposals and repairs active source metadata  2211ms
+     ✓ malformed mergeIds are rejected before any pending or target mutation  1456ms
+     ✓ P1-8 mergeIds approval is all-or-nothing  1423ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 9 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > truth parser rejects object-valued text instead of stringifying it
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:373:91
+    371|     };
+    372|     entry[field] = {};
+    373|     expect(() => parseMemoryFile(JSON.stringify({ version: 1, entries:…
+       |                                                                                           ^
+    374|   });
+    375|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/9]⎯
+
+ FAIL  |1| apps/desktop/test/memory-extraction.test.ts > memory extraction > 拒绝被强制字符串化的提取字段：{"sessionSummary":{},"topics":[],"ops":[]}
+ FAIL  |1| apps/desktop/test/memory-extraction.test.ts > memory extraction > 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":["ADD"],"scope":"user","text":"事实"}]}
+ FAIL  |1| apps/desktop/test/memory-extraction.test.ts > memory extraction > 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":["user"],"text":"事实"}]}
+ FAIL  |1| apps/desktop/test/memory-extraction.test.ts > memory extraction > 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":"user","text":{},"excerpt":{}}]}
+ FAIL  |1| apps/desktop/test/memory-extraction.test.ts > memory extraction > 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":"user","text":"事实","importance":"2"}]}
+ FAIL  |1| apps/desktop/test/memory-extraction.test.ts > memory extraction > 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"UPDATE","targetId":["mem_x"],"text":{}}]}
+ FAIL  |1| apps/desktop/test/memory-extraction.test.ts > memory extraction > 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"SUPERSEDE","targetId":"mem_x","replacementText":{},"reason":{}}]}
+AssertionError: expected [Function] to throw an error
+ ❯ apps/desktop/test/memory-extraction.test.ts:78:60
+     76|     { sessionSummary: '摘要', topics: [], ops: [{ op: 'SUPERSEDE', targe…
+     77|   ])('拒绝被强制字符串化的提取字段：%j', (payload) => {
+     78|     expect(() => parseExtraction(JSON.stringify(payload))).toThrow();
+       |                                                            ^
+     79|   });
+     80|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/9]⎯
+
+ FAIL  |1| apps/desktop/test/memory-extraction.test.ts > memory extraction > 对象字段被拒绝时不写 pending、episode、真相文件或提取位点
+AssertionError: expected undefined to be 'parse-failed' // Object.is equality
+
+- Expected:
+"parse-failed"
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-extraction.test.ts:134:28
+    132|     const result = await scheduler(async () => JSON.stringify(payload)…
+    133|
+    134|     expect(result.skipped).toBe('parse-failed');
+       |                            ^
+    135|     expect(service.list().pending).toEqual([]);
+    136|     expect(service.store.listEpisodes()).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/9]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  9 failed | 40 passed (49)
+   Start at  17:18:33
+   Duration  35.73s (transform 1.06s, setup 67ms, import 5.43s, tests 43.76s, environment 1.67s)
+

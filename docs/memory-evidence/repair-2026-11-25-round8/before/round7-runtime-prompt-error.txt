@@ -1,0 +1,362 @@
+(node:34016) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:14448) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:5096) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [31m❯[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-runtime.test.ts [2m([22m[2m10 tests[22m[2m | [22m[31m2 failed[39m[2m | [22m[33m8 skipped[39m[2m)[22m[33m 2208[2mms[22m[39m
+     [2m[90m↓[39m[22m maps skillsDir to additionalSkillPaths
+     [2m[90m↓[39m[22m exports the SDK host factory
+[31m     [31m×[31m R8 round7 B2 turns a real SDK no-model rejection into a correlated terminal event[39m[33m 1096[2mms[22m[39m
+[31m     [31m×[31m R8 round7 B2 turns a real SDK prepare rejection into a correlated terminal event[39m[33m 1111[2mms[22m[39m
+     [2m[90m↓[39m[22m does not let a saddle system prompt drop the skill catalog
+     [2m[90m↓[39m[22m passes prompt/steer/followUp text through without /skill: rewrite
+     [2m[90m↓[39m[22m does not enable Pi 1.0 prompt cache warming (per-call billing)
+     [2m[90m↓[39m[22m prefers explicit agentDir over env and fallback
+     [2m[90m↓[39m[22m falls back to PI_CODING_AGENT_DIR when no explicit value is provided
+     [2m[90m↓[39m[22m falls back to the SDK agent dir when neither is set
+(node:42756) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [31m❯[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-runtime-queue.test.ts [2m([22m[2m6 tests[22m[2m | [22m[31m2 failed[39m[2m | [22m[33m4 skipped[39m[2m)[22m[32m 13[2mms[22m[39m
+     [2m[90m↓[39m[22m reads the native steering and follow-up message getters
+     [2m[90m↓[39m[22m clears queues through the native clearQueue method
+     [2m[90m↓[39m[22m starts a prompt without waiting for the full agent turn to finish
+[31m     [31m×[31m R8 round7 B2 marks a deterministic pre-run rejection as a correlated terminal prompt error[39m[32m 10[2mms[22m[39m
+[31m     [31m×[31m R8 round7 B2 keeps a started prompt rejection correlated to its own terminal signal[39m[32m 2[2mms[22m[39m
+     [2m[90m↓[39m[22m routes late prompt rejections to the runtime error handler
+(node:16596) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [31m❯[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts [2m([22m[2m169 tests[22m[2m | [22m[31m2 failed[39m[2m | [22m[33m167 skipped[39m[2m)[22m[33m 2075[2mms[22m[39m
+     [2m[90m↓[39m[22m lists builtin whitelist plus custom providers through a probe slot
+     [2m[90m↓[39m[22m saveSettings writes only custom providers to models.json and stores the per-provider key
+     [2m[90m↓[39m[22m getApiKey returns the per-provider key and getSettings includes the active provider key
+     [2m[90m↓[39m[22m getSettings reports hasApiKey without returning the secret
+     [2m[90m↓[39m[22m getApiKey(sparkiirag) returns null even when keyring has the secret
+     [2m[90m↓[39m[22m getApiKey also hides sparkiionto and both knowledge keyring names
+     [2m[90m↓[39m[22m saveSettings rejects a custom provider whose id collides with a knowledge credential id
+     [2m[90m↓[39m[22m testKnowledgeConnection probes healthz → info → datasets with the onto settings and token
+     [2m[90m↓[39m[22m testKnowledgeConnection honours an unsaved override
+     [2m[90m↓[39m[22m listKnowledgeDatasets tells 401 (credential) from 403 (permission) and flags an /info mismatch
+     [2m[90m↓[39m[22m keeps testRagConnection as a thin sparkiirag wrapper
+     [2m[90m↓[39m[22m testRagConnection keeps the legacy "no key" wording
+     [2m[90m↓[39m[22m empty saveRagSettings apiKey keeps the keyring value
+     [2m[90m↓[39m[22m saveSettings does not wipe rag
+     [2m[90m↓[39m[22m saveSettings does not wipe documentParse
+     [2m[90m↓[39m[22m download huggingface URL is rejected
+     [2m[90m↓[39m[22m promptSession refuses sparkiirag profiles when RAG is unconfigured
+     [2m[90m↓[39m[22m promptSession does not create a session when sparkiirag is unconfigured
+     [2m[90m↓[39m[22m promptSession opens the session when allowDegradedKnowledge is set (product §15)
+     [2m[90m↓[39m[22m setSessionKnowledge stores selection and promptSession migrates draft key before prompt
+     [2m[90m↓[39m[22m empty retrieval returns first then aborts and appends refused knowledge_turn
+     [2m[90m↓[39m[22m does not copy leftover draft selection onto an existing session
+     [2m[90m↓[39m[22m aborts when the session dataset is no longer visible
+     [2m[90m↓[39m[22m empty search after a sealed hit aborts a new turn
+     [2m[90m↓[39m[22m openRagDocument with an Onto backend still fetches through the ontology client cache segment
+     [2m[90m↓[39m[22m openRagDocument defaults to sparkiirag and returns a bounded error when the credential is missing
+     [2m[90m↓[39m[22m setSessionKnowledge rejects invalid payload
+     [2m[90m↓[39m[22m getRuntimePool returns the pool snapshot
+     [2m[90m↓[39m[22m listModels uses the caller-provided key instead of the stored keyring key
+     [2m[90m↓[39m[22m promptSession routes to settings active provider and default model when the session has no model
+     [2m[90m↓[39m[22m promptSession creates a session and sends the first prompt
+     [2m[90m↓[39m[22m R7 coalesces concurrent promptSession opens for one existing session id
+     [2m[90m↓[39m[22m R7 promptSession rejects a stale binding while model key lookup is suspended
+     [2m[90m↓[39m[22m R7 promptSession rejects a stale binding after deferred get_state before sending
+     [2m[90m↓[39m[22m R7 stale task admission cannot replace a same-id replacement grant
+     [2m[90m↓[39m[22m R7 session creation failure cannot release or delete a same-id replacement
+     [2m[90m↓[39m[22m createSession binds a workspace WITHOUT sending a prompt (P9, holds slot + 15s idle release)
+     [2m[90m↓[39m[22m B1: a late agent_settled never revokes a Grant that is not this prompt's
+     [2m[90m↓[39m[22m setChatWorkspace(null) allocates a new Documents auto path
+     [2m[90m↓[39m[22m promptSession does not duplicate model application when the model is already in the saddle
+     [2m[90m↓[39m[22m listChatSessions excludes empty sessions from the local store
+     [2m[90m↓[39m[22m listChatSessions includes DB-only P9 sessions when includeEmpty is true
+     [2m[90m↓[39m[22m listChatSessions falls back to project.json.name through the fenced service
+     [2m[90m↓[39m[22m getChatState does not acquire when a session has no lease
+     [2m[90m↓[39m[22m schedules idle release after agent_settled and releases after timeout
+     [2m[90m↓[39m[22m does not idle-release a knowledge session on agent_end before agent_settled
+     [2m[90m↓[39m[22m does not idle-release or title a workflow session after agent_settled
+     [2m[90m↓[39m[22m rejects a transient prompt waiter after its slot is rebound instead of forwarding the new session event
+     [2m[90m↓[39m[22m R7 rejects a transient prompt waiter after same-id release and reacquire without forwarding the new binding event
+     [2m[90m↓[39m[22m R7 rejects a transient prompt when a successful send completes after same-id rebinding
+     [2m[90m↓[39m[22m R7 cancels every same-id transient waiter without old completion erasing the replacement
+     [2m[90m↓[39m[22m stamps chat-events with the live slot sessionId, not the subscribe-time id
+     [2m[90m↓[39m[22m stamps over an inner sessionId carried by the event
+     [2m[90m↓[39m[22m drops events while the slot has no session bound
+     [2m[90m↓[39m[22m sends session_unbound before releasing the slot so the spinner stops
+     [2m[90m↓[39m[22m logs and stops stamping when the pi child exits
+     [2m[90m↓[39m[22m stops forwarding client events after the workflow slot is released
+     [2m[90m↓[39m[22m idle-releases a post-run workflow slot so a later runWorkflow is not blocked
+     [2m[90m↓[39m[22m workflow selectModel routes to settings active provider and default model
+     [2m[90m↓[39m[22m workflow selectModel prefers the session-selected model
+     [2m[90m↓[39m[22m listThinkingLevels probes a model and returns available thinking levels
+     [2m[90m↓[39m[22m setChatThinkingLevel stores the session level and remembers it per model
+     [2m[90m↓[39m[22m promptSession applies the session thinking level before prompt
+     [2m[90m↓[39m[22m setChatModel applies the selected model to the open Pi session
+     [2m[90m↓[39m[22m setChatThinkingLevel applies the selected level to the open Pi session
+     [2m[90m↓[39m[22m queues a follow_up by default while the Pi session is streaming
+     [2m[90m↓[39m[22m abortChat clears the queue before aborting and returns the cleared items
+     [2m[90m↓[39m[22m connector_read document.read is handled by executeDocumentRead
+     [2m[90m↓[39m[22m connector_read rejects an ontology tool name outside the whitelist
+     [2m[90m↓[39m[22m connector_read writes exactly one audit per ontology tool call and records the query text
+     [2m[90m↓[39m[22m reports document-parse spawn failures to the error center as 文档解析
+     [2m[90m↓[39m[22m abortChat calls failSession before Pi abort
+     [2m[90m↓[39m[22m releaseSessionSlot calls failSession before unbind
+     [2m[90m↓[39m[22m R7 does not release a same-id replacement while an explicit slot release is awaiting task shutdown
+     [2m[90m↓[39m[22m getDocumentParse handler exists
+     [2m[90m↓[39m[22m downloadDocumentParseModule without production hashes fails with offline import hint
+     [2m[90m↓[39m[22m queueMutate rebuilds both queues from the current Pi snapshot
+     [2m[90m↓[39m[22m promptSession stages attachments into the session workspace before prompting
+     [2m[90m↓[39m[22m promptSession sends images directly and stages only non-image attachments
+     [2m[90m↓[39m[22m promptSession creates a session and stages attachments into the chosen workspace
+     [2m[90m↓[39m[22m promptSession registers the proposal broker when creating a session
+     [2m[90m↓[39m[22m getModelOptions without agentId uses generic chat requirements instead of a default agent
+     [2m[90m↓[39m[22m classifies current DeepSeek models with orthogonal capabilities
+     [2m[90m↓[39m[22m promptSession refuses to create a session without profileId
+     [2m[90m↓[39m[22m ensureSessionRecord does not invent profileId general when pinning a Pi-only session
+     [2m[90m↓[39m[22m chooseDocument grants the selected path for readDocumentBytes
+     [2m[90m↓[39m[22m openChatSession ENOENT still returns session inputs
+     [2m[90m↓[39m[22m opens a live session from getBranch + streamingMessage, not get_messages
+     [2m[90m↓[39m[22m recovers the micro-gap assistant from get_messages only while streaming without a slot message
+     [2m[90m↓[39m[22m skips the micro-gap when the last assistant is already on the branch
+     [2m[90m↓[39m[22m does not read get_messages when the live session is idle
+     [2m[90m↓[39m[22m dead session reads JSONL entries only (no preview)
+     [2m[90m↓[39m[22m R8 final review uses the raw Pi carrier for dead-session reads and runtime acquisition
+     [2m[90m↓[39m[22m setChatTitle notifies the renderer so the sidebar can show the filename
+     [2m[90m↓[39m[22m setChatTitle updates the runtime pool label instead of leaving the session id
+     [2m[90m↓[39m[22m reopening a session acquires the pool with displayName and Pi title, not the uuid prefix
+     [2m[90m↓[39m[22m reopening a nameless workflow session uses 新会话, not the skill body
+     [2m[90m↓[39m[22m reopening still acquires display meta when listing Pi sessions fails
+     [2m[90m↓[39m[22m setChatTitle rejects empty titles and agent writes after a user lock
+     [2m[90m↓[39m[22m listChatSessions does not put firstMessage into title
+     [2m[90m↓[39m[22m completeText forwards text to complete without renaming the session
+     [2m[90m↓[39m[22m does not auto-title a chat session on agent_end
+     [2m[90m↓[39m[22m imports, lists, audits, and uninstalls a user skill
+     [2m[90m↓[39m[22m returns no-user-library when no skillLibrary user agent is assembled
+     [2m[90m↓[39m[22m prefers SPARKII_E2E_SKILL_DIR for chooseSkillFolder
+     [2m[90m↓[39m[22m opens the user skills dir after creating it
+     [2m[90m↓[39m[22m lists skills for an agent id from that agent skillsDir only
+     [2m[90m↓[39m[22m allocateAutoWorkspace returns a Documents path and does not create it
+     [2m[90m↓[39m[22m allocateAutoWorkspace rejects unknown agent
+     [2m[90m↓[39m[22m chooseWorkspace mkdirs an absolute defaultPath and forwards it
+     [2m[90m↓[39m[22m chooseWorkspace ignores a relative defaultPath without mkdir
+     [2m[90m↓[39m[22m openWorkspace mkdirs an absolute path and opens it
+     [2m[90m↓[39m[22m openWorkspace ignores a relative path without mkdir
+     [2m[90m↓[39m[22m runWorkflow without workspacePath allocates Documents path and does not mkdir
+     [2m[90m↓[39m[22m runWorkflow with an allocated path keeps workspaceKind auto
+     [2m[90m↓[39m[22m R8-P0-2 privacy deletion stops the active task, extraction and Pi binding before memory cleanup
+     [2m[90m↓[39m[22m R8 round7 B1 privacy deletion waits for a cancelled opening bind before destructive cleanup
+     [2m[90m↓[39m[22m R8-P0-2 stops an active document parser even when no Pi binding exists
+     [2m[90m↓[39m[22m R8-P0-2 does not delete memory or release a same-id replacement while task shutdown is awaiting
+     [2m[90m↓[39m[22m R8-P0-2 cancels a same-id session opening before pool acquisition
+     [2m[90m↓[39m[22m R8-P0-2 releases a stale acquisition instead of letting it bind after privacy deletion
+     [2m[90m↓[39m[22m R8 final review releases a stale setChatTitle acquisition after privacy deletion starts
+     [2m[90m↓[39m[22m R8-P0-2 never releases a same-client replacement installed while a stale acquisition resumes
+     [2m[90m↓[39m[22m does not expose task capability or user revocation handlers
+     [2m[90m↓[39m[22m reads the session permission mode and host semantics without leaking credentials
+     [2m[90m↓[39m[22m writes the mode, ends the running task and audits the change
+     [2m[90m↓[39m[22m revokes the shell task grant when the mode changes
+     [2m[90m↓[39m[22m R8 review runtime B8 persists the mode and revokes the original grant before cancellation awaits
+     [2m[90m↓[39m[22m refuses a permission mode the profile does not allow
+     [2m[90m↓[39m[22m reports the reviewer as unavailable when Main has no worker
+     [2m[90m↓[39m[22m does not expose the Reviewer worker in the user runtime pool
+     [2m[90m↓[39m[22m runs an approved shell command through the host adapter and reports host semantics
+     [2m[90m↓[39m[22m registers the channel, moves files, updates all session records and broadcasts
+     [2m[90m↓[39m[22m R8 runtime round3 B1 cancels a pending production admission on stop
+     [2m[90m↓[39m[22m R8 runtime round3 B1 cancels a pending production admission on workspace-change
+     [2m[90m↓[39m[22m R8 B1 rejects stale 'settings' commands after a same-client replacement
+     [2m[90m↓[39m[22m R8 B1 rejects stale 'key' commands after a same-client replacement
+     [2m[90m↓[39m[22m R8 B1 rejects stale 'model' commands after a same-client replacement
+     [2m[90m↓[39m[22m R8 B1 rejects stale 'complete' commands after a same-client replacement
+     [2m[90m↓[39m[22m R8 B1 rejects a stale key lookup before writing the original prompt
+     [2m[90m↓[39m[22m R8 B1 does not overwrite a replacement model while set_model is deferred
+     [2m[90m↓[39m[22m R8 runtime round3 B4 stale abort cannot revoke or command a same-lease replacement task
+     [2m[90m↓[39m[22m R8 runtime round3 B4 rejects stale { name: 'thinking', command: 'set_thinking_level' } commands after a same-client rebind
+     [2m[90m↓[39m[22m R8 runtime round3 B4 rejects stale { name: 'workspace', command: 'configure_session' } commands after a same-client rebind
+     [2m[90m↓[39m[22m R8 runtime round3 B4 rejects a stale workflow journal after its append await
+     [2m[90m↓[39m[22m R8 runtime round3 B4 relocation cannot configure a replacement binding
+     [2m[90m↓[39m[22m R8 round5 blocker1 keeps the workflow proposal dispatcher bound to its original admission
+     [2m[90m↓[39m[22m R8 round5 r2 cleans workflow bookkeeping when onReady fails before an admission
+     [2m[90m↓[39m[22m R8 round5 r2 does not end a replacement when onReady fails before returning its admission
+     [2m[90m↓[39m[22m R8 round5 r2 preserves replacement bookkeeping when workflow cleanup awaits
+     [2m[90m↓[39m[22m R8 round5 blocker5 waits for prior prompt turns to settle before arming queued replacements
+     [2m[90m↓[39m[22m R8 round6 keeps a delivered prompt barrier after post-send get_state rejects and ignores an unstarted late settled
+[31m     [31m×[31m R8 round7 B2 completes a deterministic prompt failure and lets the next prompt run[39m[33m 2055[2mms[22m[39m
+[31m     [31m×[31m R8 round7 B2 ignores late correlated and generic errors after abort without ending replacement B[39m[32m 17[2mms[22m[39m
+     [2m[90m↓[39m[22m R8 round5 blocker3 rejects steer, follow-up and runtime actions while replacement ownership is pending
+     [2m[90m↓[39m[22m R8 review runtime B7 rejects an out-of-order prompt after send (reuseTaskId=false)
+     [2m[90m↓[39m[22m R8 review runtime B7 rejects an out-of-order prompt after send (reuseTaskId=true)
+     [2m[90m↓[39m[22m R8 B2 stale export admission cannot replace or revoke a replacement task
+     [2m[90m↓[39m[22m R8 B2 approval cannot append a journal after a same-client rebind
+     [2m[90m↓[39m[22m R8 runtime round3 B5 export propagates journal 'rejection' and revokes only its grant
+     [2m[90m↓[39m[22m R8 runtime round3 B5 export propagates journal 'success false' and revokes only its grant
+     [2m[90m↓[39m[22m R8 runtime round3 B5 stale export journal failure cannot revoke a replacement task
+     [2m[90m↓[39m[22m R8 runtime round3 B5 export rejects when its binding changes during the journal await
+     [2m[90m↓[39m[22m blocks proposal-mode connector execution when privacy redaction wins during the dialog await
+     [2m[90m↓[39m[22m blocks proposal-mode connector execution when privacy redaction wins during the audit await
+     [2m[90m↓[39m[22m blocks proposal-mode connector execution when privacy redaction wins during the gateway await
+     [2m[90m↓[39m[22m commits the chosen export path to the canonical proposal before connector execution
+     [2m[90m↓[39m[22m blocks caller-mode workspace execution when privacy redaction wins during the revalidation await
+     [2m[90m↓[39m[22m blocks caller-mode workspace execution when privacy redaction wins during the audit await
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 6 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 round7 B2 completes a deterministic prompt failure and lets the next prompt run
+[31m[1mError[22m: timed out waiting[39m
+[36m [2m❯[22m waitUntil apps/desktop/test/ipc.test.ts:[2m163:47[22m[39m
+    [90m161|[39m   const start = Date.now();
+    [90m162|[39m   while (!predicate()) {
+    [90m163|[39m     if (Date.now() - start > timeoutMs) throw new Error('timed out wai…
+    [90m   |[39m                                               [31m^[39m
+    [90m164|[39m     await new Promise((r) => setTimeout(r, 10));
+    [90m165|[39m   }
+[90m [2m❯[22m apps/desktop/test/ipc.test.ts:[2m6634:5[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 round7 B2 ignores late correlated and generic errors after abort without ending replacement B
+[31m[1mAssertionError[22m: expected undefined to be type of 'string'[39m
+
+Expected: [32m"string"[39m
+Received: [31m"undefined"[39m
+
+[36m [2m❯[22m apps/desktop/test/ipc.test.ts:[2m6676:33[22m[39m
+    [90m6674|[39m       .filter((command) => command.type === 'prompt' && command.messag…
+    [90m6675|[39m     expect(replacementTaskId).toBeTruthy();
+    [90m6676|[39m     expect(replacementPromptId).toBeTypeOf('string');
+    [90m   |[39m                                 [31m^[39m
+    [90m6677|[39m
+    [90m6678|[39m     lateError?.();
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-runtime-queue.test.ts[2m > [22mpi-sdk-runtime queue adapters[2m > [22mR8 round7 B2 marks a deterministic pre-run rejection as a correlated terminal prompt error
+[31m[1mAssertionError[22m: expected "vi.fn()" to be called with arguments: [ ObjectContaining{…}, 'prompt' ][90m
+
+Received:
+
+[1m  1st vi.fn() call:
+
+[22m[2m  [[22m
+[32m-   ObjectContaining {[90m
+[31m+   {[90m
+[2m      "command": "prompt",[22m
+[2m      "message": "No model selected",[22m
+[32m-     "promptId": "prompt-a",[90m
+[32m-     "terminal": true,[90m
+[31m+     "stack": "Error: No model selected[90m
+[31m+     at Object.<anonymous> (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/packages/agent-host/test/pi-sdk-runtime-queue.test.ts:51:42)[90m
+[31m+     at Object.Mock [as prompt] (file:///C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/node_modules/.pnpm/@vitest+spy@4.1.11/node_modules/@vitest/spy/dist/index.js:332:34)[90m
+[31m+     at startPromptWithoutBlocking (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/packages/agent-host/src/pi-sdk-runtime.ts:146:16)[90m
+[31m+     at C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/packages/agent-host/test/pi-sdk-runtime-queue.test.ts:54:11[90m
+[31m+     at file:///C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/node_modules/.pnpm/@vitest+runner@4.1.11/node_modules/@vitest/runner/dist/chunk-artifact.js:302:11[90m
+[31m+     at file:///C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/node_modules/.pnpm/@vitest+runner@4.1.11/node_modules/@vitest/runner/dist/chunk-artifact.js:1903:26[90m
+[31m+     at file:///C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/node_modules/.pnpm/@vitest+runner@4.1.11/node_modules/@vitest/runner/dist/chunk-artifact.js:2326:20[90m
+[31m+     at new Promise (<anonymous>)[90m
+[31m+     at runWithCancel (file:///C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/node_modules/.pnpm/@vitest+runner@4.1.11/node_modules/@vitest/runner/dist/chunk-artifact.js:2323:10)[90m
+[31m+     at file:///C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/node_modules/.pnpm/@vitest+runner@4.1.11/node_modules/@vitest/runner/dist/chunk-artifact.js:2305:20",[90m
+[2m    },[22m
+[2m    "prompt",[22m
+[2m  ][22m
+[31m[90m
+
+Number of calls: [1m1[22m
+[31m[39m
+[36m [2m❯[22m packages/agent-host/test/pi-sdk-runtime-queue.test.ts:[2m56:21[22m[39m
+    [90m 54|[39m     await startPromptWithoutBlocking(session as any, 'A', { promptId: …
+    [90m 55|[39m     [35mawait[39m [35mnew[39m [33mPromise[39m((resolve) [33m=>[39m [34msetTimeout[39m(resolve[33m,[39m [34m0[39m))[33m;[39m
+    [90m 56|[39m     [34mexpect[39m(onError)[33m.[39m[34mtoHaveBeenCalledWith[39m(expect[33m.[39m[34mobjectContaining[39m({
+    [90m   |[39m                     [31m^[39m
+    [90m 57|[39m       message[33m:[39m [32m'No model selected'[39m[33m,[39m
+    [90m 58|[39m       command[33m:[39m [32m'prompt'[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-runtime-queue.test.ts[2m > [22mpi-sdk-runtime queue adapters[2m > [22mR8 round7 B2 keeps a started prompt rejection correlated to its own terminal signal
+[31m[1mAssertionError[22m: expected "vi.fn()" to be called with arguments: [ ObjectContaining{…}, 'prompt' ][90m
+
+Received:
+
+[1m  1st vi.fn() call:
+
+[22m[2m  [[22m
+[32m-   ObjectContaining {[90m
+[31m+   {[90m
+[31m+     "command": "prompt",[90m
+[2m      "message": "prepare rejected",[22m
+[32m-     "promptId": "prompt-a",[90m
+[32m-     "terminal": true,[90m
+[31m+     "stack": "Error: prepare rejected[90m
+[31m+     at Object.<anonymous> (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/packages/agent-host/test/pi-sdk-runtime-queue.test.ts:69:31)[90m
+[31m+     at Object.Mock [as prompt] (file:///C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/node_modules/.pnpm/@vitest+spy@4.1.11/node_modules/@vitest/spy/dist/index.js:332:34)[90m
+[31m+     at startPromptWithoutBlocking (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/packages/agent-host/src/pi-sdk-runtime.ts:146:16)[90m
+[31m+     at C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/packages/agent-host/test/pi-sdk-runtime-queue.test.ts:73:11[90m
+[31m+     at file:///C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/node_modules/.pnpm/@vitest+runner@4.1.11/node_modules/@vitest/runner/dist/chunk-artifact.js:302:11[90m
+[31m+     at file:///C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/node_modules/.pnpm/@vitest+runner@4.1.11/node_modules/@vitest/runner/dist/chunk-artifact.js:1903:26[90m
+[31m+     at file:///C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/node_modules/.pnpm/@vitest+runner@4.1.11/node_modules/@vitest/runner/dist/chunk-artifact.js:2326:20[90m
+[31m+     at new Promise (<anonymous>)[90m
+[31m+     at runWithCancel (file:///C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/node_modules/.pnpm/@vitest+runner@4.1.11/node_modules/@vitest/runner/dist/chunk-artifact.js:2323:10)[90m
+[31m+     at file:///C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/node_modules/.pnpm/@vitest+runner@4.1.11/node_modules/@vitest/runner/dist/chunk-artifact.js:2305:20",[90m
+[2m    },[22m
+[2m    "prompt",[22m
+[2m  ][22m
+[31m[90m
+
+Number of calls: [1m1[22m
+[31m[39m
+[36m [2m❯[22m packages/agent-host/test/pi-sdk-runtime-queue.test.ts:[2m75:21[22m[39m
+    [90m 73|[39m     await startPromptWithoutBlocking(session as any, 'A', { promptId: …
+    [90m 74|[39m     [35mawait[39m [35mnew[39m [33mPromise[39m((resolve) [33m=>[39m [34msetTimeout[39m(resolve[33m,[39m [34m0[39m))[33m;[39m
+    [90m 75|[39m     [34mexpect[39m(onError)[33m.[39m[34mtoHaveBeenCalledWith[39m(expect[33m.[39m[34mobjectContaining[39m({
+    [90m   |[39m                     [31m^[39m
+    [90m 76|[39m       message[33m:[39m [32m'prepare rejected'[39m[33m,[39m
+    [90m 77|[39m       promptId[33m:[39m [32m'prompt-a'[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-runtime.test.ts[2m > [22mpi-sdk-runtime skill loader options[2m > [22mR8 round7 B2 turns a real SDK no-model rejection into a correlated terminal event
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m packages/agent-host/test/pi-sdk-runtime.test.ts:[2m58:10[22m[39m
+    [90m 56|[39m       [35mawait[39m vi[33m.[39m[34mwaitFor[39m(() [33m=>[39m [34mexpect[39m(sent[33m.[39m[34msome[39m((envelope) [33m=>[39m
+    [90m 57|[39m         [32m"event"[39m [35min[39m envelope [33m&&[39m envelope[33m.[39mevent[33m.[39mtype [33m===[39m [32m"prompt_error"[39m[33m,[39m
+    [90m 58|[39m       ))[33m.[39m[34mtoBe[39m([35mtrue[39m))[33m;[39m
+    [90m   |[39m          [31m^[39m
+    [90m 59|[39m       const terminal = sent.find((envelope) => "event" in envelope && …
+    [90m 60|[39m       [34mexpect[39m(terminal)[33m.[39m[34mtoMatchObject[39m({
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-runtime.test.ts[2m > [22mpi-sdk-runtime skill loader options[2m > [22mR8 round7 B2 turns a real SDK prepare rejection into a correlated terminal event
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m packages/agent-host/test/pi-sdk-runtime.test.ts:[2m105:10[22m[39m
+    [90m103|[39m       [35mawait[39m vi[33m.[39m[34mwaitFor[39m(() [33m=>[39m [34mexpect[39m(sent[33m.[39m[34msome[39m((envelope) [33m=>[39m
+    [90m104|[39m         [32m"event"[39m [35min[39m envelope [33m&&[39m envelope[33m.[39mevent[33m.[39mtype [33m===[39m [32m"prompt_error"[39m[33m,[39m
+    [90m105|[39m       ))[33m.[39m[34mtoBe[39m([35mtrue[39m))[33m;[39m
+    [90m   |[39m          [31m^[39m
+    [90m106|[39m       [34mexpect[39m(prepare)[33m.[39m[34mtoHaveBeenCalledTimes[39m([34m1[39m)[33m;[39m
+    [90m107|[39m       expect(sent.find((envelope) => "event" in envelope && envelope.e…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m3 failed[39m[22m[90m (3)[39m
+[2m      Tests [22m [1m[31m6 failed[39m[22m[2m | [22m[33m179 skipped[39m[90m (185)[39m
+[2m   Start at [22m 08:18:32
+[2m   Duration [22m 15.37s[2m (transform 2.59s, setup 34ms, import 9.38s, tests 4.30s, environment 999ms)[22m
+

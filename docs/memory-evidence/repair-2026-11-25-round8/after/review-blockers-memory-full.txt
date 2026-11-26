@@ -1,0 +1,70 @@
+(node:34768) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:23952) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:17608) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-round7-regression.test.ts (23 tests | 21 failed) 375613ms
+     × R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files 34183ms
+     × R7 privacy retry recovers an empty episode topic after restart and completes chat cleanup 28953ms
+     × R7 privacy deletion discovers secrets nested only in pending operation extensions 14760ms
+     × R7 privacy deletion scrubs an invalid structural targetId field 14785ms
+     × R7 privacy deletion scrubs an invalid structural projectId field 14899ms
+     × R7 privacy deletion scrubs an invalid structural mergeIds field 14809ms
+     × R7 privacy deletion ignores whitespace-only episode topics without corrupting retained content 18677ms
+     × R7 privacy deletion preserves pending UPDATE control fields when deleted text equals the op 21116ms
+     × R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds 30570ms
+     × R7 privacy deletion includes superseded episode records in the global redaction corpus 18924ms
+     ✓ R7 caller-mode memory deletion rechecks canonical approval after privacy redaction  6957ms
+     × R7 production privacy retry succeeds in the same process after truth rows are gone 24528ms
+     ✓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body  7194ms
+     × R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes 18014ms
+     × R7-P1-2 replacement preflight sees an indexed project after its registry entry is removed 10966ms
+     × R7-P1-2 replacement preflight derives zero-entry project identity from scope_files 11773ms
+     × R7-P1-3 source deletion detects indexed unregistered conflicts without an explicit workspace 10714ms
+     × R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes 11160ms
+     × R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file 11064ms
+     × R7-P1-3 valid source deletion updates unregistered project truth without reindexing it 13165ms
+     × R7-P1-4 privacy deletion discovers indexed unregistered truth before reconciliation 11602ms
+     × R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion 12098ms
+     × R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution 14699ms
+(node:42020) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-audit-regression.test.ts (31 tests | 17 failed) 341359ms
+     × P1-2 LIKE fallback supports CRUD, search and rebuild 17349ms
+     × P1-2 corrupt SQLite is quarantined and rebuilt from truth without blocking startup 16028ms
+     ✓ P1-3 copied workspace with the same projectId fails closed and preserves the first truth source  7407ms
+     ✓ P1-4 default search and includeHistory never expose pending memories  7461ms
+     ✓ P2 external truth edits reconcile list, injection and search  8285ms
+     ✓ P2 master switch rejects manual add while disabled  3828ms
+     × P2 project archived state survives derived index rebuild 11226ms
+     ✓ P1-6 a missing cursor is rejected and truncation advances only through included messages  3823ms
+     ✓ P1-6 rejects an intra-entry cursor beyond the actual entry text  3871ms
+     ✓ P1-5 one invalid project UPDATE rejects the whole extraction batch  4120ms
+     × P1-1 privacy deletion wins over an in-flight model response and redacts diagnostics 9877ms
+     ✓ P1-1 privacy deletion while target resolution is pending prevents the model send  6076ms
+     ✓ P1-1 corrupt project registry makes privacy deletion fail closed  6678ms
+     × P1-1 duplicate ids corrupt the whole truth file instead of exposing both rows 11957ms
+     × P1-1 privacy deletion discovers the indexed workspace even when the registry omits it 11488ms
+     × P1-3 privacy deletion fails closed when a copied project duplicates identity 10952ms
+     × P1-1 privacy deletion redacts retained diagnostic messages 11171ms
+     ✓ P1-1 model and parse failures do not copy session content into diagnostics  3926ms
+     ✓ P1-1 old prompt-log cleanup failures surface as repair warnings  7577ms
+     × P1-8 consolidation is single-flight across the first await 9729ms
+     × P1-8 a malformed consolidation element rejects the entire merge phase 11189ms
+     ✓ truth parser rejects object-valued id instead of stringifying it  3894ms
+     ✓ truth parser rejects object-valued text instead of stringifying it  3803ms
+     × cross-file duplicate ids are excluded from listing and injection until repaired 19502ms
+     × batch writes fail closed while a cross-file duplicate identity exists 13073ms
+     ✓ removing a project truth file and registry reference clears its searchable index  7694ms
+     × episode approval rejects malformed mergeIds before changing episode or proposal state 11422ms
+     × privacy deletion removes both current and legacy episode proposals 36196ms
+     × ordinary source deletion removes legacy pending episode proposals and repairs active source metadata 24386ms
+     × malformed mergeIds are rejected before any pending or target mutation 19663ms
+     × P1-8 mergeIds approval is all-or-nothing 17704ms
+(node:21724) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)

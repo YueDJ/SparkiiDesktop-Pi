@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm } from 'node:fs/promises';
 import { dirname, isAbsolute, join } from 'node:path';
-import { listPiSessions, readPiSessionEntries, connectorWriteProposal, type PiProviderInfo, type SessionSaddle, type ConnectorReadRequest, type ConnectorReadResult } from '@sparkii/agent-host';
+import { listPiSessions, readPiSessionEntries, connectorWriteProposal, type PiProviderInfo, type SessionSaddle, type ConnectorReadRequest, type ConnectorReadResult, type PiRuntimeRequestContext } from '@sparkii/agent-host';
 import { knowledgeConnector, sparkiiOntoConnector, SparkiiRagClient } from '@sparkii/connectors';
 import { applyThinkingLevel, createBroker, modelTargetKey, resolveModelTarget, resolveSessionModel, resolveThinkingLevel, runWorkflow, selectModel } from './workflow.js';
 import { documentReadAuditSummary, executeDocumentRead } from './document-read.js';
@@ -77,10 +77,12 @@ import {
   hashPayload,
   resolvePermissionMode,
   type PlatformPermissionMode,
+  type Proposal,
   type SecurityAction,
   type TaskGrant,
 } from '@sparkii/approval';
 import { createTaskGrant } from './security/task-grant-factory.js';
+import type { TaskAdmissionToken, TaskOwner } from './security/task-lifecycle.js';
 import { createWorkspaceFileService, type WorkspaceFileOp } from './security/workspace-file-service.js';
 import { createRenderDiagramService } from './security/render-diagram-service.js';
 import { createElectronSvgRenderer } from './security/electron-svg-renderer.js';
@@ -189,6 +191,72 @@ async function recoverInFlightAssistant(
   return candidate;
 }
 
+function approvedProposalForExecution(
+  rt: Runtime,
+  id: string,
+  expected: Proposal,
+): Proposal | undefined {
+  const current = rt.gate.get(id);
+  if (
+    !current
+    || current.status !== 'approved'
+    || current.privacyRedacted
+    || current.id !== expected.id
+    || current.requestId !== expected.requestId
+    || current.profileId !== expected.profileId
+    || current.sessionId !== expected.sessionId
+    || current.toolName !== expected.toolName
+    || current.targetSystem !== expected.targetSystem
+    || current.executionMode !== expected.executionMode
+    || current.risk !== expected.risk
+    || current.createdAt !== expected.createdAt
+    || current.payloadHash !== expected.payloadHash
+    || current.payloadHash !== hashPayload(current.payload)
+  ) return undefined;
+  return current;
+}
+
+function proposalMatchesConnectorAction(proposal: Proposal, action: SecurityAction): boolean {
+  return proposal.id === action.id
+    && action.capability === 'connector.invoke'
+    && proposal.decisionBy === action.subjectId
+    && proposal.sessionId === action.sessionId
+    && proposal.profileId === action.profileId
+    && proposal.toolName === action.toolName
+    && proposal.risk === action.risk
+    && proposal.payloadHash === action.payloadHash
+    && proposal.payloadHash === hashPayload(proposal.payload)
+    && proposal.executionMode !== 'caller';
+}
+
+function proposalMatchesAction(proposal: Proposal, action: SecurityAction): boolean {
+  return proposal.requestId === action.id
+    && proposal.decisionBy === action.subjectId
+    && proposal.sessionId === action.sessionId
+    && proposal.profileId === action.profileId
+    && proposal.toolName === action.toolName
+    && proposal.targetSystem === `platform:${action.capability}`
+    && proposal.risk === action.risk
+    && proposal.payloadHash === action.payloadHash
+    && proposal.payloadHash === hashPayload(proposal.payload)
+    && proposal.executionMode === 'caller';
+}
+
+function canonicalActionForApproval(action: SecurityAction, proposal: Proposal): SecurityAction {
+  return {
+    ...action,
+    id: proposal.requestId,
+    subjectId: proposal.decisionBy ?? action.subjectId,
+    sessionId: proposal.sessionId,
+    profileId: proposal.profileId,
+    toolName: proposal.toolName,
+    payload: proposal.payload,
+    payloadHash: proposal.payloadHash,
+    risk: proposal.risk,
+    reason: proposal.summary,
+  };
+}
+
 function userLibraryAgent(rt: Runtime): AgentRuntime | null {
   return [...rt.agents.values()]
     .filter((agent) => agent.manifest.skillLibrary === 'user')
@@ -265,7 +333,8 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     memoryConsolidation.start();
     app.once('will-quit', () => memoryConsolidation.stop());
   }
-  const shellGrants = new ShellGrantStore();
+  const shellGrants = rt.security?.shellGrants ?? new ShellGrantStore();
+  const transientPromptCancels = new Map<string, Array<{ lease: number; admission?: TaskAdmissionToken; cancel: () => void }>>();
   /** The prompt text of the live Task, trimmed, for the Reviewer only. */
   const userTaskBySession = new Map<string, string>();
   /** Only "can the platform still review?" and the last verdict leave Main. */
@@ -280,6 +349,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       lifecycle: rt.security.taskLifecycle,
       normalizer: rt.security.actionNormalizer,
       shellGrants,
+      allowShellExecution: rt.security.hostShellReport.status === 'available',
       reviewerModel: rt.security.reviewerModel,
       reviewerPolicyVersion: rt.security.reviewerPolicyVersion,
       userTaskOf: (sessionId) => userTaskBySession.get(sessionId) ?? '',
@@ -404,7 +474,30 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
           profileId: action.profileId,
         });
         if (!decision.approved) return { choice: 'deny' as const };
-        return { choice: decision.approvalScope === 'task' ? 'task' as const : 'once' as const };
+        const proposal = rt.gate.get(decision.proposalId);
+        if (
+          !proposal
+          || proposal.status !== 'approved'
+          || proposal.privacyRedacted
+          || !proposalMatchesAction(proposal, action)
+        ) {
+          return { choice: 'deny' as const };
+        }
+        return {
+          choice: decision.approvalScope === 'task' ? 'task' as const : 'once' as const,
+          proposalId: proposal.id,
+        };
+      },
+      validateApproval(action, resolution) {
+        if (resolution.choice === 'deny') return null;
+        const proposal = rt.gate.get(resolution.proposalId);
+        if (
+          !proposal
+          || proposal.status !== 'approved'
+          || proposal.privacyRedacted
+          || !proposalMatchesAction(proposal, action)
+        ) return null;
+        return canonicalActionForApproval(action, proposal);
       },
       async revalidate(action, grant) {
         if (!rt.security) return false;
@@ -450,12 +543,57 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     actionRouter?.clearTask(taskId);
   });
 
+  const captureTaskOwner = (sessionId: string): TaskOwner | undefined => {
+    const lifecycle = rt.security?.taskLifecycle;
+    if (lifecycle && typeof lifecycle.owner === 'function') return lifecycle.owner(sessionId);
+    const taskId = lifecycle?.active(sessionId)?.taskId;
+    return taskId ? { taskId, admission: lifecycle?.currentAdmission?.(sessionId) } : undefined;
+  };
+  const assertTaskOwner = (
+    sessionId: string,
+    expected: TaskOwner | undefined,
+    kind: 'action' | 'proposal',
+  ): void => {
+    const lifecycle = rt.security?.taskLifecycle;
+    if (lifecycle && typeof lifecycle.owner === 'function') {
+      try {
+        lifecycle.assertOwner(sessionId, expected);
+      } catch {
+        throw new Error(`session ${sessionId} ${kind} owner is no longer active`);
+      }
+      return;
+    }
+    if (expected?.taskId && lifecycle?.active(sessionId)?.taskId !== expected.taskId) {
+      throw new Error(`session ${sessionId} ${kind} task is no longer active`);
+    }
+    if (expected?.admission && lifecycle?.currentAdmission?.(sessionId) !== expected.admission) {
+      throw new Error(`session ${sessionId} ${kind} admission is no longer current`);
+    }
+  };
+
   const bindRuntimeActions = (
     slot: Awaited<ReturnType<typeof rt.pool.acquire>>,
     sessionId: string,
+    captured = captureRuntimeBinding(sessionId),
   ): void => {
     if (typeof slot.supervisor.onAction !== 'function') return;
-    slot.supervisor.onAction(async (request) => {
+    slot.supervisor.onAction(async (request, context) => {
+      assertRuntimeRequest(context, captured);
+      const owner = resolveRuntimeOrigin(sessionId, context.originToken, captured.client, captured.lease);
+      if (!owner) {
+        return {
+          requestId: request.requestId,
+          status: 'denied' as const,
+          decision: { decision: 'deny' as const, ruleId: 'runtime-origin.invalid', reason: 'Runtime request has no current prompt-turn origin' },
+          error: { code: 'ORIGIN_REQUIRED', message: 'Runtime request origin is missing, stale, or superseded' },
+        };
+      }
+      const taskId = owner.taskId;
+      const admission = owner.admission;
+      const assertOwner = (): void => {
+        assertRuntimeRequest(context, captured);
+        assertTaskOwner(sessionId, owner, 'action');
+      };
       // 平台可信分支：记忆工具不进 action-normalizer、不依赖 rt.security（非 win32 也可用）。
       if (rt.memory && typeof request.toolName === 'string' && request.toolName.startsWith('memory_')) {
         const rec = rt.chatSessions.get(sessionId);
@@ -467,7 +605,9 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
           profileId: rec?.profileId ?? '',
           workspacePath: rec?.workspacePath ?? undefined,
           workspaceKind: rec?.workspaceKind === 'user' ? 'user' : 'auto',
-          propose: (proposal) => broker.route(proposal, { sessionId, profileId: rec?.profileId ?? '' }),
+          propose: (proposal) => broker.route(proposal, { sessionId, profileId: rec?.profileId ?? '', taskId, admission }, assertOwner),
+          proposalOf: (proposalId) => rt.gate.get(proposalId),
+          assertOwner,
         });
       }
       if (!actionRouter) {
@@ -481,7 +621,33 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
           },
         };
       }
-      return actionRouter.route(request, sessionId);
+      assertOwner();
+      const result = await actionRouter.route(request, sessionId, admission);
+      assertOwner();
+      assertRuntimeRequest(context, captured);
+      return result;
+    });
+  };
+
+  const bindProposalRequests = (
+    slot: Awaited<ReturnType<typeof rt.pool.acquire>>,
+    sessionId: string,
+    profileId: string,
+  ): void => {
+    const captured = captureRuntimeBinding(sessionId);
+    slot.supervisor.onProposal(async (request, context) => {
+      assertRuntimeRequest(context, captured);
+      const owner = resolveRuntimeOrigin(sessionId, context.originToken, captured.client, captured.lease);
+      if (!owner) throw new Error(`session ${sessionId} proposal origin is not executable`);
+      const taskId = owner?.taskId;
+      const admission = owner?.admission;
+      const assertOwner = (): void => {
+        assertRuntimeRequest(context, captured);
+        assertTaskOwner(sessionId, owner, 'proposal');
+      };
+      const decision = await broker.route(request, { sessionId, profileId, taskId, admission }, assertOwner);
+      assertOwner();
+      return decision;
     });
   };
 
@@ -489,10 +655,19 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     sessionId: string,
     profileId: string,
     replace: boolean,
-  ): Promise<TaskGrant | undefined> => {
+    assertBinding?: () => void,
+  ): Promise<StartedSessionTask> => {
+    assertBinding?.();
     const security = rt.security;
-    if (!security) return undefined;
-    if (!replace && security.taskLifecycle.active(sessionId)) return undefined;
+    if (!security) return {};
+    const currentOwner = captureTaskOwner(sessionId);
+    if (!replace) {
+      if (currentOwner) return { admission: currentOwner.admission };
+      if (typeof security.taskLifecycle.owner === 'function'
+        && security.taskLifecycle.currentAdmission?.(sessionId) !== undefined) {
+        throw new Error(`session ${sessionId} task replacement is pending`);
+      }
+    }
     const rec = rt.chatSessions.get(sessionId);
     if (!rec) throw new Error('session not found');
     const workspacePath = rec?.workspacePath;
@@ -504,7 +679,10 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       const path = input?.path;
       return typeof path === 'string' && path.length > 0 ? [path] : [];
     });
-    const grant = await security.taskLifecycle.start(() => createTaskGrant({
+    let admission: TaskAdmissionToken | undefined;
+    const grant = await security.taskLifecycle.start(async () => {
+      assertBinding?.();
+      return createTaskGrant({
       sessionId,
       agentId: profileId,
       profileId,
@@ -514,7 +692,7 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       permissionMode: resolvePermissionMode({
         sessionId,
         profileId,
-        sessionMode: rec.permissionMode,
+        sessionMode: rt.chatSessions.get(sessionId)?.permissionMode ?? rec.permissionMode,
         profileDefaultMode: policy.defaultPermissionMode,
         allowedModes: policy.allowedPermissionModes,
       }),
@@ -523,36 +701,56 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
       inputRoots: inputs,
       protectedRoots: security.protectedRoots,
       probe: security.pathProbe,
-    }));
-    security.taskLifecycle.registerCancellation(
-      grant.taskId,
-      'host-shell',
-      async () => {
-        await security.hostShell.terminate(grant.taskId);
-        await rm(grant.scratchRoot, { recursive: true, force: true }).catch(() => {});
-      },
-    );
-    security.taskLifecycle.registerCancellation(
-      grant.taskId,
-      'reviewer',
-      () => security.reviewer.cancel(grant.taskId),
-    );
-    security.taskLifecycle.registerCancellation(
-      grant.taskId,
-      'capability-gateway',
-      async () => { security.capabilityGateway.revokeTask(grant.taskId); },
-    );
-    security.taskLifecycle.registerCancellation(
-      grant.taskId,
-      'pending-approval',
-      () => broker.cancelSession(sessionId, 'task-revoked'),
-    );
-    security.taskLifecycle.registerCancellation(
-      grant.taskId,
-      'user-task',
-      async () => { userTaskBySession.delete(sessionId); },
-    );
-    return grant;
+      });
+    }, (token) => {
+      admission = token;
+      try {
+        assertBinding?.();
+        security.taskLifecycle.assertCurrentAdmission?.(sessionId, token);
+      } catch (error) {
+        throw new Error(`session ${sessionId} admission cancelled: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }, (startedGrant) => {
+      security.taskLifecycle.registerCancellation(
+        startedGrant.taskId,
+        'host-shell',
+        async () => {
+          await security.hostShell.terminate(startedGrant.taskId);
+          await rm(startedGrant.scratchRoot, { recursive: true, force: true }).catch(() => {});
+        },
+      );
+      security.taskLifecycle.registerCancellation(
+        startedGrant.taskId,
+        'reviewer',
+        () => security.reviewer.cancel(startedGrant.taskId),
+      );
+      security.taskLifecycle.registerCancellation(
+        startedGrant.taskId,
+        'capability-gateway',
+        async () => { security.capabilityGateway.revokeTask(startedGrant.taskId); },
+      );
+      security.taskLifecycle.registerCancellation(
+        startedGrant.taskId,
+        'pending-approval',
+        () => broker.cancelTask(startedGrant.taskId, 'task-revoked'),
+      );
+      security.taskLifecycle.registerCancellation(
+        startedGrant.taskId,
+        'user-task',
+        async () => { userTaskBySession.delete(sessionId); },
+      );
+    }, sessionId);
+    try {
+      assertBinding?.();
+      if (admission) security.taskLifecycle.assertCurrentAdmission?.(sessionId, admission);
+      if (typeof security.taskLifecycle.assertOwner === 'function') {
+        security.taskLifecycle.assertOwner(sessionId, { taskId: grant.taskId, admission });
+      }
+    } catch (error) {
+      await security.taskLifecycle.revokeTask(grant.taskId, 'runtime-released', admission);
+      throw error;
+    }
+    return { grant, admission };
   };
 
   // ── P1: generic workspace file IPC ────────────────────────────────────────
@@ -606,8 +804,13 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
   });
   ipcMain.handle('sparkii:updateMemory', (_e, id: string, patch: { text?: string; pinned?: boolean; status?: 'active' | 'superseded' }) =>
     memoryService().updateMemory(String(id), patch ?? {}));
-  ipcMain.handle('sparkii:deleteMemory', (_e, id: string, opts?: { mode?: 'normal' | 'privacy'; includeHistory?: boolean }) =>
-    memoryService().deleteMemory(String(id), opts ?? {}));
+  ipcMain.handle('sparkii:deleteMemory', async (_e, id: string, opts?: { mode?: 'normal' | 'privacy'; includeHistory?: boolean }) => {
+    const memory = memoryService();
+    if (opts?.mode !== 'privacy') return memory.deleteMemory(String(id), opts ?? {});
+    const sessionId = memory.privacySourceSessionFor(String(id));
+    const result = await withSessionDeletion(sessionId, () => memory.deleteMemory(String(id), opts ?? {}), () => memory.privacyDeletePending(sessionId));
+    return result ?? { ok: true, removed: [] };
+  });
   ipcMain.handle('sparkii:resolvePending', (_e, id: string, decision: 'approve' | 'reject') =>
     memoryService().resolvePending(String(id), decision === 'approve' ? 'approve' : 'reject'));
   ipcMain.handle('sparkii:archiveProject', (_e, workspacePath: string, archived: boolean) =>
@@ -718,24 +921,131 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
     documentParseSupervisor.setIdleMinutes(dp.idleMinutes);
     documentParseSupervisor.setKeepResident(dp.keepResident);
   }).catch(() => {});
-  const openSessions = new Map<
-    string,
-    { slot: Awaited<ReturnType<typeof rt.pool.acquire>>; profileId: string }
-  >();
+  type OpenSession = {
+    slot: Awaited<ReturnType<typeof rt.pool.acquire>>;
+    profileId: string;
+    lease: number;
+  };
+  type StartedSessionTask = {
+    grant?: TaskGrant;
+    admission?: TaskAdmissionToken;
+  };
+  type RuntimeRequestBinding = {
+    sessionId: string;
+    client: OpenSession['slot']['client'];
+    lease: number | undefined;
+    open?: OpenSession;
+    assertBinding: () => void;
+  };
+  const openSessions = new Map<string, OpenSession>();
+  const sessionOpenPromises = new Map<string, Promise<OpenSession>>();
+  const sessionOpenEpochs = new Map<string, number>();
+  const stoppingSessions = new Set<string>();
+  const deletionTombstones = new Set<string>();
+  const deletionPromises = new Map<string, Promise<unknown>>();
+  const sessionStopPromises = new Map<string, Promise<boolean>>();
   /** 一根进程一根管子；键是 client（进程稳），不是每次 acquire 的新包装对象。 */
   const processPipes = new WeakMap<object, () => void>();
   const appliedModelBySession = new Map<string, { provider: string; modelId: string }>();
   const sessionKnowledgeSelections = new Map<string, KnowledgeSelection>();
   const groundingTurns = new Map<string, GroundingTurn>();
   const idleTimers = new Map<string, ReturnType<typeof setTimeout>>();
-  const inFlightWorkflowRuns = new Set<string>();
+  const inFlightWorkflowRuns = new Map<string, number>();
+
+  function hasCurrentWorkflowRun(sessionId: string): boolean {
+    const lease = rt.pool.getBinding(sessionId)?.lease;
+    return lease !== undefined && inFlightWorkflowRuns.get(sessionId) === lease;
+  }
   /**
-   * B1 — 本轮 prompt 归属（sessionId -> taskId）。
-   * `agent_settled` 事件本身不带 taskId；迟到的 settled（来自 acquire/new_session）
-   * 若无条件 end，会撤销刚建立的 Task Grant，导致工作区文件读写 TASK_REVOKED。
-   * 只有「已发出 prompt 且 taskId 与活跃 Grant 一致」的 settled 才认领结束。
+   * Prompt turns are serialized because the Pi protocol's agent_settled event has
+   * no turn id. A replacement prompt cannot start until the prior turn's terminal
+   * event has been observed and its admission cleanup has completed.
    */
-  const armedPromptBySession = new Map<string, string>();
+  interface PromptTurn {
+    promptId: string;
+    originToken: string;
+    taskId?: string;
+    admission?: TaskAdmissionToken;
+    client: OpenSession['slot']['client'];
+    lease: number;
+    readyForSettled: boolean;
+    terminal: boolean;
+    started: boolean;
+    retainTask: boolean;
+    settled: Promise<void>;
+    resolveSettled: () => void;
+    queued: Promise<void>;
+    releaseQueued: () => void;
+  }
+  const promptTurnsBySession = new Map<string, PromptTurn>();
+  const promptQueueTailsBySession = new Map<string, Promise<void>>();
+  const runtimeOrigins = new Map<string, {
+    sessionId: string;
+    client: OpenSession['slot']['client'];
+    lease: number;
+    taskId?: string;
+    admission?: TaskAdmissionToken;
+  }>();
+  const createPromptTurn = (
+    queued: Promise<void>,
+    releaseQueued: () => void,
+    client: OpenSession['slot']['client'],
+    lease: number,
+    retainTask = false,
+  ): PromptTurn => {
+    let resolveSettled!: () => void;
+    const settled = new Promise<void>((resolve) => { resolveSettled = resolve; });
+    return {
+      promptId: randomUUID(), originToken: randomUUID(), client, lease, retainTask,
+      readyForSettled: false, terminal: false, started: false,
+      settled, resolveSettled, queued, releaseQueued,
+    };
+  };
+  const completePromptQueue = (sessionId: string, queued: Promise<void>, release: () => void): void => {
+    release();
+    if (promptQueueTailsBySession.get(sessionId) === queued) promptQueueTailsBySession.delete(sessionId);
+  };
+  const completePromptTurn = (sessionId: string, turn: PromptTurn): void => {
+    if (promptTurnsBySession.get(sessionId) === turn) promptTurnsBySession.delete(sessionId);
+    runtimeOrigins.delete(turn.originToken);
+    turn.resolveSettled();
+    completePromptQueue(sessionId, turn.queued, turn.releaseQueued);
+  };
+  const completePromptTurnForBinding = (
+    sessionId: string,
+    client: OpenSession['slot']['client'],
+    lease: number,
+    admission?: TaskAdmissionToken,
+  ): void => {
+    const turn = promptTurnsBySession.get(sessionId);
+    if (turn?.client !== client || turn.lease !== lease) return;
+    if (admission !== undefined && turn.admission !== admission) return;
+    completePromptTurn(sessionId, turn);
+  };
+  const completePromptTurnWithoutBinding = (sessionId: string): void => {
+    if (rt.pool.getBinding(sessionId)) return;
+    const turn = promptTurnsBySession.get(sessionId);
+    if (turn) completePromptTurn(sessionId, turn);
+  };
+  const resolveRuntimeOrigin = (
+    sessionId: string,
+    originToken: unknown,
+    client: OpenSession['slot']['client'],
+    lease: number | undefined,
+  ): TaskOwner | undefined => {
+    if (typeof originToken !== 'string' || !originToken.trim()) return undefined;
+    const origin = runtimeOrigins.get(originToken);
+    if (!origin || origin.sessionId !== sessionId || origin.client !== client || origin.lease !== lease) return undefined;
+    const lifecycle = rt.security?.taskLifecycle;
+    if (origin.admission) {
+      if (!lifecycle || typeof lifecycle.ownerForAdmission !== 'function') return undefined;
+      return lifecycle.ownerForAdmission(sessionId, origin.admission);
+    }
+    // Security is mandatory in production. Connector-only hosts without a Task
+    // registry still require the exact live origin, but have no Task owner.
+    return Object.freeze({ taskId: origin.taskId ?? '' });
+  };
+  rt.resolveRuntimeOrigin = resolveRuntimeOrigin;
   // P9 — 保持槽位 + 更激进 idle 释放（15s），与 B1 的 end 修复协同：
   // setup 阶段的 new_session settled 在槽位建立时就消化掉，不在首条 prompt
   // 建立 Grant 之后迟到触发误撤销。
@@ -753,9 +1063,13 @@ export function registerIpc(rt: Runtime, getWindow: () => BrowserWindow | null, 
 
   function scheduleIdleRelease(sessionId: string): void {
     cancelIdleRelease(sessionId);
+    const lease = rt.pool.getBinding(sessionId)?.lease;
+    if (lease === undefined) return;
     const timer = setTimeout(() => {
       idleTimers.delete(sessionId);
-      void releaseSessionSlotInternal(sessionId).catch(() => {});
+      if (rt.pool.getBinding(sessionId)?.lease === lease) {
+        void releaseSessionSlotInternal(sessionId).catch(() => {});
+      }
     }, sessionIdleReleaseMs);
     idleTimers.set(sessionId, timer);
   }
@@ -837,12 +1151,116 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     streamingMessage?: unknown;
   };
 
-  async function ensureOpenSession(sessionId: string): Promise<{
-    slot: Awaited<ReturnType<typeof rt.pool.acquire>>;
-    profileId: string;
-  }> {
+  function cancelTransientWaiters(
+    sessionId: string,
+    lease?: number,
+    admission?: TaskAdmissionToken,
+  ): void {
+    const waiters = transientPromptCancels.get(sessionId);
+    if (!waiters) return;
+    const matches = (waiter: { lease: number; admission?: TaskAdmissionToken }): boolean =>
+      lease !== undefined && waiter.lease < lease
+      || (lease === undefined || waiter.lease === lease) && (admission === undefined || waiter.admission === admission);
+    for (const waiter of waiters) {
+      if (matches(waiter)) waiter.cancel();
+    }
+    const remaining = waiters.filter((waiter) => !matches(waiter));
+    if (remaining.length) transientPromptCancels.set(sessionId, remaining);
+    else transientPromptCancels.delete(sessionId);
+  }
+
+  function removeTransientWaiter(sessionId: string, waiter: { lease: number; admission?: TaskAdmissionToken; cancel: () => void }): void {
+    const waiters = transientPromptCancels.get(sessionId);
+    if (!waiters) return;
+    const remaining = waiters.filter((candidate) => candidate !== waiter);
+    if (remaining.length) transientPromptCancels.set(sessionId, remaining);
+    else transientPromptCancels.delete(sessionId);
+  }
+
+  function assertOpenBinding(sessionId: string, open: OpenSession): void {
+    const binding = rt.pool.getBinding(sessionId);
+    if (open.slot.getSessionId() !== sessionId
+      || rt.pool.get(sessionId) !== open.slot.client
+      || binding?.client !== open.slot.client
+      || binding.lease !== open.lease) {
+      throw new Error(`session ${sessionId} is no longer bound`);
+    }
+  }
+
+  function assertCapturedBinding(
+    sessionId: string,
+    open: OpenSession | undefined,
+    client: OpenSession['slot']['client'] | undefined,
+    lease: number | undefined,
+  ): void {
+    if (open) {
+      if (openSessions.get(sessionId) !== open) throw new Error(`session ${sessionId} is no longer bound`);
+      assertOpenBinding(sessionId, open);
+      return;
+    }
+    const binding = rt.pool.getBinding(sessionId);
+    if (client === undefined) {
+      if (binding !== undefined) {
+        throw new Error(`session ${sessionId} is no longer bound`);
+      }
+      return;
+    }
+    if (binding?.client !== client || binding.lease !== lease || rt.pool.get(sessionId) !== client) {
+      throw new Error(`session ${sessionId} is no longer bound`);
+    }
+  }
+
+  function captureRuntimeBinding(sessionId: string): RuntimeRequestBinding {
+    const open = openSessions.get(sessionId);
+    const binding = rt.pool.getBinding(sessionId);
+    const client = open?.slot.client ?? binding?.client;
+    const lease = open?.lease ?? binding?.lease;
+    const assertBinding = (): void => assertCapturedBinding(sessionId, open, client, lease);
+    assertBinding();
+    return { sessionId, client: client!, lease, open, assertBinding };
+  }
+
+  function assertRuntimeRequest(context: PiRuntimeRequestContext, binding: RuntimeRequestBinding): void {
+    if (context.client !== binding.client || context.sessionGeneration !== binding.client.sessionGeneration()) {
+      throw new Error(`session ${binding.sessionId} runtime request is stale`);
+    }
+    binding.assertBinding();
+  }
+
+  function ensureOpenSession(sessionId: string): Promise<OpenSession> {
+    const existing = sessionOpenPromises.get(sessionId);
+    if (existing) return existing;
+    const opening = ensureOpenSessionOwned(sessionId).then(
+      (open) => {
+        if (sessionOpenPromises.get(sessionId) === opening) sessionOpenPromises.delete(sessionId);
+        return open;
+      },
+      (error: unknown) => {
+        if (sessionOpenPromises.get(sessionId) === opening) sessionOpenPromises.delete(sessionId);
+        throw error;
+      },
+    );
+    sessionOpenPromises.set(sessionId, opening);
+    return opening;
+  }
+
+  async function ensureOpenSessionOwned(sessionId: string): Promise<OpenSession> {
+    if (stoppingSessions.has(sessionId) || deletionTombstones.has(sessionId)) throw new Error(`session ${sessionId} is being deleted`);
+    const epoch = sessionOpenEpochs.get(sessionId) ?? 0;
+    const assertOpeningCurrent = (): void => {
+      if (deletionTombstones.has(sessionId) || stoppingSessions.has(sessionId) || (sessionOpenEpochs.get(sessionId) ?? 0) !== epoch) {
+        throw new Error(`session ${sessionId} opening was cancelled`);
+      }
+    };
     let open = openSessions.get(sessionId);
-    if (open) return open;
+    if (open) {
+      try {
+        assertOpenBinding(sessionId, open);
+        return open;
+      } catch {
+        openSessions.delete(sessionId);
+      }
+    }
 
     const rec = rt.chatSessions.get(sessionId);
     if (!rec) throw new Error('session not found');
@@ -852,12 +1270,28 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     } catch {
       named = undefined;
     }
+    assertOpeningCurrent();
     const slot = await rt.pool.acquire(sessionId, {
       saddle: buildSaddle(rec.profileId, sessionId),
-      resumeSessionFile: rec.piSessionFile ?? undefined,
+      resumeSessionFile: rt.chatSessions.rawPiSessionFile(sessionId),
       meta: profilePoolMeta(rt, rec.profileId, named),
     });
-    open = { slot, profileId: rec.profileId };
+    const acquiredLease = slot.lease;
+    let binding: ReturnType<typeof rt.pool.getBinding>;
+    try {
+      assertOpeningCurrent();
+      binding = rt.pool.getBinding(sessionId);
+      if (!binding || binding.lease !== acquiredLease) throw new Error(`unknown session ${sessionId}`);
+      open = { slot, profileId: rec.profileId, lease: acquiredLease };
+      assertOpenBinding(sessionId, open);
+      assertOpeningCurrent();
+    } catch (error) {
+      const current = rt.pool.getBinding(sessionId);
+      if (current?.lease === acquiredLease) {
+        await rt.pool.release(sessionId, acquiredLease);
+      }
+      throw error;
+    }
     openSessions.set(sessionId, open);
     return open;
   }
@@ -872,25 +1306,95 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       const sessionId = slot.getSessionId();
       if (!sessionId) return;
       getWindow()?.webContents.send('sparkii:event:chat-event', { ...ev, sessionId });
+      if (ev.type === 'agent_start' || ev.type === 'turn_start') {
+        const turn = promptTurnsBySession.get(sessionId);
+        if (turn?.readyForSettled) turn.started = true;
+      }
+      if (ev.type === 'prompt_error') {
+        const turn = promptTurnsBySession.get(sessionId);
+        const binding = rt.pool.getBinding(sessionId);
+        // Unlike agent_settled, this terminal event carries the admission turn id.
+        // Require every ownership dimension; generic runtime_error never reaches here.
+        if (!turn || !turn.readyForSettled || turn.client !== slot.client
+          || binding?.client !== slot.client || binding.lease !== turn.lease
+          || ev.command !== 'prompt' || ev.terminal !== true
+          || typeof ev.promptId !== 'string' || ev.promptId !== turn.promptId) return;
+        const lifecycle = rt.security?.taskLifecycle;
+        let ownsPrompt = !lifecycle;
+        if (lifecycle && turn.taskId) {
+          if (typeof lifecycle.assertOwner === 'function') {
+            try {
+              lifecycle.assertOwner(sessionId, { taskId: turn.taskId, admission: turn.admission });
+              ownsPrompt = true;
+            } catch {
+              ownsPrompt = false;
+            }
+          } else {
+            ownsPrompt = lifecycle.active(sessionId)?.taskId === turn.taskId
+              && (!turn.admission || lifecycle.currentAdmission?.(sessionId) === turn.admission);
+          }
+        }
+        const cancelled = Boolean(turn.admission && lifecycle
+          && typeof lifecycle.isCurrentAdmission === 'function'
+          && !lifecycle.isCurrentAdmission(sessionId, turn.admission));
+        if (ownsPrompt || cancelled) {
+          turn.terminal = true;
+          void (async () => {
+            try {
+              if (ownsPrompt && !turn.retainTask) await lifecycle?.end(sessionId, 'session-ended', turn.admission);
+            } finally {
+              completePromptTurn(sessionId, turn);
+            }
+          })();
+        }
+      }
       if (ev.type === 'agent_settled') {
         memoryConsolidation?.noteActivity();
-        // B1 — 只认领「确属本轮 prompt」的 settled。
-        // 迟到的 settled（createSession 建槽位 / 复用旧进程发出的 new_session）
-        // 若无条件 end，会撤销刚 startSessionTask 建立的 Grant，使文件工具 TASK_REVOKED。
-        // 归属判据：该 session 已 arm 本轮 taskId，且与当前活跃 Grant 的 taskId 一致。
-        const activeTaskId = rt.security?.taskLifecycle.active(sessionId)?.taskId;
-        const armed = armedPromptBySession.get(sessionId);
-        const ownsSettled = armed !== undefined && activeTaskId !== undefined && armed === activeTaskId;
-        if (ownsSettled) {
-          armedPromptBySession.delete(sessionId);
-          void rt.security?.taskLifecycle
-            .end(sessionId, 'session-ended')
-            .catch(() => {});
+        const turn = promptTurnsBySession.get(sessionId);
+        const turnTaskId = turn?.taskId;
+        if (turn?.readyForSettled && (turnTaskId || !rt.security?.taskLifecycle)) {
+          const lifecycle = rt.security?.taskLifecycle;
+          let ownsSettled = false;
+          if (lifecycle && turnTaskId && typeof lifecycle.assertOwner === 'function') {
+            try {
+              lifecycle.assertOwner(sessionId, { taskId: turnTaskId, admission: turn.admission });
+              ownsSettled = true;
+            } catch {
+              ownsSettled = false;
+            }
+          } else if (lifecycle) {
+            ownsSettled = lifecycle.active(sessionId)?.taskId === turnTaskId
+              && (!turn.admission || lifecycle.currentAdmission?.(sessionId) === turn.admission);
+          } else {
+            ownsSettled = true;
+          }
+          const cancelled = Boolean(
+            (turn.admission && lifecycle && typeof lifecycle.isCurrentAdmission === 'function'
+              && !lifecycle.isCurrentAdmission(sessionId, turn.admission))
+            || ev.aborted === true,
+          );
+          // A replacement is armed before its first runtime start event. A
+          // duplicate settled from the prior turn can arrive in that window;
+          // without a turn id it must not consume the not-yet-started replacement.
+          if ((ownsSettled && turn.started) || cancelled) {
+            void (async () => {
+              try {
+                // A cancelled/aborted turn may no longer own a grant. Its observed
+                // terminal event still releases the serialization barrier, but it
+                // must never end a different task's grant. An unexplained owner
+                // mismatch may be a late event from an older session, so it does
+                // not consume the armed turn.
+                if (ownsSettled && !turn.retainTask) await lifecycle?.end(sessionId, 'session-ended', turn.admission);
+              } finally {
+                completePromptTurn(sessionId, turn);
+              }
+            })();
+          }
         }
         void persistHitTurn(sessionId);
         memoryExtraction?.noteSettled(sessionId);
         // 迟到的 settled 不属于本轮，仍可调度 idle 释放空闲槽位，但绝不碰 Grant。
-        if (!inFlightWorkflowRuns.has(sessionId)) {
+        if (!hasCurrentWorkflowRun(sessionId)) {
           scheduleIdleRelease(sessionId);
         }
       }
@@ -900,27 +1404,42 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       const sessionId = slot.getSessionId();
       void logger.log({ level: 'error', msg: 'pi runtime exited', ctx: { sessionId, code } });
       if (!sessionId) return;
-      void rt.security?.taskLifecycle
-        .end(sessionId, 'runtime-released')
-        .catch(() => {});
-      // 子进程没了就问不到 sessionFile，也不去抢救 streamingMessage：JSONL 是唯一的账。
-      cancelIdleRelease(sessionId);
-      openSessions.delete(sessionId);
-      appliedModelBySession.delete(sessionId);
-      void unbindAndRelease(sessionId).catch(() => {});
+      const binding = rt.pool.getBinding(sessionId);
+      const admission = rt.security?.taskLifecycle.currentAdmission?.(sessionId);
+      void (async () => {
+        try {
+          await rt.security?.taskLifecycle.end(sessionId, 'runtime-released', admission);
+        } finally {
+          // 子进程没了就问不到 sessionFile，也不去抢救 streamingMessage：JSONL 是唯一的账。
+          cancelIdleRelease(sessionId);
+          openSessions.delete(sessionId);
+          appliedModelBySession.delete(sessionId);
+          await unbindAndRelease(sessionId, binding?.lease, admission);
+        }
+      })().catch(() => {});
     });
     processPipes.set(slot.client, () => { off(); offExit(); });
     bindConnectorRead(slot);
   }
 
-  function bindConnectorRead(slot: Awaited<ReturnType<typeof rt.pool.acquire>>): void {
-    slot.supervisor.onConnectorRead?.(async (req: ConnectorReadRequest): Promise<ConnectorReadResult> => {
-      const sessionId = slot.getSessionId();
-      const open = sessionId ? openSessions.get(sessionId) : undefined;
-      if (!sessionId || !open) {
-        return { ok: false, error: { code: 'CONNECTOR_DENIED', message: 'unhandled' } };
-      }
-      return handleConnectorRead(req, open.profileId, sessionId);
+  function bindConnectorRead(slot: Awaited<ReturnType<typeof rt.pool.acquire>>, knownProfileId?: string): void {
+    const sessionId = slot.getSessionId();
+    if (!sessionId) return;
+    const captured = captureRuntimeBinding(sessionId);
+    const profileId = knownProfileId ?? openSessions.get(sessionId)?.profileId ?? rt.chatSessions.get(sessionId)?.profileId;
+    if (!profileId) return;
+    slot.supervisor.onConnectorRead?.(async (req, context): Promise<ConnectorReadResult> => {
+      assertRuntimeRequest(context, captured);
+      const owner = resolveRuntimeOrigin(sessionId, context.originToken, captured.client, captured.lease);
+      if (!owner) return { ok: false, error: { code: 'ORIGIN_REQUIRED', message: 'Connector read origin is missing, stale, or superseded' } };
+      const assertOrigin = (): void => {
+        assertRuntimeRequest(context, captured);
+        assertTaskOwner(sessionId, owner, 'action');
+      };
+      assertOrigin();
+      const result = await handleConnectorRead(req, profileId, sessionId, captured, owner, assertOrigin);
+      assertOrigin();
+      return result;
     });
   }
 
@@ -942,29 +1461,41 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     await appendKnowledgeTurn(sessionId, knowledgeTurnPayload(turn));
   }
 
-  async function refuseEmptySearch(sessionId: string, payload: ReturnType<typeof knowledgeTurnPayload>): Promise<void> {
-    const open = openSessions.get(sessionId);
-    if (!open) return;
-    await appendKnowledgeTurn(sessionId, payload);
-    groundingTurns.set(sessionId, sealTurn(groundingTurns.get(sessionId) ?? resetTurn()));
-    await open.slot.client.send({ type: 'abort' });
+  async function refuseEmptySearch(binding: RuntimeRequestBinding, payload: ReturnType<typeof knowledgeTurnPayload>): Promise<void> {
+    binding.assertBinding();
+    const appended = await binding.client.send({ type: 'append_workflow_entry', customType: KNOWLEDGE_TURN, data: payload });
+    binding.assertBinding();
+    if (!appended.success) throw new Error(appended.error ?? 'append_workflow_entry failed');
+    groundingTurns.set(binding.sessionId, sealTurn(groundingTurns.get(binding.sessionId) ?? resetTurn()));
+    binding.assertBinding();
+    const aborted = await binding.client.send({ type: 'abort' });
+    binding.assertBinding();
+    if (!aborted.success) throw new Error(aborted.error ?? 'abort failed');
   }
 
   /** 默认域写入必须落在该后端自己的配置块里（否则 Onto 会话会把域 id 写进 rag.bindings）。 */
-  async function persistDefaultDataset(profileId: string, backend: KnowledgeBackendId, datasetId: string): Promise<void> {
+  async function persistDefaultDataset(profileId: string, backend: KnowledgeBackendId, datasetId: string, assertBinding: () => void): Promise<void> {
+    assertBinding();
     const current = knowledgeBackendSettings(backend, await loadSettings(rt.dataDir));
+    assertBinding();
     const bindings = current.bindings.filter((b) => b.agentId !== profileId);
     bindings.push({ agentId: profileId, defaultDatasetId: datasetId });
+    assertBinding();
     await patchKnowledgeSettings(rt.dataDir, backend, { bindings });
+    assertBinding();
   }
 
   /** 原文落盘：按后端取该后端的地址/凭据/客户端（`knowledge.fetch_document` 与"打开原文"共用）。 */
   async function cacheRagFile(
     args: { datasetId: string; documentId: string; fileName?: string },
     backend: KnowledgeBackendId,
+    assertBinding: () => void = () => {},
   ): Promise<{ ok: true; path: string } | { ok: false; error: { code: string; message: string } }> {
+    assertBinding();
     const rag = knowledgeBackendSettings(backend, await loadSettings(rt.dataDir));
+    assertBinding();
     const credential = await rt.knowledgeToken(backend);
+    assertBinding();
     const client = knowledgeClientFor(backend, rag, credential);
     if (!client) {
       const label = backend === 'sparkiionto' ? 'API Token' : 'API Key';
@@ -979,6 +1510,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         documentId: args.documentId,
         fileName: args.fileName,
       });
+      assertBinding();
       return { ok: true, path: cached.path };
     } catch (e) {
       return { ok: false, error: { code: 'CONNECTOR_IO', message: (e as Error).message } };
@@ -989,7 +1521,15 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     req: ConnectorReadRequest,
     profileId: string,
     sessionId: string,
+    binding: RuntimeRequestBinding,
+    owner: TaskOwner,
+    assertOrigin: () => void,
   ): Promise<ConnectorReadResult> {
+    const assertBinding = (): void => {
+      binding.assertBinding();
+      assertOrigin();
+    };
+    assertBinding();
     if (req.toolName === 'knowledge.fetch_document') {
       const datasetId = String(req.args.datasetId ?? '');
       const documentId = String(req.args.documentId ?? '');
@@ -998,29 +1538,33 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       const fetchBackend = remoteKnowledgeBackend(
         knowledgeFromManifest(rt.profileOf(profileId).profile.manifest).backend,
       );
-      const cached = await cacheRagFile({ datasetId, documentId, fileName }, fetchBackend);
+      const cached = await cacheRagFile({ datasetId, documentId, fileName }, fetchBackend, assertBinding);
       if (!cached.ok) return { ok: false, error: cached.error };
       return { ok: true, data: { path: cached.path } };
     }
     if (req.toolName === 'document.read') {
       const displayName = rt.profileOf(profileId)?.profile?.manifest?.displayName ?? profileId;
       let args = req.args;
+      let authorizedTaskId: string | undefined;
       if (rt.security) {
-        const grant = rt.security.taskLifecycle.active(sessionId);
+        rt.security.taskLifecycle.assertOwner(sessionId, owner);
+        const grant = rt.security.taskGrants.get(sessionId);
         if (!grant) {
           return {
             ok: false,
             error: { code: 'CONNECTOR_DENIED', message: 'Task grant is not active' },
           };
         }
-        const requested = Array.isArray(req.args.documents)
-          ? req.args.documents.map((value) => String(value ?? ''))
+        authorizedTaskId = grant.taskId;
+        const requested = Array.isArray(req.args.documents)          ? req.args.documents.map((value) => String(value ?? ''))
           : [];
         const authorized = await authorizeDocumentReadPaths(
           requested,
           grant,
           rt.security.actionNormalizer,
         );
+        assertBinding();
+        rt.security.taskLifecycle.assertOwner(sessionId, owner);
         if (!authorized.ok) {
           await rt.audit.append({
             actor: rt.subject.userId,
@@ -1043,6 +1587,8 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         requestId: req.requestId,
         agentDisplayName: displayName,
       });
+      assertBinding();
+      if (rt.security && authorizedTaskId) rt.security.taskLifecycle.assertOwner(sessionId, owner);
       await rt.audit.append({
         actor: rt.subject.userId,
         action: 'tool.read',
@@ -1050,6 +1596,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         sessionId,
         payloadSummary: documentReadAuditSummary(req.args, result),
       });
+      assertBinding();
       return result;
     }
     if (req.toolName.startsWith('ontology.')) {
@@ -1057,13 +1604,18 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       if (!ontoTool) {
         return { ok: false, error: { code: 'CONNECTOR_DENIED', message: 'unhandled' } };
       }
+      const settings = await loadSettings(rt.dataDir);
+      assertBinding();
+      const credential = await rt.knowledgeToken('sparkiionto');
+      assertBinding();
       const result = await executeOntologyTool({
         toolName: req.toolName,
         args: req.args,
         profileId,
-        settings: await loadSettings(rt.dataDir),
-        credential: await rt.knowledgeToken('sparkiionto'),
+        settings,
+        credential,
       });
+      assertBinding();
       await rt.audit.append({
         actor: rt.subject.userId,
         action: 'tool.read',
@@ -1071,6 +1623,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         sessionId,
         payloadSummary: ontologyAuditSummary(req.toolName, req.args, result),
       });
+      assertBinding();
       return result;
     }
     if (req.toolName !== 'knowledge.search') {
@@ -1079,7 +1632,9 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     const knowledge = knowledgeFromManifest(rt.profileOf(profileId).profile.manifest);
     const backend = remoteKnowledgeBackend(knowledge.backend);
     const rag = knowledgeBackendSettings(backend, await loadSettings(rt.dataDir));
+    assertBinding();
     const apiKey = knowledge.backend === 'bm25' ? null : await rt.knowledgeToken(backend);
+    assertBinding();
     const searchTool = knowledgeConnector.tools.find((t) => t.name === 'knowledge.search')!;
     const out = await runMainKnowledgeSearch({
       args: req.args,
@@ -1091,17 +1646,20 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       rag,
       apiKey,
       bm25: async (query, topK) => {
+        assertBinding();
         const result = await searchTool.handler({ query, topK }, {
           profileId,
           sessionId,
           actor: rt.subject.userId,
           requestId: req.requestId,
         });
+        assertBinding();
         if (!result.ok) throw new Error(result.error?.message ?? 'bm25 failed');
         return result.data;
       },
-      persistDefault: (id) => persistDefaultDataset(profileId, backend, id),
+      persistDefault: (id) => persistDefaultDataset(profileId, backend, id, assertBinding),
     });
+    assertBinding();
     await rt.audit.append({
       actor: rt.subject.userId,
       action: 'tool.read',
@@ -1109,6 +1667,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       sessionId,
       payloadSummary: searchAuditSummary(String(req.args.query ?? ''), out.data),
     });
+    assertBinding();
     if (out.ok && knowledge.backend !== 'bm25') {
       const data = (out.data ?? {}) as { chunks?: unknown[]; documents?: GroundingTurn['documents'] };
       const next = markSearchResult(groundingTurns.get(sessionId) ?? resetTurn(), {
@@ -1119,12 +1678,12 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       if (shouldAbortGeneration(next)) {
         const payload = knowledgeTurnPayload(next);
         queueMicrotask(() => {
-          void refuseEmptySearch(sessionId, payload);
+          void refuseEmptySearch(binding, payload).catch(() => {});
         });
       }
     } else if (!out.ok && knowledge.backend !== 'bm25' && out.error?.message === SESSION_DATASET_GONE) {
       queueMicrotask(() => {
-        void refuseEmptySearch(sessionId, { refused: true, text: SESSION_DATASET_GONE, documents: [], citations: [] });
+        void refuseEmptySearch(binding, { refused: true, text: SESSION_DATASET_GONE, documents: [], citations: [] }).catch(() => {});
       });
     }
     return out;
@@ -1167,9 +1726,21 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   }
 
   /** 解绑：先让窗口停转圈，再卸牌子（池子内部先 `sessionId = null` 才 `new_session`）。 */
-  async function unbindAndRelease(sessionId: string): Promise<void> {
+  async function unbindAndRelease(sessionId: string, expectedLease?: number, admission?: TaskAdmissionToken): Promise<void> {
+    const current = rt.pool.getBinding(sessionId);
+    if (!current) {
+      completePromptTurnWithoutBinding(sessionId);
+      return;
+    }
+    const lease = current.lease;
+    if (expectedLease !== undefined && expectedLease !== lease) return;
+    cancelTransientWaiters(sessionId, lease, admission);
     getWindow()?.webContents.send('sparkii:event:chat-event', { type: 'session_unbound', sessionId });
-    await rt.pool.release(sessionId);
+    await rt.pool.release(sessionId, lease);
+    const remaining = rt.pool.getBinding(sessionId);
+    if (!remaining || remaining.client !== current.client || remaining.lease !== lease) {
+      completePromptTurnForBinding(sessionId, current.client, lease, admission);
+    }
   }
 
   async function readQueues(entry: { slot: Awaited<ReturnType<typeof rt.pool.acquire>> }): Promise<QueueSnapshot> {
@@ -1185,12 +1756,20 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   async function rebuildQueues(
     client: Awaited<ReturnType<typeof rt.pool.acquire>>['client'],
     snapshot: QueueSnapshot,
+    assertBinding: () => void,
+    originToken?: string,
+    promptId?: string,
   ): Promise<void> {
+    if (!originToken) throw new Error('session has no current prompt-turn origin');
     for (const message of snapshot.steering) {
-      await client.send({ type: 'steer', message });
+      assertBinding();
+      await client.send({ type: 'steer', message, originToken });
+      assertBinding();
     }
     for (const message of snapshot.followUp) {
-      await client.send({ type: 'follow_up', message });
+      assertBinding();
+      await client.send({ type: 'follow_up', message, originToken, promptId });
+      assertBinding();
     }
   }
 
@@ -1217,23 +1796,29 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     if (sessionId) {
       cancelIdleRelease(sessionId);
       const open = await ensureOpenSession(sessionId);
+      assertOpenBinding(sessionId, open);
       ensureProcessPipe(open.slot);
-      open.slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId: open.profileId }));
+      bindProposalRequests(open.slot, sessionId, open.profileId);
       bindRuntimeActions(open.slot, sessionId);
-      open.slot.supervisor.onConnectorRead?.((req) => handleConnectorRead(req, open.profileId, sessionId));
       const rec = rt.chatSessions.get(sessionId);
+      const settings = await loadSettings(rt.dataDir);
+      assertOpenBinding(sessionId, open);
       const target = rec?.model
-        ? resolveSessionModel(await loadSettings(rt.dataDir), rec)
-        : resolveSessionModel(await loadSettings(rt.dataDir), null);
+        ? resolveSessionModel(settings, rec)
+        : resolveSessionModel(settings, null);
       if (target) {
         const applied = appliedModelBySession.get(sessionId);
         if (!applied || applied.provider !== target.provider || applied.modelId !== target.modelId) {
-          await selectModel(rt, 'chat', sessionId, `${target.provider}/${target.modelId}`);
+          await selectModel(rt, 'chat', sessionId, `${target.provider}/${target.modelId}`, () => assertOpenBinding(sessionId, open));
+          assertOpenBinding(sessionId, open);
           appliedModelBySession.set(sessionId, target);
         }
-        const settings = await loadSettings(rt.dataDir);
-        await applyThinkingLevel(open.slot.client, resolveThinkingLevel(settings, rec, target));
+        const latestSettings = await loadSettings(rt.dataDir);
+        assertOpenBinding(sessionId, open);
+        await applyThinkingLevel(open.slot.client, resolveThinkingLevel(latestSettings, rec, target));
+        assertOpenBinding(sessionId, open);
       }
+      assertOpenBinding(sessionId, open);
       return { open, sessionId, workspacePath: rec?.workspacePath };
     }
 
@@ -1268,22 +1853,38 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     });
 
     let createdSessionId: string | undefined;
+    let createdLease: number | undefined;
+    let tempLease: number | undefined;
+    let entry: OpenSession | undefined;
+    let createdRecord = false;
     try {
+      tempLease = rt.pool.getBinding(tempKey)?.lease;
+      if (tempLease === undefined) throw new Error(`unknown session ${tempKey}`);
+      const ownsTemp = (): boolean => {
+        const current = rt.pool.getBinding(tempKey);
+        return slot.getSessionId() === tempKey && current?.client === slot.client && current.lease === tempLease;
+      };
       const freshResp = await slot.client.send({ type: 'new_session' });
+      if (!ownsTemp()) throw new Error(`session ${tempKey} is no longer bound`);
       if (!freshResp.success) throw new Error(freshResp.error ?? 'new_session failed');
       const state = await slot.client.send({ type: 'get_state' });
+      if (!ownsTemp()) throw new Error(`session ${tempKey} is no longer bound`);
       if (!state.success) throw new Error(state.error ?? 'get_state failed');
       createdSessionId = (state.data as { sessionId?: string } | undefined)?.sessionId;
       const sessionFile = (state.data as { sessionFile?: string } | undefined)?.sessionFile;
       if (!createdSessionId) throw new Error('runtime did not provide a session id');
       rt.pool.renameSession(tempKey, createdSessionId);
-      const entry = { slot, profileId };
-      openSessions.set(createdSessionId, entry);
-      ensureProcessPipe(slot);
-      slot.supervisor.onProposal((req) => broker.route(req, { sessionId: createdSessionId!, profileId }));
-      bindRuntimeActions(slot, createdSessionId!);
-      slot.supervisor.onConnectorRead?.((req) => handleConnectorRead(req, profileId, createdSessionId!));
+      createdLease = rt.pool.getBinding(createdSessionId)?.lease;
+      if (createdLease === undefined) throw new Error(`unknown session ${createdSessionId}`);
+      const lease = createdLease;
+      entry = { slot, profileId, lease };
+      const ownsCreated = (): boolean => {
+        const current = rt.pool.getBinding(createdSessionId!);
+        return slot.getSessionId() === createdSessionId
+          && current?.client === slot.client && current.lease === lease;
+      };
       await mkdir(anchorDir(createdSessionId), { recursive: true });
+      if (!ownsCreated()) throw new Error(`session ${createdSessionId} is no longer bound`);
       // A draft carries the mode the user picked before the row existed. A mode
       // the profile does not allow silently degrades to Ask.
       let permissionMode: PlatformPermissionMode = 'ask';
@@ -1307,22 +1908,35 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         piSessionFile: sessionFile ?? null,
         permissionMode,
       });
+      createdRecord = true;
       rt.memory?.ensureProject(workspacePath, workspaceKind);
       if (target) {
         const apiKey = await rt.keyFor(target.provider);
+        if (!ownsCreated()) throw new Error(`session ${createdSessionId} is no longer bound`);
         if (apiKey) {
           const keyResp = await slot.client.send({ type: 'set_api_key', provider: target.provider, apiKey });
+          if (!ownsCreated()) throw new Error(`session ${createdSessionId} is no longer bound`);
           if (!keyResp.success) throw new Error(keyResp.error ?? 'set_api_key failed');
         }
       }
+      if (!ownsCreated()) throw new Error(`session ${createdSessionId} is no longer bound`);
+      openSessions.set(createdSessionId, entry);
+      ensureProcessPipe(slot);
+      bindProposalRequests(slot, createdSessionId!, profileId);
+      bindRuntimeActions(slot, createdSessionId!);
       return { open: entry, sessionId: createdSessionId, workspacePath };
     } catch (e) {
-      if (createdSessionId) {
-        openSessions.delete(createdSessionId);
-        await rt.pool.release(createdSessionId);
-        rt.chatSessions.delete(createdSessionId);
+      if (createdSessionId && createdLease !== undefined) {
+        const current = rt.pool.getBinding(createdSessionId);
+        const ownsCreated = current?.client === slot.client && current.lease === createdLease
+          && slot.getSessionId() === createdSessionId;
+        if (entry && openSessions.get(createdSessionId) === entry) openSessions.delete(createdSessionId);
+        if (ownsCreated) {
+          if (createdRecord) rt.chatSessions.delete(createdSessionId);
+          await rt.pool.release(createdSessionId, createdLease);
+        }
       } else {
-        await rt.pool.release(tempKey);
+        await rt.pool.release(tempKey, tempLease);
       }
       throw e;
     }
@@ -1354,7 +1968,9 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     }
     const rec = rt.chatSessions.get(sessionId) ?? (await listPiSessions(join(rt.piAgentDir, 'sessions'))).find((s) => s.id === sessionId);
     if (!rec) throw new Error('session not found');
-    const file = (rec as { piSessionFile?: string | null }).piSessionFile
+    const stored = rt.chatSessions.get(sessionId);
+    const file = (stored ? rt.chatSessions.rawPiSessionFile(sessionId) : undefined)
+      ?? (rec as { piSessionFile?: string | null }).piSessionFile
       ?? (rec as { path?: string }).path;
     const dead = (entries: unknown[]) => ({
       entries,
@@ -1511,13 +2127,14 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     return { ok: true, sessionId, workspacePath };
   });
 
-  ipcMain.handle('sparkii:promptSession', async (
-    _e,
+  const promptSession = async (
+    _e: unknown,
     sessionId: string | null,
     text: string,
-    options?: { behavior?: 'steer' | 'followUp' },
+    options?: { behavior?: 'steer' | 'followUp' | 'prompt' },
     attachments: ChatAttachment[] = [],
     context: { profileId?: string; workspacePath?: string | null; workspaceKind?: 'auto' | 'user'; model?: string | null; thinkingLevel?: string | null; permissionMode?: PlatformPermissionMode; allowDegradedKnowledge?: boolean } = {},
+    internal?: { expectedAdmission?: TaskAdmissionToken; retainTask?: boolean; onPromptSend?: () => void },
   ) => {
     const profileIdForGate = sessionId
       ? rt.chatSessions.get(sessionId)?.profileId
@@ -1534,6 +2151,8 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     }
 
     const { open, sessionId: resolvedSessionId, workspacePath } = await openOrCreateSession(sessionId, context);
+    const assertBinding = (): void => assertOpenBinding(resolvedSessionId, open);
+    assertBinding();
     if (!sessionId) {
       const draftKey = `draft:${open.profileId}`;
       const draftSelection = sessionKnowledgeSelections.get(draftKey);
@@ -1555,6 +2174,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       throw new Error('会话缺少工作区，无法放置附件');
     }
     const staged = workspacePath ? await stageAttachments(workspacePath, fileAtts) : [];
+    assertBinding();
     const finalText = buildAttachmentPrompt(text, staged);
 
     const images = await Promise.all(imageAtts.map(async (att) => {
@@ -1567,70 +2187,188 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       };
     }));
 
+    assertBinding();
     const stateResp = await open.slot.client.send({ type: 'get_state' });
+    assertBinding();
     if (!stateResp.success) throw new Error(stateResp.error ?? 'get_state failed');
     const state = chatStateData(stateResp.data);
     const isStreaming = state.isStreaming ?? state.streaming ?? false;
-    const behavior = options?.behavior ?? (isStreaming ? 'followUp' : 'prompt');
-    const startedTask = await startSessionTask(
-      resolvedSessionId,
-      open.profileId,
-      behavior === 'prompt',
-    );
+    const behavior: 'steer' | 'followUp' | 'prompt' = options?.behavior ?? (isStreaming ? 'followUp' : 'prompt');
+    assertBinding();
+
+    let turn: PromptTurn | undefined;
+    let promptMayBeRunning = false;
+    let queuedAdmission: TaskAdmissionToken | undefined;
+    if (behavior === 'prompt') {
+      // Pi's agent_settled event has no turn id. Reserve each queue position
+      // synchronously so concurrent replacements cannot both arm after the same
+      // terminal event; only one prompt may own a session at a time.
+      const previousQueued = promptQueueTailsBySession.get(resolvedSessionId) ?? Promise.resolve();
+      let releaseQueued!: () => void;
+      const queued = new Promise<void>((resolve) => { releaseQueued = resolve; });
+      promptQueueTailsBySession.set(resolvedSessionId, queued);
+      try {
+        await previousQueued;
+        assertBinding();
+        turn = createPromptTurn(queued, releaseQueued, open.slot.client, open.lease, internal?.retainTask === true);
+        promptTurnsBySession.set(resolvedSessionId, turn);
+      } catch (error) {
+        completePromptQueue(resolvedSessionId, queued, releaseQueued);
+        throw error;
+      }
+    }
+
+    try {
+    if (behavior !== 'prompt') {
+      const activeTurn = promptTurnsBySession.get(resolvedSessionId);
+      if (!activeTurn || !activeTurn.readyForSettled
+        || (!activeTurn.admission && rt.security?.taskLifecycle)
+        || activeTurn.client !== open.slot.client || activeTurn.lease !== open.lease) {
+        throw new Error(`session ${resolvedSessionId} has no current prompt turn`);
+      }
+      queuedAdmission = activeTurn.admission;
+      assertBinding();
+      if (queuedAdmission) rt.security?.taskLifecycle.assertCurrentAdmission?.(resolvedSessionId, queuedAdmission);
+    }
+    const startedTask = internal?.expectedAdmission
+      ? { admission: internal.expectedAdmission, grant: rt.security?.taskLifecycle.active(resolvedSessionId) }
+      : behavior === 'prompt'
+        ? await startSessionTask(resolvedSessionId, open.profileId, true, assertBinding)
+        : { admission: queuedAdmission, grant: queuedAdmission ? rt.security?.taskLifecycle.active(resolvedSessionId) : undefined };
+    const promptAdmission = startedTask.admission;
+    if (internal?.expectedAdmission && promptAdmission !== internal.expectedAdmission) {
+      throw new Error(`session ${resolvedSessionId} workflow admission is no longer current`);
+    }
+    const promptTaskId = startedTask.grant?.taskId ?? captureTaskOwner(resolvedSessionId)?.taskId;
+    const assertPromptOwnership = (): void => {
+      assertBinding();
+      // A correlated terminal may end this admission before the prompt command's
+      // response/post-send state read resumes. That is this turn's own completion,
+      // not a replacement; never apply the exception once the turn is removed.
+      if (turn?.terminal && promptTurnsBySession.get(resolvedSessionId) === turn) return;
+      if (promptAdmission) {
+        rt.security?.taskLifecycle.assertCurrentAdmission?.(resolvedSessionId, promptAdmission);
+      }
+      if (promptTaskId && typeof rt.security?.taskLifecycle.assertOwner === 'function') {
+        rt.security.taskLifecycle.assertOwner(resolvedSessionId, { taskId: promptTaskId, admission: promptAdmission });
+      } else if (promptTaskId && rt.security?.taskLifecycle.active(resolvedSessionId)?.taskId !== promptTaskId) {
+        throw new Error(`session ${resolvedSessionId} prompt task is no longer active`);
+      }
+    };
+    assertPromptOwnership();
     // A new prompt starts a new Task, so the Reviewer only ever sees the prompt
     // that owns the current Task. steer/followUp keep the existing one.
     if (behavior === 'prompt') {
       userTaskBySession.set(resolvedSessionId, text.slice(0, REVIEWER_USER_TASK_LIMIT));
     }
 
+    if (turn) {
+      turn.taskId = promptTaskId;
+      turn.admission = promptAdmission;
+      turn.readyForSettled = Boolean(promptTaskId) || !rt.security?.taskLifecycle;
+      runtimeOrigins.set(turn.originToken, {
+        sessionId: resolvedSessionId,
+        client: open.slot.client,
+        lease: open.lease,
+        taskId: promptTaskId,
+        admission: promptAdmission,
+      });
+    }
+
     if (behavior === 'steer') {
+      assertPromptOwnership();
       const resp = await open.slot.client.send(images.length
-        ? { type: 'steer', message: finalText, images }
-        : { type: 'steer', message: finalText });
+        ? { type: 'steer', message: finalText, images, originToken: promptTurnsBySession.get(resolvedSessionId)?.originToken }
+        : { type: 'steer', message: finalText, originToken: promptTurnsBySession.get(resolvedSessionId)?.originToken });
+      assertPromptOwnership();
       if (!resp.success) throw new Error(resp.error ?? 'steer failed');
     } else if (behavior === 'followUp') {
+      assertPromptOwnership();
       const resp = await open.slot.client.send(images.length
-        ? { type: 'follow_up', message: finalText, images }
-        : { type: 'follow_up', message: finalText });
+        ? { type: 'follow_up', message: finalText, images, promptId: promptTurnsBySession.get(resolvedSessionId)?.promptId, originToken: promptTurnsBySession.get(resolvedSessionId)?.originToken }
+        : { type: 'follow_up', message: finalText, promptId: promptTurnsBySession.get(resolvedSessionId)?.promptId, originToken: promptTurnsBySession.get(resolvedSessionId)?.originToken });
+      assertPromptOwnership();
       if (!resp.success) throw new Error(resp.error ?? 'follow_up failed');
     } else {
       const knowledge = knowledgeFromManifest(rt.profileOf(open.profileId).profile.manifest);
       // 每轮开始重置该会话的接地状态：两个远端后端都要重置。
       if (knowledge.backend !== 'bm25') {
+        assertPromptOwnership();
         groundingTurns.set(resolvedSessionId, resetTurn());
       }
+      assertPromptOwnership();
+      // Once the command is attempted, a transport rejection is ambiguous: the
+      // runtime may already be running the turn even though no response arrived.
+      promptMayBeRunning = true;
+      internal?.onPromptSend?.();
       const resp = await open.slot.client.send(images.length
-        ? { type: 'prompt', message: finalText, images }
-        : { type: 'prompt', message: finalText });
+        ? { type: 'prompt', message: finalText, images, promptId: turn?.promptId, originToken: turn?.originToken }
+        : { type: 'prompt', message: finalText, promptId: turn?.promptId, originToken: turn?.originToken });
+      if (!resp.success) promptMayBeRunning = false;
+      assertPromptOwnership();
       if (!resp.success) throw new Error(resp.error ?? 'prompt failed');
     }
-    // B1 — 三种投递分支成功后才 arm 本轮归属。steer/followUp 复用已有 Grant，
-    // 其 taskId 从活跃 Grant 取回；prompt 新建的从 startedTask 取。这样 createSession
-    // 或旧进程 new_session 迟到的 settled 在 arm 之前到达时不会被误判为本轮结束。
-    const ownedTaskId = startedTask?.taskId ?? rt.security?.taskLifecycle.active(resolvedSessionId)?.taskId;
-    if (ownedTaskId) armedPromptBySession.set(resolvedSessionId, ownedTaskId);
-
     const after = await open.slot.client.send({ type: 'get_state' });
+    assertPromptOwnership();
     if ((after.data as { sessionFile?: string } | undefined)?.sessionFile) {
       rt.chatSessions.update(resolvedSessionId, {
         piSessionFile: (after.data as { sessionFile: string }).sessionFile,
       });
     }
+    assertPromptOwnership();
     return { ok: true, sessionId: resolvedSessionId, behavior: behavior === 'prompt' ? 'prompt' : behavior };
-  });
+    } catch (error) {
+      // A post-send failure is not a terminal event. Keep the serialization
+      // barrier until an owned/cancelled settled arrives, abort confirms idle,
+      // or the runtime binding is retired. Releasing it here lets a late settled
+      // from this turn be attributed to the replacement.
+      if (turn && !promptMayBeRunning) completePromptTurn(resolvedSessionId, turn);
+      throw error;
+    }
+  };
+  ipcMain.handle('sparkii:promptSession', promptSession);
+  rt.promptTurn = (input) => promptSession(
+    null, input.sessionId, input.text, { behavior: input.behavior ?? 'prompt' }, [],
+    { allowDegradedKnowledge: true }, input,
+  );
 
   ipcMain.handle('sparkii:abortChat', async (_e, sessionId: string) => {
-    await rt.security?.taskLifecycle.end(sessionId, 'user');
+    let capturedOpen = openSessions.get(sessionId);
+    if (capturedOpen) {
+      try { assertOpenBinding(sessionId, capturedOpen); } catch { capturedOpen = undefined; }
+    }
+    const capturedBinding = rt.pool.getBinding(sessionId);
+    const capturedClient = capturedOpen?.slot.client ?? capturedBinding?.client;
+    const capturedLease = capturedOpen?.lease ?? capturedBinding?.lease;
+    const admission = rt.security?.taskLifecycle.currentAdmission?.(sessionId);
+    if (admission) await rt.security?.taskLifecycle.end(sessionId, 'user', admission);
+    else await rt.security?.taskLifecycle.end(sessionId, 'user');
+    const assertAbortCurrent = (target: OpenSession): void => {
+      if (rt.security?.taskLifecycle.currentAdmission?.(sessionId) !== undefined) {
+        throw new Error(`session ${sessionId} admission is no longer current`);
+      }
+      assertCapturedBinding(sessionId, target, capturedClient, capturedLease);
+    };
+    assertCapturedBinding(sessionId, capturedOpen, capturedClient, capturedLease);
     await getDocumentParseSupervisor().failSession(sessionId);
-    const open = await ensureOpenSession(sessionId);
+    assertCapturedBinding(sessionId, capturedOpen, capturedClient, capturedLease);
+    const open = capturedOpen ?? await ensureOpenSession(sessionId);
+    assertAbortCurrent(open);
     ensureProcessPipe(open.slot);
     const cleared = await readQueues(open);
+    assertAbortCurrent(open);
 
     const clearResp = await open.slot.client.send({ type: 'clear_queue' });
+    assertAbortCurrent(open);
     if (!clearResp.success) throw new Error(clearResp.error ?? 'clear_queue failed');
     const abortResp = await open.slot.client.send({ type: 'abort' });
+    assertAbortCurrent(open);
     if (!abortResp.success) throw new Error(abortResp.error ?? 'abort failed');
     await waitForIdle(open.slot.client);
+    assertAbortCurrent(open);
+    if (capturedClient && capturedLease !== undefined) {
+      completePromptTurnForBinding(sessionId, capturedClient, capturedLease, admission);
+    }
     return { ok: true, cleared };
   });
 
@@ -1660,19 +2398,32 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
 
   ipcMain.handle('sparkii:queueMutate', async (_e, sessionId: string, mutation: QueueMutation) => {
     const open = await ensureOpenSession(sessionId);
+    const assertBinding = (): void => assertOpenBinding(sessionId, open);
+    assertBinding();
+    const activeTurn = promptTurnsBySession.get(sessionId);
+    if (!activeTurn?.readyForSettled
+      || (!activeTurn.admission && rt.security?.taskLifecycle)
+      || activeTurn.client !== open.slot.client || activeTurn.lease !== open.lease) {
+      throw new Error(`session ${sessionId} has no current prompt turn`);
+    }
+    if (activeTurn.admission) rt.security?.taskLifecycle.assertCurrentAdmission?.(sessionId, activeTurn.admission);
     ensureProcessPipe(open.slot);
     const snapshot = await readQueues(open);
+    assertBinding();
     const next = mutateQueues(snapshot, mutation);
 
+    assertBinding();
     const clearResp = await open.slot.client.send({ type: 'clear_queue' });
+    assertBinding();
     if (!clearResp.success) throw new Error(clearResp.error ?? 'clear_queue failed');
-    await rebuildQueues(open.slot.client, next);
+    await rebuildQueues(open.slot.client, next, assertBinding, activeTurn.originToken, activeTurn.promptId);
     return { ok: true, steering: next.steering, followUp: next.followUp };
   });
 
-  ipcMain.handle('sparkii:setChatTitle', (_e, sessionId: string, title: string, source?: 'user' | 'agent') => {
+  ipcMain.handle('sparkii:setChatTitle', async (_e, sessionId: string, title: string, source?: 'user' | 'agent') => {
     const trimmed = String(title ?? '').trim();
     if (!trimmed) return { ok: false };
+    if (stoppingSessions.has(sessionId)) return { ok: false };
     const origin = source === 'user' ? 'user' : 'agent';
     const rec = rt.chatSessions.get(sessionId);
     if (origin === 'agent' && rec?.titleLockedByUser) return { ok: false, reason: 'locked' };
@@ -1681,35 +2432,35 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     }
     getWindow()?.webContents.send('sparkii:event:chat-event', { type: 'session_title', sessionId, title: trimmed });
     rt.pool.updateMeta(sessionId, { label: trimmed });
-    const open = openSessions.get(sessionId);
-    if (!open) {
-      if (rec) {
-        void rt.pool.acquire(sessionId, {
-          saddle: buildSaddle(rec.profileId, sessionId),
-          resumeSessionFile: rec.piSessionFile ?? undefined,
-          meta: profilePoolMeta(rt, rec.profileId, trimmed),
-        }).then((slot) => {
-          openSessions.set(sessionId, { slot, profileId: rec.profileId });
-          return slot.client.send({ type: 'set_session_name', name: trimmed });
-        }).catch(() => {});
-        return { ok: true };
-      }
+    if (!rec) return { ok: true };
+    try {
+      const open = await ensureOpenSession(sessionId);
+      if (stoppingSessions.has(sessionId)) return { ok: false };
+      assertOpenBinding(sessionId, open);
+      rt.pool.updateMeta(sessionId, { label: trimmed });
+      await open.slot.client.send({ type: 'set_session_name', name: trimmed });
+    } catch {
+      return { ok: true };
     }
-    if (open) void open.slot.client.send({ type: 'set_session_name', name: trimmed }).catch(() => {});
     return { ok: true };
   });
 
   ipcMain.handle('sparkii:completeText', async (_e, sessionId: string, text: string) => {
     const open = await ensureOpenSession(sessionId);
+    const assertBinding = (): void => assertOpenBinding(sessionId, open);
+    assertBinding();
     const settings = await loadSettings(rt.dataDir);
+    assertBinding();
     const target = resolveModelTarget(settings, 'title') ?? resolveModelTarget(settings, 'default');
     if (!target) return { ok: false };
+    assertBinding();
     const resp = await open.slot.client.send({
       type: 'complete',
       provider: target.provider,
       modelId: target.modelId,
       text: String(text ?? ''),
     });
+    assertBinding();
     if (!resp.success) return { ok: false };
     const out = String(resp.data ?? '').trim();
     return out ? { ok: true, text: out } : { ok: false };
@@ -1717,15 +2468,22 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
 
   ipcMain.handle('sparkii:setChatModel', async (_e, sessionId: string, model: string | null) => {
     const open = openSessions.get(sessionId);
+    const assertBinding = (): void => {
+      if (open) assertOpenBinding(sessionId, open);
+    };
     const settings = await loadSettings(rt.dataDir);
+    assertBinding();
     const target = resolveSessionModel(settings, { model });
     if (open) {
+      assertBinding();
       ensureProcessPipe(open.slot);
       if (target) {
         const applied = appliedModelBySession.get(sessionId);
         const changed = !applied || applied.provider !== target.provider || applied.modelId !== target.modelId;
         if (changed) {
-          await selectModel(rt, 'chat', sessionId, `${target.provider}/${target.modelId}`);
+          assertBinding();
+          await selectModel(rt, 'chat', sessionId, `${target.provider}/${target.modelId}`, assertBinding);
+          assertBinding();
           appliedModelBySession.set(sessionId, target);
           getWindow()?.webContents.send('sparkii:event:chat-event', {
             type: 'model_change',
@@ -1736,6 +2494,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         }
       }
     }
+    assertBinding();
     rt.chatSessions.update(sessionId, { model: target ? modelTargetKey(target) : null });
     return { ok: true };
   });
@@ -1743,21 +2502,36 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   ipcMain.handle('sparkii:setChatThinkingLevel', async (_e, sessionId: string, level: string | null) => {
     const rec = rt.chatSessions.get(sessionId);
     if (!rec) throw new Error('session not found');
-    rt.chatSessions.update(sessionId, { thinkingLevel: level });
     const open = openSessions.get(sessionId);
+    const binding = rt.pool.getBinding(sessionId);
+    const client = open?.slot.client ?? binding?.client;
+    const lease = open?.lease ?? binding?.lease;
+    const assertBinding = (): void => assertCapturedBinding(sessionId, open, client, lease);
+    assertBinding();
     if (open && level) {
       ensureProcessPipe(open.slot);
+      assertBinding();
       const resp = await open.slot.client.send({ type: 'set_thinking_level', level });
+      assertBinding();
       if (!resp.success) throw new Error(resp.error ?? 'set_thinking_level failed');
     }
     if (level) {
       const settings = await loadSettings(rt.dataDir);
+      assertBinding();
       const target = resolveSessionModel(settings, rec);
       if (target) {
         const next = { ...(settings.modelThinkingLevels ?? {}), [`${target.provider}/${target.modelId}`]: level };
+        assertBinding();
         await saveSettings(rt.dataDir, { ...settings, modelThinkingLevels: next });
+        assertBinding();
       }
     }
+    assertBinding();
+    const current = rt.chatSessions.get(sessionId);
+    if (!current || current.thinkingLevel !== rec.thinkingLevel) {
+      throw new Error(`session ${sessionId} thinking level changed concurrently`);
+    }
+    rt.chatSessions.update(sessionId, { thinkingLevel: level });
     return { ok: true };
   });
 
@@ -1775,18 +2549,56 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   ipcMain.handle('sparkii:setChatWorkspace', async (_e, sessionId: string, path: string | null) => {
     const rec = rt.chatSessions.get(sessionId);
     if (!rec) throw new Error('session not found');
-    await rt.security?.taskLifecycle.end(sessionId, 'workspace-changed');
-    if (path) {
-      rt.chatSessions.update(sessionId, { workspaceKind: 'user', workspacePath: path });
-    } else {
-      const next = allocateAutoWorkspace(app.getPath('documents'), rec.profileId).workspacePath;
-      rt.chatSessions.update(sessionId, { workspaceKind: 'auto', workspacePath: next });
-    }
     const open = openSessions.get(sessionId);
-    if (open) {
-      const resp = await open.slot.client.send({ type: 'configure_session', saddle: buildSaddle(open.profileId, sessionId) });
+    const binding = rt.pool.getBinding(sessionId);
+    const client = open?.slot.client ?? binding?.client;
+    const lease = open?.lease ?? binding?.lease;
+    const admission = rt.security?.taskLifecycle.currentAdmission?.(sessionId);
+    const assertCurrent = (allowCapturedAdmission = false): void => {
+      assertCapturedBinding(sessionId, open, client, lease);
+      const current = rt.security?.taskLifecycle.currentAdmission?.(sessionId);
+      if (allowCapturedAdmission ? current !== admission : current !== undefined) {
+        throw new Error(`session ${sessionId} admission is no longer current`);
+      }
+    };
+    assertCurrent(true);
+    const previousSaddle = open ? buildSaddle(open.profileId, sessionId) : undefined;
+    const nextWorkspacePath = path ?? allocateAutoWorkspace(app.getPath('documents'), rec.profileId).workspacePath;
+    const nextWorkspaceKind = path ? 'user' as const : 'auto' as const;
+    const nextSaddle = open ? buildAgentSaddle(
+      rt.agentOf(open.profileId),
+      anchorDir(sessionId),
+      nextWorkspacePath,
+      undefined,
+      undefined,
+      rt.memory?.buildBlock({
+        sessionId,
+        profileId: open.profileId,
+        workspacePath: nextWorkspacePath,
+        workspaceKind: nextWorkspaceKind,
+      }),
+      rt.memory?.getSettings().enabled === true,
+    ) : undefined;
+    if (admission) await rt.security?.taskLifecycle.end(sessionId, 'workspace-changed', admission);
+    else await rt.security?.taskLifecycle.end(sessionId, 'workspace-changed');
+    assertCurrent();
+    if (open && nextSaddle) {
+      assertCurrent();
+      const resp = await open.slot.client.send({ type: 'configure_session', saddle: nextSaddle });
+      assertCurrent();
       if (!resp.success) throw new Error(`configure_session failed: ${resp.error ?? 'unknown'}`);
     }
+    assertCurrent();
+    const current = rt.chatSessions.get(sessionId);
+    if (!current || current.workspacePath !== rec.workspacePath || current.workspaceKind !== rec.workspaceKind) {
+      if (open && previousSaddle) {
+        assertCurrent();
+        await open.slot.client.send({ type: 'configure_session', saddle: previousSaddle });
+        assertCurrent();
+      }
+      throw new Error(`session ${sessionId} workspace changed concurrently`);
+    }
+    rt.chatSessions.update(sessionId, { workspaceKind: nextWorkspaceKind, workspacePath: nextWorkspacePath });
     return { ok: true };
   });
 
@@ -1804,23 +2616,34 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     if (!security) {
       return { ok: false, code: 'ADMISSION_FAILED', reason: 'security layer unavailable' };
     }
+    const capturedOpen = openSessions.get(sessionId);
+    const capturedBinding = rt.pool.getBinding(sessionId);
+    const capturedClient = capturedOpen?.slot.client ?? capturedBinding?.client;
+    const capturedLease = capturedOpen?.lease ?? capturedBinding?.lease;
+    const assertBinding = (): void => assertCapturedBinding(sessionId, capturedOpen, capturedClient, capturedLease);
+    assertBinding();
     const result = await relocateWorkspace(
       { sessionId: String(sessionId ?? ''), newPath: String(newPath ?? ''), workspaceKind: 'user' },
       {
         getSession: (id) => rt.chatSessions.get(id),
-        sessionsByWorkspace: (wp) => rt.chatSessions.list().filter((r) => r.workspacePath === wp)
-          .map((r) => ({ id: r.id, profileId: r.profileId, open: openSessions.has(r.id) })),
+        sessionsByWorkspace: (wp) => {
+          assertBinding();
+          return rt.chatSessions.list().filter((r) => r.workspacePath === wp)
+            .map((r) => ({ id: r.id, profileId: r.profileId, open: openSessions.has(r.id) }));
+        },
         updateWorkspacePathInTransaction: (oldPath, nextPath, kind) => {
+          assertBinding();
           rt.chatSessions.updateWorkspacePathInTransaction(oldPath, nextPath, kind);
         },
         isIdle: (id) => security ? security.taskLifecycle.active(id) === undefined : true,
         configureSession: async (id, profileId) => {
-          const open = openSessions.get(id);
-          if (!open) return;
-          const resp = await open.slot.client.send({
+          assertBinding();
+          if (!capturedOpen) return;
+          const resp = await capturedOpen.slot.client.send({
             type: 'configure_session',
             saddle: buildSaddle(profileId, id),
           });
+          assertBinding();
           if (!resp.success) throw new Error(resp.error ?? 'configure_session failed');
         },
         pathProbe: security.pathProbe,
@@ -1830,6 +2653,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       },
     );
     if (result.ok) {
+      assertBinding();
       // 跨窗口状态同步：其他窗口的 activeProject.workspacePath 仍是旧值，
       // 需强制 refreshProjects，否则后续 writeProject 会把旧路径写回。
       getWindow()?.webContents.send('sparkii:event:workspace-relocated', {
@@ -1842,34 +2666,53 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
 
   ipcMain.handle('sparkii:updateWorkflowState', async (_e, sessionId: string, entry: Record<string, unknown>) => {
     const open = await ensureOpenSession(sessionId);
+    const assertBinding = (): void => assertCapturedBinding(sessionId, open, open.slot.client, open.lease);
+    assertBinding();
     ensureProcessPipe(open.slot);
+    assertBinding();
     const resp = await open.slot.client.send({
       type: 'append_workflow_entry',
       customType: 'workflow_state',
       data: entry,
     });
+    assertBinding();
     if (!resp.success) throw new Error(resp.error ?? 'append workflow_state failed');
-    if (!inFlightWorkflowRuns.has(sessionId)) scheduleIdleRelease(sessionId);
+    if (!hasCurrentWorkflowRun(sessionId)) scheduleIdleRelease(sessionId);
     return { ok: true };
   });
 
   ipcMain.handle('sparkii:requestExportReport', async (_e, sessionId: string, summary: Record<string, unknown>) => {
     const open = await ensureOpenSession(sessionId);
+    assertOpenBinding(sessionId, open);
     ensureProcessPipe(open.slot);
-    await startSessionTask(sessionId, open.profileId, true);
-    const d = await broker.route(connectorWriteProposal('report.export', summary, {
-      requestId: randomUUID(),
-      risk: 'write',
-    }), { sessionId, profileId: open.profileId });
-    if (d.approved && open.slot.client) {
-      await open.slot.client.send({
-        type: 'append_workflow_entry',
-        customType: 'workflow_state',
-        data: { stepId: 'report', action: 'report_exported', at: new Date().toISOString(), ...summary },
-      }).catch(() => {});
+    const { grant, admission } = await startSessionTask(sessionId, open.profileId, true, () => assertCapturedBinding(sessionId, open, open.slot.client, open.lease));
+    const assertBinding = (): void => {
+      assertCapturedBinding(sessionId, open, open.slot.client, open.lease);
+      if (admission) rt.security?.taskLifecycle.assertCurrentAdmission?.(sessionId, admission);
+    };
+    assertBinding();
+    try {
+      const d = await broker.route(connectorWriteProposal('report.export', summary, {
+        requestId: randomUUID(),
+        risk: 'write',
+      }), { sessionId, profileId: open.profileId, taskId: grant?.taskId, admission }, assertBinding);
+      assertBinding();
+      if (d.approved) {
+        assertBinding();
+        const resp = await open.slot.client.send({
+          type: 'append_workflow_entry',
+          customType: 'workflow_state',
+          data: { stepId: 'report', action: 'report_exported', at: new Date().toISOString(), ...summary },
+        });
+        assertBinding();
+        if (!resp.success) throw new Error(resp.error ?? 'append workflow_state failed');
+      }
+      if (!hasCurrentWorkflowRun(sessionId)) scheduleIdleRelease(sessionId);
+      return { ok: true, approved: d.approved };
+    } catch (error) {
+      if (grant) await rt.security?.taskLifecycle.revokeTask(grant.taskId, 'runtime-released', admission);
+      throw error;
     }
-    if (!inFlightWorkflowRuns.has(sessionId)) scheduleIdleRelease(sessionId);
-    return { ok: true, approved: d.approved };
   });
 
   ipcMain.handle('sparkii:allocateAutoWorkspace', (_e, agentId: string) => {
@@ -2010,28 +2853,108 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     };
   });
 
-  ipcMain.handle('sparkii:deleteChatSession', async (_e, sessionId: string) => {
-    await rt.security?.taskLifecycle.end(sessionId, 'session-ended');
-    cancelIdleRelease(sessionId);
-    const open = openSessions.get(sessionId);
-    if (open) {
-      const state = await open.slot.client.send({ type: 'get_state' });
-      if ((state.data as { sessionFile?: string } | undefined)?.sessionFile) {
-        rt.chatSessions.update(sessionId, { piSessionFile: (state.data as { sessionFile: string }).sessionFile });
-      }
-      await unbindAndRelease(sessionId);
-      openSessions.delete(sessionId);
-      appliedModelBySession.delete(sessionId);
+  async function withSessionDeletion<T>(sessionId: string, commit: () => T | Promise<T>, keepTombstoneOnFailure?: () => boolean): Promise<T | undefined> {
+    const existing = deletionPromises.get(sessionId);
+    if (existing) {
+      await existing;
+      return undefined;
     }
-    rt.chatSessions.delete(sessionId);
+    deletionTombstones.add(sessionId);
+    let retained = false;
+    const deletion = (async () => {
+      try {
+        if (!await stopSessionRuntime(sessionId)) throw new Error('会话在删除期间被重新绑定');
+        return await commit();
+      } catch (error) {
+        retained = keepTombstoneOnFailure?.() === true;
+        throw error;
+      }
+    })().finally(() => {
+      if (deletionPromises.get(sessionId) === deletion) deletionPromises.delete(sessionId);
+      if (!retained) deletionTombstones.delete(sessionId);
+    });
+    deletionPromises.set(sessionId, deletion);
+    return deletion;
+  }
+
+  function stopSessionRuntime(sessionId: string): Promise<boolean> {
+    const existing = sessionStopPromises.get(sessionId);
+    if (existing) return existing;
+    stoppingSessions.add(sessionId);
+    sessionOpenEpochs.set(sessionId, (sessionOpenEpochs.get(sessionId) ?? 0) + 1);
+    // Capture before cancellation: waitForAcquire must include a bind already in
+    // flight, not only acquisitions queued behind the current binding.
+    const acquisition = rt.pool.waitForAcquire(sessionId);
+    rt.pool.cancelAcquire(sessionId);
+    const stopping = stopSessionRuntimeOwned(sessionId, acquisition).finally(() => {
+      if (sessionStopPromises.get(sessionId) === stopping) sessionStopPromises.delete(sessionId);
+      stoppingSessions.delete(sessionId);
+    });
+    sessionStopPromises.set(sessionId, stopping);
+    return stopping;
+  }
+
+  async function stopSessionRuntimeOwned(sessionId: string, acquisition?: Promise<void>): Promise<boolean> {
+    // A cancelled opening may still be inside switch_session. Its pool promise
+    // settles only after the child is reset or confirmed exited.
+    await acquisition;
+    const binding = rt.pool.getBinding(sessionId);
+    const admission = rt.security?.taskLifecycle.currentAdmission?.(sessionId);
+    const ownsBinding = (): boolean => {
+      const current = rt.pool.getBinding(sessionId);
+      return current?.client === binding?.client && current?.lease === binding?.lease;
+    };
+    const ownsStoppedTask = (): boolean => ownsBinding()
+      && rt.security?.taskLifecycle.currentAdmission?.(sessionId) === undefined;
+    const lostBinding = (): false => {
+      memoryExtraction?.cancel(sessionId);
+      return false;
+    };
+    cancelIdleRelease(sessionId);
+    if (binding) {
+      if (!ownsBinding()) return lostBinding();
+      if (admission) await rt.security?.taskLifecycle.end(sessionId, 'session-ended', admission);
+      else await rt.security?.taskLifecycle.end(sessionId, 'session-ended');
+      if (!ownsStoppedTask()) return lostBinding();
+      await getDocumentParseSupervisor().failSession(sessionId);
+      if (!ownsStoppedTask()) return lostBinding();
+      const open = openSessions.get(sessionId);
+      if (open && open.lease === binding.lease && openSessions.get(sessionId) === open) {
+        const state = await open.slot.client.send({ type: 'get_state' }).catch(() => undefined);
+        if (!ownsStoppedTask()) return lostBinding();
+        if (state?.success && (state.data as { sessionFile?: string } | undefined)?.sessionFile) {
+          rt.chatSessions.update(sessionId, { piSessionFile: (state.data as { sessionFile: string }).sessionFile });
+        }
+      }
+      await unbindAndRelease(sessionId, binding.lease, admission);
+      if (open && openSessions.get(sessionId) === open && !rt.pool.getBinding(sessionId)) {
+        openSessions.delete(sessionId);
+        appliedModelBySession.delete(sessionId);
+      }
+    } else {
+      if (admission) await rt.security?.taskLifecycle.end(sessionId, 'session-ended', admission);
+      else await rt.security?.taskLifecycle.end(sessionId, 'session-ended');
+      if (!ownsStoppedTask()) return lostBinding();
+      await getDocumentParseSupervisor().failSession(sessionId);
+      cancelTransientWaiters(sessionId);
+      completePromptTurnWithoutBinding(sessionId);
+    }
     memoryExtraction?.cancel(sessionId);
-    rt.memory?.markSourcesDeleted(sessionId);
-    // 同步删除 Pi 会话文件，避免“已删除会话”仍出现在历史列表中
-    try {
-      const found = (await listPiSessions(join(rt.piAgentDir, 'sessions'))).find((s) => s.id === sessionId);
-      if (found) await rm(found.path, { force: true });
-    } catch { /* ignore */ }
-    return { ok: true };
+    return !rt.pool.getBinding(sessionId);
+  }
+
+  ipcMain.handle('sparkii:deleteChatSession', async (_e, sessionId: string) => {
+    const result = await withSessionDeletion(sessionId, async () => {
+      const deletedSession = rt.chatSessions.get(sessionId);
+      rt.memory?.markSourcesDeleted(sessionId, deletedSession?.workspacePath);
+      rt.chatSessions.delete(sessionId);
+      try {
+        const found = (await listPiSessions(join(rt.piAgentDir, 'sessions'))).find((s) => s.id === sessionId);
+        if (found) await rm(found.path, { force: true });
+      } catch { /* ignore */ }
+      return { ok: true };
+    });
+    return result ?? { ok: true };
   });
 
   async function ensureSessionRecord(sessionId: string, profileId?: string) {
@@ -2115,23 +3038,39 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
   });
 
   async function releaseSessionSlotInternal(sessionId: string): Promise<void> {
-    await rt.security?.taskLifecycle.end(sessionId, 'runtime-released');
-    await getDocumentParseSupervisor().failSession(sessionId);
-    if (!rt.pool.get(sessionId)) throw new Error('session is not occupying a runtime slot');
-    cancelIdleRelease(sessionId);
+    const binding = rt.pool.getBinding(sessionId);
+    if (!binding) {
+      cancelTransientWaiters(sessionId);
+      completePromptTurnWithoutBinding(sessionId);
+      throw new Error('session is not occupying a runtime slot');
+    }
+    const ownsBinding = (): boolean => {
+      const current = rt.pool.getBinding(sessionId);
+      return current?.client === binding.client && current.lease === binding.lease;
+    };
     const open = openSessions.get(sessionId);
-    if (open) {
-      const state = await open.slot.client.send({ type: 'get_state' });
-      if ((state.data as { sessionFile?: string } | undefined)?.sessionFile) {
+    const admission = rt.security?.taskLifecycle.currentAdmission?.(sessionId);
+    const ownsTask = (): boolean => rt.security?.taskLifecycle.currentAdmission?.(sessionId) === undefined;
+    cancelIdleRelease(sessionId);
+    if (!ownsBinding()) throw new Error('session is not occupying a runtime slot');
+    if (admission) await rt.security?.taskLifecycle.end(sessionId, 'runtime-released', admission);
+    else await rt.security?.taskLifecycle.end(sessionId, 'runtime-released');
+    if (!ownsBinding() || !ownsTask()) return;
+    await getDocumentParseSupervisor().failSession(sessionId);
+    if (!ownsBinding() || !ownsTask()) return;
+    if (open && open.lease === binding.lease && openSessions.get(sessionId) === open) {
+      const state = await open.slot.client.send({ type: 'get_state' }).catch(() => undefined);
+      if (!ownsBinding() || !ownsTask()) return;
+      if (state?.success && (state.data as { sessionFile?: string } | undefined)?.sessionFile) {
         rt.chatSessions.update(sessionId, {
           piSessionFile: (state.data as { sessionFile: string }).sessionFile,
         });
       }
-      await unbindAndRelease(sessionId);
+    }
+    await unbindAndRelease(sessionId, binding.lease, admission);
+    if (open && openSessions.get(sessionId) === open) {
       openSessions.delete(sessionId);
       appliedModelBySession.delete(sessionId);
-    } else {
-      await unbindAndRelease(sessionId);
     }
   }
 
@@ -2281,9 +3220,10 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     // A mode change never retroactively cancels executed work, but the running
     // Task and its shell grant must not carry the old privilege level.
     const activeTask = rt.security?.taskLifecycle.active(sessionId);
-    await rt.security?.taskLifecycle.end(sessionId, 'permission-mode-changed');
-    if (activeTask) rt.security?.shellGrants.revoke(activeTask.taskId);
+    const admission = rt.security?.taskLifecycle.currentAdmission?.(sessionId);
     rt.chatSessions.update(sessionId, { permissionMode: resolved });
+    if (activeTask) rt.security?.shellGrants.revoke(activeTask.taskId);
+    await rt.security?.taskLifecycle.end(sessionId, 'permission-mode-changed', admission);
     await rt.audit.append({
       actor: rt.subject?.userId ?? 'agent',
       action: 'permission-mode.changed',
@@ -2306,8 +3246,26 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     note?: string,
     approvalScope?: 'once' | 'task',
   ) => {
-    let out = await rt.gate.decide(id, rt.subject, approved, note);
+    const expectedTaskId = broker.ownerTaskId(id);
+    let out = await rt.gate.decide(id, rt.subject, approved, note, expectedTaskId);
+    const decided = rt.gate.get(out.id);
+    if (!decided || decided.privacyRedacted || (decided.status !== 'approved' && decided.status !== 'denied')) {
+      broker.decide(out.id, { approved: false, status: 'denied' });
+      return decided;
+    }
+    out = decided;
+    if (out.status === 'approved') {
+      try {
+        broker.assertOwner(id);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        out = { ...out, execution: { ok: false, error: message } };
+        broker.decide(out.id, { approved: false, status: 'denied' });
+        return out;
+      }
+    }
     let result: unknown;
+    let executionBlocked = false;
     if (
       out.status === 'approved'
       && out.executionMode !== 'caller'
@@ -2319,20 +3277,32 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         const path = suggested ?? await resolveExportPath(getWindow, process.env, (win, opts) =>
           dialog.showSaveDialog(win as BrowserWindow, opts),
         );
+        broker.assertOwner(id);
         if (path) {
-          out.payload = { ...payload, path };
-          out.payloadHash = hashPayload(out.payload);
+          const canonical = approvedProposalForExecution(rt, out.id, out);
+          const updated = canonical
+            ? rt.gate.updateApprovedPayload(canonical, { ...payload, path })
+            : undefined;
+          if (!updated) {
+            executionBlocked = true;
+            out = rt.gate.get(out.id) ?? out;
+          } else {
+            out = updated;
+          }
         } else {
           await rt.audit.append({ actor: rt.subject.userId, action: 'execution.blocked', resource: out.toolName });
           out.execution = { ok: false, error: 'export path canceled' };
         }
       }
-      if (out.execution?.error !== 'export path canceled') {
+      if (!executionBlocked && out.execution?.error !== 'export path canceled') {
+        broker.assertOwner(id);
         if (rt.security) {
           let grant: TaskGrant | undefined;
           let action: SecurityAction | undefined;
           try {
-            grant = rt.security.taskLifecycle.assertActive(out.sessionId);
+            if (!expectedTaskId) throw new Error('approval has no owning task');
+            grant = rt.security.taskLifecycle.assertActive(out.sessionId, expectedTaskId);
+            broker.assertOwner(id);
             action = {
               id: out.id,
               subjectId: rt.subject.userId,
@@ -2370,11 +3340,26 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
               sandboxVersion: rt.security.hostShellReport.version,
               decision: 'approved',
             });
+            broker.assertOwner(id);
+            rt.security.taskLifecycle.assertActive(out.sessionId, expectedTaskId);
+            const canonical = approvedProposalForExecution(rt, out.id, out);
+            if (!canonical || !proposalMatchesConnectorAction(canonical, action)) {
+              throw new Error('approval invalidated before gateway execution');
+            }
+            out = canonical;
             out = await rt.security.capabilityGateway.execute(
               action,
               lease.id,
               grant,
-              async () => rt.executor.execute(out, { actor: rt.subject.userId }),
+              async () => {
+                broker.assertOwner(id);
+                rt.security?.taskLifecycle.assertActive(out.sessionId, expectedTaskId);
+                const current = approvedProposalForExecution(rt, out.id, out);
+                if (!current || !action || !proposalMatchesConnectorAction(current, action)) {
+                  throw new Error('approval invalidated before connector execution');
+                }
+                return rt.executor.execute(current, { actor: rt.subject.userId });
+              },
             );
             result = out.execution?.result;
           } catch (error) {
@@ -2397,19 +3382,27 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
             });
           }
         } else {
-          out = await rt.executor.execute(out, { actor: rt.subject.userId });
-          result = out.execution?.result;
+          const canonical = approvedProposalForExecution(rt, out.id, out);
+          if (!canonical) {
+            executionBlocked = true;
+            out = rt.gate.get(out.id) ?? out;
+          } else {
+            out = await rt.executor.execute(canonical, { actor: rt.subject.userId });
+            result = out.execution?.result;
+          }
         }
       }
     }
-    const executionOk = out.execution?.ok !== false;
+    const current = rt.gate.get(out.id);
+    const executionOk = !executionBlocked && out.execution?.ok !== false
+      && Boolean(current && !current.privacyRedacted && (current.status === 'approved' || current.status === 'executed'));
     broker.decide(out.id, {
-      approved: executionOk && (out.status === 'approved' || out.status === 'executed'),
-      status: executionOk ? out.status : 'failed',
-      result,
+      approved: executionOk,
+      status: executionOk ? out.status : current?.privacyRedacted ? 'denied' : 'failed',
+      result: executionOk ? result : undefined,
       ...(approvalScope ? { approvalScope } : {}),
     });
-    return out;
+    return executionOk ? out : current;
   });
   ipcMain.handle('sparkii:queryAudit', (_e, filter: object) => rt.audit.query(filter));
   ipcMain.handle('sparkii:getSettings', async () => {
@@ -2599,27 +3592,77 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       saddle: buildAgentSaddle(rt.agentOf(profileId), anchorDir(sessionId)),
       meta: profilePoolMeta(rt, profileId),
     });
-    slot.supervisor.onProposal((req) => broker.route(req, { sessionId, profileId }));
+    bindProposalRequests(slot, sessionId, profileId);
     bindRuntimeActions(slot, sessionId);
-    slot.supervisor.onConnectorRead?.((req) => handleConnectorRead(req, profileId, sessionId));
+    bindConnectorRead(slot, profileId);
+    let bindingLease: number | undefined;
     try {
-      await selectModel(rt, 'chat', sessionId);
-      const c = slot.client;
+      const binding = rt.pool.getBinding(sessionId);
+      if (!binding) throw new Error(`unknown session ${sessionId}`);
+      const lease = binding.lease;
+      bindingLease = lease;
+      const c = binding.client;
+      const assertBinding = (): void => {
+        const current = rt.pool.getBinding(sessionId);
+        if (slot.getSessionId() !== sessionId || rt.pool.get(sessionId) !== c
+          || current?.client !== c || current.lease !== lease) {
+          throw new Error(`session ${sessionId} is no longer bound`);
+        }
+      };
+      await selectModel(rt, 'chat', sessionId, undefined, assertBinding);
+      assertBinding();
       const win = getWindow();
       await new Promise<void>((resolve, reject) => {
         let off = () => {};
-        const timer = setTimeout(() => { off(); reject(new Error('prompt timeout')); }, 300_000);
+        let settled = false;
+        let sendSettled = false;
+        let terminalEvent = false;
+        const finish = (error?: Error) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          off();
+          removeTransientWaiter(sessionId, waiter);
+          if (error) reject(error);
+          else resolve();
+        };
+        const timer = setTimeout(() => finish(new Error('prompt timeout')), 300_000);
+        const waiterAdmission = rt.security?.taskLifecycle.currentAdmission?.(sessionId);
+        const waiter = { lease, admission: waiterAdmission, cancel: () => finish(new Error(`session ${sessionId} is no longer bound`)) };
+        const waiters = transientPromptCancels.get(sessionId) ?? [];
+        waiters.push(waiter);
+        transientPromptCancels.set(sessionId, waiters);
+        assertBinding();
         off = c.onEvent((ev) => {
-          win?.webContents.send('sparkii:event:chat-event', ev);
-          if (ev.type === 'agent_end') { clearTimeout(timer); off(); resolve(); }
+          try {
+            assertBinding();
+          } catch (error) {
+            finish(error instanceof Error ? error : new Error(String(error)));
+            return;
+          }
+          win?.webContents.send('sparkii:event:chat-event', { ...ev, sessionId });
+          if (ev.type === 'agent_end') {
+            terminalEvent = true;
+            if (sendSettled) finish();
+          }
         });
         c.send({ type: 'prompt', message: text }).then((resp) => {
-          if (!resp.success) { clearTimeout(timer); off(); reject(new Error(resp.error ?? 'prompt failed')); }
-        });
+          try {
+            assertBinding();
+            sendSettled = true;
+            if (!resp.success) finish(new Error(resp.error ?? 'prompt failed'));
+            else if (terminalEvent) finish();
+          } catch (error) {
+            finish(error instanceof Error ? error : new Error(String(error)));
+          }
+        }).catch((error) => finish(error instanceof Error ? error : new Error(String(error))));
       });
     } finally {
-      await rt.security?.taskLifecycle.end(sessionId, 'session-ended');
-      await rt.pool.release(sessionId);
+      if (bindingLease !== undefined) {
+        const current = rt.pool.getBinding(sessionId);
+        if (current?.lease === bindingLease) await rt.security?.taskLifecycle.end(sessionId, 'session-ended');
+        await rt.pool.release(sessionId, bindingLease);
+      }
     }
     return { ok: true };
   });
@@ -2634,22 +3677,54 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       workspacePath,
       workspaceKind: input.workspaceKind === 'user' ? 'user' : 'auto',
     }, broker, profileId, {
-      async onReady(id, slot) {
-        inFlightWorkflowRuns.add(id);
-        const entry = { slot, profileId };
+      async onReady(id, slot, bindingLease) {
+        const current = rt.pool.getBinding(id);
+        if (rt.pool.get(id) !== slot.client || current?.client !== slot.client || current.lease !== bindingLease) {
+          throw new Error(`session ${id} is no longer bound`);
+        }
+        const entry = { slot, profileId, lease: bindingLease };
+        inFlightWorkflowRuns.set(id, bindingLease);
         openSessions.set(id, entry);
+        const assertBinding = (): void => {
+          const live = rt.pool.getBinding(id);
+          if (rt.pool.get(id) !== slot.client || live?.client !== slot.client || live.lease !== bindingLease
+            || openSessions.get(id) !== entry || openSessions.get(id)?.lease !== bindingLease
+            || inFlightWorkflowRuns.get(id) !== bindingLease) {
+            throw new Error(`session ${id} is no longer bound`);
+          }
+        };
+        assertBinding();
         ensureProcessPipe(slot);
+        // workflow.ts already installed an admission-bound proposal dispatcher.
+        // Replacing it here would dynamically attribute late requests to a new Task.
         bindRuntimeActions(slot, id);
-        await startSessionTask(id, profileId, true);
+        assertBinding();
+        const startedTask = await startSessionTask(id, profileId, true, assertBinding);
+        assertBinding();
+        return startedTask.admission;
       },
       logger,
-      async beforeRelease(id) {
-        await rt.security?.taskLifecycle.end(id, 'session-ended');
+      async beforeRelease(id, bindingLease, workflowAdmission) {
+        const open = openSessions.get(id);
+        const ownsBinding = (): boolean => {
+          const current = rt.pool.getBinding(id);
+          return current?.lease === bindingLease && open?.lease === bindingLease
+            && openSessions.get(id) === open && rt.pool.get(id) === open?.slot.client;
+        };
+        if (!open || !ownsBinding()) return false;
+        if (workflowAdmission) {
+          if (rt.security?.taskLifecycle.currentAdmission?.(id) !== workflowAdmission) return false;
+          await rt.security?.taskLifecycle.end(id, 'session-ended', workflowAdmission);
+        } else if (rt.security?.taskLifecycle.currentAdmission?.(id) !== undefined) {
+          // An absent original admission must never fall back to a replacement.
+          return false;
+        }
+        if (!ownsBinding() || rt.security?.taskLifecycle.currentAdmission?.(id) !== undefined) return false;
         // workflow 跑完由 workflow.ts 调 pool.release；这里先让窗口停转圈，管子留给下一条会话。
-        inFlightWorkflowRuns.delete(id);
-        if (!openSessions.has(id)) return;
+        if (inFlightWorkflowRuns.get(id) === bindingLease) inFlightWorkflowRuns.delete(id);
         getWindow()?.webContents.send('sparkii:event:chat-event', { type: 'session_unbound', sessionId: id });
-        openSessions.delete(id);
+        if (openSessions.get(id) === open) openSessions.delete(id);
+        return true;
       },
     }, app.getPath('documents'));
     return { ok: true, sessionId };

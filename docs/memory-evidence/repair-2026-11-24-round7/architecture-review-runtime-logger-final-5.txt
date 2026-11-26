@@ -1,0 +1,20 @@
+APPROVE
+Task-id: R7-REVIEW-RUNTIME-LOGGER
+Blocking finding count: 0
+
+Final-4 task-grant commit repair — VERIFIED.
+- apps/desktop/electron/main/security/task-lifecycle.ts:29-33 awaits grant construction, invokes the synchronous pre-commit guard, then calls registry.start with no intervening await; a guard failure cannot reach replacement registration.
+- apps/desktop/electron/main/ipc.ts:580-629 supplies assertBinding both inside the asynchronous factory and at the commit point, retains the post-start guard, and revokes only grant.taskId on failure.
+- apps/desktop/electron/main/security/task-grant-factory.ts:84-91,119-120 confirms the guarded awaits are real workspace-admission/input-root probe boundaries.
+- apps/desktop/test/ipc.test.ts:1541-1605 defers the first real admission probe, releases/reacquires the same ID, completes a replacement prompt/grant, resumes stale admission, and asserts stale rejection, no stale prompt, unchanged replacement task ID, and unchanged replacement lease.
+- apps/desktop/test/task-lifecycle.test.ts:78-97 independently asserts that a failing pre-commit guard leaves the already registered replacement grant active.
+
+Final-3 repairs — VERIFIED.
+- apps/desktop/electron/main/logger.ts:14-29 admits a named marker only when none of its Unicode scalars occurs in the registered-secret corpus, otherwise selecting a repeated absent scalar. Lines 47-56 remove physical CR/LF secrets before splitting; lines 136-154 verify the complete rewrite before atomic write; lines 212-217 verify exports. Lines 36-46,69-75 preserve keys/schema while redacting string values recursively. Assertions at apps/desktop/test/logger.test.ts:26-77,160-226,265-329 cover marker boundaries, physical newlines, schema keywords, future writes/exports, malformed escapes, and placeholders.
+- apps/desktop/electron/main/ipc.ts:974-982 defines the full client/slot/session/lease guard. promptSession validates after open, attachment staging, image reads, each runtime send, task start, and before bookkeeping/success (1746-1847); existing-session model/key/settings awaits are guarded (1390-1417). Transient waiter lease validation/cancellation remains at 955-972, 2882-2948, with same-ID regressions at apps/desktop/test/ipc.test.ts:2226-2366.
+
+Prior runtime-pool invariants — INTACT.
+- packages/agent-host/src/pi-runtime-pool.ts:154-188 coalesces acquisition and excludes resetting slots; 197-215 filters by current client/lease/generation and requires a strictly increasing safe integer; 222-257 centralizes facade sends and synchronously detaches uncertain slots; 304-391 makes retirement idempotent and rechecks bind ownership after awaits; 407-427 copies binding tuples and rejects conflicting renames; 474-508 performs lease-checked release, unavailable reset, failure retirement, and healthy waiter service. Runtime generation forwarding is present in packages/agent-host/src/pi-runtime.ts:55-58,91-103 and packages/agent-host/src/pi-runtime-supervisor.ts:121-124.
+- Focused source assertions inspected at packages/agent-host/test/pi-runtime-pool.test.ts:205-315,317-637,638-740,1080-1154 cover reset gating, stale events, invalid generations, concurrent retirement, failed reset/crash, same-ID leases, and healthy reacquisition.
+
+Focused verification: TaskLifecycle 5/5; IPC R7 9/9; logger redaction-focused 14/14; runtime-pool R7 22/22. No full suite was run. FakeHandle/DeferredResetHandle tests are not real child-process verification; real process lifecycle, transport ordering, and shutdown behavior remain unverified.

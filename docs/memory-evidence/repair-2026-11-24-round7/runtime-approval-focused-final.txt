@@ -1,0 +1,312 @@
+(node:23572) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:23388) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:34884) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/gate.test.ts (5 tests) 57ms
+(node:34344) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/ipc.test.ts (124 tests | 2 failed) 1292ms
+     ✓ lists builtin whitelist plus custom providers through a probe slot 21ms
+     ✓ saveSettings writes only custom providers to models.json and stores the per-provider key 54ms
+     ✓ getApiKey returns the per-provider key and getSettings includes the active provider key 5ms
+     ✓ getSettings reports hasApiKey without returning the secret 2ms
+     ✓ getApiKey(sparkiirag) returns null even when keyring has the secret 2ms
+     ✓ getApiKey also hides sparkiionto and both knowledge keyring names 2ms
+     ✓ saveSettings rejects a custom provider whose id collides with a knowledge credential id 26ms
+     ✓ testKnowledgeConnection probes healthz → info → datasets with the onto settings and token 29ms
+     ✓ testKnowledgeConnection honours an unsaved override 4ms
+     ✓ listKnowledgeDatasets tells 401 (credential) from 403 (permission) and flags an /info mismatch 33ms
+     ✓ keeps testRagConnection as a thin sparkiirag wrapper 3ms
+     ✓ testRagConnection keeps the legacy "no key" wording 2ms
+     ✓ empty saveRagSettings apiKey keeps the keyring value 3ms
+     ✓ saveSettings does not wipe rag 43ms
+     ✓ saveSettings does not wipe documentParse 33ms
+     ✓ download huggingface URL is rejected 2ms
+     ✓ promptSession refuses sparkiirag profiles when RAG is unconfigured 3ms
+     ✓ promptSession does not create a session when sparkiirag is unconfigured 2ms
+     ✓ promptSession opens the session when allowDegradedKnowledge is set (product §15) 5ms
+     ✓ setSessionKnowledge stores selection and promptSession migrates draft key before prompt 28ms
+     ✓ empty retrieval returns first then aborts and appends refused knowledge_turn 53ms
+     ✓ does not copy leftover draft selection onto an existing session 7ms
+     ✓ aborts when the session dataset is no longer visible 23ms
+     ✓ empty search after a sealed hit aborts a new turn 31ms
+     ✓ openRagDocument with an Onto backend still fetches through the ontology client cache segment 26ms
+     ✓ openRagDocument defaults to sparkiirag and returns a bounded error when the credential is missing 2ms
+     ✓ setSessionKnowledge rejects invalid payload 2ms
+     ✓ getRuntimePool returns the pool snapshot 2ms
+     ✓ listModels uses the caller-provided key instead of the stored keyring key 21ms
+     ✓ promptSession routes to settings active provider and default model when the session has no model 20ms
+     ✓ promptSession creates a session and sends the first prompt 6ms
+     ✓ createSession binds a workspace WITHOUT sending a prompt (P9, holds slot + 15s idle release) 11ms
+     ✓ B1: a late agent_settled never revokes a Grant that is not this prompt's 4ms
+     ✓ setChatWorkspace(null) allocates a new Documents auto path 2ms
+     ✓ promptSession does not duplicate model application when the model is already in the saddle 18ms
+     ✓ listChatSessions excludes empty sessions from the local store 2ms
+     ✓ listChatSessions includes DB-only P9 sessions when includeEmpty is true 3ms
+     ✓ listChatSessions falls back to project.json.name through the fenced service 28ms
+     ✓ getChatState does not acquire when a session has no lease 3ms
+     ✓ schedules idle release after agent_settled and releases after timeout 6ms
+     ✓ does not idle-release a knowledge session on agent_end before agent_settled 13ms
+     ✓ does not idle-release or title a workflow session after agent_settled 8ms
+     ✓ rejects a transient prompt waiter after its slot is rebound instead of forwarding the new session event 15ms
+     ✓ R7 rejects a transient prompt waiter after same-id release and reacquire without forwarding the new binding event 15ms
+     ✓ R7 rejects a transient prompt when a successful send completes after same-id rebinding 17ms
+     ✓ R7 cancels every same-id transient waiter without old completion erasing the replacement 32ms
+     ✓ stamps chat-events with the live slot sessionId, not the subscribe-time id 7ms
+     ✓ stamps over an inner sessionId carried by the event 3ms
+     ✓ drops events while the slot has no session bound 3ms
+     ✓ sends session_unbound before releasing the slot so the spinner stops 2ms
+     ✓ logs and stops stamping when the pi child exits 3ms
+     ✓ stops forwarding client events after the workflow slot is released 29ms
+     ✓ idle-releases a post-run workflow slot so a later runWorkflow is not blocked 16ms
+     ✓ workflow selectModel routes to settings active provider and default model 5ms
+     ✓ workflow selectModel prefers the session-selected model 11ms
+     ✓ listThinkingLevels probes a model and returns available thinking levels 4ms
+     ✓ setChatThinkingLevel stores the session level and remembers it per model 25ms
+     ✓ promptSession applies the session thinking level before prompt 20ms
+     ✓ setChatModel applies the selected model to the open Pi session 7ms
+     ✓ setChatThinkingLevel applies the selected level to the open Pi session 4ms
+     ✓ queues a follow_up by default while the Pi session is streaming 4ms
+     ✓ abortChat clears the queue before aborting and returns the cleared items 7ms
+     ✓ connector_read document.read is handled by executeDocumentRead 4ms
+     ✓ connector_read rejects an ontology tool name outside the whitelist 22ms
+     ✓ connector_read writes exactly one audit per ontology tool call and records the query text 6ms
+     ✓ reports document-parse spawn failures to the error center as 文档解析 3ms
+     ✓ abortChat calls failSession before Pi abort 4ms
+     ✓ releaseSessionSlot calls failSession before unbind 3ms
+     ✓ R7 does not release a same-id replacement while an explicit slot release is awaiting task shutdown 3ms
+     ✓ getDocumentParse handler exists 2ms
+     ✓ downloadDocumentParseModule without production hashes fails with offline import hint 19ms
+     ✓ queueMutate rebuilds both queues from the current Pi snapshot 5ms
+     ✓ promptSession stages attachments into the session workspace before prompting 10ms
+     ✓ promptSession sends images directly and stages only non-image attachments 37ms
+     ✓ promptSession creates a session and stages attachments into the chosen workspace 24ms
+     × promptSession registers the proposal broker when creating a session 17ms
+     ✓ getModelOptions without agentId uses generic chat requirements instead of a default agent 2ms
+     ✓ classifies current DeepSeek models with orthogonal capabilities 2ms
+     ✓ promptSession refuses to create a session without profileId 2ms
+     ✓ ensureSessionRecord does not invent profileId general when pinning a Pi-only session 2ms
+     ✓ chooseDocument grants the selected path for readDocumentBytes 19ms
+     ✓ openChatSession ENOENT still returns session inputs 2ms
+     ✓ opens a live session from getBranch + streamingMessage, not get_messages 2ms
+     ✓ recovers the micro-gap assistant from get_messages only while streaming without a slot message 2ms
+     ✓ skips the micro-gap when the last assistant is already on the branch 2ms
+     ✓ does not read get_messages when the live session is idle 2ms
+     ✓ dead session reads JSONL entries only (no preview) 18ms
+     ✓ setChatTitle notifies the renderer so the sidebar can show the filename 3ms
+     ✓ setChatTitle updates the runtime pool label instead of leaving the session id 2ms
+     ✓ reopening a session acquires the pool with displayName and Pi title, not the uuid prefix 3ms
+     ✓ reopening a nameless workflow session uses 新会话, not the skill body 2ms
+     ✓ reopening still acquires display meta when listing Pi sessions fails 2ms
+     ✓ setChatTitle rejects empty titles and agent writes after a user lock 2ms
+     ✓ listChatSessions does not put firstMessage into title 2ms
+     ✓ completeText forwards text to complete without renaming the session 26ms
+     ✓ does not auto-title a chat session on agent_end 3ms
+     ✓ imports, lists, audits, and uninstalls a user skill 50ms
+     ✓ returns no-user-library when no skillLibrary user agent is assembled 2ms
+     ✓ prefers SPARKII_E2E_SKILL_DIR for chooseSkillFolder 2ms
+     ✓ opens the user skills dir after creating it 3ms
+     ✓ lists skills for an agent id from that agent skillsDir only 31ms
+     ✓ allocateAutoWorkspace returns a Documents path and does not create it 2ms
+     ✓ allocateAutoWorkspace rejects unknown agent 1ms
+     ✓ chooseWorkspace mkdirs an absolute defaultPath and forwards it 2ms
+     ✓ chooseWorkspace ignores a relative defaultPath without mkdir 1ms
+     ✓ openWorkspace mkdirs an absolute path and opens it 2ms
+     ✓ openWorkspace ignores a relative path without mkdir 1ms
+     ✓ runWorkflow without workspacePath allocates Documents path and does not mkdir 1ms
+     ✓ runWorkflow with an allocated path keeps workspaceKind auto 1ms
+     ✓ does not expose task capability or user revocation handlers 1ms
+     ✓ reads the session permission mode and host semantics without leaking credentials 2ms
+     ✓ writes the mode, ends the running task and audits the change 2ms
+     ✓ revokes the shell task grant when the mode changes 1ms
+     ✓ refuses a permission mode the profile does not allow 1ms
+     ✓ reports the reviewer as unavailable when Main has no worker 1ms
+     ✓ does not expose the Reviewer worker in the user runtime pool 1ms
+     × runs an approved shell command through the host adapter and reports host semantics 7ms
+     ✓ registers the channel, moves files, updates all session records and broadcasts 9ms
+     ✓ blocks proposal-mode connector execution when privacy redaction wins during the dialog await 5ms
+     ✓ blocks proposal-mode connector execution when privacy redaction wins during the audit await 3ms
+     ✓ blocks proposal-mode connector execution when privacy redaction wins during the gateway await 3ms
+     ✓ commits the chosen export path to the canonical proposal before connector execution 4ms
+     ✓ blocks caller-mode workspace execution when privacy redaction wins during the revalidation await 38ms
+     ✓ blocks caller-mode workspace execution when privacy redaction wins during the audit await 35ms
+(node:40304) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/workflow-broker.test.ts (28 tests | 7 failed) 14467ms
+   ✓ settles a caller waiter as denied when privacy redaction invalidates its proposal 3ms
+   ✓ canonicalizes a stale approved broker completion against privacy-redacted gate state 19ms
+   ✓ acquires the workflow slot with the agent display name, not the session id 5ms
+   ✓ uses the runtime session id for the workflow session record 3ms
+   ✓ keeps only workflow tool-step tools plus read on the runtime saddle 0ms
+   ✓ persists the caller workspace and model on the workflow session 2ms
+   ✓ resolves skill ref and llm template to prompt content 0ms
+   ✓ resolves the two visible business skills plus hidden tools 0ms
+     ✓ rejects forged legacy coding proposals before they reach ApprovalGate 1ms
+     × completes the human step when the shared broker decides approval 2022ms
+     ✓ runs the workflow for the requested profile instead of contract-review 1ms
+     × returns the session id before the runner finishes 2012ms
+     × persists step output on workflow_step_end and does not write a report-named result blob 2007ms
+     × persists workflow_step_end failed status when a step throws 2019ms
+     × stops the workflow and reports when a step_end append fails 2017ms
+     × stops the workflow when even the small failed end cannot be appended 2004ms
+     ✓ does not swallow start/end append failures with empty catch 4ms
+     × does not let a rebound session consume the previous workflow prompt 2010ms
+     ✓ does not let a same-client same-id rebinding consume the previous workflow prompt 14ms
+     ✓ stores full assistant text from message_update/message_end in step output 16ms
+     ✓ does not revive proposal-first edit/write semantics from Runtime requests 5ms
+     ✓ does not scan payload.diff to invent preview for other tools 2ms
+     ✓ does not resolve an approved write as 操作未执行:approved when the timeout elapses mid-execution 74ms
+     ✓ still resolves an untouched pending proposal as expired after the timeout 46ms
+     ✓ pushes the expired proposal to the renderer only when truly expired 50ms
+     ✓ does not push expired while an approved write is still executing 78ms
+     ✓ carries the approval scope back to the awaiting action router 31ms
+     ✓ cancels pending broker waits for one session 16ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 9 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/ipc.test.ts > ipc provider handlers > promptSession registers the proposal broker when creating a session
+Error: unknown session s-new
+ ❯ openOrCreateSession apps/desktop/electron/main/ipc.ts:1413:45
+    1411|       rt.pool.renameSession(tempKey, createdSessionId);
+    1412|       const createdLease = rt.pool.getBinding(createdSessionId)?.lease;
+    1413|       if (createdLease === undefined) throw new Error(`unknown session…
+       |                                             ^
+    1414|       const entry = { slot, profileId, lease: createdLease };
+    1415|       openSessions.set(createdSessionId, entry);
+ ❯ apps/desktop/electron/main/ipc.ts:1670:67
+ ❯ apps/desktop/test/ipc.test.ts:3530:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/9]⎯
+
+ FAIL  |1| apps/desktop/test/ipc.test.ts > permission mode IPC > runs an approved shell command through the host adapter and reports host semantics
+AssertionError: expected { requestId: 'r1', …(3) } to match object { requestId: 'r1', …(2) }
+(4 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "decision": {
+-     "decision": "allow",
+-     "ruleId": "reviewer.allow",
++     "decision": "deny",
++     "ruleId": "platform.shell-disabled",
+    },
+    "requestId": "r1",
+-   "status": "executed",
++   "status": "denied",
+  }
+
+ ❯ apps/desktop/test/ipc.test.ts:4969:20
+    4967|     const result = await onAction({ requestId: 'r1', toolName: 'bash',…
+    4968|
+    4969|     expect(result).toMatchObject({
+       |                    ^
+    4970|       requestId: 'r1',
+    4971|       status: 'executed',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/9]⎯
+
+ FAIL  |1| apps/desktop/test/workflow-broker.test.ts > runWorkflow broker sharing > completes the human step when the shared broker decides approval
+Error: timed out waiting
+ ❯ waitUntil apps/desktop/test/workflow-broker.test.ts:24:47
+     22|   const start = Date.now();
+     23|   while (!predicate()) {
+     24|     if (Date.now() - start > timeoutMs) throw new Error('timed out wai…
+       |                                               ^
+     25|     await new Promise((r) => setTimeout(r, 10));
+     26|   }
+ ❯ apps/desktop/test/workflow-broker.test.ts:391:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/9]⎯
+
+ FAIL  |1| apps/desktop/test/workflow-broker.test.ts > runWorkflow session id and JSONL > returns the session id before the runner finishes
+Error: timed out waiting
+ ❯ waitUntil apps/desktop/test/workflow-broker.test.ts:24:47
+     22|   const start = Date.now();
+     23|   while (!predicate()) {
+     24|     if (Date.now() - start > timeoutMs) throw new Error('timed out wai…
+       |                                               ^
+     25|     await new Promise((r) => setTimeout(r, 10));
+     26|   }
+ ❯ apps/desktop/test/workflow-broker.test.ts:502:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/9]⎯
+
+ FAIL  |1| apps/desktop/test/workflow-broker.test.ts > runWorkflow session id and JSONL > persists step output on workflow_step_end and does not write a report-named result blob
+Error: timed out waiting
+ ❯ waitUntil apps/desktop/test/workflow-broker.test.ts:24:47
+     22|   const start = Date.now();
+     23|   while (!predicate()) {
+     24|     if (Date.now() - start > timeoutMs) throw new Error('timed out wai…
+       |                                               ^
+     25|     await new Promise((r) => setTimeout(r, 10));
+     26|   }
+ ❯ apps/desktop/test/workflow-broker.test.ts:513:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/9]⎯
+
+ FAIL  |1| apps/desktop/test/workflow-broker.test.ts > runWorkflow session id and JSONL > persists workflow_step_end failed status when a step throws
+Error: timed out waiting
+ ❯ waitUntil apps/desktop/test/workflow-broker.test.ts:24:47
+     22|   const start = Date.now();
+     23|   while (!predicate()) {
+     24|     if (Date.now() - start > timeoutMs) throw new Error('timed out wai…
+       |                                               ^
+     25|     await new Promise((r) => setTimeout(r, 10));
+     26|   }
+ ❯ apps/desktop/test/workflow-broker.test.ts:536:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/9]⎯
+
+ FAIL  |1| apps/desktop/test/workflow-broker.test.ts > runWorkflow session id and JSONL > stops the workflow and reports when a step_end append fails
+Error: timed out waiting
+ ❯ waitUntil apps/desktop/test/workflow-broker.test.ts:24:47
+     22|   const start = Date.now();
+     23|   while (!predicate()) {
+     24|     if (Date.now() - start > timeoutMs) throw new Error('timed out wai…
+       |                                               ^
+     25|     await new Promise((r) => setTimeout(r, 10));
+     26|   }
+ ❯ apps/desktop/test/workflow-broker.test.ts:583:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/9]⎯
+
+ FAIL  |1| apps/desktop/test/workflow-broker.test.ts > runWorkflow session id and JSONL > stops the workflow when even the small failed end cannot be appended
+Error: timed out waiting
+ ❯ waitUntil apps/desktop/test/workflow-broker.test.ts:24:47
+     22|   const start = Date.now();
+     23|   while (!predicate()) {
+     24|     if (Date.now() - start > timeoutMs) throw new Error('timed out wai…
+       |                                               ^
+     25|     await new Promise((r) => setTimeout(r, 10));
+     26|   }
+ ❯ apps/desktop/test/workflow-broker.test.ts:646:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/9]⎯
+
+ FAIL  |1| apps/desktop/test/workflow-broker.test.ts > runWorkflow session id and JSONL > does not let a rebound session consume the previous workflow prompt
+Error: timed out waiting
+ ❯ waitUntil apps/desktop/test/workflow-broker.test.ts:24:47
+     22|   const start = Date.now();
+     23|   while (!predicate()) {
+     24|     if (Date.now() - start > timeoutMs) throw new Error('timed out wai…
+       |                                               ^
+     25|     await new Promise((r) => setTimeout(r, 10));
+     26|   }
+ ❯ apps/desktop/test/workflow-broker.test.ts:695:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/9]⎯
+
+
+ Test Files  2 failed | 1 passed (3)
+      Tests  9 failed | 148 passed (157)
+   Start at  23:15:31
+   Duration  24.26s (transform 1.28s, setup 29ms, import 6.35s, tests 15.82s, environment 1.57s)
+

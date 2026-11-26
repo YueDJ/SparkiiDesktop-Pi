@@ -1,0 +1,13 @@
+(node:30408) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+> @sparkii/desktop@0.1.7 typecheck C:\Users\YDJ\Desktop\SparkiiDesktop-Pi\apps\desktop
+> tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.electron.json
+
+electron/main/chat-session-store.ts(124,7): error TS2322: Type 'string' is not assignable to type 'SessionKind'.
+electron/main/chat-session-store.ts(126,7): error TS2322: Type 'string' is not assignable to type 'WorkspaceKind'.
+C:\Users\YDJ\Desktop\SparkiiDesktop-Pi\apps\desktop:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @sparkii/desktop@0.1.7 typecheck: `tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.electron.json`
+Exit status 2
+
+exit=2

@@ -1,0 +1,156 @@
+(node:25396) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:42676) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:42848) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/ipc.test.ts (124 tests | 1 failed | 123 skipped) 259ms
+     ↓ lists builtin whitelist plus custom providers through a probe slot
+     ↓ saveSettings writes only custom providers to models.json and stores the per-provider key
+     ↓ getApiKey returns the per-provider key and getSettings includes the active provider key
+     ↓ getSettings reports hasApiKey without returning the secret
+     ↓ getApiKey(sparkiirag) returns null even when keyring has the secret
+     ↓ getApiKey also hides sparkiionto and both knowledge keyring names
+     ↓ saveSettings rejects a custom provider whose id collides with a knowledge credential id
+     ↓ testKnowledgeConnection probes healthz → info → datasets with the onto settings and token
+     ↓ testKnowledgeConnection honours an unsaved override
+     ↓ listKnowledgeDatasets tells 401 (credential) from 403 (permission) and flags an /info mismatch
+     ↓ keeps testRagConnection as a thin sparkiirag wrapper
+     ↓ testRagConnection keeps the legacy "no key" wording
+     ↓ empty saveRagSettings apiKey keeps the keyring value
+     ↓ saveSettings does not wipe rag
+     ↓ saveSettings does not wipe documentParse
+     ↓ download huggingface URL is rejected
+     ↓ promptSession refuses sparkiirag profiles when RAG is unconfigured
+     ↓ promptSession does not create a session when sparkiirag is unconfigured
+     ↓ promptSession opens the session when allowDegradedKnowledge is set (product §15)
+     ↓ setSessionKnowledge stores selection and promptSession migrates draft key before prompt
+     ↓ empty retrieval returns first then aborts and appends refused knowledge_turn
+     ↓ does not copy leftover draft selection onto an existing session
+     ↓ aborts when the session dataset is no longer visible
+     ↓ empty search after a sealed hit aborts a new turn
+     ↓ openRagDocument with an Onto backend still fetches through the ontology client cache segment
+     ↓ openRagDocument defaults to sparkiirag and returns a bounded error when the credential is missing
+     ↓ setSessionKnowledge rejects invalid payload
+     ↓ getRuntimePool returns the pool snapshot
+     ↓ listModels uses the caller-provided key instead of the stored keyring key
+     ↓ promptSession routes to settings active provider and default model when the session has no model
+     ↓ promptSession creates a session and sends the first prompt
+     ↓ createSession binds a workspace WITHOUT sending a prompt (P9, holds slot + 15s idle release)
+     ↓ B1: a late agent_settled never revokes a Grant that is not this prompt's
+     ↓ setChatWorkspace(null) allocates a new Documents auto path
+     ↓ promptSession does not duplicate model application when the model is already in the saddle
+     ↓ listChatSessions excludes empty sessions from the local store
+     ↓ listChatSessions includes DB-only P9 sessions when includeEmpty is true
+     ↓ listChatSessions falls back to project.json.name through the fenced service
+     ↓ getChatState does not acquire when a session has no lease
+     ↓ schedules idle release after agent_settled and releases after timeout
+     ↓ does not idle-release a knowledge session on agent_end before agent_settled
+     ↓ does not idle-release or title a workflow session after agent_settled
+     ↓ rejects a transient prompt waiter after its slot is rebound instead of forwarding the new session event
+     ↓ R7 rejects a transient prompt waiter after same-id release and reacquire without forwarding the new binding event
+     ↓ R7 rejects a transient prompt when a successful send completes after same-id rebinding
+     × R7 cancels every same-id transient waiter without old completion erasing the replacement 258ms
+     ↓ stamps chat-events with the live slot sessionId, not the subscribe-time id
+     ↓ stamps over an inner sessionId carried by the event
+     ↓ drops events while the slot has no session bound
+     ↓ sends session_unbound before releasing the slot so the spinner stops
+     ↓ logs and stops stamping when the pi child exits
+     ↓ stops forwarding client events after the workflow slot is released
+     ↓ idle-releases a post-run workflow slot so a later runWorkflow is not blocked
+     ↓ workflow selectModel routes to settings active provider and default model
+     ↓ workflow selectModel prefers the session-selected model
+     ↓ listThinkingLevels probes a model and returns available thinking levels
+     ↓ setChatThinkingLevel stores the session level and remembers it per model
+     ↓ promptSession applies the session thinking level before prompt
+     ↓ setChatModel applies the selected model to the open Pi session
+     ↓ setChatThinkingLevel applies the selected level to the open Pi session
+     ↓ queues a follow_up by default while the Pi session is streaming
+     ↓ abortChat clears the queue before aborting and returns the cleared items
+     ↓ connector_read document.read is handled by executeDocumentRead
+     ↓ connector_read rejects an ontology tool name outside the whitelist
+     ↓ connector_read writes exactly one audit per ontology tool call and records the query text
+     ↓ reports document-parse spawn failures to the error center as 文档解析
+     ↓ abortChat calls failSession before Pi abort
+     ↓ releaseSessionSlot calls failSession before unbind
+     ↓ R7 does not release a same-id replacement while an explicit slot release is awaiting task shutdown
+     ↓ getDocumentParse handler exists
+     ↓ downloadDocumentParseModule without production hashes fails with offline import hint
+     ↓ queueMutate rebuilds both queues from the current Pi snapshot
+     ↓ promptSession stages attachments into the session workspace before prompting
+     ↓ promptSession sends images directly and stages only non-image attachments
+     ↓ promptSession creates a session and stages attachments into the chosen workspace
+     ↓ promptSession registers the proposal broker when creating a session
+     ↓ getModelOptions without agentId uses generic chat requirements instead of a default agent
+     ↓ classifies current DeepSeek models with orthogonal capabilities
+     ↓ promptSession refuses to create a session without profileId
+     ↓ ensureSessionRecord does not invent profileId general when pinning a Pi-only session
+     ↓ chooseDocument grants the selected path for readDocumentBytes
+     ↓ openChatSession ENOENT still returns session inputs
+     ↓ opens a live session from getBranch + streamingMessage, not get_messages
+     ↓ recovers the micro-gap assistant from get_messages only while streaming without a slot message
+     ↓ skips the micro-gap when the last assistant is already on the branch
+     ↓ does not read get_messages when the live session is idle
+     ↓ dead session reads JSONL entries only (no preview)
+     ↓ setChatTitle notifies the renderer so the sidebar can show the filename
+     ↓ setChatTitle updates the runtime pool label instead of leaving the session id
+     ↓ reopening a session acquires the pool with displayName and Pi title, not the uuid prefix
+     ↓ reopening a nameless workflow session uses 新会话, not the skill body
+     ↓ reopening still acquires display meta when listing Pi sessions fails
+     ↓ setChatTitle rejects empty titles and agent writes after a user lock
+     ↓ listChatSessions does not put firstMessage into title
+     ↓ completeText forwards text to complete without renaming the session
+     ↓ does not auto-title a chat session on agent_end
+     ↓ imports, lists, audits, and uninstalls a user skill
+     ↓ returns no-user-library when no skillLibrary user agent is assembled
+     ↓ prefers SPARKII_E2E_SKILL_DIR for chooseSkillFolder
+     ↓ opens the user skills dir after creating it
+     ↓ lists skills for an agent id from that agent skillsDir only
+     ↓ allocateAutoWorkspace returns a Documents path and does not create it
+     ↓ allocateAutoWorkspace rejects unknown agent
+     ↓ chooseWorkspace mkdirs an absolute defaultPath and forwards it
+     ↓ chooseWorkspace ignores a relative defaultPath without mkdir
+     ↓ openWorkspace mkdirs an absolute path and opens it
+     ↓ openWorkspace ignores a relative path without mkdir
+     ↓ runWorkflow without workspacePath allocates Documents path and does not mkdir
+     ↓ runWorkflow with an allocated path keeps workspaceKind auto
+     ↓ does not expose task capability or user revocation handlers
+     ↓ reads the session permission mode and host semantics without leaking credentials
+     ↓ writes the mode, ends the running task and audits the change
+     ↓ revokes the shell task grant when the mode changes
+     ↓ refuses a permission mode the profile does not allow
+     ↓ reports the reviewer as unavailable when Main has no worker
+     ↓ does not expose the Reviewer worker in the user runtime pool
+     ↓ runs an approved shell command through the host adapter and reports host semantics
+     ↓ registers the channel, moves files, updates all session records and broadcasts
+     ↓ blocks proposal-mode connector execution when privacy redaction wins during the dialog await
+     ↓ blocks proposal-mode connector execution when privacy redaction wins during the audit await
+     ↓ blocks proposal-mode connector execution when privacy redaction wins during the gateway await
+     ↓ commits the chosen export path to the canonical proposal before connector execution
+     ↓ blocks caller-mode workspace execution when privacy redaction wins during the revalidation await
+     ↓ blocks caller-mode workspace execution when privacy redaction wins during the audit await
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/ipc.test.ts > ipc provider handlers > R7 cancels every same-id transient waiter without old completion erasing the replacement
+AssertionError: expected 'timeout' not to be 'timeout' // Object.is equality
+ ❯ apps/desktop/test/ipc.test.ts:2160:32
+    2158|     ]);
+    2159|     try {
+    2160|       expect(firstOutcome).not.toBe('timeout');
+       |                                ^
+    2161|       expect(firstOutcome).toMatchObject({ message: expect.stringMatch…
+    2162|       promptResolvers[0]({ success: true });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 123 skipped (124)
+   Start at  23:09:52
+   Duration  6.47s (transform 1.25s, setup 33ms, import 5.23s, tests 259ms, environment 776ms)
+

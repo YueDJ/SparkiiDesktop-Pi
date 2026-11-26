@@ -1,0 +1,4106 @@
+diff --git a/apps/desktop/electron/main/error-store.ts b/apps/desktop/electron/main/error-store.ts
+index d18e9c7a..204404aa 100644
+--- a/apps/desktop/electron/main/error-store.ts
++++ b/apps/desktop/electron/main/error-store.ts
+@@ -72,6 +72,23 @@ export class ErrorStore {
+     this.db.prepare('UPDATE error_events SET read = 1').run();
+   }
+ 
++  redactTexts(texts: string[]): void {
++    const values = [...new Set(texts.filter((text) => text.length > 0))].sort((a, b) => b.length - a.length);
++    if (!values.length) return;
++    const rows = this.db.prepare('SELECT id, message FROM error_events').all() as Array<{ id: string; message: string }>;
++    const update = this.db.prepare('UPDATE error_events SET message = ? WHERE id = ?');
++    this.db.transaction(() => {
++      for (const row of rows) {
++        let message = row.message;
++        for (const value of values) {
++          message = message.split(value).join('[已删除]');
++          message = message.split(JSON.stringify(value).slice(1, -1)).join('[已删除]');
++        }
++        if (message !== row.message) update.run(message, row.id);
++      }
++    })();
++  }
++
+   close(): void {
+     this.db.close();
+   }
+diff --git a/apps/desktop/electron/main/logger.ts b/apps/desktop/electron/main/logger.ts
+index 1116c5cb..440a14bf 100644
+--- a/apps/desktop/electron/main/logger.ts
++++ b/apps/desktop/electron/main/logger.ts
+@@ -1,4 +1,5 @@
+ import { appendFile, mkdir, readFile } from 'node:fs/promises';
++import { readFileSync, renameSync, writeFileSync } from 'node:fs';
+ import { join } from 'node:path';
+ 
+ export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+@@ -7,23 +8,70 @@ const LEVEL_RANK: Record<LogLevel, number> = { debug: 0, info: 1, warn: 2, error
+ 
+ export class Logger {
+   level: LogLevel = 'info';
++  private readonly redactions: string[] = [];
+   constructor(private dir: string, private consoleEcho = true) {}
+   private file() { return join(this.dir, 'sparkii.log.jsonl'); }
++  private redactText(text: string): string {
++    let output = text;
++    for (const value of this.redactions) {
++      if (!value) continue;
++      output = output.split(value).join('[已删除]');
++      output = output.split(JSON.stringify(value).slice(1, -1)).join('[已删除]');
++    }
++    return output;
++  }
++  private rewrite(lines: string[]): void {
++    const path = this.file();
++    const temp = `${path}.redact.tmp`;
++    writeFileSync(temp, lines.join('\n'), 'utf8');
++    renameSync(temp, path);
++  }
++  redactMemoryPromptLogs(): void {
++    let lines: string[];
++    try {
++      lines = readFileSync(this.file(), 'utf8').split('\n').filter((line) => {
++        if (!line.trim()) return false;
++        try { return JSON.parse(line).msg !== 'memory prompt block appended to saddle'; } catch { return true; }
++      });
++    } catch (error) {
++      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
++      throw error;
++    }
++    this.rewrite(lines);
++  }
++  redactSession(sessionId: string, texts: string[]): void {
++    for (const text of texts) if (text && !this.redactions.includes(text)) this.redactions.push(text);
++    let existing: string;
++    try { existing = readFileSync(this.file(), 'utf8'); } catch (error) {
++      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
++      throw error;
++    }
++    const lines = existing.split('\n').filter((line) => {
++      if (!line.trim()) return false;
++      try {
++        const entry = JSON.parse(line) as { ctx?: { sessionId?: unknown } };
++        return entry.ctx?.sessionId !== sessionId;
++      } catch { return true; }
++    });
++    this.rewrite(lines.map((line) => this.redactText(line)));
++  }
+   async log(entry: { level: LogLevel; msg: string; ctx?: Record<string, unknown> }): Promise<void> {
+     if (LEVEL_RANK[entry.level] < LEVEL_RANK[this.level]) return;
+     if (this.consoleEcho) {
+-      if (entry.level === 'error') console.error(entry.msg, entry.ctx ?? '');
+-      else if (entry.level === 'warn') console.warn(entry.msg, entry.ctx ?? '');
+-      else console.log(entry.msg, entry.ctx ?? '');
++      const context = this.redactText(JSON.stringify(entry.ctx ?? ''));
++      if (entry.level === 'error') console.error(this.redactText(entry.msg), context);
++      else if (entry.level === 'warn') console.warn(this.redactText(entry.msg), context);
++      else console.log(this.redactText(entry.msg), context);
+     }
+     try {
+       await mkdir(this.dir, { recursive: true });
+-      await appendFile(this.file(), JSON.stringify({ ts: Date.now(), ...entry }) + '\n');
++      const line = this.redactText(JSON.stringify({ ts: Date.now(), ...entry }));
++      await appendFile(this.file(), `${line}\n`);
+     } catch {
+       // 日志写盘失败不阻断主流程
+     }
+   }
+   async export(): Promise<string> {
+-    try { return await readFile(this.file(), 'utf8'); } catch { return ''; }
++    try { return this.redactText(await readFile(this.file(), 'utf8')); } catch { return ''; }
+   }
+ }
+diff --git a/apps/desktop/electron/main/memory/consolidation.ts b/apps/desktop/electron/main/memory/consolidation.ts
+index e4f2ca90..c416dd55 100644
+--- a/apps/desktop/electron/main/memory/consolidation.ts
++++ b/apps/desktop/electron/main/memory/consolidation.ts
+@@ -2,6 +2,7 @@ import type { Logger } from '../logger.js';
+ import type { ErrorStore } from '../error-store.js';
+ import type { MemoryService } from './service.js';
+ import type { InternalSlot, ModelTargetLike } from './extraction.js';
++import type { AddMemoryRequest } from './service.js';
+ import { recordMemoryError } from './fts.js';
+ import { trigramSimilarity } from './ops.js';
+ 
+@@ -86,35 +87,34 @@ export class IdleConsolidator {
+     if (this.deps.isBusy?.()) return { skipped: 'busy', calls: 0, proposals: 0, digests: 0 };
+     if (this.running) return { skipped: 'busy', calls: 0, proposals: 0, digests: 0 };
+ 
+-    const target = await this.deps.target();
+-    if (!target) return { skipped: 'no-model', calls: 0, proposals: 0, digests: 0 };
+-
+-    let slot: InternalSlot | null = null;
+-    if (this.deps.acquireInternalSlot) {
+-      slot = await this.deps.acquireInternalSlot(target);
+-      if (!slot) {
+-        void this.deps.logger?.log({
+-          level: 'info', msg: 'memory consolidation skipped: no idle slot',
+-          ctx: { model: `${target.provider}/${target.modelId}` },
+-        });
+-        return { skipped: 'no-idle-slot', calls: 0, proposals: 0, digests: 0 };
+-      }
+-    }
+-
+     this.running = true;
++    let slot: InternalSlot | null = null;
+     let calls = 0;
+     let proposals = 0;
+     let digests = 0;
+-    const ask = async (prompt: string): Promise<string> => {
+-      calls += 1;
+-      return slot?.complete ? slot.complete(prompt, target) : this.deps.complete(prompt, target);
+-    };
+-
+     try {
++      const target = await this.deps.target();
++      if (!target) return { skipped: 'no-model', calls: 0, proposals: 0, digests: 0 };
++      if (this.deps.acquireInternalSlot) {
++        slot = await this.deps.acquireInternalSlot(target);
++        if (!slot) {
++          void this.deps.logger?.log({
++            level: 'info', msg: 'memory consolidation skipped: no idle slot',
++            ctx: { model: `${target.provider}/${target.modelId}` },
++          });
++          return { skipped: 'no-idle-slot', calls: 0, proposals: 0, digests: 0 };
++        }
++      }
++      const ask = async (prompt: string): Promise<string> => {
++        calls += 1;
++        return slot?.complete ? slot.complete(prompt, target) : this.deps.complete(prompt, target);
++      };
++      this.deps.service.synchronize();
+       const merges = await this.mergePhase(ask, () => calls < CONSOLIDATION_MAX_CALLS);
+       proposals += merges;
+       const compressed = await this.compressPhase(ask, () => calls < CONSOLIDATION_MAX_CALLS);
+-      digests += compressed;
++      proposals += compressed.proposals;
++      digests += compressed.digests;
+       const stale = await this.stalePhase(ask, () => calls < CONSOLIDATION_MAX_CALLS);
+       proposals += stale;
+ 
+@@ -148,11 +148,11 @@ export class IdleConsolidator {
+     let raw: string;
+     try {
+       raw = await ask(prompt);
+-    } catch (error) {
+-      recordMemoryError(this.deps.errors, 'consolidate-merge', error instanceof Error ? error.message : String(error));
++    } catch {
++      recordMemoryError(this.deps.errors, 'consolidate-merge', '记忆整合模型调用失败');
+       return 0;
+     }
+-    let parsed: { merges?: Array<{ keepId?: string; dropId?: string; text?: string }> };
++    let parsed: { merges?: unknown };
+     try {
+       parsed = JSON.parse(raw.trim());
+     } catch {
+@@ -160,43 +160,52 @@ export class IdleConsolidator {
+       void this.deps.logger?.log({ level: 'warn', msg: 'memory consolidation merge discarded', ctx: { reason: 'invalid-json' } });
+       return 0;
+     }
+-    if (!Array.isArray(parsed.merges)) return 0;
+-    const pairIds = new Set(pairs.flatMap(([a, b]) => [a.id, b.id]));
+-    let proposals = 0;
++    if (!parsed || !Array.isArray(parsed.merges)) return 0;
++    const requests: AddMemoryRequest[] = [];
+     for (const merge of parsed.merges.slice(0, PHASE_LIMIT)) {
+-      const keepId = String(merge.keepId ?? '');
+-      const dropId = String(merge.dropId ?? '');
+-      const text = String(merge.text ?? '').trim();
+-      if (!keepId || !dropId || !text || text.length > 200) continue;
+-      if (!pairIds.has(keepId) || !pairIds.has(dropId) || keepId === dropId) continue;
++      if (!merge || typeof merge !== 'object' || Array.isArray(merge)) return 0;
++      const item = merge as Record<string, unknown>;
++      if (typeof item.keepId !== 'string' || typeof item.dropId !== 'string' || typeof item.text !== 'string') return 0;
++      const keepId = item.keepId;
++      const dropId = item.dropId;
++      const text = item.text.trim();
++      if (!keepId || !dropId || !text || text.length > 200 || keepId === dropId) return 0;
++      if (!pairs.some(([a, b]) => (a.id === keepId && b.id === dropId) || (a.id === dropId && b.id === keepId))) return 0;
+       const keep = this.deps.service.store.rowFor(keepId);
+-      if (!keep || keep.status !== 'active') continue;
++      if (!keep || keep.status !== 'active') return 0;
+       const drop = this.deps.service.store.rowFor(dropId);
+-      if (!drop || drop.status !== 'active') continue;
+-
+-      // 合并提案：保留 keep，替换为合并后的陈述；drop 在批准时一并作废（mergeIds）。
+-      this.deps.service.addMemory({
++      if (!drop || drop.status !== 'active' || drop.file_ref !== keep.file_ref || drop.scope !== keep.scope) return 0;
++      requests.push({
+         scope: keep.scope,
+         text,
+         status: 'pending',
+         sourceKind: 'consolidated',
+         ...this.workspaceOf(keep),
+         excerpt: `整合：合并「${keep.text}」与「${dropId}」`,
+-        pendingOp: { op: 'SUPERSEDE', targetId: keepId, proposedText: text, mergeIds: [dropId] },
++        pendingOp: {
++          op: 'SUPERSEDE', targetId: keepId, proposedText: text, mergeIds: [dropId],
++          idempotencyKey: `merge:${[keepId, dropId].sort().join(':')}:${text}`,
++        },
+       });
+-      proposals += 1;
+     }
+-    return proposals;
++    if (!requests.length) return 0;
++    try {
++      return this.deps.service.addMemoriesBatch(requests).ids.length;
++    } catch (error) {
++      recordMemoryError(this.deps.errors, 'consolidate-merge', error instanceof Error ? error.message : String(error));
++      return 0;
++    }
+   }
+ 
+   /** B：30 天以上的长情景摘要 → 二次压缩。 */
+-  private async compressPhase(ask: (prompt: string) => Promise<string>, canCall: () => boolean): Promise<number> {
++  private async compressPhase(ask: (prompt: string) => Promise<string>, canCall: () => boolean): Promise<{ proposals: number; digests: number }> {
++    const empty = { proposals: 0, digests: 0 };
+     const cutoff = this.now() - EPISODE_COMPRESS_AFTER_DAYS * 86_400_000;
+     const stale = this.deps.service.store
+       .listEpisodes()
+       .filter((e) => e.ts < cutoff && e.summary.length > 80)
+       .slice(0, PHASE_LIMIT);
+-    if (!stale.length || !canCall()) return 0;
++    if (!stale.length || !canCall()) return empty;
+     const list = stale.map((e) => `${e.sessionId}\t${e.summary}`).join('\n');
+     const prompt = [
+       '你是记忆压缩器。只输出一个 JSON 对象，不要解释、不要代码块。',
+@@ -207,29 +216,48 @@ export class IdleConsolidator {
+     let raw: string;
+     try {
+       raw = await ask(prompt);
+-    } catch (error) {
+-      recordMemoryError(this.deps.errors, 'consolidate-compress', error instanceof Error ? error.message : String(error));
+-      return 0;
++    } catch {
++      recordMemoryError(this.deps.errors, 'consolidate-compress', '记忆压缩模型调用失败');
++      return empty;
+     }
+-    let parsed: { digests?: Array<{ sessionId?: string; summary?: string }> };
++    let parsed: { digests?: unknown };
+     try {
+       parsed = JSON.parse(raw.trim());
+     } catch {
+       recordMemoryError(this.deps.errors, 'consolidate-parse', 'compress 阶段输出不是合法 JSON');
+       void this.deps.logger?.log({ level: 'warn', msg: 'memory consolidation compress discarded', ctx: { reason: 'invalid-json' } });
+-      return 0;
++      return empty;
+     }
+-    if (!Array.isArray(parsed.digests)) return 0;
++    if (!parsed || !Array.isArray(parsed.digests)) return empty;
+     const known = new Set(stale.map((e) => e.sessionId));
+-    let digests = 0;
+-    for (const item of parsed.digests) {
+-      const sessionId = String(item.sessionId ?? '');
+-      const summary = String(item.summary ?? '').trim();
+-      if (!known.has(sessionId) || !summary || summary.length > 160) continue;
+-      this.deps.service.store.updateEpisodeSummary(sessionId, summary);
+-      digests += 1;
++    const requests: AddMemoryRequest[] = [];
++    for (const digest of parsed.digests.slice(0, PHASE_LIMIT)) {
++      if (!digest || typeof digest !== 'object' || Array.isArray(digest)) return empty;
++      const item = digest as Record<string, unknown>;
++      if (typeof item.sessionId !== 'string' || typeof item.summary !== 'string') return empty;
++      const sessionId = item.sessionId;
++      const summary = item.summary.trim();
++      if (!known.has(sessionId) || !summary || summary.length > 40) return empty;
++      requests.push({
++        scope: `episode:${sessionId}`,
++        text: summary,
++        status: 'pending',
++        sourceKind: 'consolidated',
++        excerpt: '空闲整合：压缩会话摘要',
++        pendingOp: {
++          op: 'EPISODE_UPDATE', targetId: sessionId, proposedText: summary,
++          idempotencyKey: `episode:${sessionId}:${summary}`,
++        },
++      });
++    }
++    if (!requests.length) return empty;
++    try {
++      const result = this.deps.service.addMemoriesBatch(requests);
++      return { proposals: result.ids.length, digests: requests.length };
++    } catch (error) {
++      recordMemoryError(this.deps.errors, 'consolidate-compress', error instanceof Error ? error.message : String(error));
++      return empty;
+     }
+-    return digests;
+   }
+ 
+   /** C：长期未更新的项目事实 → 过期复核提案（仍走 pending）。 */
+@@ -249,11 +277,11 @@ export class IdleConsolidator {
+     let raw: string;
+     try {
+       raw = await ask(prompt);
+-    } catch (error) {
+-      recordMemoryError(this.deps.errors, 'consolidate-stale', error instanceof Error ? error.message : String(error));
++    } catch {
++      recordMemoryError(this.deps.errors, 'consolidate-stale', '记忆复核模型调用失败');
+       return 0;
+     }
+-    let parsed: { ops?: Array<{ targetId?: string; replacementText?: string }> };
++    let parsed: { ops?: unknown };
+     try {
+       parsed = JSON.parse(raw.trim());
+     } catch {
+@@ -261,27 +289,38 @@ export class IdleConsolidator {
+       void this.deps.logger?.log({ level: 'warn', msg: 'memory consolidation stale discarded', ctx: { reason: 'invalid-json' } });
+       return 0;
+     }
+-    if (!Array.isArray(parsed.ops)) return 0;
++    if (!parsed || !Array.isArray(parsed.ops)) return 0;
+     const allowed = new Set(rows.map((r) => r.id));
+-    let proposals = 0;
++    const requests: AddMemoryRequest[] = [];
+     for (const op of parsed.ops.slice(0, PHASE_LIMIT)) {
+-      const targetId = String(op.targetId ?? '');
+-      const replacementText = String(op.replacementText ?? '').trim();
+-      if (!allowed.has(targetId) || !replacementText || replacementText.length > 200) continue;
++      if (!op || typeof op !== 'object' || Array.isArray(op)) return 0;
++      const item = op as Record<string, unknown>;
++      if (typeof item.targetId !== 'string' || typeof item.replacementText !== 'string') return 0;
++      const targetId = item.targetId;
++      const replacementText = item.replacementText.trim();
++      if (!allowed.has(targetId) || !replacementText || replacementText.length > 200) return 0;
+       const row = this.deps.service.store.rowFor(targetId);
+-      if (!row || row.status !== 'active') continue;
+-      this.deps.service.addMemory({
++      if (!row || row.status !== 'active') return 0;
++      requests.push({
+         scope: row.scope,
+         text: replacementText,
+         status: 'pending',
+         sourceKind: 'consolidated',
+         ...this.workspaceOf(row),
+         excerpt: `整合：复核过期项目事实 ${targetId}`,
+-        pendingOp: { op: 'SUPERSEDE', targetId, proposedText: replacementText },
++        pendingOp: {
++          op: 'SUPERSEDE', targetId, proposedText: replacementText,
++          idempotencyKey: `stale:${targetId}:${replacementText}`,
++        },
+       });
+-      proposals += 1;
+     }
+-    return proposals;
++    if (!requests.length) return 0;
++    try {
++      return this.deps.service.addMemoriesBatch(requests).ids.length;
++    } catch (error) {
++      recordMemoryError(this.deps.errors, 'consolidate-stale', error instanceof Error ? error.message : String(error));
++      return 0;
++    }
+   }
+ 
+   /** 项目层提案要带回工作区，否则真相源解析不出文件。 */
+@@ -292,7 +331,7 @@ export class IdleConsolidator {
+   /** 同 scope 内相似度 ≥0.85 的 active 记忆对（取前 PHASE_LIMIT 组，id 去重）。 */
+   private findSimilarPairs(): Array<[MemoryRow, MemoryRow]> {
+     const rows = this.deps.service.store.db.prepare(
+-      "SELECT id, scope, text, updated_at FROM memories WHERE status = 'active' ORDER BY scope, updated_at DESC",
++      "SELECT id, scope, text, updated_at, file_ref FROM memories WHERE status = 'active' ORDER BY scope, updated_at DESC",
+     ).all() as MemoryRow[];
+     const pairs: Array<[MemoryRow, MemoryRow]> = [];
+     const used = new Set<string>();
+@@ -300,7 +339,7 @@ export class IdleConsolidator {
+       for (let j = i + 1; j < rows.length; j += 1) {
+         const a = rows[i];
+         const b = rows[j];
+-        if (a.scope !== b.scope) continue;
++        if (a.scope !== b.scope || a.file_ref !== b.file_ref) continue;
+         if (used.has(a.id) || used.has(b.id)) continue;
+         if (trigramSimilarity(a.text, b.text) < 0.85) continue;
+         pairs.push([a, b]);
+@@ -313,4 +352,4 @@ export class IdleConsolidator {
+   }
+ }
+ 
+-type MemoryRow = { id: string; scope: string; text: string; updated_at: number };
++type MemoryRow = { id: string; scope: string; text: string; updated_at: number; file_ref: string };
+diff --git a/apps/desktop/electron/main/memory/extraction.ts b/apps/desktop/electron/main/memory/extraction.ts
+index 385f75ef..e4897202 100644
+--- a/apps/desktop/electron/main/memory/extraction.ts
++++ b/apps/desktop/electron/main/memory/extraction.ts
+@@ -1,6 +1,6 @@
+ import type { Logger } from '../logger.js';
+ import type { ErrorStore } from '../error-store.js';
+-import type { MemoryService } from './service.js';
++import type { MemoryService, AddMemoryRequest } from './service.js';
+ import { recordMemoryError } from './fts.js';
+ import { readSessionMaterial, type SessionMaterial } from './material.js';
+ import { parseExtraction, trigramSimilarity, type ExtractedOp } from './ops.js';
+@@ -84,7 +84,7 @@ export class ExtractionScheduler {
+       'schema: {"sessionSummary":"≤150字摘要","topics":["主题"],"ops":[{"op":"ADD","scope":"user|agent|project","text":"≤200字","importance":1,"excerpt":"用户原话"}]}',
+       'ops 最多 5 条；UPDATE/SUPERSEDE 需 targetId，SUPERSEDE 需 replacementText；无内容时 ops 为 []。',
+       `现有记忆：\n${list}`,
+-      `本次会话增量（entry-id 位点之后）：\n${material.text.slice(0, 6000)}`,
++      `本次会话增量（entry-id 位点之后）：\n${material.text}`,
+     ].join('\n\n');
+   }
+ 
+@@ -95,6 +95,7 @@ export class ExtractionScheduler {
+     }
+     const ctx = this.deps.contextOf(sessionId);
+     if (!ctx) return { skipped: 'no-session', opsApplied: 0 };
++    const generation = this.deps.service.extractionGeneration(sessionId);
+     const state = this.deps.service.store.getExtractionState(sessionId);
+     let material: SessionMaterial;
+     try {
+@@ -111,6 +112,9 @@ export class ExtractionScheduler {
+     }
+     const target = await this.deps.target();
+     if (!target) return { skipped: 'no-model', opsApplied: 0 };
++    try { this.deps.service.assertExtractionCurrent(sessionId, generation); } catch {
++      return { skipped: 'session-invalidated', opsApplied: 0 };
++    }
+ 
+     let slot: InternalSlot | null = null;
+     if (this.deps.acquireInternalSlot) {
+@@ -123,14 +127,27 @@ export class ExtractionScheduler {
+         return { skipped: 'no-idle-slot', opsApplied: 0 };
+       }
+     }
++    try { this.deps.service.assertExtractionCurrent(sessionId, generation); } catch {
++      return { skipped: 'session-invalidated', opsApplied: 0 };
++    }
+     try {
++      this.deps.service.synchronize();
+       const active = this.deps.service.store.db.prepare(
+         "SELECT id, scope, text FROM memories WHERE status = 'active' ORDER BY updated_at DESC LIMIT 20",
+       ).all() as Array<{ id: string; scope: string; text: string }>;
+       const prompt = this.buildPrompt(material, active);
+-      const raw = await (slot?.complete
+-        ? slot.complete(prompt, target)
+-        : this.deps.complete(prompt, target));
++      let raw: string;
++      try {
++        raw = await (slot?.complete
++          ? slot.complete(prompt, target)
++          : this.deps.complete(prompt, target));
++      } catch {
++        try { this.deps.service.assertExtractionCurrent(sessionId, generation); } catch {
++          return { skipped: 'session-invalidated', opsApplied: 0 };
++        }
++        recordMemoryError(this.deps.errors, 'extract-model', '记忆提炼模型调用失败');
++        return { skipped: 'model-failed', opsApplied: 0 };
++      }
+       let parsed;
+       try {
+         parsed = parseExtraction(raw);
+@@ -141,25 +158,40 @@ export class ExtractionScheduler {
+         // 整批丢弃：不写记忆、不写 episode、不推进位点。
+         return { skipped: 'parse-failed', opsApplied: 0 };
+       }
+-      const applied = this.applyOps(ctx, parsed.ops, material.text);
++      try { this.deps.service.assertExtractionCurrent(sessionId, generation); } catch {
++        return { skipped: 'session-invalidated', opsApplied: 0 };
++      }
+       const projectRef = this.deps.service.ensureProject(ctx.workspacePath, ctx.workspaceKind);
+-      this.deps.service.store.appendEpisode({
+-        sessionId,
+-        agentId: ctx.profileId,
+-        workspacePath: ctx.workspacePath ?? '',
+-        ...(projectRef?.projectId ? { projectId: projectRef.projectId } : {}),
+-        ts: this.now(),
+-        summary: parsed.sessionSummary,
+-        topics: parsed.topics,
+-      });
+-      this.deps.service.store.setExtractionState(sessionId, {
+-        lastEntryId: material.lastEntryId || state.lastEntryId,
+-        lastRunAt: this.now(),
+-        userTurnsSince: 0,
+-      });
++      let committed: { ids: string[]; skipped: number };
++      try {
++        const requests = this.buildOps(ctx, parsed.ops, material.text);
++        committed = this.deps.service.addMemoriesBatch(requests, {
++          generation: { sessionId, value: generation },
++          episode: {
++            sessionId,
++            agentId: ctx.profileId,
++            workspacePath: ctx.workspacePath ?? '',
++            ...(projectRef?.projectId ? { projectId: projectRef.projectId } : {}),
++            ts: this.now(),
++            summary: parsed.sessionSummary,
++            topics: parsed.topics,
++          },
++          extractionState: {
++            sessionId,
++            lastEntryId: material.lastEntryId || state.lastEntryId,
++            userTurnsSince: 0,
++          },
++        });
++      } catch (error) {
++        const message = error instanceof Error ? error.message : String(error);
++        recordMemoryError(this.deps.errors, 'extract-batch', message);
++        void this.deps.logger?.log({ level: 'warn', msg: 'memory extraction batch discarded', ctx: { sessionId, reason: message } });
++        return { skipped: 'batch-rejected', opsApplied: 0 };
++      }
++      const applied = committed.ids.length;
+       void this.deps.logger?.log({
+         level: 'info', msg: 'memory extraction applied',
+-        ctx: { sessionId, opsApplied: applied, summary: parsed.sessionSummary },
++        ctx: { sessionId, opsApplied: applied, skippedDuplicates: committed.skipped },
+       });
+       return { opsApplied: applied, summary: parsed.sessionSummary };
+     } finally {
+@@ -167,25 +199,25 @@ export class ExtractionScheduler {
+     }
+   }
+ 
+-  private applyOps(ctx: ExtractionContext, ops: ExtractedOp[], materialText: string): number {
+-    let applied = 0;
++  private buildOps(ctx: ExtractionContext, ops: ExtractedOp[], materialText: string): AddMemoryRequest[] {
++    const requests: AddMemoryRequest[] = [];
+     for (const op of ops) {
+       if (op.op === 'NOOP') continue;
+       if (op.op === 'ADD') {
+         const text = String(op.text ?? '').trim();
+-        if (!text || this.deps.service.store.hasRejectedHash(normalizeTextHash(text))) continue;
++        if (!text || text.length > 200) throw new Error('提炼 ADD 内容需为 1–200 字');
++        if (this.deps.service.store.hasRejectedHash(normalizeTextHash(text))) continue;
+         const scope = String(op.scope ?? 'user');
+-        if (!['user', 'agent', 'project'].includes(scope)) continue;
++        if (!['user', 'agent', 'project'].includes(scope)) throw new Error(`提炼 scope 非法：${scope}`);
+         const scopeRef = this.deps.service.previewScope(ctx, scope);
+-        if (!scopeRef) continue;
++        if (!scopeRef) throw new Error(`提炼 scope 不可用：${scope}`);
+         const sameScope = this.deps.service.store.db.prepare(
+           "SELECT id, text, status FROM memories WHERE scope = ? AND status IN ('active','pending') ORDER BY updated_at DESC LIMIT 20",
+         ).all(scopeRef) as Array<{ id: string; text: string; status: string }>;
+-        // 已有高相似的待确认候选就不再重复提案（同一偏好每次会话都提一条会让待确认列表长满重复项）。
+-        const pendingNear = sameScope.some((d) => d.status === 'pending' && trigramSimilarity(d.text, text) >= 0.85);
++        const pendingNear = sameScope.some((candidate) => candidate.status === 'pending' && trigramSimilarity(candidate.text, text) >= 0.85);
+         if (pendingNear) continue;
+-        const near = sameScope.find((d) => d.status === 'active' && trigramSimilarity(d.text, text) >= 0.85);
+-        this.deps.service.addMemory({
++        const near = sameScope.find((candidate) => candidate.status === 'active' && trigramSimilarity(candidate.text, text) >= 0.85);
++        requests.push({
+           scope: scopeRef,
+           text,
+           workspacePath: scope === 'project' ? ctx.workspacePath : undefined,
+@@ -199,26 +231,26 @@ export class ExtractionScheduler {
+             ? { op: 'UPDATE', targetId: near.id, proposedText: text }
+             : { op: 'ADD', proposedText: text },
+         });
+-        applied += 1;
+         continue;
+       }
+       const targetId = String(op.targetId ?? '');
+       const proposedText = op.op === 'UPDATE' ? String(op.text ?? '') : String(op.replacementText ?? '');
+-      if (!targetId || !proposedText) continue;
++      if (!targetId || !proposedText.trim() || proposedText.length > 200) throw new Error('提炼 UPDATE/SUPERSEDE 参数非法');
+       const row = this.deps.service.store.rowFor(targetId);
+-      if (!row) continue;
+-      this.deps.service.addMemory({
++      if (!row || row.status !== 'active') throw new Error(`提炼目标缺失或未生效：${targetId}`);
++      requests.push({
+         scope: row.scope,
+-        text: proposedText,
++        text: proposedText.trim(),
++        workspacePath: row.workspace_path ?? undefined,
++        workspaceKind: row.workspace_path ? 'user' : undefined,
+         sessionId: ctx.sessionId,
+         excerpt: String(op.excerpt ?? op.reason ?? materialText.slice(0, 120)).slice(0, 120),
+         sourceKind: 'extracted',
+         status: 'pending',
+-        pendingOp: { op: op.op, targetId, proposedText },
++        pendingOp: { op: op.op, targetId, proposedText: proposedText.trim() },
+       });
+-      applied += 1;
+     }
+-    return applied;
++    return requests;
+   }
+ 
+ }
+diff --git a/apps/desktop/electron/main/memory/material.ts b/apps/desktop/electron/main/memory/material.ts
+index b8d7a41f..a3647799 100644
+--- a/apps/desktop/electron/main/memory/material.ts
++++ b/apps/desktop/electron/main/memory/material.ts
+@@ -31,6 +31,13 @@ function textOf(content: unknown): string {
+     .trim();
+ }
+ 
++function entryText(entry: MaterialEntry): string {
++  const message = (entry as unknown as { message?: { role?: string; content?: unknown } }).message;
++  const role = entry.role ?? message?.role;
++  if (role !== 'user' && role !== 'assistant') return '';
++  return textOf(entry.text ?? message?.content ?? message);
++}
++
+ /** JSONL 是树（parentId/分支）+ compaction 条目；位点用 entry-id，不用字节偏移。 */
+ export function readSessionMaterial(
+   piSessionFile: string,
+@@ -49,25 +56,48 @@ export function readSessionMaterial(
+   }
+   branch.reverse();
+ 
+-  const cursorIndex = cursorId ? branch.findIndex((e) => e.id === cursorId) : -1;
+-  const fresh = cursorIndex >= 0 ? branch.slice(cursorIndex + 1) : branch;
++  const offsetMarker = cursorId.lastIndexOf('@');
++  const cursorEntryId = offsetMarker > 0 ? cursorId.slice(0, offsetMarker) : cursorId;
++  const cursorOffset = offsetMarker > 0 ? Number(cursorId.slice(offsetMarker + 1)) : 0;
++  const cursorIndex = cursorEntryId ? branch.findIndex((e) => e.id === cursorEntryId) : -1;
++  if (cursorEntryId && cursorIndex < 0) {
++    throw new Error(`material-unreadable: stale-cursor ${cursorEntryId}`);
++  }
++  if (!Number.isInteger(cursorOffset) || cursorOffset < 0) {
++    throw new Error(`material-unreadable: stale-cursor ${cursorId}`);
++  }
++  if (cursorIndex >= 0 && cursorOffset > 0) {
++    const text = entryText(branch[cursorIndex]);
++    if (!text || cursorOffset > text.length) {
++      throw new Error(`material-unreadable: stale-cursor ${cursorId}`);
++    }
++  }
++  const fresh = cursorIndex >= 0 ? branch.slice(cursorIndex + (cursorOffset > 0 ? 0 : 1)) : branch;
+   const lines: string[] = [];
+   let userTurns = 0;
+   let used = 0;
++  let lastEntryId = cursorId;
++  let consumed = false;
+   for (const entry of fresh) {
+     if (entry.type !== 'message') continue;
+-    const message = (entry as unknown as { message?: { role?: string; content?: unknown } }).message;
+-    const role = entry.role ?? message?.role;
++    const role = entry.role ?? (entry as unknown as { message?: { role?: string } }).message?.role;
+     if (role !== 'user' && role !== 'assistant') continue;
+-    const text = textOf(entry.text ?? message?.content ?? message);
++    const text = entryText(entry);
+     if (!text) continue;
++    const start = !consumed && entry.id === cursorEntryId ? cursorOffset : 0;
++    const prefix = `${role === 'user' ? '用户' : '助手'}：`;
++    const remaining = Math.max(0, maxChars - used - prefix.length);
++    if (remaining <= 0) break;
++    const part = text.slice(start, start + remaining);
++    if (!part) continue;
+     if (role === 'user') userTurns += 1;
+-    const line = `${role === 'user' ? '用户' : '助手'}：${text.slice(0, 800)}`;
+-    if (used + line.length > maxChars) break;
+-    lines.push(line);
+-    used += line.length;
++    lines.push(`${prefix}${part}`);
++    used += prefix.length + part.length;
++    consumed = true;
++    const absoluteOffset = start + part.length;
++    lastEntryId = absoluteOffset < text.length ? `${entry.id}@${absoluteOffset}` : entry.id;
++    if (absoluteOffset < text.length) break;
+   }
+-  const lastEntryId = fresh.length ? fresh[fresh.length - 1].id : cursorId;
+   return { branch, fresh, text: lines.join('\n'), userTurns, lastEntryId };
+ }
+ 
+diff --git a/apps/desktop/electron/main/memory/ops.ts b/apps/desktop/electron/main/memory/ops.ts
+index b569be12..058b5f0c 100644
+--- a/apps/desktop/electron/main/memory/ops.ts
++++ b/apps/desktop/electron/main/memory/ops.ts
+@@ -24,8 +24,8 @@ export function parseExtraction(raw: string): ParsedExtraction {
+   let parsed: unknown;
+   try {
+     parsed = JSON.parse(raw);
+-  } catch (error) {
+-    throw new Error(`提炼输出不是合法 JSON：${error instanceof Error ? error.message : String(error)}`);
++  } catch {
++    throw new Error('提炼输出不是合法 JSON');
+   }
+   if (!isRecord(parsed)) throw new Error('提炼输出必须是对象');
+   const sessionSummary = String(parsed.sessionSummary ?? '').trim();
+@@ -37,13 +37,13 @@ export function parseExtraction(raw: string): ParsedExtraction {
+   const ops: ExtractedOp[] = parsed.ops.map((value) => {
+     if (!isRecord(value)) throw new Error('op 必须是对象');
+     const op = String(value.op ?? '') as ExtractedOp['op'];
+-    if (!['ADD', 'UPDATE', 'SUPERSEDE', 'NOOP'].includes(op)) throw new Error(`未知 op：${op}`);
++    if (!['ADD', 'UPDATE', 'SUPERSEDE', 'NOOP'].includes(op)) throw new Error('未知 op');
+     if (op === 'NOOP') return { op };
+     if (op === 'ADD') {
+       const text = String(value.text ?? '').trim();
+       if (!text || text.length > 200) throw new Error('ADD.text 必须是 1–200 字');
+       const scope = String(value.scope ?? 'user');
+-      if (!['user', 'agent', 'project'].includes(scope)) throw new Error(`未知 scope：${scope}`);
++      if (!['user', 'agent', 'project'].includes(scope)) throw new Error('未知 scope');
+       const importance = value.importance === undefined ? 2 : Number(value.importance);
+       if (!Number.isInteger(importance) || importance < 1 || importance > 3) throw new Error('importance 必须是 1–3');
+       return {
+diff --git a/apps/desktop/electron/main/memory/service.ts b/apps/desktop/electron/main/memory/service.ts
+index 571bae31..68934eef 100644
+--- a/apps/desktop/electron/main/memory/service.ts
++++ b/apps/desktop/electron/main/memory/service.ts
+@@ -2,22 +2,31 @@ import { existsSync, readFileSync, rmSync } from 'node:fs';
+ import { join } from 'node:path';
+ import type { Logger } from '../logger.js';
+ import type { ErrorStore } from '../error-store.js';
+-import { MemoryStore, CorruptMemoryError, parseMemoryFile, parseProjectMemoryFile, type ScopeFileRef } from './store.js';
++import { MemoryStore, CorruptMemoryError, ScopeConflictError, parseMemoryFile, parseProjectMemoryFile, type ScopeFileRef } from './store.js';
+ import {
+   agentMemoryFile,
+   atomicWrite,
++  episodesFile,
++  episodeProposalFile,
++  extractionStateFile,
+   loadMemorySettings,
+   loadProjectRegistry,
+   memoryDir,
+   normalizeWorkspacePath,
++  parseProjectRegistry,
+   projectMemoryFile,
++  projectRegistryFile,
++  readProjectRegistry,
+   saveMemorySettings,
+   upsertProjectRef,
++  upsertProjectRefInRegistry,
+ } from './settings.js';
++import { commitTruthBatch, recoverTruthBatch } from './truth-batch.js';
+ import { newMemoryId, normalizeTextHash } from './types.js';
+ import type {
+   MemoryEntry,
+   MemoryEntryView,
++  EpisodeRecord,
+   MemoryListResult,
+   MemoryScopeKind,
+   MemorySearchHit,
+@@ -35,6 +44,8 @@ export interface MemoryServiceDeps {
+   forceLike?: boolean;
+   sessionExists?: (sessionId: string) => boolean;
+   sessionFileOf?: (sessionId: string) => string | undefined;
++  workspacePathOf?: (sessionId: string) => string | undefined;
++  workspacePathsOf?: () => string[];
+   deleteChatSession?: (sessionId: string) => void;
+   agents?: () => Array<{ id: string; name: string }>;
+   emit?: (type: 'pending_added' | 'memory_changed' | 'repair_needed', payload: Record<string, unknown>) => void;
+@@ -62,17 +73,28 @@ export class MemoryService {
+   private settings: MemorySettings;
+   private readonly deps: MemoryServiceDeps;
+   private readonly now: () => number;
++  private readonly generations = new Map<string, number>();
++  private readonly deletedSessions = new Set<string>();
++  private readonly recoveryWarnings: string[] = [];
+ 
+   constructor(deps: MemoryServiceDeps) {
+     this.deps = deps;
+     this.now = deps.now ?? (() => Date.now());
++    this.recoveryWarnings.push(...recoverTruthBatch(deps.dataDir, {
++      projectFiles: deps.workspacePathsOf?.().map((workspacePath) => projectMemoryFile(workspacePath)),
++    }));
++    try { this.deps.logger?.redactMemoryPromptLogs(); } catch (error) {
++      this.recoveryWarnings.push(`旧记忆提示日志清理失败：${error instanceof Error ? error.message : String(error)}`);
++    }
+     this.store = new MemoryStore({ dataDir: deps.dataDir, errors: deps.errors, now: this.now, forceLike: deps.forceLike });
+     this.settings = loadMemorySettings(deps.dataDir);
++    this.recoveryWarnings.push(...this.store.recoveryWarnings);
+   }
+ 
+   /** registerIpc 装配后接上 renderer 事件通道；主进程逻辑不依赖窗口存在。 */
+   setEmitter(fn: (type: 'pending_added' | 'memory_changed' | 'repair_needed', payload: Record<string, unknown>) => void): void {
+     this.deps.emit = fn;
++    for (const detail of this.recoveryWarnings) this.emit('repair_needed', { file: 'memory', detail });
+   }
+ 
+   getSettings(): MemorySettings { return structuredClone(this.settings); }
+@@ -85,6 +107,34 @@ export class MemoryService {
+   get ftsAvailable(): boolean { return this.store.ftsAvailable; }
+   get sqliteVersion(): string { return this.store.sqliteVersion; }
+ 
++  extractionGeneration(sessionId: string): number {
++    return this.generations.get(sessionId) ?? 0;
++  }
++
++  invalidateExtraction(sessionId: string): number {
++    const generation = this.extractionGeneration(sessionId) + 1;
++    this.generations.set(sessionId, generation);
++    return generation;
++  }
++
++  assertExtractionCurrent(sessionId: string, generation: number): void {
++    if (this.deletedSessions.has(sessionId) || this.extractionGeneration(sessionId) !== generation) {
++      throw new Error(`memory-session-invalidated:${sessionId}`);
++    }
++    if (this.deps.sessionExists && !this.sessionExists(sessionId)) {
++      this.invalidateExtraction(sessionId);
++      throw new Error(`memory-session-invalidated:${sessionId}`);
++    }
++  }
++
++  synchronize(): string[] {
++    try { return this.store.reconcileAll(); } catch (error) {
++      const detail = error instanceof Error ? error.message : String(error);
++      this.emit('repair_needed', { file: 'memory.db', detail });
++      return [detail];
++    }
++  }
++
+   private sessionExists(id: string): boolean {
+     return this.deps.sessionExists?.(id) ?? false;
+   }
+@@ -112,6 +162,7 @@ export class MemoryService {
+    */
+   ensureProject(workspacePath: string | undefined, workspaceKind?: 'auto' | 'user'): ScopeFileRef | null {
+     if (!workspacePath || workspaceKind !== 'user') return null;
++    const normalized = normalizeWorkspacePath(workspacePath);
+     const file = projectMemoryFile(workspacePath);
+     if (!existsSync(file)) return null;
+     let parsed: ProjectMemoryFileV1;
+@@ -122,19 +173,26 @@ export class MemoryService {
+       this.emit('repair_needed', { workspacePath, file, detail });
+       return null;
+     }
+-    upsertProjectRef(this.deps.dataDir, {
+-      projectId: parsed.projectId,
+-      workspacePath: normalizeWorkspacePath(workspacePath),
+-    });
+-    const ref: ScopeFileRef = {
+-      scope: `project:${parsed.projectId}`,
+-      file,
+-      projectId: parsed.projectId,
+-      workspacePath: normalizeWorkspacePath(workspacePath),
+-      archived: parsed.archived,
+-    };
+-    const indexed = this.store.db.prepare('SELECT count(*) AS c FROM memories WHERE scope = ? AND file_ref = ?').get(ref.scope, file) as { c: number };
+-    if (indexed.c === 0) this.store.replaceScopeIndex(ref, parsed.entries, parsed.archived);
++    let ref: ScopeFileRef;
++    try {
++      upsertProjectRef(this.deps.dataDir, {
++        projectId: parsed.projectId,
++        workspacePath: normalizeWorkspacePath(workspacePath),
++        archived: parsed.archived,
++      });
++      ref = {
++        scope: `project:${parsed.projectId}`,
++        file,
++        projectId: parsed.projectId,
++        workspacePath: normalizeWorkspacePath(workspacePath),
++        archived: parsed.archived,
++      };
++    } catch (error) {
++      const detail = error instanceof Error ? error.message : String(error);
++      this.emit('repair_needed', { scope: `project:${parsed.projectId}`, file, workspacePath: normalized, detail });
++      return null;
++    }
++    this.synchronize();
+     return ref;
+   }
+ 
+@@ -170,8 +228,17 @@ export class MemoryService {
+   private resolveScope(req: AddMemoryRequest): ScopeFileRef {
+     const raw = String(req.scope ?? 'user');
+     if (raw === 'user') return this.userRef();
++    if (raw.startsWith('episode:')) {
++      const sessionId = raw.slice('episode:'.length);
++      if (!sessionId || /[\\/]/.test(sessionId)) throw new Error('会话 id 非法');
++      return { scope: raw, file: episodeProposalFile(this.deps.dataDir, sessionId) };
++    }
+     if (raw === 'agent' || raw.startsWith('agent:')) {
+-      return this.agentRef(raw.startsWith('agent:') ? raw.slice(6) : String(req.agentId ?? ''));
++      const agentId = raw.startsWith('agent:') ? raw.slice(6) : String(req.agentId ?? '');
++      if (this.deps.agents && !this.deps.agents().some((agent) => agent.id === agentId)) {
++        throw new Error(`智能体不存在：${agentId}`);
++      }
++      return this.agentRef(agentId);
+     }
+     if (raw === 'project' || raw.startsWith('project:')) {
+       const path = String(req.workspacePath ?? '').trim();
+@@ -184,7 +251,6 @@ export class MemoryService {
+           scope: `project:${parsed.projectId}`, file,
+           projectId: parsed.projectId, workspacePath: normalizeWorkspacePath(path), archived: parsed.archived,
+         };
+-        upsertProjectRef(this.deps.dataDir, { projectId: parsed.projectId, workspacePath: normalizeWorkspacePath(path) });
+         return ref;
+       }
+       const projectId = raw.startsWith('project:') && raw.slice(8)
+@@ -198,7 +264,21 @@ export class MemoryService {
+     throw new Error(`未知记忆层级：${raw}`);
+   }
+ 
++  private stageProjectRef(changes: Map<string, string>, ref: ScopeFileRef, archived?: boolean): void {
++    const path = projectRegistryFile(this.deps.dataDir);
++    const staged = changes.get(path);
++    const registry = staged !== undefined
++      ? parseProjectRegistry(staged, path)
++      : readProjectRegistry(this.deps.dataDir);
++    const next = upsertProjectRefInRegistry(registry, {
++      projectId: ref.projectId!, workspacePath: ref.workspacePath!,
++      archived: archived ?? ref.archived,
++    });
++    changes.set(path, `${JSON.stringify(next, null, 2)}\n`);
++  }
++
+   private writeRef(ref: ScopeFileRef, entries: MemoryEntry[], archived?: boolean): void {
++    const changes = new Map<string, string>();
+     if (ref.scope.startsWith('project:')) {
+       const payload: ProjectMemoryFileV1 = {
+         version: 1,
+@@ -206,14 +286,15 @@ export class MemoryService {
+         ...(archived !== undefined ? { archived } : {}),
+         entries,
+       };
+-      atomicWrite(ref.file, `${JSON.stringify(payload, null, 2)}\n`);
+-      upsertProjectRef(this.deps.dataDir, {
+-        projectId: ref.projectId!, workspacePath: ref.workspacePath!,
+-      });
++      changes.set(ref.file, `${JSON.stringify(payload, null, 2)}\n`);
++      this.stageProjectRef(changes, ref, archived);
+     } else {
+-      atomicWrite(ref.file, `${JSON.stringify({ version: 1, entries }, null, 2)}\n`);
++      changes.set(ref.file, `${JSON.stringify({ version: 1, entries }, null, 2)}\n`);
++    }
++    commitTruthBatch(this.deps.dataDir, changes);
++    try { this.store.replaceScopeIndex(ref, entries, archived); } catch (error) {
++      this.emit('repair_needed', { scope: ref.scope, file: ref.file, detail: error instanceof Error ? error.message : String(error) });
+     }
+-    this.store.replaceScopeIndex(ref, entries, archived);
+   }
+ 
+   private readRef(ref: ScopeFileRef): { entries: MemoryEntry[]; archived?: boolean } {
+@@ -234,6 +315,18 @@ export class MemoryService {
+   /** 记忆块在鞍文本末尾追加；注入只 +accessCount，不重置衰减时钟。 */
+   buildBlock(ctx: { sessionId?: string; profileId: string; workspacePath?: string; workspaceKind?: 'auto' | 'user' }): string {
+     if (!this.settings.enabled) return '';
++    this.synchronize();
++    let identity: ReturnType<MemoryStore['identityConflicts']>;
++    try {
++      identity = this.store.identityConflicts(this.store.allScopeFiles());
++    } catch (error) {
++      this.emit('repair_needed', { file: 'memory', detail: error instanceof Error ? error.message : String(error) });
++      return '';
++    }
++    if (identity.warnings.length) {
++      this.emit('repair_needed', { file: 'memory', detail: identity.warnings.join('；') });
++      return '';
++    }
+     const sections: Array<{ kind: MemoryScopeKind; scope: string; ref: ScopeFileRef; entries: MemoryEntry[]; archived?: boolean }> = [];
+     const push = (kind: MemoryScopeKind, ref: ScopeFileRef | null) => {
+       if (!ref || !existsSync(ref.file)) return;
+@@ -278,21 +371,36 @@ export class MemoryService {
+       void this.deps.logger.log({
+         level: 'info',
+         msg: 'memory prompt block appended to saddle',
+-        ctx: { sessionId: ctx.sessionId ?? '', agentId: ctx.profileId, workspacePath: ctx.workspacePath ?? '', block },
++        ctx: {
++          sessionId: ctx.sessionId ?? '', agentId: ctx.profileId,
++          workspacePath: ctx.workspacePath ?? '', sections: blocks.length,
++          characters: block.length,
++        },
+       });
+     }
+     return block;
+   }
+ 
+   list(): MemoryListResult {
+-    const refs = this.store.allScopeFiles();
+-    const warnings: string[] = [];
++    const warnings = [...this.recoveryWarnings, ...this.synchronize()];
++    let refs: Array<ScopeFileRef & { corrupt?: string }>;
++    try {
++      refs = this.store.allScopeFiles();
++    } catch (error) {
++      const detail = error instanceof Error ? error.message : String(error);
++      this.emit('repair_needed', { file: projectRegistryFile(this.deps.dataDir), detail });
++      if (!warnings.includes(detail)) warnings.push(detail);
++      refs = this.store.allScopeFiles({ strictProjects: false });
++    }
++    const identity = this.store.identityConflicts(refs);
++    warnings.push(...identity.warnings);
++    const blockedFiles = new Set([...identity.projectFiles, ...identity.idFiles]);
+     const scopes: ScopeView[] = refs.map((ref) => {
+       const kind = this.scopeKind(ref.scope);
+       const base: ScopeView = {
+         scope: ref.scope,
+         kind,
+-        label: this.scopeLabel(ref),
++        label: ref.scope.startsWith('episode:') ? `会话摘要提案 · ${ref.scope.slice(8)}` : this.scopeLabel(ref),
+         ...(kind === 'agent' ? { agentId: ref.scope.slice(6) } : {}),
+         ...(ref.projectId ? { projectId: ref.projectId } : {}),
+         ...(ref.workspacePath ? { workspacePath: ref.workspacePath } : {}),
+@@ -301,13 +409,23 @@ export class MemoryService {
+         entries: [],
+       };
+       if (ref.corrupt) {
+-        warnings.push(`${this.scopeLabel(ref)} 记忆文件损坏，已停止注入；请在设置页修复`);
++        warnings.push(`${base.label} 记忆文件损坏，已停止注入；请在设置页修复`);
+         return base;
+       }
+-      const entries = this.store.viewsByIds(
+-        (this.store.db.prepare('SELECT id FROM memories WHERE scope = ? ORDER BY updated_at DESC').all(ref.scope) as Array<{ id: string }>).map((r) => r.id),
+-        (id) => this.sessionExists(id),
+-      );
++      if (blockedFiles.has(ref.file)) {
++        warnings.push(`${base.label} 记忆身份冲突，已停止列出和注入；请修复重复内容`);
++        return { ...base, warning: '记忆身份冲突，已停止列出和注入' };
++      }
++      if (!existsSync(ref.file)) return base;
++      const read = this.readRef(ref);
++      const entries: MemoryEntryView[] = read.entries.map((entry) => ({
++        ...entry,
++        scope: ref.scope,
++        usage: this.store.usageFor(entry.id),
++        sourceDeleted: Boolean(entry.source?.sessionId && !this.sessionExists(entry.source.sessionId)),
++        ...(ref.projectId ? { projectId: ref.projectId } : {}),
++        ...(ref.workspacePath ? { workspacePath: ref.workspacePath } : {}),
++      }));
+       const active = entries.filter((e) => e.status === 'active');
+       const result = selectWithinBudget(
+         active.map((e) => ({ entry: e, usage: e.usage })),
+@@ -317,8 +435,8 @@ export class MemoryService {
+           budget: this.settings.budgets[kind as 'user' | 'agent' | 'project'] ?? 500,
+         },
+       );
+-      if (result.warning) warnings.push(`${this.scopeLabel(ref)}：${result.warning}`);
+-      return { ...base, warning: result.warning, entries };
++      if (result.warning) warnings.push(`${base.label}：${result.warning}`);
++      return { ...base, archived: read.archived ?? base.archived, warning: result.warning, entries };
+     });
+     const pending = scopes.flatMap((scope) => scope.entries.filter((e) => e.status === 'pending'));
+     return {
+@@ -333,10 +451,25 @@ export class MemoryService {
+   }
+ 
+   addMemory(req: AddMemoryRequest): MemoryEntryView {
++    if (!this.settings.enabled) throw new Error('记忆功能已关闭');
++    if (req.sessionId && (
++      this.deletedSessions.has(req.sessionId)
++      || (req.scope.startsWith('episode:') && !this.sessionExists(req.sessionId))
++    )) {
++      throw new Error('来源会话已删除，不能写入记忆');
++    }
++    this.synchronize();
++    const identity = this.store.identityConflicts(this.store.allScopeFiles());
++    if (identity.warnings.length) throw new ScopeConflictError(identity.warnings.join('；'));
+     const text = String(req.text ?? '').trim();
+     if (!text || text.length > 200) throw new Error('记忆内容需为 1–200 字');
+     const ref = this.resolveScope(req);
+     const { entries, archived } = this.readRef(ref);
++    const idempotencyKey = req.pendingOp?.idempotencyKey;
++    if (idempotencyKey) {
++      const existing = entries.find((entry) => entry.status === 'pending' && entry.pendingOp?.idempotencyKey === idempotencyKey);
++      if (existing) return this.view(this.store.rowFor(existing.id))!;
++    }
+     const ts = this.now();
+     const entry: MemoryEntry = {
+       id: newMemoryId(),
+@@ -362,6 +495,148 @@ export class MemoryService {
+     return this.view(this.store.rowFor(entry.id))!;
+   }
+ 
++  addMemoriesBatch(
++    requests: AddMemoryRequest[],
++    commit?: {
++      generation?: { sessionId: string; value: number };
++      episode?: EpisodeRecord;
++      extractionState?: { sessionId: string; lastEntryId: string; userTurnsSince: number };
++    },
++  ): { ids: string[]; skipped: number } {
++    if (!this.settings.enabled) throw new Error('记忆功能已关闭');
++    this.synchronize();
++    if (commit?.generation) this.assertExtractionCurrent(commit.generation.sessionId, commit.generation.value);
++    const staged = new Map<string, { ref: ScopeFileRef; entries: MemoryEntry[]; archived?: boolean; base: Record<string, unknown> }>();
++    const ids: string[] = [];
++    let skipped = 0;
++    const ts = this.now();
++    for (const req of requests) {
++      const text = String(req.text ?? '').trim();
++      if (!text || text.length > 200) throw new Error('记忆内容需为 1–200 字');
++      const ref = this.resolveScope(req);
++      let bucket = staged.get(ref.file);
++      if (!bucket) {
++        const read = this.readRef(ref);
++        bucket = {
++          ref, entries: [...read.entries], archived: read.archived,
++          base: ref.scope.startsWith('project:') ? { version: 1, projectId: ref.projectId } : { version: 1 },
++        };
++        staged.set(ref.file, bucket);
++      }
++      const idempotencyKey = req.pendingOp?.idempotencyKey;
++      if (idempotencyKey && bucket.entries.some((entry) => entry.status === 'pending' && entry.pendingOp?.idempotencyKey === idempotencyKey)) {
++        skipped += 1;
++        continue;
++      }
++      const op = req.pendingOp?.op;
++      if (op === 'EPISODE_UPDATE') {
++        const sessionId = String(req.pendingOp?.targetId ?? '');
++        const proposedText = String(req.pendingOp?.proposedText ?? '').trim();
++        if (ref.scope !== `episode:${sessionId}` || !sessionId || !this.store.listEpisodes().some((episode) => episode.sessionId === sessionId)) {
++          throw new Error('待确认会话缺失或跨文件');
++        }
++        if (!proposedText || proposedText.length > 40) throw new Error('提议摘要需为 1–40 字');
++      } else if (op && op !== 'ADD') {
++        const targetId = String(req.pendingOp?.targetId ?? '');
++        const target = targetId ? bucket.entries.find((entry) => entry.id === targetId) : undefined;
++        const targetRow = targetId ? this.store.rowFor(targetId) : undefined;
++        if (!target || target.status !== 'active' || !targetRow || targetRow.file_ref !== ref.file || targetRow.scope !== ref.scope) {
++          throw new Error(`待确认目标缺失、未生效或跨文件：${targetId || '(empty)'}`);
++        }
++        const proposedText = String(req.pendingOp?.proposedText ?? '').trim();
++        if (!proposedText || proposedText.length > 200) throw new Error('提议内容需为 1–200 字');
++        if (req.pendingOp?.mergeIds !== undefined) {
++          if (!Array.isArray(req.pendingOp.mergeIds) || !req.pendingOp.mergeIds.every((value) => typeof value === 'string')) {
++            throw new Error('mergeIds 结构非法');
++          }
++          for (const mergeId of req.pendingOp.mergeIds) {
++            const sibling = bucket.entries.find((entry) => entry.id === mergeId);
++            const siblingRow = this.store.rowFor(mergeId);
++            if (!sibling || sibling.status !== 'active' || !siblingRow || siblingRow.file_ref !== ref.file || siblingRow.scope !== ref.scope) {
++              throw new Error(`合并兄弟缺失、未生效或跨文件：${mergeId}`);
++            }
++          }
++        }
++      }
++      const entry: MemoryEntry = {
++        id: newMemoryId(), text, status: req.status ?? 'active', pinned: req.pinned === true,
++        importance: req.importance ?? (req.pinned ? 3 : 2), createdAt: ts, updatedAt: ts,
++        source: req.sessionId
++          ? { sessionId: req.sessionId, excerpt: String(req.excerpt ?? text).slice(0, 120), kind: req.sourceKind ?? 'explicit' }
++          : req.sourceKind === 'consolidated'
++            ? { sessionId: '', excerpt: String(req.excerpt ?? '整合提案').slice(0, 120), kind: 'consolidated' }
++            : null,
++        supersededBy: null, pendingOp: req.pendingOp ?? null,
++      };
++      bucket.entries.push(entry);
++      ids.push(entry.id);
++    }
++    if (commit?.generation) this.assertExtractionCurrent(commit.generation.sessionId, commit.generation.value);
++    const changes = new Map<string, string>();
++    for (const bucket of staged.values()) {
++      changes.set(bucket.ref.file, `${JSON.stringify({
++        ...bucket.base,
++        ...(bucket.archived !== undefined ? { archived: bucket.archived } : {}),
++        entries: bucket.entries,
++      }, null, 2)}\n`);
++      if (bucket.ref.scope.startsWith('project:')) this.stageProjectRef(changes, bucket.ref, bucket.archived);
++    }
++    if (commit?.episode) {
++      const path = episodesFile(this.deps.dataDir);
++      const previous = existsSync(path) ? readFileSync(path, 'utf8') : '';
++      changes.set(path, `${previous}${previous && !previous.endsWith('\n') ? '\n' : ''}${JSON.stringify(commit.episode)}\n`);
++    }
++    if (commit?.extractionState) {
++      const states = this.store.extractionStateSnapshot();
++      states[commit.extractionState.sessionId] = {
++        lastEntryId: commit.extractionState.lastEntryId,
++        lastRunAt: ts,
++        userTurnsSince: commit.extractionState.userTurnsSince,
++      };
++      changes.set(extractionStateFile(this.deps.dataDir), `${JSON.stringify(states, null, 2)}\n`);
++    }
++    commitTruthBatch(this.deps.dataDir, changes);
++    for (const bucket of staged.values()) {
++      try { this.store.replaceScopeIndex(bucket.ref, bucket.entries, bucket.archived); } catch (error) {
++        this.emit('repair_needed', { scope: bucket.ref.scope, file: bucket.ref.file, detail: error instanceof Error ? error.message : String(error) });
++      }
++      for (const entry of bucket.entries.filter((candidate) => ids.includes(candidate.id) && candidate.status === 'pending')) {
++        this.emit('pending_added', { id: entry.id, scope: bucket.ref.scope });
++      }
++    }
++    if (commit?.episode) {
++      try { this.store.indexEpisode(commit.episode); } catch (error) {
++        this.emit('repair_needed', { file: episodesFile(this.deps.dataDir), detail: error instanceof Error ? error.message : String(error) });
++      }
++    }
++    if (commit?.extractionState) {
++      this.store.setExtractionState(commit.extractionState.sessionId, {
++        lastEntryId: commit.extractionState.lastEntryId, lastRunAt: ts,
++        userTurnsSince: commit.extractionState.userTurnsSince,
++      }, true);
++    }
++    return { ids, skipped };
++  }
++
++  addEpisodeProposal(sessionId: string, summary: string): MemoryEntryView {
++    const text = summary.trim();
++    if (!text || text.length > 40) throw new Error('会话摘要需为 1–40 字');
++    return this.addMemory({
++      scope: `episode:${sessionId}`,
++      text,
++      sessionId,
++      status: 'pending',
++      sourceKind: 'consolidated',
++      excerpt: '空闲整合：压缩会话摘要',
++      pendingOp: {
++        op: 'EPISODE_UPDATE',
++        targetId: sessionId,
++        proposedText: text,
++        idempotencyKey: `episode:${sessionId}:${text}`,
++      },
++    });
++  }
++
+   updateMemory(id: string, patch: { text?: string; pinned?: boolean; status?: 'active' | 'superseded' }): MemoryEntryView {
+     const row = this.store.rowFor(id);
+     if (!row) throw new Error('记忆不存在');
+@@ -399,7 +674,7 @@ export class MemoryService {
+     if (opts.mode === 'privacy') {
+       const sessionId = row.source_session ?? this.view(row)?.source?.sessionId;
+       if (!sessionId) throw new Error('该记忆没有来源会话，无法执行隐私删除');
+-      return this.privacyDeleteBySession(sessionId);
++      return this.privacyDeleteBySession(sessionId, row.workspace_path ? [row.workspace_path] : undefined);
+     }
+     const ref = this.refOf(row);
+     const { entries, archived } = this.readRef(ref);
+@@ -415,20 +690,48 @@ export class MemoryService {
+   }
+ 
+   /** 隐私删除：条目+FTS+episodes+黑名单+JSONL+chat_sessions 全清。 */
+-  privacyDeleteBySession(sessionId: string): { ok: true; removed: string[]; invalidatedPending: number } {
+-    const pending = this.store.rowsBySession(sessionId).filter((row) => row.status === 'pending');
+-    const removed = this.store.deleteMemoryEntriesBySession(sessionId);
++  privacyDeleteBySession(sessionId: string, workspacePaths?: string[]): { ok: true; removed: string[]; invalidatedPending: number } {
++    this.invalidateExtraction(sessionId);
++    this.deletedSessions.add(sessionId);
++    const sessionWorkspace = this.deps.workspacePathOf?.(sessionId);
++    const knownWorkspaces = [...new Set([...(workspacePaths ?? []), ...(sessionWorkspace ? [sessionWorkspace] : [])])];
++    let invalidatedPending = 0;
++    const removedTexts: string[] = [];
++    let removed: string[];
++    try {
++      removedTexts.push(...this.store.listEpisodes()
++        .filter((episode) => episode.sessionId === sessionId)
++        .flatMap((episode) => [episode.summary, ...episode.topics]));
++      removed = this.store.deleteMemoryEntriesBySession(sessionId, (entry) => {
++        removedTexts.push(entry.text);
++        if (entry.source?.excerpt) removedTexts.push(entry.source.excerpt);
++        if (entry.pendingOp?.proposedText) removedTexts.push(entry.pendingOp.proposedText);
++        if (entry.status === 'pending') invalidatedPending += 1;
++      }, knownWorkspaces);
++    } catch (error) {
++      this.emit('repair_needed', { sessionId, detail: error instanceof Error ? error.message : String(error) });
++      throw error;
++    }
+     const file = this.deps.sessionFileOf?.(sessionId);
+     if (file) rmSync(file, { force: true });
+     this.deps.deleteChatSession?.(sessionId);
+-    this.store.db.prepare('DELETE FROM extraction_state WHERE session_id = ?').run(sessionId);
+-    const invalidatedPending = pending.length;
++    let diagnosticError: unknown;
++    try { this.deps.errors?.redactTexts(removedTexts); } catch (error) {
++      diagnosticError = error;
++      this.emit('repair_needed', { sessionId, detail: `隐私诊断清理失败：${error instanceof Error ? error.message : String(error)}` });
++    }
++    try { this.deps.logger?.redactSession(sessionId, removedTexts); } catch (error) {
++      diagnosticError ??= error;
++      this.emit('repair_needed', { sessionId, detail: `隐私日志清理失败：${error instanceof Error ? error.message : String(error)}` });
++    }
++    if (diagnosticError) throw diagnosticError;
+     this.emit('memory_changed', { sessionId, op: 'privacy-delete', removed, invalidatedPending });
+     return { ok: true, removed, invalidatedPending };
+   }
+ 
+   /** 普通删除会话：保留记忆但把来源链接标成“来源已删除”。 */
+   markSourcesDeleted(sessionId: string): void {
++    this.invalidateExtraction(sessionId);
+     this.store.markSourcesDeleted(sessionId);
+     this.emit('memory_changed', { sessionId, op: 'source-deleted' });
+   }
+@@ -441,6 +744,36 @@ export class MemoryService {
+     const { entries, archived } = this.readRef(ref);
+     const entry = entries.find((e) => e.id === id);
+     if (!entry) throw new Error('待确认记忆不存在于真相源');
++    if (ref.scope.startsWith('episode:')) {
++      if (decision === 'reject') {
++        entry.status = 'superseded';
++        entry.pendingOp = null;
++        entry.updatedAt = this.now();
++        this.writeRef(ref, entries);
++        this.emit('memory_changed', { id, scope: ref.scope, op: 'reject' });
++        return { ok: true, message: '已驳回摘要压缩' };
++      }
++      const sessionId = ref.scope.slice('episode:'.length);
++      const summary = String(entry.pendingOp?.proposedText ?? '').trim();
++      const current = this.store.listEpisodes().find((episode) => episode.sessionId === sessionId);
++      if (!current) throw new Error('原会话摘要已不存在');
++      if (!summary || summary.length > 40) throw new Error('会话摘要需为 1–40 字');
++      const next = { ...current, summary, compressedAt: this.now() };
++      const episodePath = episodesFile(this.deps.dataDir);
++      const previous = existsSync(episodePath) ? readFileSync(episodePath, 'utf8') : '';
++      entry.status = 'superseded';
++      entry.pendingOp = null;
++      entry.updatedAt = this.now();
++      commitTruthBatch(this.deps.dataDir, new Map([
++        [episodePath, `${previous}${previous && !previous.endsWith('\n') ? '\n' : ''}${JSON.stringify(next)}\n`],
++        [ref.file, `${JSON.stringify({ version: 1, entries }, null, 2)}\n`],
++      ]));
++      try { this.store.indexEpisode(next); } catch (error) {
++        this.emit('repair_needed', { file: episodePath, detail: error instanceof Error ? error.message : String(error) });
++      }
++      this.emit('memory_changed', { id, scope: ref.scope, op: 'approve-episode-update' });
++      return { ok: true, message: '已确认摘要压缩' };
++    }
+     let message: string | undefined;
+     if (decision === 'reject') {
+       const hash = normalizeTextHash(entry.pendingOp?.proposedText ?? entry.text);
+@@ -452,6 +785,11 @@ export class MemoryService {
+       return { ok: true, message: '已驳回，后续不再提案同类内容' };
+     }
+     const op = entry.pendingOp?.op ?? 'ADD';
++    const rawMergeIds = entry.pendingOp?.mergeIds;
++    if (rawMergeIds !== undefined && (!Array.isArray(rawMergeIds) || rawMergeIds.some((value) => typeof value !== 'string'))) {
++      throw new Error('合并目标列表非法');
++    }
++    const mergeIds = (rawMergeIds ?? []) as string[];
+     const targetId = entry.pendingOp?.targetId;
+     const target = targetId ? entries.find((e) => e.id === targetId) : undefined;
+     if (targetId && (!target || target.status !== 'active')) {
+@@ -461,7 +799,7 @@ export class MemoryService {
+         ...entry.pendingOp,
+         op: 'ADD',
+         text: proposedText,
+-        degradedFrom: op,
++        degradedFrom: op === 'EPISODE_UPDATE' ? undefined : op,
+       };
+       entry.text = proposedText;
+       entry.updatedAt = this.now();
+@@ -479,6 +817,12 @@ export class MemoryService {
+       return { ok: true, entry: this.view(this.store.rowFor(id)) ?? undefined };
+     }
+     const ts = this.now();
++    for (const mergeId of new Set(mergeIds)) {
++      const sibling = this.store.rowFor(mergeId);
++      if (!sibling || sibling.status !== 'active' || sibling.file_ref !== ref.file || sibling.scope !== ref.scope) {
++        throw new Error(`合并目标缺失或不属于同一记忆文件：${mergeId}`);
++      }
++    }
+     if (op === 'UPDATE') {
+       target.text = entry.pendingOp?.proposedText ?? entry.text;
+       target.updatedAt = ts;
+@@ -493,12 +837,9 @@ export class MemoryService {
+     target.supersededBy = id;
+     target.updatedAt = ts;
+     // 整合提案可能一次合并多条：被合并掉的兄弟条目一并作废，避免留下重复的 active。
+-    const mergeIds = Array.isArray(entry.pendingOp?.mergeIds)
+-      ? (entry.pendingOp?.mergeIds as unknown[]).filter((v): v is string => typeof v === 'string')
+-      : [];
+-    for (const mergeId of mergeIds) {
++    for (const mergeId of new Set(mergeIds)) {
+       const sibling = entries.find((e) => e.id === mergeId);
+-      if (!sibling || sibling.status !== 'active') continue;
++      if (!sibling || sibling.status !== 'active') throw new Error(`合并目标状态已变化：${mergeId}`);
+       sibling.status = 'superseded';
+       sibling.supersededBy = id;
+       sibling.updatedAt = ts;
+@@ -535,27 +876,34 @@ export class MemoryService {
+   /** 项目记忆损坏：不静默覆盖。用户确认后按空文件重建，或提供原文替换。 */
+   repairProjectMemory(workspacePath: string, mode: 'empty' | 'replace', content?: string): { ok: true } {
+     const file = projectMemoryFile(workspacePath);
+-    let projectId = `proj_${newMemoryId().slice(4)}`;
+-    try {
+-      projectId = parseProjectMemoryFile(readFileSync(file, 'utf8'), file).projectId;
+-    } catch {
+-      const match = readFileSync(file, 'utf8').match(/"projectId"\s*:\s*"([^"]+)"/);
+-      if (match) projectId = match[1];
+-    }
++    const normalized = normalizeWorkspacePath(workspacePath);
++    const registered = readProjectRegistry(this.deps.dataDir).projects
++      .find((project) => normalizeWorkspacePath(project.workspacePath).toLowerCase() === normalized.toLowerCase());
++    let parsed: ProjectMemoryFileV1 | undefined;
++    try { parsed = parseProjectMemoryFile(readFileSync(file, 'utf8'), file); } catch { /* user confirmed repair */ }
+     const entries = mode === 'replace'
+       ? parseProjectMemoryFile(String(content ?? ''), file).entries
+       : [];
++    if (mode === 'replace' && parsed && parseProjectMemoryFile(String(content ?? ''), file).projectId !== parsed.projectId) {
++      throw new Error('修复内容必须保留原 projectId');
++    }
++    if (mode === 'replace' && registered && parseProjectMemoryFile(String(content ?? ''), file).projectId !== registered.projectId) {
++      throw new Error('修复内容必须保留已注册的 projectId');
++    }
++    const projectId = parsed?.projectId ?? registered?.projectId ?? `proj_${newMemoryId().slice(4)}`;
++    const archived = parsed?.archived ?? registered?.archived ?? false;
+     const ref: ScopeFileRef = {
+       scope: `project:${projectId}`, file, projectId,
+-      workspacePath: normalizeWorkspacePath(workspacePath), archived: false,
++      workspacePath: normalized, archived,
+     };
+-    this.writeRef(ref, entries, false);
++    this.writeRef(ref, entries, archived);
+     this.emit('memory_changed', { scope: ref.scope, op: 'repair', workspacePath });
+     return { ok: true };
+   }
+ 
+   searchMemory(query: string, opts: { limit?: number; includeHistory?: boolean } = {}): MemorySearchHit[] {
+     if (!this.settings.enabled) return [];
++    this.synchronize();
+     const hits = this.store.search(query, opts);
+     // 命中即强化：记忆条目与情景摘要都算（情景摘要的 id 带 `episode:` 前缀，store 按前缀分派）。
+     this.store.touchAccess(hits.map((h) => h.id), true);
+diff --git a/apps/desktop/electron/main/memory/settings.ts b/apps/desktop/electron/main/memory/settings.ts
+index 92835565..0d132d36 100644
+--- a/apps/desktop/electron/main/memory/settings.ts
++++ b/apps/desktop/electron/main/memory/settings.ts
+@@ -9,6 +9,8 @@ import {
+ export const MEMORY_DIR = 'memory';
+ export const MEMORY_SETTINGS_FILE = 'memory-settings.json';
+ export const PROJECT_REGISTRY_FILE = 'projects.json';
++export const EXTRACTION_STATE_FILE = 'extraction-state.json';
++export const EPISODE_PROPOSALS_DIR = 'episode-proposals';
+ 
+ export interface ProjectRegistry {
+   version: 1;
+@@ -27,6 +29,17 @@ export function normalizeWorkspacePath(path: string): string {
+   return path.trim().replace(/[\\/]+/g, '/').replace(/\/+$/, '');
+ }
+ 
++export function workspacePathKey(path: string): string {
++  return normalizeWorkspacePath(path).toLowerCase();
++}
++
++export class ProjectIdentityConflictError extends Error {
++  constructor(public readonly projectId: string, public readonly workspacePath: string) {
++    super(`项目身份冲突：${projectId} 已绑定其他工作区 ${workspacePath}`);
++    this.name = 'ProjectIdentityConflictError';
++  }
++}
++
+ export function memoryDir(dataDir: string): string {
+   return join(dataDir, MEMORY_DIR);
+ }
+@@ -47,6 +60,22 @@ export function episodesFile(dataDir: string): string {
+   return join(memoryDir(dataDir), 'episodes.jsonl');
+ }
+ 
++export function projectRegistryFile(dataDir: string): string {
++  return join(memoryDir(dataDir), PROJECT_REGISTRY_FILE);
++}
++
++export function extractionStateFile(dataDir: string): string {
++  return join(memoryDir(dataDir), EXTRACTION_STATE_FILE);
++}
++
++export function episodeProposalsDir(dataDir: string): string {
++  return join(memoryDir(dataDir), EPISODE_PROPOSALS_DIR);
++}
++
++export function episodeProposalFile(dataDir: string, sessionId: string): string {
++  return join(episodeProposalsDir(dataDir), `${sanitizeSegment(sessionId)}.json`);
++}
++
+ export function projectMemoryFile(workspacePath: string): string {
+   return join(workspacePath, '.sparkii', 'memory.json');
+ }
+@@ -88,37 +117,77 @@ export function saveMemorySettings(dataDir: string, partial: Partial<MemorySetti
+   return next;
+ }
+ 
+-export function loadProjectRegistry(dataDir: string): ProjectRegistry {
++export function parseProjectRegistry(text: string, path: string): ProjectRegistry {
++  let parsed: unknown;
++  try { parsed = JSON.parse(text); } catch (error) {
++    throw new Error(`项目注册表损坏：${path}（${error instanceof Error ? error.message : String(error)}）`);
++  }
++  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
++    throw new Error(`项目注册表损坏：${path}（根节点不是对象）`);
++  }
++  const value = parsed as Partial<ProjectRegistry>;
++  if (!Array.isArray(value.projects)) throw new Error(`项目注册表损坏：${path}（projects 不是数组）`);
++  const projects: ProjectRef[] = [];
++  const workspaces = new Set<string>();
++  const ids = new Set<string>();
++  for (const item of value.projects) {
++    if (!item || typeof item !== 'object' || typeof item.projectId !== 'string' || !item.projectId || typeof item.workspacePath !== 'string' || !item.workspacePath) {
++      throw new Error(`项目注册表损坏：${path}（项目字段非法）`);
++    }
++    const workspacePath = normalizeWorkspacePath(item.workspacePath);
++    const workspaceKey = workspacePathKey(workspacePath);
++    if (workspaces.has(workspaceKey) || ids.has(item.projectId)) {
++      throw new Error(`项目注册表损坏：${path}（项目身份重复）`);
++    }
++    workspaces.add(workspaceKey);
++    ids.add(item.projectId);
++    projects.push({ ...item, workspacePath });
++  }
++  return { version: 1, projects };
++}
++
++export function readProjectRegistry(dataDir: string): ProjectRegistry {
+   const path = join(memoryDir(dataDir), PROJECT_REGISTRY_FILE);
+   if (!existsSync(path)) return { version: 1, projects: [] };
+-  try {
+-    const parsed = JSON.parse(readFileSync(path, 'utf8')) as Partial<ProjectRegistry>;
+-    if (!Array.isArray(parsed.projects)) return { version: 1, projects: [] };
+-    return {
+-      version: 1,
+-      projects: parsed.projects
+-        .filter((p): p is ProjectRef => Boolean(p && typeof p.projectId === 'string' && typeof p.workspacePath === 'string'))
+-        .map((p) => ({ ...p, workspacePath: normalizeWorkspacePath(p.workspacePath) })),
+-    };
+-  } catch {
+-    return { version: 1, projects: [] };
+-  }
++  return parseProjectRegistry(readFileSync(path, 'utf8'), path);
++}
++
++export function loadProjectRegistry(dataDir: string): ProjectRegistry {
++  try { return readProjectRegistry(dataDir); } catch { return { version: 1, projects: [] }; }
+ }
+ 
+ export function saveProjectRegistry(dataDir: string, registry: ProjectRegistry): void {
+   atomicWrite(join(memoryDir(dataDir), PROJECT_REGISTRY_FILE), JSON.stringify(registry, null, 2));
+ }
+ 
+-export function upsertProjectRef(dataDir: string, ref: ProjectRef): ProjectRegistry {
+-  const registry = loadProjectRegistry(dataDir);
++export function upsertProjectRefInRegistry(registry: ProjectRegistry, ref: ProjectRef): ProjectRegistry {
+   const normalized = normalizeWorkspacePath(ref.workspacePath);
+-  const existing = registry.projects.find((p) => normalizeWorkspacePath(p.workspacePath) === normalized);
++  const key = workspacePathKey(normalized);
++  const projects = registry.projects.map((project) => ({ ...project }));
++  const existing = projects.find((p) => workspacePathKey(p.workspacePath) === key);
++  const sameId = projects.find((p) => p.projectId === ref.projectId);
++  if (existing && existing.projectId !== ref.projectId) {
++    throw new ProjectIdentityConflictError(ref.projectId, existing.workspacePath);
++  }
++  if (sameId && workspacePathKey(sameId.workspacePath) !== key) {
++    if (existsSync(projectMemoryFile(sameId.workspacePath))) {
++      throw new ProjectIdentityConflictError(ref.projectId, sameId.workspacePath);
++    }
++    projects.splice(projects.indexOf(sameId), 1);
++  }
+   if (existing) {
+     existing.projectId = ref.projectId;
+     existing.name = ref.name;
++    existing.workspacePath = normalized;
++    existing.archived = ref.archived;
+   } else {
+-    registry.projects.push({ ...ref, workspacePath: normalized });
++    projects.push({ ...ref, workspacePath: normalized });
+   }
++  return { version: 1, projects };
++}
++
++export function upsertProjectRef(dataDir: string, ref: ProjectRef): ProjectRegistry {
++  const registry = upsertProjectRefInRegistry(readProjectRegistry(dataDir), ref);
+   saveProjectRegistry(dataDir, registry);
+   return registry;
+ }
+diff --git a/apps/desktop/electron/main/memory/store.ts b/apps/desktop/electron/main/memory/store.ts
+index 9c50ea8a..cee4e0ee 100644
+--- a/apps/desktop/electron/main/memory/store.ts
++++ b/apps/desktop/electron/main/memory/store.ts
+@@ -1,17 +1,33 @@
+ import Database from 'better-sqlite3';
+-import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
++import { createHash } from 'node:crypto';
++import {
++  appendFileSync,
++  existsSync,
++  mkdirSync,
++  readFileSync,
++  readdirSync,
++  renameSync,
++  rmSync,
++} from 'node:fs';
+ import { join } from 'node:path';
+ import type { ErrorStore } from '../error-store.js';
+ import {
++  agentMemoryFile,
+   atomicWrite,
+   episodesFile,
++  episodeProposalFile,
++  episodeProposalsDir,
++  extractionStateFile,
+   loadProjectRegistry,
+-  memoryDir,
++  readProjectRegistry,
+   memoryDbPath,
++  memoryDir,
+   normalizeWorkspacePath,
+   projectMemoryFile,
+   userMemoryFile,
++  workspacePathKey,
+ } from './settings.js';
++import { commitTruthBatch } from './truth-batch.js';
+ import { canUseTrigram, ftsMatchQuery, ftsWindowQuery, probeFts5Trigram, recordMemoryError } from './fts.js';
+ import type {
+   EpisodeRecord,
+@@ -31,11 +47,18 @@ export class CorruptMemoryError extends Error {
+   }
+ }
+ 
+-const STATUSES: MemoryStatus[] = ['active', 'pending', 'superseded'];
++export class ScopeConflictError extends Error {
++  constructor(message: string) {
++    super(message);
++    this.name = 'ScopeConflictError';
++  }
++}
+ 
+-/** 情景摘要的条目 id 前缀（表主键是 session_id）。 */
++const STATUSES: MemoryStatus[] = ['active', 'pending', 'superseded'];
+ const EPISODE_ID_PREFIX = 'episode:';
+ 
++type ExtractionState = { lastEntryId: string; lastRunAt: number; userTurnsSince: number };
++
+ function isRecord(value: unknown): value is Record<string, unknown> {
+   return typeof value === 'object' && value !== null && !Array.isArray(value);
+ }
+@@ -44,6 +67,7 @@ function parseEntries(raw: unknown, file: string): MemoryEntry[] {
+   if (!isRecord(raw) || raw.version !== 1 || !Array.isArray(raw.entries)) {
+     throw new CorruptMemoryError(file, 'version/entries 结构非法');
+   }
++  const seen = new Set<string>();
+   return raw.entries.map((value, index) => {
+     if (!isRecord(value)) throw new CorruptMemoryError(file, `第 ${index + 1} 条不是对象`);
+     const id = String(value.id ?? '');
+@@ -52,6 +76,8 @@ function parseEntries(raw: unknown, file: string): MemoryEntry[] {
+     if (!id.startsWith('mem_') || !text.trim() || !STATUSES.includes(status)) {
+       throw new CorruptMemoryError(file, `第 ${index + 1} 条字段非法`);
+     }
++    if (seen.has(id)) throw new CorruptMemoryError(file, `记忆 id 重复：${id}`);
++    seen.add(id);
+     if (typeof value.pinned !== 'boolean' || typeof value.createdAt !== 'number' || typeof value.updatedAt !== 'number') {
+       throw new CorruptMemoryError(file, `第 ${index + 1} 条标记/时间非法`);
+     }
+@@ -80,14 +106,16 @@ function parseEntries(raw: unknown, file: string): MemoryEntry[] {
+       updatedAt: value.updatedAt,
+       source,
+       supersededBy: typeof value.supersededBy === 'string' ? value.supersededBy : null,
+-      pendingOp: isRecord(value.pendingOp) ? (value.pendingOp as MemoryEntry['pendingOp']) : null,
++      pendingOp: isRecord(value.pendingOp) ? value.pendingOp as MemoryEntry['pendingOp'] : null,
+     };
+   });
+ }
+ 
+ export function parseMemoryFile(text: string, file: string): MemoryFileV1 {
+   try {
+-    return { version: 1, entries: parseEntries(JSON.parse(text) as unknown, file) };
++    const parsed = JSON.parse(text) as unknown;
++    if (!isRecord(parsed)) throw new Error('根节点不是对象');
++    return { version: 1, entries: parseEntries(parsed, file) };
+   } catch (error) {
+     if (error instanceof CorruptMemoryError) throw error;
+     throw new CorruptMemoryError(file, error instanceof Error ? error.message : String(error));
+@@ -145,11 +173,36 @@ function toView(row: IndexedRow, entry: MemoryEntry, sessionExists: (id: string)
+   };
+ }
+ 
++function hash(content: string): string {
++  return createHash('sha256').update(content).digest('hex');
++}
++
++function parseExtractionStates(text: string, file: string): Record<string, ExtractionState> {
++  let parsed: unknown;
++  try { parsed = JSON.parse(text) as unknown; } catch (error) {
++    throw new CorruptMemoryError(file, error instanceof Error ? error.message : String(error));
++  }
++  if (!isRecord(parsed)) throw new CorruptMemoryError(file, '提取位点不是对象');
++  const out: Record<string, ExtractionState> = {};
++  for (const [sessionId, value] of Object.entries(parsed)) {
++    if (!isRecord(value)) throw new CorruptMemoryError(file, `会话 ${sessionId} 位点非法`);
++    const lastEntryId = String(value.lastEntryId ?? '');
++    const lastRunAt = Number(value.lastRunAt ?? 0);
++    const userTurnsSince = Number(value.userTurnsSince ?? 0);
++    if (!Number.isFinite(lastRunAt) || !Number.isFinite(userTurnsSince)) {
++      throw new CorruptMemoryError(file, `会话 ${sessionId} 位点数值非法`);
++    }
++    out[sessionId] = { lastEntryId, lastRunAt, userTurnsSince };
++  }
++  return out;
++}
++
+ export class MemoryStore {
+   readonly db: Database.Database;
+   readonly ftsAvailable: boolean;
+   readonly ftsReason?: string;
+   readonly sqliteVersion: string;
++  readonly recoveryWarnings: string[] = [];
+   private readonly now: () => number;
+   private readonly dataDir: string;
+ 
+@@ -158,6 +211,7 @@ export class MemoryStore {
+     this.dataDir = opts.dataDir;
+     mkdirSync(memoryDir(opts.dataDir), { recursive: true });
+     mkdirSync(join(memoryDir(opts.dataDir), 'agents'), { recursive: true });
++    mkdirSync(episodeProposalsDir(opts.dataDir), { recursive: true });
+     const probe = probeFts5Trigram();
+     this.ftsAvailable = opts.forceLike ? false : probe.available;
+     this.ftsReason = probe.reason;
+@@ -165,8 +219,69 @@ export class MemoryStore {
+     if (!this.ftsAvailable && !opts.forceLike) {
+       recordMemoryError(opts.errors, 'fts-probe', `FTS5 trigram 不可用，检索退化 LIKE：${probe.reason ?? 'unknown'}`);
+     }
+-    this.db = new Database(memoryDbPath(opts.dataDir));
+-    this.db.exec(`
++    this.db = this.openDatabase(opts.errors);
++    try {
++      if (this.count('memories') === 0 && this.hasTruthFiles()) this.rebuild();
++    } catch (error) {
++      const message = `派生索引运行失败，已使用内存索引：${error instanceof Error ? error.message : String(error)}`;
++      this.recoveryWarnings.push(message);
++      recordMemoryError(opts.errors, 'index-runtime', message);
++      try { this.db.close(); } catch { /* best effort */ }
++      this.db = this.openMemoryDatabase();
++      try {
++        if (this.hasTruthFiles()) this.rebuild();
++      } catch (rebuildError) {
++        const detail = `内存索引重建失败：${rebuildError instanceof Error ? rebuildError.message : String(rebuildError)}`;
++        this.recoveryWarnings.push(detail);
++        recordMemoryError(opts.errors, 'index-rebuild', detail);
++      }
++    }
++  }
++
++  private count(table: 'memories' | 'episodes'): number {
++    return (this.db.prepare(`SELECT count(*) AS c FROM ${table}`).get() as { c: number }).c;
++  }
++
++  private openDatabase(errors?: ErrorStore): Database.Database {
++    const path = memoryDbPath(this.dataDir);
++    let db: Database.Database | undefined;
++    try {
++      db = new Database(path);
++      this.initializeSchema(db);
++      return db;
++    } catch (error) {
++      try { db?.close(); } catch { /* best effort */ }
++      const detail = error instanceof Error ? error.message : String(error);
++      const quarantine = `${path}.corrupt-${Date.now()}`;
++      try {
++        renameSync(path, quarantine);
++        rmSync(`${path}-wal`, { force: true });
++        rmSync(`${path}-shm`, { force: true });
++      } catch { /* best effort */ }
++      const message = `SQLite 索引损坏，已隔离到 ${quarantine}：${detail}`;
++      this.recoveryWarnings.push(message);
++      recordMemoryError(errors, 'index-corrupt', message);
++      try {
++        const db = new Database(path);
++        this.initializeSchema(db);
++        return db;
++      } catch (fallbackError) {
++        const fallbackMessage = `SQLite 索引无法写盘，已使用内存索引：${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`;
++        this.recoveryWarnings.push(fallbackMessage);
++        recordMemoryError(errors, 'index-fallback', fallbackMessage);
++        return this.openMemoryDatabase();
++      }
++    }
++  }
++
++  private openMemoryDatabase(): Database.Database {
++    const db = new Database(':memory:');
++    this.initializeSchema(db);
++    return db;
++  }
++
++  private initializeSchema(db: Database.Database): void {
++    db.exec(`
+       CREATE TABLE IF NOT EXISTS memories (
+         id TEXT PRIMARY KEY, scope TEXT NOT NULL, project_id TEXT, workspace_path TEXT,
+         status TEXT NOT NULL, text TEXT NOT NULL, pinned INTEGER NOT NULL DEFAULT 0,
+@@ -174,6 +289,7 @@ export class MemoryStore {
+         source_session TEXT, file_ref TEXT NOT NULL, updated_at INTEGER NOT NULL
+       );
+       CREATE INDEX IF NOT EXISTS idx_memories_scope ON memories(scope);
++      CREATE INDEX IF NOT EXISTS idx_memories_file ON memories(file_ref);
+       CREATE INDEX IF NOT EXISTS idx_memories_source ON memories(source_session);
+       CREATE INDEX IF NOT EXISTS idx_memories_project ON memories(project_id);
+       CREATE TABLE IF NOT EXISTS episodes (
+@@ -191,66 +307,94 @@ export class MemoryStore {
+       CREATE TABLE IF NOT EXISTS consolidation_state (
+         id TEXT PRIMARY KEY, last_run_at INTEGER NOT NULL DEFAULT 0
+       );
++      CREATE TABLE IF NOT EXISTS scope_files (
++        file_ref TEXT PRIMARY KEY, content_hash TEXT NOT NULL, updated_at INTEGER NOT NULL
++      );
+     `);
+     if (this.ftsAvailable) {
+-      this.db.exec(`
++      db.exec(`
+         CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(id UNINDEXED, text, tokenize='trigram');
+         CREATE VIRTUAL TABLE IF NOT EXISTS episodes_fts USING fts5(session_id UNINDEXED, summary, topics, tokenize='trigram');
+       `);
+     }
+-    const count = (this.db.prepare('SELECT count(*) AS c FROM memories').get() as { c: number }).c;
+-    if (count === 0 && this.hasTruthFiles(opts.dataDir)) this.rebuild();
+   }
+ 
+   close(): void { this.db.close(); }
+ 
+-  private hasTruthFiles(dataDir: string): boolean {
+-    if (existsSync(userMemoryFile(dataDir))) return true;
+-    const agentsDir = join(memoryDir(dataDir), 'agents');
+-    if (existsSync(agentsDir) && readdirSync(agentsDir).some((n) => n.endsWith('.json'))) return true;
+-    return loadProjectRegistry(dataDir).projects.some((p) => existsSync(projectMemoryFile(p.workspacePath)));
+-  }
+-
+-  /** 真相源 → db。统计清零是设置页明示的代价。 */
+-  rebuild(): { entries: number; corrupt: string[] } {
+-    const refs = this.allScopeFiles();
+-    const rows = this.readAllTruth(refs);
+-    const tx = this.db.transaction(() => {
+-      this.db.exec('DELETE FROM memories');
+-      this.db.exec('DELETE FROM memories_fts');
+-      for (const { ref, entry } of rows) this.insertRow(ref, entry, { lastAccessedAt: null, accessCount: 0 });
+-    });
+-    tx();
+-    return { entries: rows.length, corrupt: refs.filter((r) => r.corrupt).map((r) => r.file) };
++  private hasTruthFiles(): boolean {
++    if (existsSync(userMemoryFile(this.dataDir))) return true;
++    const agentsDir = join(memoryDir(this.dataDir), 'agents');
++    if (existsSync(agentsDir) && readdirSync(agentsDir).some((name) => name.endsWith('.json'))) return true;
++    if (existsSync(episodesFile(this.dataDir)) || existsSync(extractionStateFile(this.dataDir))) return true;
++    if (existsSync(episodeProposalsDir(this.dataDir)) && readdirSync(episodeProposalsDir(this.dataDir)).length) return true;
++    return loadProjectRegistry(this.dataDir).projects.some((project) => existsSync(projectMemoryFile(project.workspacePath)));
+   }
+ 
+-  allScopeFiles(): Array<ScopeFileRef & { corrupt?: string }> {
+-    const files: Array<ScopeFileRef & { corrupt?: string }> = [];
+-    const userFile = userMemoryFile(this.dataDir);
+-    files.push({ scope: 'user', file: userFile });
++  allScopeFiles(options: { strictProjects?: boolean; workspacePaths?: string[] } = {}): Array<ScopeFileRef & { corrupt?: string }> {
++    const files: Array<ScopeFileRef & { corrupt?: string }> = [
++      { scope: 'user', file: userMemoryFile(this.dataDir) },
++    ];
+     const agentsDir = join(memoryDir(this.dataDir), 'agents');
+     if (existsSync(agentsDir)) {
+-      for (const name of readdirSync(agentsDir).filter((n) => n.endsWith('.json')).sort()) {
++      for (const name of readdirSync(agentsDir).filter((entry) => entry.endsWith('.json')).sort()) {
+         const agentId = name.slice(0, -'.json'.length);
+         files.push({ scope: `agent:${agentId}`, file: join(agentsDir, name) });
+       }
+     }
+-    for (const project of loadProjectRegistry(this.dataDir).projects) {
+-      const file = projectMemoryFile(project.workspacePath);
++    const projects = options.strictProjects === false
++      ? loadProjectRegistry(this.dataDir).projects
++      : readProjectRegistry(this.dataDir).projects;
++    for (const project of projects) {
+       files.push({
+         scope: `project:${project.projectId}`,
+-        file,
++        file: projectMemoryFile(project.workspacePath),
+         projectId: project.projectId,
+         workspacePath: normalizeWorkspacePath(project.workspacePath),
++        archived: project.archived,
+       });
+     }
+-    // 漂移检测：注册过但文件损坏的 scope 不静默覆盖，也不注入。
++    const registeredWorkspaces = new Set(projects.map((project) => workspacePathKey(project.workspacePath)));
++    for (const workspacePath of options.workspacePaths ?? []) {
++      const normalized = normalizeWorkspacePath(workspacePath);
++      const key = workspacePathKey(normalized);
++      if (!normalized || registeredWorkspaces.has(key)) continue;
++      const file = projectMemoryFile(normalized);
++      if (!existsSync(file)) continue;
++      const ref: ScopeFileRef & { corrupt?: string } = {
++        scope: `project:unregistered:${key}`,
++        file,
++        workspacePath: normalized,
++      };
++      try {
++        const parsed = parseProjectMemoryFile(readFileSync(file, 'utf8'), file);
++        ref.scope = `project:${parsed.projectId}`;
++        ref.projectId = parsed.projectId;
++      } catch (error) {
++        ref.corrupt = error instanceof Error ? error.message : String(error);
++      }
++      files.push(ref);
++      registeredWorkspaces.add(key);
++    }
++    const proposalsDir = episodeProposalsDir(this.dataDir);
++    if (existsSync(proposalsDir)) {
++      for (const name of readdirSync(proposalsDir).filter((entry) => entry.endsWith('.json')).sort()) {
++        const sessionId = name.slice(0, -'.json'.length);
++        files.push({ scope: `episode:${sessionId}`, file: join(proposalsDir, name) });
++      }
++    }
+     for (const ref of files) {
+       if (!existsSync(ref.file)) continue;
+       try {
+-        if (ref.scope === 'user') parseMemoryFile(readFileSync(ref.file, 'utf8'), ref.file);
+-        else if (ref.scope.startsWith('agent:')) parseMemoryFile(readFileSync(ref.file, 'utf8'), ref.file);
+-        else parseProjectMemoryFile(readFileSync(ref.file, 'utf8'), ref.file);
++        const text = readFileSync(ref.file, 'utf8');
++        if (ref.scope.startsWith('project:')) {
++          const parsed = parseProjectMemoryFile(text, ref.file);
++          ref.archived = parsed.archived;
++          if (ref.projectId && ref.projectId !== parsed.projectId) {
++            throw new CorruptMemoryError(ref.file, 'projectId 与注册表不一致');
++          }
++        } else {
++          parseMemoryFile(text, ref.file);
++        }
+       } catch (error) {
+         ref.corrupt = error instanceof Error ? error.message : String(error);
+       }
+@@ -266,34 +410,112 @@ export class MemoryStore {
+       const parsed = ref.scope.startsWith('project:')
+         ? parseProjectMemoryFile(text, ref.file)
+         : parseMemoryFile(text, ref.file);
+-      const archived = ref.scope.startsWith('project:') ? (parsed as ProjectMemoryFileV1).archived === true : undefined;
++      const archived = ref.scope.startsWith('project:') ? (parsed as ProjectMemoryFileV1).archived : undefined;
++      if (archived !== undefined) ref.archived = archived;
+       for (const entry of parsed.entries) out.push({ ref, entry, archived });
+     }
+     return out;
+   }
+ 
+-  /** 写真相源后同步索引；保留 lastAccessedAt/accessCount。 */
++  identityConflicts(refs: Array<ScopeFileRef & { corrupt?: string }>): {
++    warnings: string[];
++    projectFiles: Set<string>;
++    idFiles: Set<string>;
++  } {
++    const warnings: string[] = [];
++    const projectFiles = new Set<string>();
++    const idFiles = new Set<string>();
++    const projects = new Map<string, string>();
++    const ids = new Map<string, string>();
++    for (const ref of refs) {
++      if (!ref.projectId) continue;
++      const other = projects.get(ref.projectId);
++      if (other && other !== ref.file) {
++        warnings.push(`projectId 重复：${ref.projectId}`);
++        projectFiles.add(other);
++        projectFiles.add(ref.file);
++      } else projects.set(ref.projectId, ref.file);
++    }
++    for (const { ref, entry } of this.readAllTruth(refs)) {
++      const other = ids.get(entry.id);
++      if (other && other !== ref.file) {
++        warnings.push(`记忆 id 跨文件重复：${entry.id}`);
++        idFiles.add(other);
++        idFiles.add(ref.file);
++      } else ids.set(entry.id, ref.file);
++    }
++    return { warnings: [...new Set(warnings)], projectFiles, idFiles };
++  }
++
++  conflicts(refs: Array<ScopeFileRef & { corrupt?: string }>): string[] {
++    return this.identityConflicts(refs).warnings;
++  }
++
++  rebuild(): { entries: number; corrupt: string[]; conflicts: string[] } {
++    const refs = this.allScopeFiles();
++    const rows = this.readAllTruth(refs);
++    const conflicts = this.conflicts(refs);
++    if (conflicts.length) throw new ScopeConflictError(conflicts.join('；'));
++    const episodes = this.readEpisodesTruth();
++    const states = this.readExtractionTruth();
++    const tx = this.db.transaction(() => {
++      this.db.exec('DELETE FROM memories');
++      if (this.ftsAvailable) this.db.exec('DELETE FROM memories_fts');
++      this.db.exec('DELETE FROM episodes');
++      if (this.ftsAvailable) this.db.exec('DELETE FROM episodes_fts');
++      this.db.exec('DELETE FROM extraction_state');
++      this.db.exec('DELETE FROM scope_files');
++      for (const { ref, entry } of rows) this.insertRow(ref, entry, { lastAccessedAt: null, accessCount: 0 });
++      for (const rec of episodes) this.indexEpisode(rec);
++      for (const [sessionId, state] of Object.entries(states)) this.indexExtractionState(sessionId, state);
++      for (const ref of refs) {
++        if (!existsSync(ref.file) || ref.corrupt) continue;
++        this.db.prepare('INSERT OR REPLACE INTO scope_files(file_ref, content_hash, updated_at) VALUES (?, ?, ?)')
++          .run(ref.file, hash(readFileSync(ref.file, 'utf8')), this.now());
++      }
++    });
++    tx();
++    return { entries: rows.length, corrupt: refs.filter((ref) => ref.corrupt).map((ref) => ref.file), conflicts };
++  }
++
+   replaceScopeIndex(ref: ScopeFileRef, entries: MemoryEntry[], archived?: boolean): void {
++    const projectConflict = ref.projectId
++      ? this.db.prepare('SELECT DISTINCT file_ref FROM memories WHERE project_id = ? AND file_ref <> ? LIMIT 1').get(ref.projectId, ref.file) as { file_ref: string } | undefined
++      : undefined;
++    if (projectConflict) throw new ScopeConflictError(`projectId ${ref.projectId} 已索引到 ${projectConflict.file_ref}`);
++    const seen = new Set<string>();
++    for (const entry of entries) {
++      if (seen.has(entry.id)) throw new ScopeConflictError(`同一文件记忆 id 重复：${entry.id}`);
++      seen.add(entry.id);
++      const other = this.db.prepare('SELECT file_ref FROM memories WHERE id = ? AND file_ref <> ? LIMIT 1').get(entry.id, ref.file) as { file_ref: string } | undefined;
++      if (other) throw new ScopeConflictError(`记忆 id ${entry.id} 已索引到 ${other.file_ref}`);
++    }
+     const usage = new Map<string, MemoryUsage>();
+-    for (const row of this.db.prepare('SELECT id, last_accessed_at, access_count FROM memories WHERE scope = ?').all(ref.scope) as Array<{ id: string; last_accessed_at: number | null; access_count: number }>) {
++    for (const row of this.db.prepare('SELECT id, last_accessed_at, access_count FROM memories WHERE file_ref = ?').all(ref.file) as Array<{ id: string; last_accessed_at: number | null; access_count: number }>) {
+       usage.set(row.id, { lastAccessedAt: row.last_accessed_at, accessCount: row.access_count });
+     }
+     const tx = this.db.transaction(() => {
+-      this.db.prepare('DELETE FROM memories WHERE scope = ?').run(ref.scope);
+-      this.db.exec('DELETE FROM memories_fts');
+-      for (const row of this.db.prepare('SELECT rowid AS rid, id, text FROM memories').all() as Array<{ rid: number; id: string; text: string }>) {
+-        if (this.ftsAvailable) this.db.prepare('INSERT INTO memories_fts(rowid, id, text) VALUES (?, ?, ?)').run(row.rid, row.id, row.text);
+-      }
+-      for (const entry of entries) {
+-        this.insertRow({ ...ref, archived }, entry, usage.get(entry.id) ?? { lastAccessedAt: null, accessCount: 0 });
+-      }
++      this.removeFileIndex(ref.file);
++      for (const entry of entries) this.insertRow(ref, entry, usage.get(entry.id) ?? { lastAccessedAt: null, accessCount: 0 });
++      this.db.prepare('INSERT OR REPLACE INTO scope_files(file_ref, content_hash, updated_at) VALUES (?, ?, ?)')
++        .run(ref.file, hash(readFileSync(ref.file, 'utf8')), this.now());
+     });
+     tx();
++    void archived;
+   }
+ 
+-  private insertRow(ref: ScopeFileRef, entry: MemoryEntry, usage: MemoryUsage, archived?: boolean): void {
++  private removeFileIndex(file: string): void {
++    if (this.ftsAvailable) {
++      for (const row of this.db.prepare('SELECT rowid AS rid FROM memories WHERE file_ref = ?').all(file) as Array<{ rid: number }>) {
++        this.db.prepare('DELETE FROM memories_fts WHERE rowid = ?').run(row.rid);
++      }
++    }
++    this.db.prepare('DELETE FROM memories WHERE file_ref = ?').run(file);
++  }
++
++  private insertRow(ref: ScopeFileRef, entry: MemoryEntry, usage: MemoryUsage): void {
+     this.db.prepare(`
+-      INSERT OR REPLACE INTO memories
++      INSERT INTO memories
+         (id, scope, project_id, workspace_path, status, text, pinned, importance,
+          last_accessed_at, access_count, source_session, file_ref, updated_at)
+       VALUES (@id, @scope, @projectId, @workspacePath, @status, @text, @pinned, @importance,
+@@ -317,7 +539,6 @@ export class MemoryStore {
+       const row = this.db.prepare('SELECT rowid AS rid FROM memories WHERE id = ?').get(entry.id) as { rid: number };
+       this.db.prepare('INSERT INTO memories_fts(rowid, id, text) VALUES (?, ?, ?)').run(row.rid, entry.id, entry.text);
+     }
+-    void archived;
+   }
+ 
+   removeIndexed(id: string): void {
+@@ -331,12 +552,39 @@ export class MemoryStore {
+     tx();
+   }
+ 
++  reconcileAll(): string[] {
++    const refs = this.allScopeFiles();
++    const identity = this.identityConflicts(refs);
++    const blockedFiles = new Set([...identity.projectFiles, ...identity.idFiles]);
++    for (const ref of refs) {
++      if (!existsSync(ref.file) || ref.corrupt || blockedFiles.has(ref.file)) {
++        this.removeFileIndex(ref.file);
++        continue;
++      }
++      const content = readFileSync(ref.file, 'utf8');
++      const current = hash(content);
++      const indexed = this.db.prepare('SELECT content_hash FROM scope_files WHERE file_ref = ?').get(ref.file) as { content_hash: string } | undefined;
++      if (indexed?.content_hash !== current) {
++        const parsed = ref.scope.startsWith('project:') ? parseProjectMemoryFile(content, ref.file) : parseMemoryFile(content, ref.file);
++        this.replaceScopeIndex(ref, parsed.entries, ref.archived);
++      }
++    }
++    const episodePath = episodesFile(this.dataDir);
++    const episodeHash = existsSync(episodePath) ? hash(readFileSync(episodePath, 'utf8')) : '';
++    const indexedEpisodeHash = (this.db.prepare("SELECT content_hash FROM scope_files WHERE file_ref = 'episodes'").get() as { content_hash: string } | undefined)?.content_hash ?? '';
++    if (episodeHash !== indexedEpisodeHash) {
++      this.rebuildEpisodeIndex();
++      this.db.prepare("INSERT OR REPLACE INTO scope_files(file_ref, content_hash, updated_at) VALUES ('episodes', ?, ?)")
++        .run(episodeHash, this.now());
++    }
++    return identity.warnings;
++  }
++
+   usageFor(id: string): MemoryUsage {
+     const row = this.db.prepare('SELECT last_accessed_at, access_count FROM memories WHERE id = ?').get(id) as { last_accessed_at: number | null; access_count: number } | undefined;
+     return row ? { lastAccessedAt: row.last_accessed_at, accessCount: row.access_count } : { lastAccessedAt: null, accessCount: 0 };
+   }
+ 
+-  /** FTS 检索：记忆与情景摘要各查一遍，按 bm25 排序。 */
+   private searchFts(match: string, limit: number, statusClause: string): MemorySearchHit[] {
+     const out: MemorySearchHit[] = [];
+     const rows = this.db.prepare(`
+@@ -345,8 +593,7 @@ export class MemoryStore {
+       WHERE memories_fts MATCH ?${statusClause} ORDER BY rank ASC, m.id ASC LIMIT ?
+     `).all(match, limit) as Array<IndexedRow & { rank: number }>;
+     for (const row of rows) out.push({
+-      id: row.id, scope: row.scope, text: row.text, kind: 'memory',
+-      status: row.status, score: -row.rank,
++      id: row.id, scope: row.scope, text: row.text, kind: 'memory', status: row.status, score: -row.rank,
+       ...(row.project_id ? { projectId: row.project_id } : {}),
+       ...(row.workspace_path ? { workspacePath: row.workspace_path } : {}),
+       ...(row.source_session ? { sessionId: row.source_session } : {}),
+@@ -357,7 +604,7 @@ export class MemoryStore {
+       WHERE episodes_fts MATCH ? ORDER BY rank ASC, e.session_id ASC LIMIT ?
+     `).all(match, limit) as Array<{ session_id: string; summary: string; project_id: string | null; workspace_path: string; rank: number }>;
+     for (const row of episodes) out.push({
+-      id: `episode:${row.session_id}`, scope: `episode:${row.session_id}`, text: row.summary,
++      id: `${EPISODE_ID_PREFIX}${row.session_id}`, scope: `episode:${row.session_id}`, text: row.summary,
+       kind: 'episode', score: -row.rank, summary: row.summary,
+       ...(row.project_id ? { projectId: row.project_id } : {}),
+       workspacePath: row.workspace_path, sessionId: row.session_id,
+@@ -366,61 +613,44 @@ export class MemoryStore {
+   }
+ 
+   rowFor(id: string): IndexedRow | undefined {
++    this.reconcileAll();
+     return this.db.prepare('SELECT * FROM memories WHERE id = ?').get(id) as IndexedRow | undefined;
+   }
+ 
+   rowsBySession(sessionId: string): IndexedRow[] {
++    this.reconcileAll();
+     return this.db.prepare('SELECT * FROM memories WHERE source_session = ?').all(sessionId) as IndexedRow[];
+   }
+ 
+-  /**
+-   * 注入只加计数；reset=true（检索命中/显式操作）才重置时钟。
+-   * 条目 id 可能是记忆（mem_…）也可能是情景摘要（episode:<sessionId>）——情景摘要
+-   * 的表主键是 session_id，必须剥掉 `episode:` 前缀再匹配，否则更新落空。
+-   */
+   touchAccess(ids: string[], resetClock: boolean): void {
+     if (!ids.length) return;
+     const ts = this.now();
+-    const bumpMemory = this.db.prepare(
+-      resetClock
+-        ? 'UPDATE memories SET access_count = access_count + 1, last_accessed_at = ? WHERE id = ?'
+-        : 'UPDATE memories SET access_count = access_count + 1 WHERE id = ?',
+-    );
+-    const bumpEpisode = this.db.prepare(
+-      resetClock
+-        ? 'UPDATE episodes SET access_count = access_count + 1, last_accessed_at = ? WHERE session_id = ?'
+-        : 'UPDATE episodes SET access_count = access_count + 1 WHERE session_id = ?',
+-    );
++    const bumpMemory = this.db.prepare(resetClock
++      ? 'UPDATE memories SET access_count = access_count + 1, last_accessed_at = ? WHERE id = ?'
++      : 'UPDATE memories SET access_count = access_count + 1 WHERE id = ?');
++    const bumpEpisode = this.db.prepare(resetClock
++      ? 'UPDATE episodes SET access_count = access_count + 1, last_accessed_at = ? WHERE session_id = ?'
++      : 'UPDATE episodes SET access_count = access_count + 1 WHERE session_id = ?');
+     const tx = this.db.transaction(() => {
+       for (const id of new Set(ids)) {
+         if (id.startsWith(EPISODE_ID_PREFIX)) {
+           const sessionId = id.slice(EPISODE_ID_PREFIX.length);
+           if (resetClock) bumpEpisode.run(ts, sessionId);
+           else bumpEpisode.run(sessionId);
+-        } else if (resetClock) {
+-          bumpMemory.run(ts, id);
+-        } else {
+-          bumpMemory.run(id);
+-        }
++        } else if (resetClock) bumpMemory.run(ts, id);
++        else bumpMemory.run(id);
+       }
+     });
+     tx();
+   }
+ 
+   viewOf(row: IndexedRow, sessionExists: (id: string) => boolean): MemoryEntryView | null {
+-    const file = row.file_ref;
+-    if (!existsSync(file)) return null;
+-    let parsed: MemoryFileV1;
+-    try {
+-      parsed = row.project_id
+-        ? parseProjectMemoryFile(readFileSync(file, 'utf8'), file)
+-        : parseMemoryFile(readFileSync(file, 'utf8'), file);
+-    } catch {
+-      return null;
+-    }
+-    const entry = parsed.entries.find((e) => e.id === row.id);
+-    if (!entry) return null;
+-    return toView(row, entry, sessionExists);
++    if (!existsSync(row.file_ref)) return null;
++    const parsed = row.project_id
++      ? parseProjectMemoryFile(readFileSync(row.file_ref, 'utf8'), row.file_ref)
++      : parseMemoryFile(readFileSync(row.file_ref, 'utf8'), row.file_ref);
++    const entry = parsed.entries.find((candidate) => candidate.id === row.id);
++    return entry ? toView(row, entry, sessionExists) : null;
+   }
+ 
+   viewsByIds(ids: string[], sessionExists: (id: string) => boolean): MemoryEntryView[] {
+@@ -431,36 +661,34 @@ export class MemoryStore {
+   }
+ 
+   search(query: string, opts: { limit?: number; includeHistory?: boolean } = {}): MemorySearchHit[] {
++    this.reconcileAll();
+     const term = query.trim();
+     if (!term) return [];
+     const limit = opts.limit ?? 12;
+-    const statusClause = opts.includeHistory ? '' : " AND m.status != 'superseded'";
++    const statusClause = opts.includeHistory ? " AND m.status IN ('active','superseded')" : " AND m.status = 'active'";
+     const hits: MemorySearchHit[] = [];
+     if (canUseTrigram(term, this.ftsAvailable)) {
+       hits.push(...this.searchFts(ftsMatchQuery(term), limit, statusClause));
+       if (!hits.length) {
+-        // 整句问法（"上个月那个项目的报价"）短语匹配必然落空：退到三字窗口 OR。
+         const windows = ftsWindowQuery(term);
+         if (windows) hits.push(...this.searchFts(windows, limit, statusClause));
+       }
+     } else {
+       const like = `%${term}%`;
+       const rows = this.db.prepare(`
+-        SELECT * FROM memories WHERE text LIKE ?${statusClause}
+-        ORDER BY importance DESC, updated_at DESC LIMIT ?
++        SELECT m.* FROM memories m WHERE m.text LIKE ?${statusClause}
++        ORDER BY m.importance DESC, m.updated_at DESC LIMIT ?
+       `).all(like, limit) as IndexedRow[];
+       for (const row of rows) hits.push({
+-        id: row.id, scope: row.scope, text: row.text, kind: 'memory', status: row.status,
+-        score: row.importance,
++        id: row.id, scope: row.scope, text: row.text, kind: 'memory', status: row.status, score: row.importance,
+         ...(row.project_id ? { projectId: row.project_id } : {}),
+         ...(row.workspace_path ? { workspacePath: row.workspace_path } : {}),
+       });
+       const episodes = this.db.prepare(`
+-        SELECT * FROM episodes WHERE summary LIKE ? OR topics LIKE ?
+-        ORDER BY ts DESC LIMIT ?
++        SELECT * FROM episodes WHERE summary LIKE ? OR topics LIKE ? ORDER BY ts DESC LIMIT ?
+       `).all(like, like, limit) as Array<{ session_id: string; summary: string; project_id: string | null; workspace_path: string }>;
+       for (const row of episodes) hits.push({
+-        id: `episode:${row.session_id}`, scope: `episode:${row.session_id}`, text: row.summary,
++        id: `${EPISODE_ID_PREFIX}${row.session_id}`, scope: `episode:${row.session_id}`, text: row.summary,
+         kind: 'episode', score: 1, summary: row.summary,
+         ...(row.project_id ? { projectId: row.project_id } : {}),
+         workspacePath: row.workspace_path, sessionId: row.session_id,
+@@ -470,68 +698,85 @@ export class MemoryStore {
+     return hits.slice(0, limit);
+   }
+ 
+-  appendEpisode(rec: EpisodeRecord): void {
++  private readEpisodesTruth(): EpisodeRecord[] {
++    const path = episodesFile(this.dataDir);
++    if (!existsSync(path)) return [];
++    const out: EpisodeRecord[] = [];
++    for (const [index, line] of readFileSync(path, 'utf8').split('\n').entries()) {
++      if (!line.trim()) continue;
++      try {
++        const value = JSON.parse(line) as unknown;
++        if (!isRecord(value) || typeof value.sessionId !== 'string' || typeof value.summary !== 'string' || !Array.isArray(value.topics)) {
++          throw new Error('字段非法');
++        }
++        out.push(value as unknown as EpisodeRecord);
++      } catch (error) {
++        throw new CorruptMemoryError(path, `第 ${index + 1} 行：${error instanceof Error ? error.message : String(error)}`);
++      }
++    }
++    return out;
++  }
++
++  indexEpisode(rec: EpisodeRecord): void {
+     this.db.prepare(`
+       INSERT OR REPLACE INTO episodes
+         (session_id, agent_id, workspace_path, project_id, ts, summary, topics, last_accessed_at, access_count)
+-      VALUES (@sessionId, @agentId, @workspacePath, @projectId, @ts, @summary, @topics, NULL, 0)
++      VALUES (@sessionId, @agentId, @workspacePath, @projectId, @ts, @summary, @topics,
++        COALESCE((SELECT last_accessed_at FROM episodes WHERE session_id = @sessionId), NULL),
++        COALESCE((SELECT access_count FROM episodes WHERE session_id = @sessionId), 0))
+     `).run({ ...rec, projectId: rec.projectId ?? null, topics: JSON.stringify(rec.topics) });
+-    if (this.ftsAvailable) {
+-      this.db.prepare('DELETE FROM episodes_fts').run();
+-      for (const row of this.db.prepare('SELECT rowid AS rid, session_id, summary, topics FROM episodes').all() as Array<{ rid: number; session_id: string; summary: string; topics: string }>) {
+-        this.db.prepare('INSERT INTO episodes_fts(rowid, session_id, summary, topics) VALUES (?, ?, ?, ?)').run(row.rid, row.session_id, row.summary, row.topics);
++  }
++
++  private rebuildEpisodeIndex(): void {
++    const tx = this.db.transaction(() => {
++      this.db.exec('DELETE FROM episodes');
++      if (this.ftsAvailable) this.db.exec('DELETE FROM episodes_fts');
++      for (const rec of this.readEpisodesTruth()) this.indexEpisode(rec);
++      if (this.ftsAvailable) {
++        for (const row of this.db.prepare('SELECT rowid AS rid, session_id, summary, topics FROM episodes').all() as Array<{ rid: number; session_id: string; summary: string; topics: string }>) {
++          this.db.prepare('INSERT INTO episodes_fts(rowid, session_id, summary, topics) VALUES (?, ?, ?, ?)')
++            .run(row.rid, row.session_id, row.summary, row.topics);
++        }
+       }
++    });
++    tx();
++  }
++
++  appendEpisode(rec: EpisodeRecord): void {
++    const path = episodesFile(this.dataDir);
++    mkdirSync(memoryDir(this.dataDir), { recursive: true });
++    appendFileSync(path, `${JSON.stringify(rec)}\n`, 'utf8');
++    try { this.indexEpisode(rec); this.refreshEpisodeFts(); } catch (error) {
++      recordMemoryError(undefined, 'episode-index', error instanceof Error ? error.message : String(error));
++    }
++  }
++
++  private refreshEpisodeFts(): void {
++    if (!this.ftsAvailable) return;
++    this.db.prepare('DELETE FROM episodes_fts').run();
++    for (const row of this.db.prepare('SELECT rowid AS rid, session_id, summary, topics FROM episodes').all() as Array<{ rid: number; session_id: string; summary: string; topics: string }>) {
++      this.db.prepare('INSERT INTO episodes_fts(rowid, session_id, summary, topics) VALUES (?, ?, ?, ?)')
++        .run(row.rid, row.session_id, row.summary, row.topics);
+     }
+-    const line = JSON.stringify(rec);
+-    appendFileSync(episodesFile(this.dataDir), `${line}\n`, 'utf8');
+   }
+ 
+   listEpisodes(): EpisodeRecord[] {
+-    return (this.db.prepare('SELECT * FROM episodes ORDER BY ts DESC').all() as Array<{
+-      session_id: string; agent_id: string; workspace_path: string; project_id: string | null;
+-      ts: number; summary: string; topics: string;
+-    }>).map((row) => ({
+-      sessionId: row.session_id, agentId: row.agent_id, workspacePath: row.workspace_path,
+-      ...(row.project_id ? { projectId: row.project_id } : {}),
+-      ts: row.ts, summary: row.summary, topics: JSON.parse(row.topics) as string[],
+-    }));
++    const latest = new Map<string, EpisodeRecord>();
++    for (const rec of this.readEpisodesTruth()) latest.set(rec.sessionId, rec);
++    return [...latest.values()].sort((a, b) => b.ts - a.ts);
+   }
+ 
+-  /**
+-   * 情景摘要二次压缩（§9 空闲整合）：只改系统生成的情景摘要，不动用户记忆。
+-   * 追加式日志按行重写成原子文件，保留其余行原文。
+-   */
+   updateEpisodeSummary(sessionId: string, summary: string): void {
+-    this.db.prepare('UPDATE episodes SET summary = ? WHERE session_id = ?').run(summary, sessionId);
+-    if (this.ftsAvailable) {
+-      this.db.prepare('UPDATE episodes_fts SET summary = ? WHERE session_id = ?').run(summary, sessionId);
++    const current = this.listEpisodes().find((rec) => rec.sessionId === sessionId);
++    if (!current) return;
++    const next = { ...current, summary, compressedAt: Date.now() };
++    appendFileSync(episodesFile(this.dataDir), `${JSON.stringify(next)}\n`, 'utf8');
++    try { this.indexEpisode(next); this.refreshEpisodeFts(); } catch (error) {
++      recordMemoryError(undefined, 'episode-index', error instanceof Error ? error.message : String(error));
+     }
+-    const path = episodesFile(this.dataDir);
+-    if (!existsSync(path)) return;
+-    const lines = readFileSync(path, 'utf8').split('\n').filter((line) => line.trim());
+-    let hit = false;
+-    const next = lines.map((line) => {
+-      try {
+-        const rec = JSON.parse(line) as EpisodeRecord;
+-        if (rec.sessionId !== sessionId) return line;
+-        hit = true;
+-        return JSON.stringify({ ...rec, summary, compressedAt: Date.now() });
+-      } catch {
+-        return line;
+-      }
+-    });
+-    if (hit) atomicWrite(path, `${next.join('\n')}\n`);
+   }
+ 
+   deleteEpisodesForSession(sessionId: string): void {
+-    const tx = this.db.transaction(() => {
+-      if (this.ftsAvailable) {
+-        this.db.prepare('DELETE FROM episodes_fts WHERE session_id = ?').run(sessionId);
+-      }
+-      this.db.prepare('DELETE FROM episodes WHERE session_id = ?').run(sessionId);
+-      this.db.prepare('DELETE FROM rejected_hashes WHERE session_id = ?').run(sessionId);
+-    });
+-    tx();
+     const path = episodesFile(this.dataDir);
+     if (existsSync(path)) {
+       const kept = readFileSync(path, 'utf8').split('\n').filter((line) => {
+@@ -540,31 +785,55 @@ export class MemoryStore {
+       });
+       atomicWrite(path, kept.length ? `${kept.join('\n')}\n` : '');
+     }
++    const tx = this.db.transaction(() => {
++      if (this.ftsAvailable) this.db.prepare('DELETE FROM episodes_fts WHERE session_id = ?').run(sessionId);
++      this.db.prepare('DELETE FROM episodes WHERE session_id = ?').run(sessionId);
++      this.db.prepare('DELETE FROM rejected_hashes WHERE session_id = ?').run(sessionId);
++    });
++    tx();
+   }
+ 
+-  addRejectedHash(hash: string, sessionId: string): void {
++  addRejectedHash(hashValue: string, sessionId: string): void {
+     this.db.prepare('INSERT OR REPLACE INTO rejected_hashes(hash, session_id, created_at) VALUES (?, ?, ?)')
+-      .run(hash, sessionId, this.now());
++      .run(hashValue, sessionId, this.now());
+   }
+ 
+-  hasRejectedHash(hash: string): boolean {
+-    return Boolean(this.db.prepare('SELECT 1 FROM rejected_hashes WHERE hash = ?').get(hash));
++  hasRejectedHash(hashValue: string): boolean {
++    return Boolean(this.db.prepare('SELECT 1 FROM rejected_hashes WHERE hash = ?').get(hashValue));
+   }
+ 
+-  getExtractionState(sessionId: string): { lastEntryId: string; lastRunAt: number; userTurnsSince: number } {
+-    const row = this.db.prepare('SELECT * FROM extraction_state WHERE session_id = ?').get(sessionId) as {
+-      last_entry_id: string; last_run_at: number; user_turns_since: number;
+-    } | undefined;
+-    return row
+-      ? { lastEntryId: row.last_entry_id, lastRunAt: row.last_run_at, userTurnsSince: row.user_turns_since }
+-      : { lastEntryId: '', lastRunAt: 0, userTurnsSince: 0 };
++  private readExtractionTruth(): Record<string, ExtractionState> {
++    const path = extractionStateFile(this.dataDir);
++    return existsSync(path) ? parseExtractionStates(readFileSync(path, 'utf8'), path) : {};
+   }
+ 
+-  setExtractionState(sessionId: string, state: { lastEntryId: string; lastRunAt?: number; userTurnsSince: number }): void {
++  private indexExtractionState(sessionId: string, state: ExtractionState): void {
+     this.db.prepare(`
+       INSERT OR REPLACE INTO extraction_state(session_id, last_entry_id, last_run_at, user_turns_since)
+       VALUES (?, ?, ?, ?)
+-    `).run(sessionId, state.lastEntryId, state.lastRunAt ?? this.getExtractionState(sessionId).lastRunAt, state.userTurnsSince);
++    `).run(sessionId, state.lastEntryId, state.lastRunAt, state.userTurnsSince);
++  }
++
++  extractionStateSnapshot(): Record<string, ExtractionState> {
++    return this.readExtractionTruth();
++  }
++
++  getExtractionState(sessionId: string): ExtractionState {
++    const states = this.readExtractionTruth();
++    return states[sessionId] ?? { lastEntryId: '', lastRunAt: 0, userTurnsSince: 0 };
++  }
++
++  setExtractionState(sessionId: string, state: { lastEntryId: string; lastRunAt?: number; userTurnsSince: number }, indexOnly = false): void {
++    const previous = this.getExtractionState(sessionId);
++    const next = { lastEntryId: state.lastEntryId, lastRunAt: state.lastRunAt ?? previous.lastRunAt, userTurnsSince: state.userTurnsSince };
++    if (!indexOnly) {
++      const states = this.readExtractionTruth();
++      states[sessionId] = next;
++      atomicWrite(extractionStateFile(this.dataDir), `${JSON.stringify(states, null, 2)}\n`);
++    }
++    try { this.indexExtractionState(sessionId, next); } catch (error) {
++      recordMemoryError(undefined, 'extraction-state-index', error instanceof Error ? error.message : String(error));
++    }
+   }
+ 
+   getConsolidationLastRun(): number {
+@@ -576,48 +845,85 @@ export class MemoryStore {
+     this.db.prepare("INSERT OR REPLACE INTO consolidation_state(id, last_run_at) VALUES ('singleton', ?)").run(ts);
+   }
+ 
+-  /** 会话删除时把仍引用它的 active 记忆的来源置空（界面显示“来源已删除”）。 */
+   markSourcesDeleted(sessionId: string): void {
++    const changes = new Map<string, string>();
++    const changed: Array<{ ref: ScopeFileRef; entries: MemoryEntry[]; archived?: boolean }> = [];
+     for (const ref of this.allScopeFiles()) {
+-      if (!existsSync(ref.file) || ref.corrupt) continue;
++      if (ref.corrupt) throw new CorruptMemoryError(ref.file, ref.corrupt);
++      if (!existsSync(ref.file)) continue;
+       const text = readFileSync(ref.file, 'utf8');
+-      const parsed = ref.scope.startsWith('project:')
+-        ? parseProjectMemoryFile(text, ref.file)
+-        : parseMemoryFile(text, ref.file);
+-      let changed = false;
+-      for (const entry of parsed.entries) {
+-        if (entry.source?.sessionId !== sessionId) continue;
+-        // 保留 sessionId 作为审计线索，改写 excerpt 作为界面“来源已删除”标记；不物理丢证据链。
+-        entry.source = { ...entry.source, excerpt: '来源已删除' };
+-        changed = true;
++      const parsed = ref.scope.startsWith('project:') ? parseProjectMemoryFile(text, ref.file) : parseMemoryFile(text, ref.file);
++      let dirty = false;
++      const entries = parsed.entries.filter((entry) => {
++        if (entry.source?.sessionId !== sessionId && ref.file !== episodeProposalFile(this.dataDir, sessionId)) return true;
++        dirty = true;
++        if (entry.status === 'pending') return false;
++        entry.source = { ...entry.source, sessionId, kind: entry.source?.kind ?? 'consolidated', excerpt: '来源已删除' };
++        return true;
++      });
++      if (!dirty) continue;
++      changes.set(ref.file, `${JSON.stringify({ ...parsed, entries }, null, 2)}\n`);
++      changed.push({ ref, entries, archived: ref.archived });
++    }
++    commitTruthBatch(this.dataDir, changes);
++    for (const item of changed) {
++      try { this.replaceScopeIndex(item.ref, item.entries, item.archived); } catch (error) {
++        recordMemoryError(undefined, 'source-deleted-index', error instanceof Error ? error.message : String(error));
+       }
+-      if (!changed) continue;
+-      atomicWrite(ref.file, `${JSON.stringify(parsed, null, 2)}\n`);
+-      this.replaceScopeIndex(ref, parsed.entries);
+     }
+   }
+ 
+-  /** 隐私清理：按 sessionId 从全部真相源文件删除条目（pending 也在其中）。 */
+-  deleteMemoryEntriesBySession(sessionId: string): string[] {
++  deleteMemoryEntriesBySession(sessionId: string, onRemove?: (entry: MemoryEntry) => void, workspacePaths: string[] = []): string[] {
++    const changes = new Map<string, string>();
++    const changed: Array<{ ref: ScopeFileRef; entries: MemoryEntry[]; archived?: boolean }> = [];
+     const removed: string[] = [];
+-    for (const ref of this.allScopeFiles()) {
+-      if (!existsSync(ref.file) || ref.corrupt) continue;
++    const refs = this.allScopeFiles({ workspacePaths });
++    const conflicts = this.conflicts(refs);
++    if (conflicts.length) throw new ScopeConflictError(conflicts.join('；'));
++    for (const ref of refs) {
++      if (ref.corrupt) throw new CorruptMemoryError(ref.file, ref.corrupt);
++      if (!existsSync(ref.file)) continue;
+       const text = readFileSync(ref.file, 'utf8');
+-      const parsed = ref.scope.startsWith('project:')
+-        ? parseProjectMemoryFile(text, ref.file)
+-        : parseMemoryFile(text, ref.file);
+-      let localCount = 0;
+-      const kept = parsed.entries.filter((entry) => {
+-        if (entry.source?.sessionId === sessionId) { removed.push(entry.id); localCount += 1; return false; }
+-        return true;
++      const parsed = ref.scope.startsWith('project:') ? parseProjectMemoryFile(text, ref.file) : parseMemoryFile(text, ref.file);
++      let dirty = false;
++      const entries = parsed.entries.filter((entry) => {
++        if (entry.source?.sessionId !== sessionId && ref.file !== episodeProposalFile(this.dataDir, sessionId)) return true;
++        dirty = true;
++        removed.push(entry.id);
++        onRemove?.(entry);
++        return false;
+       });
+-      if (localCount === 0) continue;
+-      atomicWrite(ref.file, `${JSON.stringify({ ...parsed, entries: kept }, null, 2)}\n`);
+-      this.replaceScopeIndex(ref, kept);
++      if (!dirty) continue;
++      changes.set(ref.file, `${JSON.stringify({ ...parsed, entries }, null, 2)}\n`);
++      changed.push({ ref, entries, archived: ref.archived });
++    }
++    const episodePath = episodesFile(this.dataDir);
++    if (existsSync(episodePath)) {
++      const episodes = this.readEpisodesTruth();
++      const kept = episodes.filter((episode) => episode.sessionId !== sessionId);
++      changes.set(episodePath, kept.length ? `${kept.map((episode) => JSON.stringify(episode)).join('\n')}\n` : '');
+     }
+-    for (const id of new Set(removed)) this.removeIndexed(id);
+-    this.deleteEpisodesForSession(sessionId);
++    const statePath = extractionStateFile(this.dataDir);
++    if (existsSync(statePath)) {
++      const states = this.readExtractionTruth();
++      delete states[sessionId];
++      changes.set(statePath, `${JSON.stringify(states, null, 2)}\n`);
++    }
++    commitTruthBatch(this.dataDir, changes, {
++      projectFiles: refs.filter((ref) => ref.scope.startsWith('project:')).map((ref) => ref.file),
++    });
++    for (const item of changed) {
++      try { this.replaceScopeIndex(item.ref, item.entries, item.archived); } catch (error) {
++        recordMemoryError(undefined, 'privacy-delete-index', error instanceof Error ? error.message : String(error));
++      }
++    }
++    const tx = this.db.transaction(() => {
++      if (this.ftsAvailable) this.db.prepare('DELETE FROM episodes_fts WHERE session_id = ?').run(sessionId);
++      this.db.prepare('DELETE FROM episodes WHERE session_id = ?').run(sessionId);
++      this.db.prepare('DELETE FROM rejected_hashes WHERE session_id = ?').run(sessionId);
++      this.db.prepare('DELETE FROM extraction_state WHERE session_id = ?').run(sessionId);
++    });
++    tx();
+     return [...new Set(removed)];
+   }
+ }
+-
+diff --git a/apps/desktop/electron/main/memory/tools.ts b/apps/desktop/electron/main/memory/tools.ts
+index 756ec214..3553061b 100644
+--- a/apps/desktop/electron/main/memory/tools.ts
++++ b/apps/desktop/electron/main/memory/tools.ts
+@@ -53,7 +53,8 @@ export async function handleMemoryToolAction(request: RuntimeActionRequest, deps
+       if (!text) throw new Error('请说明要记住的内容');
+       const scope = String(args.scope ?? 'user');
+       const entry = deps.service.addMemory({
+-        scope,
++        scope: scope === 'agent' ? `agent:${deps.profileId}` : scope,
++        agentId: deps.profileId,
+         text,
+         pinned: args.pinned === true,
+         sessionId: deps.sessionId,
+diff --git a/apps/desktop/electron/main/memory/types.ts b/apps/desktop/electron/main/memory/types.ts
+index 3fb2ff95..52250f82 100644
+--- a/apps/desktop/electron/main/memory/types.ts
++++ b/apps/desktop/electron/main/memory/types.ts
+@@ -11,7 +11,7 @@ export interface MemorySource {
+ }
+ 
+ export interface PendingOperation {
+-  op: Exclude<MemoryOp, 'NOOP'>;
++  op: Exclude<MemoryOp, 'NOOP'> | 'EPISODE_UPDATE';
+   targetId?: string;
+   proposedText?: string;
+   projectId?: string;
+@@ -110,6 +110,7 @@ export interface ProjectRef {
+   projectId: string;
+   workspacePath: string;
+   name?: string;
++  archived?: boolean;
+ }
+ 
+ export interface MemoryListResult {
+diff --git a/apps/desktop/electron/main/runtime.ts b/apps/desktop/electron/main/runtime.ts
+index 6b90d89b..a3e9e619 100644
+--- a/apps/desktop/electron/main/runtime.ts
++++ b/apps/desktop/electron/main/runtime.ts
+@@ -219,6 +219,8 @@ export async function assemble(opts: {
+     logger: opts.logger,
+     sessionExists: (id) => Boolean(chatSessions.get(id)),
+     sessionFileOf: (id) => chatSessions.get(id)?.piSessionFile ?? undefined,
++    workspacePathOf: (id) => chatSessions.get(id)?.workspacePath ?? undefined,
++    workspacePathsOf: () => chatSessions.list().map((session) => session.workspacePath),
+     deleteChatSession: (id) => chatSessions.delete(id),
+     agents: () => [...agents.values()].map((a) => ({ id: a.manifest.id, name: a.manifest.displayName ?? a.manifest.id })),
+   });
+diff --git a/apps/desktop/electron/main/security/action-normalizer.ts b/apps/desktop/electron/main/security/action-normalizer.ts
+index 33a705b6..d50c7971 100644
+--- a/apps/desktop/electron/main/security/action-normalizer.ts
++++ b/apps/desktop/electron/main/security/action-normalizer.ts
+@@ -12,7 +12,7 @@ import {
+   type TaskGrant,
+   type WorkspacePathProbe,
+ } from '@sparkii/approval';
+-import type { RuntimeActionRequest } from '@sparkii/agent-host';
++import { isPlatformReservedPath, type RuntimeActionRequest } from '@sparkii/agent-host';
+ 
+ export interface NormalizedToolDescriptor {
+   toolName: string;
+@@ -223,6 +223,12 @@ async function classifyPath(
+ 
+   const canonical = inspected.canonicalPath;
+   const parent = await options.probe.inspect(dirname(canonical));
++  if (inspected.isReparsePoint || parent.isReparsePoint) {
++    throw new ActionNormalizationError('INVALID_TARGET', 'reparse-point paths are not allowed');
++  }
++  if (isPlatformReservedPath(canonical)) {
++    throw new ActionNormalizationError('INVALID_TARGET', '.sparkii 是平台保留目录');
++  }
+   let critical = isSameOrParent(canonical, grant.workspaceRoot);
+   if (!critical) {
+     for (const root of options.protectedRoots) {
+diff --git a/apps/desktop/electron/main/security/runtime-action-router.ts b/apps/desktop/electron/main/security/runtime-action-router.ts
+index cdfbf93c..4127559b 100644
+--- a/apps/desktop/electron/main/security/runtime-action-router.ts
++++ b/apps/desktop/electron/main/security/runtime-action-router.ts
+@@ -80,6 +80,7 @@ export interface RuntimeActionRouterOptions {
+   platformName?: string;
+   sandboxVersion?: string;
+   hardDenyPolicyVersion?: string;
++  allowShellExecution?: boolean;
+ }
+ 
+ type Evidence = ShellReviewInput['recentEvidence'][number];
+@@ -431,6 +432,18 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
+         error instanceof Error ? error.message : String(error));
+       }
+ 
++      if (action.capability === 'process.exec' && options.allowShellExecution !== true) {
++        const outcome: PolicyOutcome = {
++          decision: 'deny',
++          ruleId: 'platform.shell-disabled',
++          reason: '宿主 Shell 执行未开放',
++        };
++        recordEvidence(action, 'denied', `${outcome.ruleId}: ${outcome.reason}`);
++        await auditDecision(action, 'action.denied',
++          `${outcome.ruleId}: ${outcome.reason}`, outcome.ruleId, 'denied');
++        return denied(request.requestId, outcome, 'SHELL_DISABLED', outcome.reason);
++      }
++
+       let outcome = evaluatePolicy({
+         action,
+         grant,
+diff --git a/apps/desktop/electron/main/security/windows-platform.ts b/apps/desktop/electron/main/security/windows-platform.ts
+index 696a7fbb..83ff6deb 100644
+--- a/apps/desktop/electron/main/security/windows-platform.ts
++++ b/apps/desktop/electron/main/security/windows-platform.ts
+@@ -1,3 +1,4 @@
++import { execFile } from 'node:child_process';
+ import {
+   lstat,
+   realpath,
+@@ -21,12 +22,55 @@ export interface WindowsPlatformOptions {
+   dataDir: string;
+   volumes?: string[];
+   credentialDirs?: string[];
++  /** Windows attribute reader; injectable for non-symlink reparse-point regressions. */
++  readReparsePointAttribute?: (path: string) => Promise<number>;
+ }
+ 
+ const WINDOWS_DEVICE_PATH = /^\\\\[.?]\\(?!UNC\\)/i;
+ const WINDOWS_DEVICE_NAME =
+   /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/i;
+ const MISSING_CODES = new Set(['ENOENT', 'ENOTDIR']);
++const FILE_ATTRIBUTE_REPARSE_POINT = 16;
++
++async function readWindowsReparsePointAttribute(path: string): Promise<number> {
++  const powershell = process.env.SystemRoot
++    ? win32.join(process.env.SystemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
++    : 'powershell.exe';
++  const stdout = await new Promise<string>((resolve, reject) => {
++    execFile(
++      powershell,
++      [
++        '-NoLogo', '-NoProfile', '-NonInteractive',
++        '-Command',
++        '[int]([System.IO.File]::GetAttributes($env:SPARKII_REPARSE_PATH) -band [System.IO.FileAttributes]::ReparsePoint)',
++      ],
++      {
++        windowsHide: true,
++        timeout: 5_000,
++        maxBuffer: 1024,
++        encoding: 'utf8',
++        env: { ...process.env, SPARKII_REPARSE_PATH: path },
++      },
++      (error, output) => error ? reject(error) : resolve(output),
++    );
++  });
++  const rawAttribute = stdout.trim();
++  if (rawAttribute !== '0' && rawAttribute !== String(FILE_ATTRIBUTE_REPARSE_POINT)) {
++    throw new Error('Windows reparse-point attribute probe returned an invalid result');
++  }
++  return Number(rawAttribute);
++}
++
++async function isWindowsReparsePoint(
++  path: string,
++  link: Awaited<ReturnType<typeof lstat>>,
++  readAttribute: (path: string) => Promise<number>,
++): Promise<boolean> {
++  // Node exposes symlinks (including junctions), but not the generic Windows
++  // FILE_ATTRIBUTE_REPARSE_POINT bit used by mount points and placeholders.
++  if (link.isSymbolicLink()) return true;
++  return await readAttribute(path) === FILE_ATTRIBUTE_REPARSE_POINT;
++}
+ 
+ function stripExtendedPrefix(value: string): string {
+   if (/^\\\\\?\\UNC\\/i.test(value)) return `\\\\${value.slice(8)}`;
+@@ -114,8 +158,10 @@ function isSameOrDescendantKey(root: string, target: string): boolean {
+ }
+ 
+ export function createWindowsPathProbe(
+-  _opts: WindowsPlatformOptions,
++  opts: WindowsPlatformOptions,
+ ): WorkspacePathProbe {
++  const readReparsePointAttribute = opts.readReparsePointAttribute
++    ?? readWindowsReparsePointAttribute;
+   const inspect = async (value: string): Promise<WorkspacePathInfo> => {
+     const target = validateWindowsPath(value);
+     const nearest = await nearestExisting(target);
+@@ -137,7 +183,11 @@ export function createWindowsPathProbe(
+         )}`,
+       nearestExistingAncestor: nearestReal,
+       isDirectory: exists ? nearestStats.isDirectory() : false,
+-      isReparsePoint: nearestLink.isSymbolicLink(),
++      isReparsePoint: await isWindowsReparsePoint(
++        nearest.path,
++        nearestLink,
++        readReparsePointAttribute,
++      ),
+       exists,
+       linkCount: exists ? Number(nearestStats.nlink) : undefined,
+     };
+diff --git a/apps/desktop/electron/main/security/workspace-executor.ts b/apps/desktop/electron/main/security/workspace-executor.ts
+index 3ad809e3..81c3c9da 100644
+--- a/apps/desktop/electron/main/security/workspace-executor.ts
++++ b/apps/desktop/electron/main/security/workspace-executor.ts
+@@ -24,10 +24,12 @@ import {
+   type WorkspacePathInfo,
+   type WorkspacePathProbe,
+ } from '@sparkii/approval';
++import { isPlatformReservedPath } from '@sparkii/agent-host';
+ 
+ export type WorkspaceExecutionCode =
+   | 'UNSUPPORTED_TOOL'
+   | 'SCOPE_DENIED'
++  | 'DENIED'
+   | 'CRITICAL_TARGET'
+   | 'TRUST_ANCHOR'
+   | 'TARGET_CHANGED'
+@@ -137,6 +139,17 @@ export function createWorkspaceExecutor(opts: {
+       );
+     }
+     const inspected = await inspect(resource.value);
++    if (isPlatformReservedPath(inspected.canonicalPath)) {
++      throw new WorkspaceExecutionError('DENIED', '.sparkii 是平台保留目录');
++    }
++    let component = resolve(resource.value);
++    while (isInside(grant.workspaceRoot, component) && component !== resolve(grant.workspaceRoot)) {
++      const info = await inspect(component);
++      if (info.isReparsePoint) {
++        throw new WorkspaceExecutionError('REPARSE_POINT', 'workspace path component is a reparse point');
++      }
++      component = dirname(component);
++    }
+     if (inspected.exists) {
+       const current = await lstat(inspected.canonicalPath, { bigint: true });
+       if (!current.isDirectory() && current.nlink > 1n) {
+@@ -257,6 +270,10 @@ export function createWorkspaceExecutor(opts: {
+     let current = resolve(root);
+     for (const segment of rel.split(/[\\/]+/).filter(Boolean)) {
+       current = join(current, segment);
++      const probed = await inspect(current);
++      if (probed.isReparsePoint) {
++        throw new WorkspaceExecutionError('REPARSE_POINT', `workspace path component is a reparse point: ${current}`);
++      }
+       let info;
+       try {
+         info = await lstat(current, { bigint: true });
+@@ -279,6 +296,9 @@ export function createWorkspaceExecutor(opts: {
+     content: string,
+     mustExist: boolean,
+   ): Promise<'created' | 'modified'> => {
++    if (isPlatformReservedPath(target)) {
++      throw new WorkspaceExecutionError('DENIED', '.sparkii 是平台保留目录');
++    }
+     const targetExists = await exists(target);
+     if (mustExist && !targetExists) {
+       throw new WorkspaceExecutionError('TARGET_INVALID', 'edit target does not exist');
+diff --git a/apps/desktop/electron/main/security/workspace-file-service.ts b/apps/desktop/electron/main/security/workspace-file-service.ts
+index 68dde9dd..bc121ad8 100644
+--- a/apps/desktop/electron/main/security/workspace-file-service.ts
++++ b/apps/desktop/electron/main/security/workspace-file-service.ts
+@@ -150,6 +150,17 @@ export function createWorkspaceFileService(deps: WorkspaceFileServiceDeps) {
+       return deny(deps, req, op, 'DENIED', 'target escaped the workspace', ctx);
+     }
+     const inspected = await security.pathProbe.inspect(absolute);
++    if (isPlatformReservedPath(inspected.canonicalPath)) {
++      return deny(deps, req, op, 'DENIED', '.sparkii 是平台保留目录', ctx);
++    }
++    let component = absolute;
++    while (component !== ctx.workspaceRoot && isPathInside(ctx.workspaceRoot, component)) {
++      const info = await security.pathProbe.inspect(component);
++      if (info.isReparsePoint) {
++        return deny(deps, req, op, 'DENIED', 'target path component is a reparse point', ctx);
++      }
++      component = dirname(component);
++    }
+     if (inspected.isReparsePoint) {
+       return deny(deps, req, op, 'DENIED', 'target is a reparse point', ctx);
+     }
+@@ -167,7 +178,7 @@ export function createWorkspaceFileService(deps: WorkspaceFileServiceDeps) {
+     if (!isPathInside(ctx.canonicalRoot, resolve(inspected.canonicalPath))) {
+       return deny(deps, req, op, 'DENIED', 'canonical target escaped the workspace', ctx);
+     }
+-    return absolute;
++    return inspected.canonicalPath;
+   };
+ 
+   const auditOk = async (req: WorkspaceFileRequest, op: WorkspaceFileOp, ctx: ResolvedContext) => {
+diff --git a/apps/desktop/src/shell/SettingsMemoryPane.tsx b/apps/desktop/src/shell/SettingsMemoryPane.tsx
+index 81d5f36b..96207f24 100644
+--- a/apps/desktop/src/shell/SettingsMemoryPane.tsx
++++ b/apps/desktop/src/shell/SettingsMemoryPane.tsx
+@@ -52,8 +52,7 @@ export function SettingsMemoryPane({ api, onDirtyChange }: { api?: MemoryPaneApi
+   const [editingText, setEditingText] = useState('');
+   const [query, setQuery] = useState('');
+   const [hits, setHits] = useState<MemorySearchHitApi[]>([]);
+-  const [repairPath, setRepairPath] = useState('');
+-  const [repairText, setRepairText] = useState('');
++  const [repairDrafts, setRepairDrafts] = useState<Record<string, string>>({});
+ 
+   const refresh = useCallback(async () => {
+     if (!api?.listMemories) return;
+@@ -310,22 +309,28 @@ export function SettingsMemoryPane({ api, onDirtyChange }: { api?: MemoryPaneApi
+         </SettingsSection>
+       )}
+ 
+-      {data?.scopes.map((scope) => (
++      {data?.scopes.map((scope) => {
++        const repairKey = scope.workspacePath ?? scope.scope;
++        const repairText = repairDrafts[repairKey] ?? '';
++        return (
+         <SettingsSection title={scope.label} key={scope.scope}>
+           {scope.warning && <div className="memory-warning">{scope.warning}</div>}
+           {scope.corrupt && (
+             <div className="memory-entry">
+               <div className="memory-entry-text">该项目的记忆内容无法读取，已暂停使用。确认后可重新整理。</div>
+               <SettingsRow label="修复方式" description="可留空重新整理，或粘贴此前保存的内容。">
+-                <TextArea aria-label="修复内容" rows={3} value={repairText} onChange={(e) => setRepairText(e.target.value)} />
++                <TextArea aria-label="修复内容" rows={3} value={repairText} onChange={(e) => setRepairDrafts((current) => ({ ...current, [repairKey]: e.target.value }))} />
+               </SettingsRow>
+               <div className="settings-actions">
+                 <Button onClick={() => {
+-                  setRepairPath(scope.workspacePath ?? '');
+-                  void run(() => api?.repairProjectMemory?.(scope.workspacePath ?? '', 'empty') ?? Promise.resolve(), '已重新整理');
++                  const path = scope.workspacePath ?? '';
++                  if (!path || !window.confirm('重新整理会清空该项目的现有记忆，且不可恢复。确认继续？')) return;
++                  void run(() => api?.repairProjectMemory?.(path, 'empty') ?? Promise.resolve(), '已重新整理');
+                 }}>重新整理</Button>
+                 <Button onClick={() => {
+-                  const path = repairPath || scope.workspacePath || '';
++                  const path = scope.workspacePath ?? '';
++                  if (!path || !repairText.trim()) { setError('请先填写该项目的修复内容'); return; }
++                  if (!window.confirm('按提供内容修复会覆盖该项目的现有记忆文件，且不可恢复。确认继续？')) return;
+                   void run(() => api?.repairProjectMemory?.(path, 'replace', repairText) ?? Promise.resolve(), '已按提供内容修复');
+                 }}>按提供内容修复</Button>
+               </div>
+@@ -336,7 +341,8 @@ export function SettingsMemoryPane({ api, onDirtyChange }: { api?: MemoryPaneApi
+           )}
+           {scope.entries.filter((entry) => entry.status !== 'pending').map((entry) => entryRow(entry, scope))}
+         </SettingsSection>
+-      ))}
++        );
++      })}
+ 
+       {status && <div className="memory-note">{status}</div>}
+       {error && <div className="memory-warning">{error}</div>}
+diff --git a/apps/desktop/test/logger.test.ts b/apps/desktop/test/logger.test.ts
+index b23ff07c..239a07d3 100644
+--- a/apps/desktop/test/logger.test.ts
++++ b/apps/desktop/test/logger.test.ts
+@@ -1,4 +1,4 @@
+-import { mkdtempSync } from 'node:fs';
++import { mkdirSync, mkdtempSync } from 'node:fs';
+ import { tmpdir } from 'node:os';
+ import { join } from 'node:path';
+ import { describe, it, expect, vi } from 'vitest';
+@@ -41,4 +41,13 @@ describe('Logger', () => {
+     expect(logSpy).not.toHaveBeenCalled();
+     logSpy.mockRestore();
+   });
++
++  it('constructor and logging stay non-blocking when the log file path is a directory', async () => {
++    const dir = mkdtempSync(join(tmpdir(), 'log-'));
++    mkdirSync(join(dir, 'sparkii.log.jsonl'));
++    expect(() => new Logger(dir, false)).not.toThrow();
++    const logger = new Logger(dir, false);
++    await expect(logger.log({ level: 'info', msg: 'write failure is non-blocking' })).resolves.toBeUndefined();
++    await expect(logger.export()).resolves.toBe('');
++  });
+ });
+diff --git a/apps/desktop/test/memory-consolidation.test.ts b/apps/desktop/test/memory-consolidation.test.ts
+index ca6ce46c..5a834312 100644
+--- a/apps/desktop/test/memory-consolidation.test.ts
++++ b/apps/desktop/test/memory-consolidation.test.ts
+@@ -128,14 +128,82 @@ describe('idle consolidation', () => {
+     const result = await c.runOnce();
+     expect(result.calls).toBe(3);
+     expect(calls.length).toBe(3);
+-    expect(result.proposals).toBe(2);
++    expect(result.proposals).toBe(3);
+     expect(result.digests).toBe(1);
+     const digest = service.store.listEpisodes().find((e) => e.sessionId === 'sess-old');
+-    expect(digest?.summary).toBe('旧项目：报价已确认');
++    expect(digest?.summary).toBe('很长的旧摘要'.repeat(20));
+     // 三轮全走 pending，active 一条没被自动改
+     const projectRow = service.list().scopes.find((s) => s.kind === 'project')?.entries.find((e) => e.id === project.id);
+     expect(projectRow?.status).toBe('active');
+-    expect(service.list().pending).toHaveLength(2);
++    expect(service.list().pending).toHaveLength(3);
++  });
++
++  it('拒绝合并阶段的对象字段而不是字符串化', async () => {
++    const a = service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正文不超过三句' });
++    const b = service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正文不超过三句话' });
++    const c = consolidator(async () => JSON.stringify({
++      merges: [
++        { keepId: a.id, dropId: b.id, text: '合法合并' },
++        { keepId: a.id, dropId: b.id, text: { secret: '不得字符串化' } },
++      ],
++    }));
++    makeIdle(c);
++    expect((await c.runOnce()).proposals).toBe(0);
++    expect(service.list().pending).toEqual([]);
++  });
++
++  it('拒绝压缩阶段的对象字段而不是字符串化', async () => {
++    service.store.appendEpisode({
++      sessionId: 'sess-object', agentId: 'general', workspacePath: '/w', ts: clock - 40 * DAY,
++      summary: '很长的旧摘要'.repeat(20), topics: ['旧'],
++    });
++    const c = consolidator(async () => JSON.stringify({
++      digests: [
++        { sessionId: 'sess-object', summary: '合法摘要' },
++        { sessionId: 'sess-object', summary: { secret: '不得字符串化' } },
++      ],
++    }));
++    makeIdle(c);
++    const result = await c.runOnce();
++    expect(result.proposals).toBe(0);
++    expect(result.digests).toBe(0);
++    expect(service.list().pending).toEqual([]);
++  });
++
++  it('拒绝复核阶段的对象字段而不是字符串化', async () => {
++    const project = service.addMemory({
++      scope: 'project', text: '本项目报价为 2024 年报价单口径',
++      workspacePath: join(root, 'ws-object'), workspaceKind: 'user',
++    });
++    clock += 200 * DAY;
++    const c = consolidator(async () => JSON.stringify({
++      ops: [
++        { targetId: project.id, replacementText: '合法复核' },
++        { targetId: project.id, replacementText: { secret: '不得字符串化' } },
++      ],
++    }));
++    makeIdle(c);
++    expect((await c.runOnce()).proposals).toBe(0);
++    expect(service.list().pending).toEqual([]);
++  });
++
++  it('P2 情景压缩混合越界输出时整阶段丢弃，不留下部分提案', async () => {
++    service.store.appendEpisode({
++      sessionId: 'sess-compress', agentId: 'general', workspacePath: '/w', ts: clock - 40 * DAY,
++      summary: '很长的旧摘要'.repeat(20), topics: ['旧'],
++    });
++    const c = consolidator(async () => JSON.stringify({
++      digests: [
++        { sessionId: 'sess-compress', summary: '这是一个严格不超过四十个字的压缩结论用于验证待确认流程' },
++        { sessionId: 'sess-compress', summary: '这个摘要超过了四十个字因此必须被拒绝不能进入待确认流程'.repeat(3) },
++      ],
++    }));
++    makeIdle(c);
++    const result = await c.runOnce();
++    expect(result.proposals).toBe(0);
++    expect(result.digests).toBe(0);
++    expect(service.store.listEpisodes()[0].summary).toBe('很长的旧摘要'.repeat(20));
++    expect(service.list().pending).toHaveLength(0);
+   });
+ 
+   it('空闲不足或距上次整合不足：不调用模型', async () => {
+diff --git a/apps/desktop/test/memory-settings-pane.test.tsx b/apps/desktop/test/memory-settings-pane.test.tsx
+index 7ede039a..d2c42051 100644
+--- a/apps/desktop/test/memory-settings-pane.test.tsx
++++ b/apps/desktop/test/memory-settings-pane.test.tsx
+@@ -2,7 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
+ import { cleanup, fireEvent, render, screen, waitFor, act } from '@testing-library/react';
+ import { SettingsView } from '../src/shell/SettingsView.js';
+ 
+-afterEach(cleanup);
++afterEach(() => {
++  cleanup();
++  vi.restoreAllMocks();
++});
+ 
+ const SETTINGS = {
+   enabled: true,
+@@ -56,6 +59,52 @@ describe('settings — memory pane', () => {
+     await waitFor(() => expect(screen.getAllByText('用户要求先给结论').length).toBeGreaterThan(0));
+   });
+ 
++  it('损坏项目的修复草稿、空重建和覆盖修复按各自工作区隔离且需确认', async () => {
++    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
++    const repairProjectMemory = vi.fn().mockResolvedValue({ ok: true });
++    const scopes = ['/ws/a', '/ws/b'].map((workspacePath, index) => ({
++      scope: `project:proj_${index}`, kind: 'project', label: `项目 ${index}`, projectId: `proj_${index}`,
++      workspacePath, corrupt: true, entries: [],
++    }));
++    const api = {
++      ...makeApi(),
++      listMemories: vi.fn().mockResolvedValue({
++        scopes, pending: [], agents: [{ id: 'general', name: '通用' }], projects: [],
++        settings: SETTINGS, ftsAvailable: true, warnings: [],
++      }),
++      repairProjectMemory,
++    };
++    render(<SettingsView api={api as never} initialPane="memory" />);
++    await waitFor(() => expect(screen.getAllByText('该项目的记忆内容无法读取，已暂停使用。确认后可重新整理。')).toHaveLength(2));
++    fireEvent.click(screen.getAllByRole('button', { name: '重新整理' })[0]);
++    expect(confirm).toHaveBeenCalled();
++    expect(repairProjectMemory).not.toHaveBeenCalled();
++
++    confirm.mockReturnValue(true);
++    fireEvent.click(screen.getAllByRole('button', { name: '重新整理' })[0]);
++    await waitFor(() => expect(repairProjectMemory).toHaveBeenCalledWith('/ws/a', 'empty'));
++    await screen.findByText('已重新整理');
++    repairProjectMemory.mockClear();
++    confirm.mockClear();
++
++    const areas = screen.getAllByLabelText('修复内容');
++    fireEvent.change(areas[1], { target: { value: 'B 的修复内容' } });
++    confirm.mockReturnValue(false);
++    fireEvent.click(screen.getAllByRole('button', { name: '按提供内容修复' })[1]);
++    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('覆盖'));
++    expect(repairProjectMemory).not.toHaveBeenCalled();
++
++    fireEvent.change(areas[0], { target: { value: 'A 的修复草稿' } });
++    confirm.mockReturnValue(true);
++    fireEvent.click(screen.getAllByRole('button', { name: '按提供内容修复' })[0]);
++    await waitFor(() => expect(repairProjectMemory).toHaveBeenCalledWith('/ws/a', 'replace', 'A 的修复草稿'));
++    expect(repairProjectMemory).toHaveBeenCalledTimes(1);
++    await screen.findByText('已按提供内容修复');
++    expect(screen.getAllByLabelText('修复内容').map((area) => (area as HTMLTextAreaElement).value)).toEqual([
++      'A 的修复草稿', 'B 的修复内容',
++    ]);
++  });
++
+   it('面板开着时收到 pending_added 事件：当场重新拉取，新候选立刻出现在待确认区', async () => {
+     const handlers: Array<(payload: unknown) => void> = [];
+     let round = 0;
+diff --git a/apps/desktop/test/memory-tools.test.ts b/apps/desktop/test/memory-tools.test.ts
+index 1be29c1d..59a9d1f8 100644
+--- a/apps/desktop/test/memory-tools.test.ts
++++ b/apps/desktop/test/memory-tools.test.ts
+@@ -83,6 +83,23 @@ describe('memory tools — platform trusted branch', () => {
+     await expect(runTool('memory_remember', { text: 'x' })).rejects.toThrow('记忆功能已关闭');
+   });
+ 
++  it('memory_remember(scope: agent) 使用当前 profileId 并校验智能体存在', async () => {
++    const svc = new MemoryService({ dataDir, errors, sessionExists: () => true, agents: () => [{ id: 'general', name: '通用' }] });
++    try {
++      const defs = createMemoryToolDefinitions({
++        requestAction: (request) => handleMemoryToolAction(request, {
++          service: svc, audit: { append: audit }, actor: 'u1', sessionId: 'sess-1', profileId: 'general', propose,
++        }),
++      });
++      const def = defs.find((d) => d.name === 'memory_remember')!;
++      const out = await (def as any).execute('call-agent', { scope: 'agent', text: '智能体偏好先给结论' }, undefined, undefined, undefined);
++      expect(out.details.ok).toBe(true);
++      expect(svc.list().scopes.find((s) => s.scope === 'agent:general')?.entries[0]?.text).toBe('智能体偏好先给结论');
++    } finally {
++      svc.close();
++    }
++  });
++
+   it('工具名与鞍附加同源：签名 agent 清单不变，平台统一追加', () => {
+     const agent = { tools: ['read'], skillsDir: '/skills', systemPrompt: 'p' };
+     const saddle = buildAgentSaddle(agent as never, '/cwd', '/ws', undefined, undefined, '', true);
+diff --git a/apps/desktop/test/runtime-action-router.test.ts b/apps/desktop/test/runtime-action-router.test.ts
+index 962a85ee..08f7cebf 100644
+--- a/apps/desktop/test/runtime-action-router.test.ts
++++ b/apps/desktop/test/runtime-action-router.test.ts
+@@ -68,6 +68,7 @@ interface HarnessOptions {
+   taskId?: string;
+   approval?: { choice: 'once' | 'task' | 'deny' };
+   review?: ReviewerDecision | Error;
++  allowShellExecution?: boolean;
+ }
+ 
+ const allowReview: ReviewerDecision = { decision: 'allow', risk: 'low', reason: '普通测试命令' };
+@@ -94,6 +95,7 @@ async function harness(options: HarnessOptions = {}) {
+   const revalidate = vi.fn(async () => true);
+   const userTasks = new Map<string, string>([['s1', '把测试跑通并整理报告']]);
+   const router = createRuntimeActionRouter({
++    allowShellExecution: options.allowShellExecution ?? true,
+     lifecycle,
+     normalizer: createActionNormalizer({
+       descriptors: DEFAULT_TOOL_DESCRIPTORS,
+@@ -165,6 +167,19 @@ beforeEach(async () => {
+   h = await harness();
+ });
+ 
++describe('runtime shell boundary', () => {
++  it('denies host shell before approval or execution unless explicitly enabled', async () => {
++    h = await harness({ allowShellExecution: false, approval: { choice: 'once' } });
++    const result = await h.router.route(bash('shell-disabled', 'echo ok'), 's1');
++    expect(result.status).toBe('denied');
++    expect(result.error?.code).toBe('SHELL_DISABLED');
++    expect(h.requestApproval).not.toHaveBeenCalled();
++    expect(h.review).not.toHaveBeenCalled();
++    expect(h.execute).not.toHaveBeenCalled();
++    expect(h.auditEvents.at(-1)).toMatchObject({ action: 'action.denied', ruleId: 'platform.shell-disabled' });
++  });
++});
++
+ describe('workspace CRUD passthrough', () => {
+   it('executes an ordinary workspace write without requesting approval', async () => {
+     const result = await h.router.route(
+diff --git a/apps/desktop/test/windows-platform.test.ts b/apps/desktop/test/windows-platform.test.ts
+index b6aa4a18..85a0683c 100644
+--- a/apps/desktop/test/windows-platform.test.ts
++++ b/apps/desktop/test/windows-platform.test.ts
+@@ -6,7 +6,7 @@ import {
+ } from 'node:fs/promises';
+ import { tmpdir } from 'node:os';
+ import { join } from 'node:path';
+-import { describe, expect, it } from 'vitest';
++import { describe, expect, it, vi } from 'vitest';
+ import {
+   createWindowsPathProbe,
+   windowsPathKey,
+@@ -24,6 +24,7 @@ const baseOptions: WindowsPlatformOptions = {
+   localAppData: 'C:/Users/me/AppData/Local',
+   dataDir: 'C:/Users/me/AppData/Roaming/Sparkii/data',
+   volumes: ['C:/', 'D:/'],
++  readReparsePointAttribute: async () => 0,
+ };
+ 
+ describe('windowsProtectedRoots', () => {
+@@ -125,6 +126,38 @@ describe.skipIf(process.platform !== 'win32')('createWindowsPathProbe', () => {
+     expect(alias.isReparsePoint).toBe(true);
+   });
+ 
++  it('reads the reparse attribute through the default Windows API path', async () => {
++    const root = await mkdtemp(join(tmpdir(), 'sparkii-win-attribute-'));
++    const file = join(root, 'ordinary.txt');
++    await writeFile(file, 'x');
++    const options: WindowsPlatformOptions = {
++      ...baseOptions,
++      home: root,
++      dataDir: join(root, 'data'),
++    };
++    delete options.readReparsePointAttribute;
++
++    const inspected = await createWindowsPathProbe(options).inspect(file);
++    expect(inspected.isReparsePoint).toBe(false);
++  });
++
++  it('detects non-symlink reparse points through Windows file attributes', async () => {
++    const root = await mkdtemp(join(tmpdir(), 'sparkii-win-reparse-'));
++    const file = join(root, 'placeholder.txt');
++    await writeFile(file, 'x');
++    const readReparsePointAttribute = vi.fn(async () => 16);
++    const probe = createWindowsPathProbe({
++      ...baseOptions,
++      home: root,
++      dataDir: join(root, 'data'),
++      readReparsePointAttribute,
++    });
++
++    const inspected = await probe.inspect(file);
++    expect(inspected.isReparsePoint).toBe(true);
++    expect(readReparsePointAttribute).toHaveBeenCalledWith(file);
++  });
++
+   it('rejects relative paths, device paths, and alternate data streams', async () => {
+     const probe = createWindowsPathProbe(baseOptions);
+     await expect(probe.inspect('relative\\path')).rejects.toThrow(/absolute/i);
+diff --git a/apps/desktop/test/workspace-file-service.integration.test.ts b/apps/desktop/test/workspace-file-service.integration.test.ts
+index eb3925dc..ee4be9c7 100644
+--- a/apps/desktop/test/workspace-file-service.integration.test.ts
++++ b/apps/desktop/test/workspace-file-service.integration.test.ts
+@@ -5,7 +5,7 @@
+  * real symlink / hard-link fixtures, so the symlink-escapee and hard-link-alias
+  * defenses are actually exercised rather than simulated.
+  */
+-import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, linkSync, existsSync } from 'node:fs';
++import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, linkSync, rmSync } from 'node:fs';
+ import { tmpdir } from 'node:os';
+ import { join, resolve } from 'node:path';
+ import { homedir } from 'node:os';
+@@ -15,6 +15,25 @@ import { createWorkspaceFileService } from '../electron/main/security/workspace-
+ 
+ interface AuditCall { action: string; decision?: string; sessionId?: string; payloadSummary?: string }
+ 
++function canCreateRealLink(kind: 'symlink' | 'hardlink'): boolean {
++  const base = mkdtempSync(join(tmpdir(), `bid-ws-${kind}-probe-`));
++  try {
++    const source = join(base, 'source.txt');
++    const link = join(base, 'link.txt');
++    writeFileSync(source, 'probe');
++    if (kind === 'symlink') symlinkSync(source, link, 'file');
++    else linkSync(source, link);
++    return true;
++  } catch {
++    return false;
++  } finally {
++    rmSync(base, { recursive: true, force: true });
++  }
++}
++
++const realSymlinkAvailable = canCreateRealLink('symlink');
++const realHardlinkAvailable = canCreateRealLink('hardlink');
++
+ function makeService(workspace: string) {
+   const probe = createWindowsPathProbe({
+     home: homedir(),
+@@ -103,20 +122,10 @@ describe('workspace file service — REAL probe integration (symlink / hard-link
+     expect(audits.some((a) => a.decision === 'failed')).toBe(true);
+   });
+ 
+-  it('rejects a REAL symlink pointing outside the workspace', async () => {
++  it.skipIf(!realSymlinkAvailable)('rejects a REAL symlink pointing outside the workspace', async () => {
+     const { workspace, outside } = tempLayout();
+     const link = join(workspace, 'escape.txt');
+-    try {
+-      symlinkSync(join(outside, 'secret.txt'), link, 'file');
+-    } catch (err) {
+-      // Windows requires Developer Mode / elevation for symlinks. Emit a loud
+-      // warning instead of silently passing — see known limitation in the tech
+-      // design doc. The reparse-point logic is still covered by the mock-probe
+-      // unit test; CI with elevation should run this case for real.
+-      console.warn(`[ws-boundary] symlink fixture unavailable (${String(err)}); symlink-escape case skipped — run CI with Developer Mode to cover it for real`);
+-      return;
+-    }
+-    if (!existsSync(link)) return;
++    symlinkSync(join(outside, 'secret.txt'), link, 'file');
+     const { service, audits } = makeService(workspace);
+     const r = await service.execute('read', { sessionId: 's1', path: 'escape.txt' });
+     expect(r.ok).toBe(false);
+@@ -124,16 +133,11 @@ describe('workspace file service — REAL probe integration (symlink / hard-link
+     expect(audits.some((a) => a.decision === 'failed')).toBe(true);
+   });
+ 
+-  it('rejects a REAL hard-link alias (nlink > 1) inside the workspace', async () => {
++  it.skipIf(!realHardlinkAvailable)('rejects a REAL hard-link alias (nlink > 1) inside the workspace', async () => {
+     const { workspace, outside } = tempLayout();
+     const src = join(outside, 'secret.txt');
+     const alias = join(workspace, 'alias.txt');
+-    try {
+-      linkSync(src, alias);
+-    } catch {
+-      return; // hard links across volumes may fail; skip
+-    }
+-    if (!existsSync(alias)) return;
++    linkSync(src, alias);
+     const { service, audits } = makeService(workspace);
+     const r = await service.execute('read', { sessionId: 's1', path: 'alias.txt' });
+     expect(r.ok).toBe(false);
+diff --git a/packages/agent-host/src/coding-tools.ts b/packages/agent-host/src/coding-tools.ts
+index aadaed5c..fcbf89bf 100644
+--- a/packages/agent-host/src/coding-tools.ts
++++ b/packages/agent-host/src/coding-tools.ts
+@@ -11,7 +11,7 @@ import type {
+   ActionExecutionResult,
+   RuntimeActionRequest,
+ } from "./runtime-actions.js";
+-import { isPathInside, isPlatformReservedPath } from "./workspace-guard.js";
++import { isPathInside, isPlatformReservedPath, resolveGuardedReadPath } from "./workspace-guard.js";
+ 
+ export interface CodingToolsContext {
+   cwd: string;
+@@ -52,18 +52,11 @@ function executionError(
+   return new Error(`${toolName}未执行:${result.status}:${detail}`);
+ }
+ 
+-function shellExec(ctx: CodingToolsContext) {
+-  return async (command: string, cwd: string, opts: { onData: (data: Buffer) => void }) => {
+-    const result = await requestToolAction(ctx, "bash", {
+-      command,
+-    });
+-    if (result.status === "denied" || result.status === "failed") {
+-      opts.onData(Buffer.from(`${result.decision.reason}\n`));
+-      return { exitCode: 1 };
+-    }
+-    const data = (result.result ?? {}) as { exitCode?: number | null; output?: string };
+-    if (data.output) opts.onData(Buffer.from(data.output));
+-    return { exitCode: data.exitCode ?? 0 };
++function shellExec() {
++  return async (_command: string, _cwd: string, opts: { onData: (data: Buffer) => void }) => {
++    // Arbitrary host commands cannot prove they will not access .sparkii through aliases.
++    opts.onData(Buffer.from('模型 Shell 已禁用：宿主命令无法证明不访问 .sparkii 保留目录\n'));
++    return { exitCode: 1 };
+   };
+ }
+ 
+@@ -83,7 +76,7 @@ export function createCodingToolDefinitions(ctx: CodingToolsContext): Array<Tool
+ 
+   const bash = createBashToolDefinition(pathCwd, {
+     operations: {
+-      exec: shellExec(ctx),
++      exec: shellExec(),
+     },
+   });
+ 
+@@ -91,7 +84,16 @@ export function createCodingToolDefinitions(ctx: CodingToolsContext): Array<Tool
+     operations: {
+       readFile: async (absolutePath: string) => {
+         guardPath(ctx, absolutePath);
+-        return readFile(absolutePath);
++        // Native edit reads and matches oldText before requesting its write.
++        // Authorize the source read in Main first so aliases cannot act as a
++        // protected-content oracle; access() above is metadata-only.
++        const result = await requestToolAction(ctx, "read", {
++          path: absolutePath,
++        });
++        if (result.status !== "executed") throw executionError("读取", result);
++        const guarded = await resolveGuardedReadPath(ctx.workspaceRoot, absolutePath);
++        if (!guarded.ok) throw new Error(`拒绝读取:${guarded.message}`);
++        return readFile(guarded.canonicalPath);
+       },
+       access: async (absolutePath: string) => {
+         guardPath(ctx, absolutePath);
+diff --git a/packages/agent-host/src/pi-runtime-pool.ts b/packages/agent-host/src/pi-runtime-pool.ts
+index aea6f2da..2d4fd158 100644
+--- a/packages/agent-host/src/pi-runtime-pool.ts
++++ b/packages/agent-host/src/pi-runtime-pool.ts
+@@ -50,10 +50,17 @@ export class PiRuntimePool {
+   private stopped = false;
+   private slots: Slot[] = [];
+   private pending: Pending[] = [];
++  private starting = new Set<PiRuntimeSupervisor>();
++  private supervisorStops = new WeakMap<PiRuntimeSupervisor, Promise<void>>();
++  private stopPromise?: Promise<void>;
++  private readonly stoppedSignal: Promise<void>;
++  private signalStopped!: () => void;
+   private bySession = new Map<string, PiRuntimeClient>();
+   private listeners = new Set<(snapshot: RuntimePoolSnapshot) => void>();
+ 
+-  constructor(private opts: { maxAgents: number; makeSupervisor: () => PiRuntimeHostHandle }) {}
++  constructor(private opts: { maxAgents: number; makeSupervisor: () => PiRuntimeHostHandle }) {
++    this.stoppedSignal = new Promise((resolve) => { this.signalStopped = resolve; });
++  }
+ 
+   subscribe(listener: (snapshot: RuntimePoolSnapshot) => void): () => void {
+     this.listeners.add(listener);
+@@ -114,41 +121,76 @@ export class PiRuntimePool {
+   async acquireIfIdle(sessionId: string, opts: AcquireOptions = {}): Promise<PiRuntimeSlot | null> {
+     if (this.stopped) return null;
+     const free = this.slots.some((s) => s.sessionId === null);
+-    if (!free && this.slots.length >= this.opts.maxAgents) return null;
+-    return this.acquire(sessionId, opts);
++    if (!free && this.slots.length + this.starting.size >= this.opts.maxAgents) return null;
++    try {
++      return await this.acquire(sessionId, opts);
++    } catch (error) {
++      if (error instanceof Error && error.message === 'NO_IDLE_SLOT') return null;
++      throw error;
++    }
+   }
+ 
+   async acquire(sessionId: string, opts: AcquireOptions = {}): Promise<PiRuntimeSlot> {
+     if (this.stopped) throw new Error('pool stopped');
+     const free = this.slots.find((s) => s.sessionId === null);
+     if (free) return this.bind(free, sessionId, opts);
+-    if (this.slots.length < this.opts.maxAgents) {
+-      const supervisor = new PiRuntimeSupervisor(this.opts.makeSupervisor);
+-      const client = await supervisor.start();
+-      // m9：await 是让位点 —— stopAll() 可能在这期间置 stopped。必须在注册事件 / 入池之前
+-      // 复检，否则关机过程中会新建一个永远停在池外的活进程（违反 §0.7 P0-1 的闸门）。
+-      if (this.stopped) {
+-        await supervisor.stop();
+-        throw new Error('pool stopped');
+-      }
+-      const slot: Slot = {
+-        id: randomUUID(),
+-        supervisor,
+-        client,
+-        sessionId: null,
+-        status: "occupied-idle",
+-        startedAt: 0,
+-      };
+-      slot.offEvent = client.onEvent((event) => this.applyEvent(slot, event));
+-      this.slots.push(slot);
+-      return this.bind(slot, sessionId, opts);
++    if (this.slots.length + this.starting.size < this.opts.maxAgents) {
++      return this.acquireCold(sessionId, opts);
+     }
++    if (opts.meta?.internal) throw new Error('NO_IDLE_SLOT');
+     return new Promise<PiRuntimeSlot>((resolve, reject) => {
+       this.pending.push({ id: randomUUID(), sessionId, options: opts, resolve, reject });
+       this.emitSnapshot();
+     });
+   }
+ 
++  private async whileRunning<T>(operation: Promise<T>): Promise<T> {
++    return Promise.race([
++      operation,
++      this.stoppedSignal.then(() => { throw new Error('pool stopped'); }),
++    ]);
++  }
++
++  private async acquireCold(sessionId: string, opts: AcquireOptions): Promise<PiRuntimeSlot> {
++    const supervisor = new PiRuntimeSupervisor(this.opts.makeSupervisor);
++    this.starting.add(supervisor);
++    let client: PiRuntimeClient;
++    try {
++      client = await this.whileRunning(supervisor.start());
++    } catch (error) {
++      this.starting.delete(supervisor);
++      await this.stopSupervisor(supervisor).catch(() => undefined);
++      throw error;
++    }
++    this.starting.delete(supervisor);
++    // m9：await 是让位点 —— stopAll() 可能在这期间置 stopped。必须在注册事件 / 入池之前
++    // 复检，否则关机过程中会新建一个永远停在池外的活进程（违反 §0.7 P0-1 的闸门）。
++    if (this.stopped) {
++      await this.stopSupervisor(supervisor);
++      throw new Error('pool stopped');
++    }
++    const slot: Slot = {
++      id: randomUUID(),
++      supervisor,
++      client,
++      sessionId: null,
++      status: "occupied-idle",
++      startedAt: 0,
++    };
++    slot.offEvent = client.onEvent((event) => this.applyEvent(slot, event));
++    this.slots.push(slot);
++    return this.bind(slot, sessionId, opts);
++  }
++
++  private stopSupervisor(supervisor: PiRuntimeSupervisor): Promise<void> {
++    let stopping = this.supervisorStops.get(supervisor);
++    if (!stopping) {
++      stopping = supervisor.stop();
++      this.supervisorStops.set(supervisor, stopping);
++    }
++    return stopping;
++  }
++
+   private async bind(slot: Slot, sessionId: string, opts: AcquireOptions): Promise<PiRuntimeSlot> {
+     slot.sessionId = sessionId;
+     slot.meta = opts.meta;
+@@ -158,13 +200,22 @@ export class PiRuntimePool {
+     this.emitSnapshot();
+     try {
+       if (opts.saddle) {
+-        const r = await slot.client.send({ type: "configure_session", saddle: opts.saddle });
++        const r = await this.whileRunning(slot.client.send({ type: "configure_session", saddle: opts.saddle }));
+         if (!r.success) throw new Error(`configure_session failed: ${r.error ?? "unknown"}`);
+       }
+       if (opts.resumeSessionFile) {
+-        const r = await slot.client.send({ type: "switch_session", sessionPath: opts.resumeSessionFile });
++        const r = await this.whileRunning(slot.client.send({ type: "switch_session", sessionPath: opts.resumeSessionFile }));
+         if (!r.success) throw new Error(`switch_session failed: ${r.error ?? "unknown"}`);
+       }
++      if (this.stopped) {
++        this.bySession.delete(sessionId);
++        slot.sessionId = null;
++        slot.meta = undefined;
++        slot.status = "occupied-idle";
++        slot.startedAt = 0;
++        this.emitSnapshot();
++        throw new Error("pool stopped");
++      }
+     } catch (e) {
+       this.bySession.delete(sessionId);
+       slot.sessionId = null;
+@@ -227,6 +278,28 @@ export class PiRuntimePool {
+     return true;
+   }
+ 
++  private async servePending(): Promise<void> {
++    while (!this.stopped && this.pending.length > 0) {
++      const free = this.slots.find((s) => s.sessionId === null);
++      if (free) {
++        const next = this.pending.shift()!;
++        try {
++          next.resolve(await this.bind(free, next.sessionId, next.options));
++        } catch (error) {
++          next.reject(error instanceof Error ? error : new Error(String(error)));
++        }
++        continue;
++      }
++      if (this.slots.length + this.starting.size >= this.opts.maxAgents) return;
++      const next = this.pending.shift()!;
++      try {
++        next.resolve(await this.acquireCold(next.sessionId, next.options));
++      } catch (error) {
++        next.reject(error instanceof Error ? error : new Error(String(error)));
++      }
++    }
++  }
++
+   async release(sessionId: string): Promise<void> {
+     const slot = this.slots.find((s) => s.sessionId === sessionId);
+     if (!slot) return;
+@@ -246,17 +319,18 @@ export class PiRuntimePool {
+     if (dead) {
+       this.slots = this.slots.filter((s) => s !== slot);
+       slot.offEvent?.();
+-      void slot.supervisor.stop();
+-      const next = this.pending.shift();
+-      if (next) void this.acquire(next.sessionId, next.options).then(next.resolve, next.reject);
+-      this.emitSnapshot();
++      try {
++        await this.stopSupervisor(slot.supervisor);
++      } finally {
++        void this.servePending();
++        this.emitSnapshot();
++      }
+       return;
+     }
+     slot.meta = undefined;
+     slot.status = "occupied-idle";
+     slot.startedAt = 0;
+-    const next = this.pending.shift();
+-    if (next) void this.bind(slot, next.sessionId, next.options).then(next.resolve, next.reject);
++    void this.servePending();
+     this.emitSnapshot();
+   }
+ 
+@@ -271,16 +345,27 @@ export class PiRuntimePool {
+     );
+   }
+ 
+-  async stopAll(): Promise<void> {
+-    // 先置闸门再停进程；重复调用时空数组循环与 emitSnapshot() 均不抛错 ⇒ 幂等。
++  stopAll(): Promise<void> {
++    if (this.stopPromise) return this.stopPromise;
++    // 先置闸门再停进程；冷启动 supervisor 也必须纳入，且重复调用共享同一次关机。
+     this.stopped = true;
++    this.signalStopped();
+     // 并行停：每个 supervisor.stop() 自带退出等待超时（M3），串行会让整池上限随槽位数增长。
+-    const stops = this.slots.map((slot) => slot.supervisor.stop());
++    const stops = [
++      ...this.slots.map((slot) => slot.supervisor),
++      ...this.starting,
++    ].map((supervisor) => this.stopSupervisor(supervisor));
++    this.stopPromise = Promise.allSettled(stops).then((results) => {
++      const failures = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected');
++      if (failures.length) {
++        throw new AggregateError(failures.map((result) => result.reason), 'runtime pool shutdown did not confirm every process exit');
++      }
++    });
+     this.slots = [];
+     this.bySession.clear();
+     for (const p of this.pending) p.reject(new Error("pool stopped"));
+     this.pending = [];
+     this.emitSnapshot();
+-    await Promise.all(stops);
++    return this.stopPromise;
+   }
+ }
+diff --git a/packages/agent-host/src/pi-runtime-supervisor.ts b/packages/agent-host/src/pi-runtime-supervisor.ts
+index 44993dfc..b498d411 100644
+--- a/packages/agent-host/src/pi-runtime-supervisor.ts
++++ b/packages/agent-host/src/pi-runtime-supervisor.ts
+@@ -177,7 +177,7 @@ export interface PiRuntimeSupervisorOptions {
+    * stop() 等待子进程退出的上限（每个句柄）。
+    * ⚠ 这与「主进程 3s 未退出则 app.exit(0)」是两件事：那个兜底作用于 app.quit()，
+    * 这里等的是 pi 子进程的 exit 事件。pool.stopAll 会并行 stop 所有槽位，
+-   * 因此整池的等待上限也是这个值（不随槽位数线性增长）。
++   * 因此整池的等待上限也是这个值的两倍（强杀后再等一次，不随槽位数线性增长）。
+    */
+   stopTimeoutMs?: number;
+   logger?: { warn(message: string): void };
+@@ -185,7 +185,7 @@ export interface PiRuntimeSupervisorOptions {
+ 
+ /**
+  * stop() 的默认等待上限：关机序列要求「停进程」这一步在快照/退出前完成（设计 §7.7 步骤 3）。
+- * 超时仍不退 ⇒ 再 kill 一次并记录，绝不让关机永久挂起。
++ * 超时后强杀并再等一个相同上限；仍未确认 exit 必须 reject，不能假称停机完成。
+  */
+ export const DEFAULT_STOP_TIMEOUT_MS = 3_000;
+ 
+@@ -195,6 +195,7 @@ export class PiRuntimeSupervisor {
+   private exitCbs = new Set<(code: number | null) => void>();
+   /** stop() 等待者：按句柄区分，旧句柄的迟到 exit 不会唤醒等待新句柄的人。 */
+   private exitWaiters = new Map<PiRuntimeHostHandle, Set<() => void>>();
++  private exitedHandles = new WeakSet<PiRuntimeHostHandle>();
+   private proposalCb: ProposalHandler = async () => ({
+     approved: false,
+     proposalId: "unhandled",
+@@ -221,6 +222,7 @@ export class PiRuntimeSupervisor {
+       this.opts.readinessTimeoutMs,
+     );
+     handle.onExit((code) => {
++      this.exitedHandles.add(handle);
+       // 先唤醒 stop() 的等待者（按句柄匹配，见 waitForExit）。
+       this.notifyExit(handle);
+       // 句柄同一性守卫（防御性）：同一实例被 start→stop→start 复用时，旧句柄的迟到 exit
+@@ -238,7 +240,7 @@ export class PiRuntimeSupervisor {
+   /**
+    * 停子进程并**等待它真的退出**（M3）。原先 kill 即返回，关机序列可能在子进程仍持有
+    * 文件句柄 / 未 flush 的会话 JSONL 时就走到快照与 app.exit（违反 §7.7 步骤 3）。
+-   * 超时兜底：再 kill 一次并记录 —— 不无限等，也不静默放行。
++   * 超时兜底：再 kill 一次并继续等待；仍未退出就抛错，绝不静默放行。
+    */
+   async stop(): Promise<void> {
+     const handle = this.handle;
+@@ -270,12 +272,19 @@ export class PiRuntimeSupervisor {
+       try {
+         handle.kill();
+       } catch { /* 已经死掉的句柄再 kill 失败无害 */ }
++      const stillRunning = await this.waitForExit(handle, timeoutMs);
++      if (this.handle === handle) this.handle = undefined;
++      if (stillRunning) {
++        throw new Error(`pi runtime did not exit after forced kill within ${timeoutMs}ms`);
++      }
++      return;
+     }
+     if (this.handle === handle) this.handle = undefined;
+   }
+ 
+   /** 等一次 exit；返回 true 表示超时（未退出）。等待者按句柄匹配，见 notifyExit。 */
+   private waitForExit(handle: PiRuntimeHostHandle, timeoutMs: number): Promise<boolean> {
++    if (this.exitedHandles.has(handle)) return Promise.resolve(false);
+     return new Promise<boolean>((resolve) => {
+       let settled = false;
+       const timeoutRef: { id?: ReturnType<typeof setTimeout> } = {};
+diff --git a/packages/agent-host/src/tool-registry.ts b/packages/agent-host/src/tool-registry.ts
+index b49460e4..0e0854f2 100644
+--- a/packages/agent-host/src/tool-registry.ts
++++ b/packages/agent-host/src/tool-registry.ts
+@@ -82,6 +82,12 @@ function withWorkspaceGuard(
+         const canonicalPath = typeof authorized?.canonicalPath === "string"
+           ? authorized.canonicalPath
+           : absolute;
++        if (isPlatformReservedPath(canonicalPath)) {
++          return {
++            content: [{ type: "text", text: `拒绝访问:${path} .sparkii 是平台保留目录` }],
++            details: {},
++          };
++        }
+         return original(
+           toolCallId,
+           { ...params, path: canonicalPath },
+diff --git a/packages/agent-host/test/coding-tools.test.ts b/packages/agent-host/test/coding-tools.test.ts
+index ea7ca603..88ff3021 100644
+--- a/packages/agent-host/test/coding-tools.test.ts
++++ b/packages/agent-host/test/coding-tools.test.ts
+@@ -1,5 +1,5 @@
+ import { mkdtempSync } from 'node:fs';
+-import { writeFile } from 'node:fs/promises';
++import { link, mkdir, readFile, writeFile } from 'node:fs/promises';
+ import { tmpdir } from 'node:os';
+ import { join } from 'node:path';
+ import { describe, expect, it, vi } from 'vitest';
+@@ -65,25 +65,20 @@ describe('createCodingToolDefinitions', () => {
+       .toEqual(['bash', 'edit', 'write']);
+   });
+ 
+-  it('sends bash as a raw Runtime action and streams Main output', async () => {
++  it('disables model shell before it can reach the runtime action router', async () => {
+     const h = harness();
+     const bash = createCodingToolDefinitions(h.context)
+       .find((definition) => definition.name === 'bash')!;
+     const result = await (bash as any).execute(
+       'call-1',
+-      { command: 'printf hello' },
++      { command: 'cat alias/memory.json' },
+       undefined,
+       () => {},
+       toolCtx,
+     );
+ 
+-    expect(h.requestAction).toHaveBeenCalledWith({
+-      requestId: expect.any(String),
+-      toolCallId: 'call-1',
+-      toolName: 'bash',
+-      args: { command: 'printf hello' },
+-    });
+-    expect((result as any).content?.[0]?.text).toContain('ok');
++    expect(h.requestAction).not.toHaveBeenCalled();
++    expect((result as any).content?.[0]?.text).toContain('模型 Shell 已禁用');
+     expect(h.records).toEqual([]);
+   });
+ 
+@@ -135,9 +130,98 @@ describe('createCodingToolDefinitions', () => {
+         content: 'new',
+       },
+     }));
++    expect(h.requests.map((request) => request.toolName)).toEqual(['read', 'edit']);
+     expect(h.records).toEqual([]);
+   });
+ 
++  it('does not read or match oldText until Main authorizes the edit source', async () => {
++    const h = harness();
++    const path = join(h.context.workspaceRoot, 'a.txt');
++    await writeFile(path, 'before-authorization');
++    h.requestAction.mockImplementationOnce(async (request: RuntimeActionRequest) => {
++      h.requests.push(request);
++      await writeFile(path, 'after-authorization');
++      return executed(request.requestId, { authorized: true });
++    });
++    const edit = createCodingToolDefinitions(h.context)
++      .find((definition) => definition.name === 'edit')!;
++
++    await (edit as any).execute(
++      'call-edit',
++      {
++        path,
++        edits: [{ oldText: 'after-authorization', newText: 'new' }],
++      },
++      undefined,
++      undefined,
++      toolCtx,
++    );
++
++    expect(h.requests.map((request) => request.toolName)).toEqual(['read', 'edit']);
++    expect(h.requests[0]).toEqual(expect.objectContaining({
++      toolName: 'read',
++      toolCallId: 'call-edit',
++      args: { path },
++    }));
++    expect(h.requests[1].args).toEqual({ path, content: 'new' });
++  });
++
++  it('does not expose oldText matches through a protected hard-link alias', async () => {
++    const h = harness();
++    const reserved = join(h.context.workspaceRoot, '.sparkii');
++    const protectedFile = join(reserved, 'memory.json');
++    const alias = join(h.context.workspaceRoot, 'memory-alias.json');
++    await mkdir(reserved);
++    await writeFile(protectedFile, '{"secret":"protected-value"}');
++    await link(protectedFile, alias);
++    h.requestAction.mockImplementation(async (request: RuntimeActionRequest) => {
++      h.requests.push(request);
++      return {
++        requestId: request.requestId,
++        status: 'denied',
++        decision: {
++          decision: 'deny' as const,
++          ruleId: 'platform.trust-anchor',
++          reason: 'protected alias',
++        },
++      };
++    });
++    const edit = createCodingToolDefinitions(h.context)
++      .find((definition) => definition.name === 'edit')!;
++    const attempt = (oldText: string) => (edit as any).execute(
++      'call-alias',
++      { path: alias, edits: [{ oldText, newText: 'changed' }] },
++      undefined,
++      undefined,
++      toolCtx,
++    );
++
++    await expect(attempt('protected-value')).rejects.toThrow('未执行:denied');
++    await expect(attempt('not-in-the-file')).rejects.toThrow('未执行:denied');
++    expect(h.requests.map((request) => request.toolName)).toEqual(['read', 'read']);
++    expect(await readFile(protectedFile, 'utf8')).toBe('{"secret":"protected-value"}');
++  });
++
++  it('rejects a hard-linked source after read authorization without matching it', async () => {
++    const h = harness();
++    const source = join(h.context.workspaceRoot, 'source.txt');
++    const alias = join(h.context.workspaceRoot, 'alias.txt');
++    await writeFile(source, 'protected-value');
++    await link(source, alias);
++    const edit = createCodingToolDefinitions(h.context)
++      .find((definition) => definition.name === 'edit')!;
++
++    await expect((edit as any).execute(
++      'call-hardlink',
++      { path: alias, edits: [{ oldText: 'protected-value', newText: 'changed' }] },
++      undefined,
++      undefined,
++      toolCtx,
++    )).rejects.toThrow(/hard-linked/);
++    expect(h.requests.map((request) => request.toolName)).toEqual(['read']);
++    expect(await readFile(source, 'utf8')).toBe('protected-value');
++  });
++
+   it('blocks writes outside the workspace before requesting an action', async () => {
+     const h = harness();
+     const write = createCodingToolDefinitions(h.context)
+diff --git a/packages/agent-host/test/pi-runtime-pool.test.ts b/packages/agent-host/test/pi-runtime-pool.test.ts
+index dcf8d748..503f9a39 100644
+--- a/packages/agent-host/test/pi-runtime-pool.test.ts
++++ b/packages/agent-host/test/pi-runtime-pool.test.ts
+@@ -1,4 +1,4 @@
+-import { describe, it, expect } from "vitest";
++import { describe, it, expect, vi } from "vitest";
+ import { PiRuntimePool } from "../src/pi-runtime-pool.js";
+ import type { RuntimePoolSnapshot } from "../src/runtime-pool.js";
+ import { readyEnvelope, responseEnvelope, type PiRuntimeHostHandle, type PiRuntimeEnvelope } from "../src/pi-runtime-transport.js";
+@@ -23,6 +23,23 @@ class FakeHandle implements PiRuntimeHostHandle {
+ }
+ 
+ describe("PiRuntimePool", () => {
++  it("P1-7 reserves cold-start capacity before supervisor startup", async () => {
++    const handles: FakeHandle[] = [];
++    const pool = new PiRuntimePool({
++      maxAgents: 1,
++      makeSupervisor: () => { const handle = new FakeHandle(); handles.push(handle); return handle; },
++    });
++    const first = pool.acquireIfIdle("memory:1", { meta: { profileId: "internal", internal: true } });
++    const second = pool.acquireIfIdle("memory:2", { meta: { profileId: "internal", internal: true } });
++    await new Promise((resolve) => setTimeout(resolve, 0));
++    expect(handles).toHaveLength(1);
++    expect(await second).toBeNull();
++    handles[0].ready();
++    expect(await first).toBeTruthy();
++    expect(pool.activeCount()).toBe(1);
++    await pool.release("memory:1");
++  });
++
+   it("reuses a free slot across release", async () => {
+     const handles: FakeHandle[] = [];
+     const pool = new PiRuntimePool({ maxAgents: 2, makeSupervisor: () => { const h = new FakeHandle(); handles.push(h); return h; } });
+@@ -345,12 +362,13 @@ describe("PiRuntimePool", () => {
+       meta: { profileId: "internal", profileName: "内部探测", label: "内部探测", internal: true },
+     });
+ 
++    await expect(probe).rejects.toThrow('NO_IDLE_SLOT');
++
+     expect(pool.activeCount()).toBe(1);
+     expect(pool.snapshot()).toMatchObject({ active: 1, queued: 0, slots: [{ sessionId: "user-session" }] });
+ 
+     await pool.release("user-session");
+-    await probe;
+-    expect(pool.activeCount()).toBe(1);
++    expect(pool.activeCount()).toBe(0);
+     expect(pool.snapshot()).toMatchObject({ active: 0, queued: 0, slots: [] });
+   });
+ 
+@@ -402,6 +420,169 @@ describe("PiRuntimePool", () => {
+     expect(pool.activeCount()).toBe(0);
+   });
+ 
++  it("stopAll waits for every cold-start supervisor and repeated calls share the same shutdown", async () => {
++    class SlowExitHandle extends FakeHandle {
++      kills = 0;
++      private exits = new Set<(code: number | null) => void>();
++      onExit(cb: (code: number | null) => void) { this.exits.add(cb); return () => { this.exits.delete(cb); }; }
++      kill() { this.kills += 1; }
++      emitExit(code: number) { for (const cb of [...this.exits]) cb(code); }
++    }
++    const handles: SlowExitHandle[] = [];
++    const pool = new PiRuntimePool({
++      maxAgents: 2,
++      makeSupervisor: () => { const handle = new SlowExitHandle(); handles.push(handle); return handle; },
++    });
++    const first = pool.acquire("first");
++    const second = pool.acquire("second");
++    const firstOutcome = first.catch((error: unknown) => error);
++    const secondOutcome = second.catch((error: unknown) => error);
++    let resolved = false;
++    const stopping = pool.stopAll().then(() => { resolved = true; });
++    const repeated = pool.stopAll();
++
++    await new Promise((resolve) => setTimeout(resolve, 20));
++    const resolvedBeforeExit = resolved;
++    const killsBeforeExit = handles.map((handle) => handle.kills);
++    handles[0].emitExit(0);
++    await new Promise((resolve) => setTimeout(resolve, 0));
++    const resolvedAfterFirstExit = resolved;
++    handles[1].emitExit(0);
++    await Promise.all([stopping, repeated, firstOutcome, secondOutcome]);
++
++    expect(await firstOutcome).toMatchObject({ message: "pool stopped" });
++    expect(await secondOutcome).toMatchObject({ message: "pool stopped" });
++    expect(resolvedBeforeExit, "冷启动进程尚未 exit，stopAll 不得提前 resolve").toBe(false);
++    expect(resolvedAfterFirstExit, "另一个冷启动进程尚未 exit，stopAll 仍不得 resolve").toBe(false);
++    expect(killsBeforeExit).toEqual([1, 1]);
++    expect(pool.snapshot()).toMatchObject({ active: 0, queued: 0, slots: [] });
++    await expect(pool.acquire("after-stop")).rejects.toThrow(/pool stopped/);
++  });
++
++  it("releases cold-start capacity when supervisor creation fails", async () => {
++    let attempts = 0;
++    const handles: FakeHandle[] = [];
++    const pool = new PiRuntimePool({
++      maxAgents: 1,
++      makeSupervisor: () => {
++        attempts += 1;
++        if (attempts === 1) throw new Error("spawn failed");
++        const handle = new FakeHandle();
++        handles.push(handle);
++        return handle;
++      },
++    });
++
++    await expect(pool.acquire("failed")).rejects.toThrow("spawn failed");
++    const retry = await pool.acquire("retry");
++    expect(handles).toHaveLength(1);
++    expect(retry.getSessionId()).toBe("retry");
++    handles[0].ready();
++    await pool.release("retry");
++    await pool.stopAll();
++  });
++
++  it("stopAll during a queued bind rejects the request instead of returning a stopped slot", async () => {
++    const handle = new FakeHandle();
++    const pool = new PiRuntimePool({ maxAgents: 1, makeSupervisor: () => handle });
++    await pool.acquire("a");
++    handle.ready();
++    await pool.release("a");
++    let delayed: PiRuntimeEnvelope | undefined;
++    handle.postMessage = (envelope: PiRuntimeEnvelope) => {
++      handle.sent.push(envelope);
++      if ("command" in envelope && envelope.command.type === "configure_session") delayed = envelope;
++      else if ("command" in envelope) {
++        handle.emit(responseEnvelope(envelope.id, {
++          id: envelope.id, type: "response", command: envelope.command.type, success: true,
++        }));
++      }
++    };
++
++    const outcome = pool.acquire("b", { saddle: { tools: ["read"] } }).catch((error: unknown) => error);
++    await new Promise((resolve) => setTimeout(resolve, 0));
++    expect(delayed).toBeDefined();
++    const stopping = pool.stopAll();
++    if (delayed) {
++      handle.emit(responseEnvelope(delayed.id, {
++        id: delayed.id, type: "response", command: "configure_session", success: true,
++      }));
++    }
++    await stopping;
++
++    expect(await outcome).toMatchObject({ message: "pool stopped" });
++    expect(pool.activeCount()).toBe(0);
++    expect(pool.snapshot().slots).toEqual([]);
++  });
++
++  it("continues queued binds after configure_session fails without rebinding the failed request", async () => {
++    class FailFirstConfigureHandle extends FakeHandle {
++      configureCalls = 0;
++      postMessage(e: PiRuntimeEnvelope) {
++        this.sent.push(e);
++        if ("command" in e) {
++          const command = (e as { command: { type: string } }).command;
++          const success = command.type !== "configure_session" || ++this.configureCalls > 1;
++          this.emit(responseEnvelope(e.id, {
++            id: e.id,
++            type: "response",
++            command: command.type as never,
++            success,
++          }));
++        }
++      }
++    }
++    const handle = new FailFirstConfigureHandle();
++    const pool = new PiRuntimePool({ maxAgents: 1, makeSupervisor: () => handle });
++    await pool.acquire("a");
++    handle.ready();
++    const b = pool.acquire("b", { saddle: { tools: ["read"] } });
++    const c = pool.acquire("c", { saddle: { tools: ["read"] } });
++    const bOutcome = b.catch((error: unknown) => error);
++    const cOutcome = c.then(
++      () => ({ ok: true as const }),
++      (error: unknown) => ({ ok: false as const, error }),
++    );
++
++    await pool.release("a");
++    const bError = await bOutcome;
++    await new Promise((resolve) => setTimeout(resolve, 0));
++    const configureCalls = handle.sent.filter(
++      (e): e is Extract<PiRuntimeEnvelope, { command: unknown }> =>
++        "command" in e && (e as { command: { type: string } }).command.type === "configure_session",
++    );
++    const snapshot = pool.snapshot();
++    await pool.stopAll();
++    const result = await cOutcome;
++
++    expect(bError).toMatchObject({ message: expect.stringMatching(/configure_session failed/) });
++    expect(result.ok, "失败的 b 不得阻塞后面的 c").toBe(true);
++    expect(configureCalls).toHaveLength(2);
++    expect(snapshot).toMatchObject({ active: 1, queued: 0, slots: [{ sessionId: "c" }] });
++    expect(pool.activeCount()).toBe(0);
++  });
++
++  it("stopAll rejects when a child never confirms process exit", async () => {
++    class StuckHandle extends FakeHandle {
++      kills = 0;
++      kill() { this.kills += 1; }
++    }
++    vi.useFakeTimers();
++    try {
++      const handle = new StuckHandle();
++      const pool = new PiRuntimePool({ maxAgents: 1, makeSupervisor: () => handle });
++      await pool.acquire("a");
++      const rejection = expect(pool.stopAll()).rejects.toThrow(/shutdown did not confirm every process exit/);
++      await vi.advanceTimersByTimeAsync(6_000);
++      await rejection;
++      expect(handle.kills).toBe(2);
++      expect(pool.activeCount()).toBe(0);
++      await expect(pool.stopAll()).rejects.toThrow(/shutdown did not confirm every process exit/);
++    } finally {
++      vi.useRealTimers();
++    }
++  });
++
+   // M3：stopAll 必须等每个子进程真的退出（supervisor.stop 内部带超时兜底），
+   // 而不是 kill 即返回 —— 否则关机序列会在句柄仍被占用时走到快照/退出。
+   it("M3：stopAll 等到子进程 exit 才 resolve（kill 不自动退出时由超时兜底）", async () => {
+diff --git a/packages/agent-host/test/pi-runtime-supervisor.test.ts b/packages/agent-host/test/pi-runtime-supervisor.test.ts
+index 178487bb..71667265 100644
+--- a/packages/agent-host/test/pi-runtime-supervisor.test.ts
++++ b/packages/agent-host/test/pi-runtime-supervisor.test.ts
+@@ -250,20 +250,30 @@ describe("PiRuntimeSupervisor", () => {
+       expect(handle.kills).toBe(1);
+     });
+ 
+-    it("超时兜底：exit 永不出现 ⇒ stop 在 stopTimeoutMs 后返回并再 kill 一次", async () => {
++    it("超时后强杀仍无 exit 确认：stop 必须拒绝，不得假报关机成功", async () => {
+       const handle = new ManualHandle();
+       const logger = { warn: vi.fn() };
+       const sup = new PiRuntimeSupervisor(() => handle, { stopTimeoutMs: 50, logger });
+       await sup.start();
+       const startedAt = Date.now();
+-      await sup.stop();
++      await expect(sup.stop()).rejects.toThrow(/did not exit after forced kill/);
+       const elapsed = Date.now() - startedAt;
+       expect(elapsed).toBeGreaterThanOrEqual(40);
+       expect(elapsed).toBeLessThan(2_000);
+-      expect(handle.kills).toBe(2);                     // 超时后再强杀一次
++      expect(handle.kills).toBe(2);
+       expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("did not exit"));
+     });
+ 
++    it("强杀宽限期内出现 exit：stop 等待确认后成功返回", async () => {
++      const handle = new ManualHandle();
++      const sup = new PiRuntimeSupervisor(() => handle, { stopTimeoutMs: 30 });
++      await sup.start();
++      const stop = sup.stop();
++      setTimeout(() => handle.emitExit(0), 45);
++      await expect(stop).resolves.toBeUndefined();
++      expect(handle.kills).toBe(2);
++    });
++
+     it("句柄同一性守卫（防御性）：旧句柄迟到 exit 不清理新句柄、不通知 onExit", async () => {
+       const first = new ManualHandle();
+       const second = new ManualHandle();
+@@ -275,7 +285,7 @@ describe("PiRuntimeSupervisor", () => {
+       const onExit = vi.fn();
+       sup.onExit(onExit);
+       const client1 = await sup.start();
+-      await sup.stop();                                 // 第一个句柄不会自己退出 ⇒ 超时收尾
++      await expect(sup.stop()).rejects.toThrow(/did not exit after forced kill/); // 第一个句柄不会自己退出
+       const client2 = await sup.start();
+       expect(client2).not.toBe(client1);
+       first.emitExit(1);                                // 旧句柄迟到 exit
+diff --git a/packages/agent-host/test/tool-registry.test.ts b/packages/agent-host/test/tool-registry.test.ts
+index 08ed088a..9f889dd0 100644
+--- a/packages/agent-host/test/tool-registry.test.ts
++++ b/packages/agent-host/test/tool-registry.test.ts
+@@ -233,6 +233,27 @@ describe("resolveToolDefinitions", () => {
+     });
+   });
+ 
++  it("rejects a canonical .sparkii path returned by the runtime authorization boundary", async () => {
++    const ws = mkdtempSync(join(tmpdir(), "ws-reserved-"));
++    mkdirSync(join(ws, ".sparkii"));
++    writeFileSync(join(ws, ".sparkii", "memory.json"), "reserved-secret", "utf8");
++    writeFileSync(join(ws, "a.txt"), "ordinary", "utf8");
++    const defs = resolveToolDefinitions(["read"], {
++      cwd: ws,
++      workspaceRoot: ws,
++      propose,
++      requestAction: async () => ({
++        requestId: "r1",
++        status: "executed" as const,
++        decision: { decision: "allow" as const, ruleId: "workspace.read", reason: "test" },
++        result: { authorized: true, canonicalPath: join(ws, ".sparkii", "memory.json") },
++      }),
++    });
++    const result = await (defs[0] as any).execute("t1", { path: "a.txt" }, undefined, undefined, {});
++    expect(result.content?.[0]?.text).toMatch(/拒绝访问/);
++    expect(result.content?.[0]?.text).not.toContain("reserved-secret");
++  });
++
+   it("still returns WORKSPACE_NOT_CREATED for workspace paths when workspace is missing", async () => {
+     const skillsDir = mkdtempSync(join(tmpdir(), "skills-"));
+     const ws = join(tmpdir(), "missing-ws-still-" + Date.now());

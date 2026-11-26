@@ -1,0 +1,39 @@
+APPROVE
+Task-id: R7-REVIEW-FENCE-PRIVACY
+Review date: 2026-11-25
+Scope: final-3 blockers F4/F5 and the previously approved fence/privacy domain
+
+VERDICT
+
+No blocking findings remain in the reviewed scope. F4 and F5 are repaired in production source and covered by real MemoryService regressions.
+
+F4 — FIXED: invalid pendingOp structural shapes no longer bypass discovery or truth redaction.
+- apps/desktop/electron/main/memory/types.ts:23-35 centralizes validation: only recognized control enums, non-empty string targetId/projectId, and mergeIds arrays of non-empty string IDs are structural.
+- apps/desktop/electron/main/memory/service.ts:73-90 recursively collects every non-validated value, including invalid top-level structural values and nested extension content.
+- apps/desktop/electron/main/memory/store.ts:1086-1090 preserves only fields accepted by that same predicate; all other values are recursively redacted.
+- apps/desktop/test/memory-round7-regression.test.ts:244-273 exercises invalid targetId, projectId, and mergeIds objects through the real service, Gate, AuditStore, ChatSessionStore, and SQLite files. Assertions inspect raw truth/list output, chat, approvals, audits, and database bytes rather than only test names.
+
+F5 — FIXED: whitespace-only corpus entries are discarded without trimming meaningful secrets.
+- apps/desktop/electron/main/memory/service.ts:92-94 filters with trim().length > 0 while retaining the original meaningful string verbatim.
+- The same normalization is used for legacy journal loading at service.ts:760 and before journal persistence at service.ts:779; the normalized corpus is then supplied to Gate/audit/error/log/chat cleanup at service.ts:816-846.
+- apps/desktop/electron/main/memory/store.ts:1066 independently rejects whitespace-only redaction tokens before truth replacement.
+- apps/desktop/test/memory-round7-regression.test.ts:275-293 uses the production appendEpisode path with space, tab, and newline topics and verifies retained multiword memory, chat, audit, and raw truth remain unchanged.
+
+PREVIOUSLY APPROVED DOMAIN
+
+- Fence: workspace-search-tools.ts:43-98,122-129,158-164,250-279 excludes reserved content before traversal/output/limit; tool-registry.ts:41-122,176-179 rejects direct and canonical reserved paths; workspace-tools.ts:17-49 preflights recursive delete/move; workspace-tree-fence.ts:22-44 and the main file-service/executor mutation paths reject reserved descendants before mutation. Ordinary-file behavior is asserted in the inspected tests.
+- Privacy: service.ts:741-857 journals normalized corpus and initiating IDs before destructive work, restores journals/tombstones on restart, and clears only after truth/Pi-file/chat cleanup. store.ts:1063-1141 scrubs surviving truth and episode JSONL before reconciliation/compaction. Gate redaction remains recursive across retained proposal states (packages/approval/src/gate.ts:148-204), and future memory-tool audit summaries remain ID/count/length/hash based (apps/desktop/electron/main/memory/tools.ts:26-28,92-106,123-125).
+
+FOCUSED VERIFICATION
+
+- Final-3 privacy selection: 5 passed, 18 skipped.
+- Agent-host recursive path fence: 14 passed, 18 skipped.
+- Agent-host recursive delete/move preflight: 2 passed, 4 skipped.
+- Main workspace file-service/executor fence selection: 17 passed, 17 skipped.
+- No full suite or typecheck was run.
+
+ACCEPTED LIMITATIONS
+
+Windows main-process TOCTOU; symlink EPERM skips; untested recursive hard-link aliases outside .sparkii.
+
+Only this requested report was written. No source, tests, configuration, or handoff files were edited; nothing was staged, committed, or pushed.

@@ -1,0 +1,52 @@
+(node:18624) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10180) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:23956) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [31m❯[39m [30m[46m 1 [49m[39m apps/desktop/test/chat-session-store.test.ts [2m([22m[2m13 tests[22m[2m | [22m[31m1 failed[39m[2m | [22m[33m12 skipped[39m[2m)[22m[32m 42[2mms[22m[39m
+     [2m[90m↓[39m[22m R8 final review fences future session creates, updates and relocation after privacy cleanup and restart
+[31m     [31m×[31m R8 final review fences raw Pi carrier reads after privacy registration except explicit cleanup[39m[32m 41[2mms[22m[39m
+     [2m[90m↓[39m[22m creates and reads a session keyed by pi session id
+     [2m[90m↓[39m[22m stores the piSessionFile overlay
+     [2m[90m↓[39m[22m updates model and workspace
+     [2m[90m↓[39m[22m stores and updates the thinking level
+     [2m[90m↓[39m[22m persists manual sort order
+     [2m[90m↓[39m[22m lists by profile and deletes
+     [2m[90m↓[39m[22m migrates a legacy schema by dropping the title column
+     [2m[90m↓[39m[22m persists titleLockedByUser and defaults to false
+     [2m[90m↓[39m[22m migrates title_locked_by_user onto an existing db
+     [2m[90m↓[39m[22m persists permission mode with Ask as legacy default
+     [2m[90m↓[39m[22m adds the permission column to a database written before it existed
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/chat-session-store.test.ts[2m > [22mChatSessionStore[2m > [22mR8 final review fences raw Pi carrier reads after privacy registration except explicit cleanup
+[31m[1mAssertionError[22m: expected [Function] to throw error matching /隐私删除已阻断/ but got 'Pi 会话原始路径已被隐私删除阻断'[39m
+
+[32m- Expected:[39m
+/隐私删除已阻断/
+
+[31m+ Received:[39m
+"Pi 会话原始路径已被隐私删除阻断"
+
+[36m [2m❯[22m apps/desktop/test/chat-session-store.test.ts:[2m49:46[22m[39m
+    [90m 47|[39m
+    [90m 48|[39m     [34mexpect[39m(s[33m.[39m[35mget[39m([32m'keep'[39m)[33m?.[39mpiSessionFile)[33m.[39mnot[33m.[39m[34mtoContain[39m(secret)[33m;[39m
+    [90m 49|[39m     [34mexpect[39m(() [33m=>[39m s[33m.[39m[34mrawPiSessionFile[39m([32m'keep'[39m))[33m.[39m[34mtoThrow[39m([36m/隐私删除已阻断/[39m)[33m;[39m
+    [90m   |[39m                                              [31m^[39m
+    [90m 50|[39m     [34mexpect[39m(s[33m.[39m[34mrawPiSessionFile[39m([32m'keep'[39m[33m,[39m [35mtrue[39m))[33m.[39m[34mtoBe[39m(carrier)[33m;[39m
+    [90m 51|[39m     s[33m.[39m[34mclose[39m()[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[33m12 skipped[39m[90m (13)[39m
+[2m   Start at [22m 01:11:12
+[2m   Duration [22m 1.22s[2m (transform 64ms, setup 32ms, import 177ms, tests 42ms, environment 793ms)[22m
+

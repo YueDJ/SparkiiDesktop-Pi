@@ -1,0 +1,80 @@
+(node:41204) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:25112) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:31992) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-truth-batch.test.ts (22 tests | 2 failed) 14271ms
+     ✓ restores every prior truth file and removes new files when a later write fails  869ms
+     ✓ R8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth  539ms
+     ✓ R8-P1-4 preserves rollback backups when the unverified journal cannot be removed  530ms
+     ✓ recovers an interrupted batch at startup before truth files are opened  807ms
+     ✓ recovers a new project batch from the registry committed before its truth file  805ms
+     ✓ R8 final review resumes a partially rolled-back new project after the registry was already restored  792ms
+     × R8 final review keeps rollback backups when journal removal fails after truth restoration 796ms
+     × R8 final review retries orphan backup cleanup without quarantining restored truth 516ms
+     ✓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing  810ms
+     ✓ rollback never recreates a missing project parent before path revalidation  794ms
+     ✓ does not write or quarantine outside a junctioned memory root during failed recovery 9ms
+     ✓ R8 final review rejects an empty uncommitted journal without deleting the only original backup  773ms
+     ✓ quarantines a malformed journal and reports a warning instead of blocking startup  507ms
+     ✓ rejects journal paths outside memory truth and backup locations  778ms
+     ✓ rejects a truthy non-boolean committed marker without deleting uncommitted truth  509ms
+     ✓ rejects a committed journal that still contains rollback file items  525ms
+     ✓ rejects an unregistered outside project truth target during commit and recovery  796ms
+     ✓ rejects a project truth target reached through a junction even when its workspace is registered 276ms
+     ✓ treats a dangling write-block junction as a persistent block 262ms
+     ✓ keeps the only recovery evidence when the write-block marker cannot be persisted  519ms
+     ✓ keeps a committed batch and removes its recovery journal  780ms
+     ✓ rolls back the project registry when a later truth write fails  1276ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > truth batch journal > R8 final review keeps rollback backups when journal removal fails after truth restoration
+AssertionError: expected '' to contain '恢复失败'
+
+- Expected
++ Received
+
+- 恢复失败
+
+ ❯ apps/desktop/test/memory-truth-batch.test.ts:208:51
+    206|     fault.failRmPath = journalPath;
+    207|
+    208|     expect(recoverTruthBatch(dataDir).join('\n')).toContain('恢复失败');
+       |                                                   ^
+    209|     expect(readFileSync(target, 'utf8')).toBe('old-truth');
+    210|     const saved = readdirSync(dir).find((name) => name.startsWith('.tr…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > truth batch journal > R8 final review retries orphan backup cleanup without quarantining restored truth
+AssertionError: expected '' to contain '备份异常'
+
+- Expected
++ Received
+
+- 备份异常
+
+ ❯ apps/desktop/test/memory-truth-batch.test.ts:225:51
+    223|     fault.failRmPath = backups;
+    224|
+    225|     expect(recoverTruthBatch(dataDir).join('\n')).toContain('备份异常');
+       |                                                   ^
+    226|     expect(readFileSync(target, 'utf8')).toBe('already-restored-truth'…
+    227|     expect(readdirSync(dir).some((name) => name.startsWith('.truth-bac…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 20 passed (22)
+   Start at  21:44:55
+   Duration  15.81s (transform 179ms, setup 58ms, import 468ms, tests 14.27s, environment 836ms)
+
+
+exit=1

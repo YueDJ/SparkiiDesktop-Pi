@@ -1,0 +1,22 @@
+(node:11072) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:34756) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:33732) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts [2m([22m[2m22 tests[22m[2m | [22m[33m19 skipped[39m[2m)[22m[33m 3851[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 restores privacy sink fences before truth recovery can restore plaintext [33m 1974[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 review B3 cleans Pi and chat carriers before a safe-root truth write-block aborts startup [33m 1535[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-3 refuses to construct MemoryService through an unsafe memory-root junction [33m 340[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m3 passed[39m[22m[2m | [22m[33m19 skipped[39m[90m (22)[39m
+[2m   Start at [22m 23:01:34
+[2m   Duration [22m 5.57s[2m (transform 248ms, setup 30ms, import 730ms, tests 3.85s, environment 784ms)[22m
+
+
+exit=0

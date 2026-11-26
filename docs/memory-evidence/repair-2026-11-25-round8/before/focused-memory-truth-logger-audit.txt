@@ -1,0 +1,179 @@
+(node:17872) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21120) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:7036) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |0| packages/approval/test/audit.test.ts (6 tests | 1 failed) 69ms
+     ✓ appends and queries an audit event 14ms
+     ✓ exports jsonl 8ms
+     ✓ persists and queries sessionId 11ms
+     ✓ stores task, capability, rule, payload hash and sandbox evidence 9ms
+     × R8-P1-6 applies registered redactions before every free-text audit insert and after reopen 17ms
+     ✓ exports jsonl with camelCase fields 8ms
+(node:25184) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-truth-batch.test.ts (17 tests | 1 failed) 11851ms
+     ✓ restores every prior truth file and removes new files when a later write fails  856ms
+     × R8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth 562ms
+     ✓ recovers an interrupted batch at startup before truth files are opened  893ms
+     ✓ recovers a new project batch from the registry committed before its truth file  796ms
+     ✓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing  782ms
+     ✓ rollback never recreates a missing project parent before path revalidation  837ms
+     ✓ does not write or quarantine outside a junctioned memory root during failed recovery 11ms
+     ✓ quarantines a malformed journal and reports a warning instead of blocking startup  614ms
+     ✓ rejects journal paths outside memory truth and backup locations  910ms
+     ✓ rejects a truthy non-boolean committed marker without deleting uncommitted truth  564ms
+     ✓ rejects a committed journal that still contains rollback file items  565ms
+     ✓ rejects an unregistered outside project truth target during commit and recovery  1059ms
+     ✓ rejects a project truth target reached through a junction even when its workspace is registered  377ms
+     ✓ treats a dangling write-block junction as a persistent block  302ms
+     ✓ keeps the only recovery evidence when the write-block marker cannot be persisted  578ms
+     ✓ keeps a committed batch and removes its recovery journal  815ms
+     ✓ rolls back the project registry when a later truth write fails  1329ms
+(node:42328) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | apps/desktop/test/logger.test.ts > Logger > appends structured jsonl and exports
+start {"profile":"contract-review"}
+
+stderr | apps/desktop/test/logger.test.ts > Logger > drops entries below the configured level
+kept ""
+
+ ❯ |1| apps/desktop/test/logger.test.ts (24 tests | 3 failed) 462ms
+     ✓ R7 never preserves the registered marker secret 已删除 33ms
+     ✓ R7 never preserves the registered marker secret [已删除] 14ms
+     ✓ R7 redaction cannot recreate a registered secret across the marker boundary: "x\"[已删除]" 21ms
+     ✓ R7 redaction cannot recreate a registered secret across the marker boundary: "x\\[已删除]" 8ms
+     ✓ R7 redaction cannot recreate a registered secret across the marker boundary: "x\n[已删除]" 16ms
+     ✓ appends structured jsonl and exports 16ms
+     ✓ drops entries below the configured level 16ms
+     ✓ echoes to console with level mapping 4ms
+     ✓ does not echo to console when echo is disabled 2ms
+     ✓ constructor and logging stay non-blocking when the log file path is a directory 3ms
+     ✓ circular console context cannot reject logging or lose the message 16ms
+     ✓ redactSession terminates a rewritten nonempty JSONL file before the next append 34ms
+     ✓ redactMemoryPromptLogs terminates a rewritten nonempty JSONL file before the next append 16ms
+     ✓ redacts string values without changing JSON schema field names during session redaction or export 35ms
+     ✓ uses structured redaction for future writes and exports 15ms
+     ✓ memory-prompt redaction keeps normal logs as valid JSONL with structured value redaction 38ms
+     ✓ retains malformed normal log lines while removing their registered secrets 18ms
+     ✓ redactSession scrubs every JSON escape encoding in malformed history without changing valid record schemas 42ms
+     ✓ redactMemoryPromptLogs scrubs every JSON escape encoding in malformed history without changing valid record schemas 8ms
+     ✓ export scrubs every JSON escape encoding in malformed history without changing valid record schemas 5ms
+     × R8-P1-2 preserves JSONL record boundaries when the registered secret is "\n" 36ms
+     × R8-P1-2 preserves JSONL record boundaries when the registered secret is "\r\n" 36ms
+     × R8-P1-2 preserves JSONL record boundaries when the registered secret is "\r" 13ms
+     ✓ serializes context once so a stateful toJSON cannot lose the basic message 11ms
+(node:42780) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-r8-regression.test.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts [ apps/desktop/test/memory-r8-regression.test.ts ]
+Error: Transform failed with 2 errors:
+
+[31m[PARSE_ERROR] [0m`await` is only allowed within async functions and at the top levels of modules
+    [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m apps/desktop/test/memory-r8-regression.test.ts:89:3 [38;5;246m][0m
+    [38;5;246m│[0m
+ [38;5;246m89 │[0m [38;5;249m [0m[38;5;249m [0mawait[38;5;249m [0m[38;5;249ml[0m[38;5;249mo[0m[38;5;249mg[0m[38;5;249mg[0m[38;5;249me[0m[38;5;249mr[0m[38;5;249m.[0m[38;5;249ml[0m[38;5;249mo[0m[38;5;249mg[0m[38;5;249m([0m[38;5;249m{[0m[38;5;249m [0m[38;5;249ml[0m[38;5;249me[0m[38;5;249mv[0m[38;5;249me[0m[38;5;249ml[0m[38;5;249m:[0m[38;5;249m [0m[38;5;249m'[0m[38;5;249mi[0m[38;5;249mn[0m[38;5;249mf[0m[38;5;249mo[0m[38;5;249m'[0m[38;5;249m,[0m[38;5;249m [0m[38;5;249mm[0m[38;5;249ms[0m[38;5;249mg[0m[38;5;249m:[0m[38;5;249m [0m[38;5;249ms[0m[38;5;249me[0m[38;5;249mc[0m[38;5;249mr[0m[38;5;249me[0m[38;5;249mt[0m[38;5;249m,[0m[38;5;249m [0m[38;5;249mc[0m[38;5;249mt[0m[38;5;249mx[0m[38;5;249m:[0m[38;5;249m [0m[38;5;249m{[0m[38;5;249m [0m[38;5;249ms[0m[38;5;249me[0m[38;5;249ms[0m[38;5;249ms[0m[38;5;249mi[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249mI[0m[38;5;249md[0m[38;5;249m,[0m[38;5;249m [0m[38;5;249md[0m[38;5;249me[0m[38;5;249mt[0m[38;5;249ma[0m[38;5;249mi[0m[38;5;249ml[0m[38;5;249m:[0m[38;5;249m [0m[38;5;249me[0m[38;5;249mx[0m[38;5;249mc[0m[38;5;249me[0m[38;5;249mr[0m[38;5;249mp[0m[38;5;249mt[0m[38;5;249m [0m[38;5;249m}[0m[38;5;249m [0m[38;5;249m}[0m[38;5;249m)[0m[38;5;249m;[0m
+ [38;5;240m   │[0m   ──┬──  
+ [38;5;240m   │[0m     ╰──── 
+ [38;5;240m   │[0m 
+ [38;5;240m   │[0m [38;5;115mHelp[0m: Either remove this `await` or add the `async` keyword to the enclosing function
+[38;5;246m────╯[0m
+
+[31m[PARSE_ERROR] [0m`await` is only allowed within async functions and at the top levels of modules
+    [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m apps/desktop/test/memory-r8-regression.test.ts:90:3 [38;5;246m][0m
+    [38;5;246m│[0m
+ [38;5;246m90 │[0m [38;5;249m [0m[38;5;249m [0mawait[38;5;249m [0m[38;5;249ma[0m[38;5;249mu[0m[38;5;249md[0m[38;5;249mi[0m[38;5;249mt[0m[38;5;249m.[0m[38;5;249ma[0m[38;5;249mp[0m[38;5;249mp[0m[38;5;249me[0m[38;5;249mn[0m[38;5;249md[0m[38;5;249m([0m[38;5;249m{[0m[38;5;249m [0m[38;5;249ma[0m[38;5;249mc[0m[38;5;249mt[0m[38;5;249mo[0m[38;5;249mr[0m[38;5;249m:[0m[38;5;249m [0m[38;5;249m'[0m[38;5;249ma[0m[38;5;249mg[0m[38;5;249me[0m[38;5;249mn[0m[38;5;249mt[0m[38;5;249m'[0m[38;5;249m,[0m[38;5;249m [0m[38;5;249ma[0m[38;5;249mc[0m[38;5;249mt[0m[38;5;249mi[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249m:[0m[38;5;249m [0m[38;5;249m'[0m[38;5;249mc[0m[38;5;249ma[0m[38;5;249mr[0m[38;5;249mr[0m[38;5;249mi[0m[38;5;249me[0m[38;5;249mr[0m[38;5;249m.[0m[38;5;249ma[0m[38;5;249mu[0m[38;5;249md[0m[38;5;249mi[0m[38;5;249mt[0m[38;5;249m'[0m[38;5;249m,[0m[38;5;249m [0m[38;5;249mr[0m[38;5;249me[0m[38;5;249ms[0m[38;5;249mo[0m[38;5;249mu[0m[38;5;249mr[0m[38;5;249mc[0m[38;5;249me[0m[38;5;249m:[0m[38;5;249m [0m[38;5;249m'[0m[38;5;249mm[0m[38;5;249me[0m[38;5;249mm[0m[38;5;249mo[0m[38;5;249mr[0m[38;5;249my[0m[38;5;249m'[0m[38;5;249m,[0m[38;5;249m [0m[38;5;249mp[0m[38;5;249ma[0m[38;5;249my[0m[38;5;249ml[0m[38;5;249mo[0m[38;5;249ma[0m[38;5;249md[0m[38;5;249mS[0m[38;5;249mu[0m[38;5;249mm[0m[38;5;249mm[0m[38;5;249ma[0m[38;5;249mr[0m[38;5;249my[0m[38;5;249m:[0m[38;5;249m [0m[38;5;249m`[0m[38;5;249m$[0m[38;5;249m{[0m[38;5;249ms[0m[38;5;249me[0m[38;5;249mc[0m[38;5;249mr[0m[38;5;249me[0m[38;5;249mt[0m[38;5;249m}[0m[38;5;249m [0m[38;5;249m$[0m[38;5;249m{[0m[38;5;249me[0m[38;5;249mx[0m[38;5;249mc[0m[38;5;249me[0m[38;5;249mr[0m[38;5;249mp[0m[38;5;249mt[0m[38;5;249m}[0m[38;5;249m`[0m[38;5;249m,[0m[38;5;249m [0m[38;5;249ms[0m[38;5;249me[0m[38;5;249ms[0m[38;5;249ms[0m[38;5;249mi[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249mI[0m[38;5;249md[0m[38;5;249m:[0m[38;5;249m [0m[38;5;249m'[0m[38;5;249mc[0m[38;5;249ma[0m[38;5;249mr[0m[38;5;249mr[0m[38;5;249mi[0m[38;5;249me[0m[38;5;249mr[0m[38;5;249m-[0m[38;5;249ms[0m[38;5;249me[0m[38;5;249ms[0m[38;5;249ms[0m[38;5;249mi[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249m'[0m[38;5;249m [0m[38;5;249m}[0m[38;5;249m)[0m[38;5;249m;[0m
+ [38;5;240m   │[0m   ──┬──  
+ [38;5;240m   │[0m     ╰──── 
+ [38;5;240m   │[0m 
+ [38;5;240m   │[0m [38;5;115mHelp[0m: Either remove this `await` or add the `async` keyword to the enclosing function
+[38;5;246m────╯[0m
+
+  Plugin: vite:oxc
+  File: C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/test/memory-r8-regression.test.ts
+ ❯ transformWithOxc node_modules/.pnpm/vite@8.2.2_@types+node@26.4.0_esbuild@0.28.2_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:4103:19
+ ❯ TransformPluginContext.transform node_modules/.pnpm/vite@8.2.2_@types+node@26.4.0_esbuild@0.28.2_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:4174:26
+ ❯ EnvironmentPluginContainer.transform node_modules/.pnpm/vite@8.2.2_@types+node@26.4.0_esbuild@0.28.2_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:30932:51
+ ❯ loadAndTransform node_modules/.pnpm/vite@8.2.2_@types+node@26.4.0_esbuild@0.28.2_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20671:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/logger.test.ts > Logger > R8-P1-2 preserves JSONL record boundaries when the registered secret is "\n"
+SyntaxError: Unexpected non-whitespace character after JSON at position 93 (line 1 column 94)
+ ❯ apps/desktop/test/logger.test.ts:351:77
+    349|       else if (operation === 'redactMemoryPromptLogs') logger.redactMe…
+    350|       const output = operation === 'export' ? await logger.export() : …
+    351|       const records = output.split('\n').filter(Boolean).map((line) =>…
+       |                                                                             ^
+    352|       expect(records).toHaveLength(3);
+    353|       expect(records[0]).toMatchObject({ ts: 1, level: 'info', msg: 'k…
+ ❯ apps/desktop/test/logger.test.ts:351:58
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  |1| apps/desktop/test/logger.test.ts > Logger > R8-P1-2 preserves JSONL record boundaries when the registered secret is "\r\n"
+ FAIL  |1| apps/desktop/test/logger.test.ts > Logger > R8-P1-2 preserves JSONL record boundaries when the registered secret is "\r"
+SyntaxError: Unexpected token 'm', "malformed["... is not valid JSON
+ ❯ apps/desktop/test/logger.test.ts:351:77
+    349|       else if (operation === 'redactMemoryPromptLogs') logger.redactMe…
+    350|       const output = operation === 'export' ? await logger.export() : …
+    351|       const records = output.split('\n').filter(Boolean).map((line) =>…
+       |                                                                             ^
+    352|       expect(records).toHaveLength(3);
+    353|       expect(records[0]).toMatchObject({ ts: 1, level: 'info', msg: 'k…
+ ❯ apps/desktop/test/logger.test.ts:351:58
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > truth batch journal > R8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-truth-batch.test.ts:81:83
+     79|     writeFileSync(target, original);
+     80|
+     81|     expect(() => commitTruthBatch(dataDir, new Map([[target, 'NEW_TRUT…
+       |                                                                                   ^
+     82|
+     83|     expect(readFileSync(target, 'utf8')).toBe(original);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  |0| packages/approval/test/audit.test.ts > AuditStore > R8-P1-6 applies registered redactions before every free-text audit insert and after reopen
+AssertionError: expected '{"actor":"actor-R8_AUDIT_SECRET_71C",…' not to contain 'R8_AUDIT_SECRET_71C'
+
+Expected: "R8_AUDIT_SECRET_71C"
+Received: "{"actor":"actor-R8_AUDIT_SECRET_71C","action":"action-R8_AUDIT_\"\\\n_SECRET_92D","resource":"memory","payloadSummary":"R8_AUDIT_SECRET_71C R8_AUDIT_\"\\\n_SECRET_92D","decision":"denied","modelRoute":"R8_AUDIT_SECRET_71C","sessionId":"R8_AUDIT_\"\\\n_SECRET_92D","taskId":"R8_AUDIT_SECRET_71C","actionId":"R8_AUDIT_\"\\\n_SECRET_92D","ruleId":"R8_AUDIT_SECRET_71C","capability":"R8_AUDIT_\"\\\n_SECRET_92D","payloadHash":"R8_AUDIT_SECRET_71C","platform":"R8_AUDIT_\"\\\n_SECRET_92D","sandboxVersion":"R8_AUDIT_SECRET_71C","id":"ff97ff86-96d0-4596-9981-ab6554aa794c","ts":1795579914192}"
+
+ ❯ packages/approval/test/audit.test.ts:75:42
+     73|       capability: escaped, payloadHash: secret, platform: escaped, san…
+     74|     });
+     75|     expect(JSON.stringify(appended)).not.toContain(secret);
+       |                                          ^
+     76|     expect(JSON.stringify(appended)).not.toContain(escaped);
+     77|     expect(JSON.stringify(await store.query({ actor: `actor-${secret}`…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+
+ Test Files  4 failed (4)
+      Tests  5 failed | 42 passed (47)
+   Start at  12:11:53
+   Duration  16.35s (transform 229ms, setup 55ms, import 670ms, tests 12.38s, environment 2.47s)
+

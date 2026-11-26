@@ -1,0 +1,106 @@
+(node:5060) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:25032) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:41408) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [31m❯[39m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts [2m([22m[2m21 tests[22m[2m | [22m[31m4 failed[39m[2m | [22m[33m17 skipped[39m[2m)[22m[32m 100[2mms[22m[39m
+     [2m[90m↓[39m[22m approves by an authorized actor and audits both events
+     [2m[90m↓[39m[22m denies unauthorized approver
+     [2m[90m↓[39m[22m refuses to decide or execute a privacy-redacted proposal
+     [2m[90m↓[39m[22m R8 review privacy B4 fails the gate closed when audit registry persistence fails
+[31m     [31m×[31m R8 round6 B1 replays a failed invalidation listener before clearing the privacy block[39m[32m 37[2mms[22m[39m
+[31m     [31m×[31m R8 round6 B1 stays blocked on persistent listener failure without blocking audit registration[39m[32m 22[2mms[22m[39m
+[31m     [31m×[31m R8 round6 B1 retries only unfinished listeners and includes listeners added while queued[39m[32m 19[2mms[22m[39m
+[31m     [31m×[31m R8 round6 B1 models MemoryService retaining its journal until listener replay succeeds[39m[32m 20[2mms[22m[39m
+     [2m[90m↓[39m[22m atomically updates only the current approved payload and rejects stale or redacted objects
+     [2m[90m↓[39m[22m persistently fences submit, note and approved payload ingress (restart=false)
+     [2m[90m↓[39m[22m persistently fences submit, note and approved payload ingress (restart=true)
+     [2m[90m↓[39m[22m invalidates proposals by registered pattern hits for 已删除
+     [2m[90m↓[39m[22m invalidates proposals by registered pattern hits for [已删除]
+     [2m[90m↓[39m[22m invalidates proposals by registered pattern hits for marker
+     [2m[90m↓[39m[22m R8 round3 fences physical-newline fragments in existing and future proposals (restart=false)
+     [2m[90m↓[39m[22m R8 round3 fences physical-newline fragments in existing and future proposals (restart=true)
+     [2m[90m↓[39m[22m R8 round3 submit returns the canonical proposal after invalidation during a pending audit append
+     [2m[90m↓[39m[22m R8 final review expire returns the canonical proposal after privacy invalidation during audit
+     [2m[90m↓[39m[22m R8 final review cancelSession returns the canonical proposal after privacy invalidation during audit
+     [2m[90m↓[39m[22m R8 final review fences pending reads when audit cleanup fails after registry persistence
+     [2m[90m↓[39m[22m cancels only the pending proposals for one session
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 4 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22mR8 round6 B1 replays a failed invalidation listener before clearing the privacy block
+[31m[1mAssertionError[22m: expected "vi.fn()" to be called 2 times, but got 1 times[39m
+[36m [2m❯[22m packages/approval/test/gate.test.ts:[2m115:22[22m[39m
+    [90m113|[39m
+    [90m114|[39m     [34mexpect[39m(gate[33m.[39m[34mredactTexts[39m([secret]))[33m.[39m[34mtoBe[39m([34m0[39m)[33m;[39m
+    [90m115|[39m     [34mexpect[39m(listener)[33m.[39m[34mtoHaveBeenCalledTimes[39m([34m2[39m)[33m;[39m
+    [90m   |[39m                      [31m^[39m
+    [90m116|[39m     [34mexpect[39m(auditRedactions)[33m.[39m[34mtoHaveBeenCalledTimes[39m([34m2[39m)[33m;[39m
+    [90m117|[39m     [34mexpect[39m(notifications[[34m1[39m])[33m.[39m[34mtoBe[39m(invalidated)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22mR8 round6 B1 stays blocked on persistent listener failure without blocking audit registration
+[31m[1mAssertionError[22m: expected [Function] to throw an error[39m
+
+[32m- Expected:[39m
+null
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m packages/approval/test/gate.test.ts:[2m141:59[22m[39m
+    [90m139|[39m
+    [90m140|[39m     expect(() => gate.redactTexts([secret])).toThrow(/approval invalid…
+    [90m141|[39m     expect(() => gate.redactTexts([secret, laterSecret])).toThrow(/app…
+    [90m   |[39m                                                           [31m^[39m
+    [90m142|[39m     [34mexpect[39m(listener)[33m.[39m[34mtoHaveBeenCalledTimes[39m([34m2[39m)[33m;[39m
+    [90m143|[39m     [34mexpect[39m(auditRedactions)[33m.[39m[34mtoHaveBeenCalledTimes[39m([34m2[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22mR8 round6 B1 retries only unfinished listeners and includes listeners added while queued
+[31m[1mAssertionError[22m: expected "vi.fn()" to be called 2 times, but got 1 times[39m
+[36m [2m❯[22m packages/approval/test/gate.test.ts:[2m178:21[22m[39m
+    [90m176|[39m     [34mexpect[39m(gate[33m.[39m[34mredactTexts[39m([secret]))[33m.[39m[34mtoBe[39m([34m0[39m)[33m;[39m
+    [90m177|[39m     [34mexpect[39m(successful)[33m.[39m[34mtoHaveBeenCalledTimes[39m([34m1[39m)[33m;[39m
+    [90m178|[39m     [34mexpect[39m(retried)[33m.[39m[34mtoHaveBeenCalledTimes[39m([34m2[39m)[33m;[39m
+    [90m   |[39m                     [31m^[39m
+    [90m179|[39m     [34mexpect[39m(added)[33m.[39m[34mtoHaveBeenCalledTimes[39m([34m1[39m)[33m;[39m
+    [90m180|[39m     [34mexpect[39m(added)[33m.[39m[34mtoHaveBeenCalledWith[39m(gate[33m.[39m[35mget[39m(pending[33m.[39mid))[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22mR8 round6 B1 models MemoryService retaining its journal until listener replay succeeds
+[31m[1mAssertionError[22m: expected 1 to be 2 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 2[39m
+[31m+ 1[39m
+
+[36m [2m❯[22m packages/approval/test/gate.test.ts:[2m218:22[22m[39m
+    [90m216|[39m     [34mexpect[39m(journal[33m.[39msize)[33m.[39m[34mtoBe[39m([34m0[39m)[33m;[39m
+    [90m217|[39m     [34mexpect[39m(completed)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m218|[39m     [34mexpect[39m(attempts)[33m.[39m[34mtoBe[39m([34m2[39m)[33m;[39m
+    [90m   |[39m                      [31m^[39m
+    [90m219|[39m     expect(gate.get(pending.id)).toMatchObject({ status: 'pending', pr…
+    [90m220|[39m   })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m4 failed[39m[22m[2m | [22m[33m17 skipped[39m[90m (21)[39m
+[2m   Start at [22m 06:28:29
+[2m   Duration [22m 542ms[2m (transform 93ms, setup 0ms, import 263ms, tests 100ms, environment 0ms)[22m
+
+
+command=pnpm exec vitest run packages/approval/test/gate.test.ts -t "R8 round6 B1" --maxWorkers=1 --no-file-parallelism
+exit=1

@@ -1,0 +1,65 @@
+CHANGES_REQUIRED
+Task-id: R7-REVIEW-RUNTIME-LOGGER
+Review domain: runtime pool reset/event integrity and logger redaction/JSONL integrity
+Blocking finding count: 3
+
+Conclusion
+The two original final-review blockers are repaired in the inspected implementation: workflow journal/cleanup is lease-guarded, and IPC transient waiters are per-session arrays keyed by exact waiter object and lease. However, independent inspection found three remaining blocking defects in the same domain: duplicate concurrent acquisition of one session ID corrupts pool ownership/accounting, session-creation failure cleanup can delete/release a same-ID replacement, and the fixed redaction marker can itself preserve a registered secret. Therefore this review cannot approve the domain.
+
+Original blocker re-review
+
+1. Stale workflow journal/cleanup: REPAIRED.
+- workflow.ts:506-516 captures the session/client/lease ownership predicate and checks it before append_workflow_entry and again after the awaited send; a stale result throws before success logging.
+- workflow.ts:524-525 guards failure reporting; workflow.ts:571-577 guards fallback logging.
+- workflow.ts:598-604 and 647-649 guard loop cleanup and pass the captured lease to beforeRelease and pool.release.
+- ipc.ts:2879-2892 rechecks lease plus exact openSessions entry across taskLifecycle.end and only then removes workflow bookkeeping.
+- The same-client/same-ID workflow regression at apps/desktop/test/workflow-broker.test.ts:712-759 asserts no replacement-session output journal and no stale beforeRelease call. The implementation, not merely the test name, supports the repair.
+
+2. Same-ID transient IPC waiter cleanup: REPAIRED.
+- ipc.ts:941-957 stores {lease, cancel} arrays and removes only the exact waiter object.
+- ipc.ts:1297-1304 synchronously cancels all transient waiters for the session before session_unbound and lease-safe release.
+- ipc.ts:2805-2847 captures client/session/lease, validates before subscription/send/on each event/after send, and coordinates agent_end with send completion.
+- ipc.ts:2849-2854 releases with the captured lease.
+- apps/desktop/test/ipc.test.ts:2121-2176 exercises overlapping old/new same-ID waiters and exact-object completion cleanup; 2075-2118 covers successful send completion after rebinding.
+
+Remaining blocking findings
+
+1. BLOCKING — concurrent acquire of the same session ID creates multiple live owners and inconsistent pool state/event attribution.
+Evidence:
+- packages/agent-host/src/pi-runtime-pool.ts:153-159 does not reject or coalesce an already-bound sessionId; with spare capacity it starts another cold slot.
+- packages/agent-host/src/pi-runtime-pool.ts:319-328 unconditionally assigns slot.sessionId and overwrites bySession.set(sessionId, {client, lease}) for the second slot.
+- packages/agent-host/src/pi-runtime-pool.ts:89-104 counts every bound slot in snapshot.active/slots, while 483-485 counts only bySession.size in activeCount(); get() at 386-393 returns only the last mapping.
+- packages/agent-host/src/pi-runtime-pool.ts:178-181 filters events without checking bySession ownership, so both same-ID slots can forward events under that ID.
+- packages/agent-host/src/pi-runtime-pool.ts:451-455 release finds the first matching slot and deletes the single session mapping, which may belong to the other slot.
+- apps/desktop/electron/main/ipc.ts:965-989 has no single-flight guard around ensureOpenSession; two concurrent promptSession calls for one not-yet-open session can both reach pool.acquire after awaiting listPiSessions.
+Impact: duplicate runtime processes, activeCount/get/snapshot disagreement, duplicate or cross-process output attributed to one session, and an orphaned/incorrectly released slot. This violates the required pool consistency and stale-attribution guarantees.
+Required repair: enforce one live acquisition/binding per session ID (coalesce concurrent acquires or reject duplicates), and add IPC single-flight protection for ensureOpenSession. Add a deterministic two-concurrent-acquire regression asserting one owner, consistent activeCount/get/snapshot, one event path, and safe release.
+
+2. BLOCKING — session-creation failure cleanup is not lease-safe and can destroy a same-ID replacement.
+Evidence:
+- apps/desktop/electron/main/ipc.ts:1404-1419 performs awaited new_session/get_state work, records createdLease/openSessions, and then registers callbacks.
+- apps/desktop/electron/main/ipc.ts:1420-1451 contains further awaits (mkdir, credential lookup, set_api_key) after the entry is published.
+- apps/desktop/electron/main/ipc.ts:1453-1457 catches any later failure but unconditionally openSessions.delete(createdSessionId), calls pool.release(createdSessionId) without createdLease, and deletes the chat session record.
+Impact: if that binding is released and the same ID is reacquired while creation is awaiting, stale failure cleanup erases the replacement openSessions entry, resets/releases the replacement runtime, and deletes its session record. The success path at 1452 can likewise return a stale entry without a final ownership check.
+Required repair: capture the exact entry/client/session/lease; revalidate after every await and before every side effect; in catch, release only with createdLease and delete openSessions only when openSessions.get(id) === entry. Do not delete a replacement session record. Validate ownership again before returning success. Add a deferred set_api_key/mkdir failure regression with same-ID release/reacquire.
+
+3. BLOCKING — logger replacement marker can preserve a registered secret.
+Evidence:
+- apps/desktop/electron/main/logger.ts:14-21 replaces every registered value with the fixed string '[已删除]'.
+- apps/desktop/electron/main/logger.ts:110-112 accepts any nonempty text as a redaction value.
+- apps/desktop/electron/main/logger.ts:32-34 uses the same marker in malformed-line placeholders; 146-147 applies redactText to future writes; 152-156 applies it to exports.
+Impact: registering '已删除' produces '[已删除]', which still contains the exact secret; registering '[已删除]' leaves it unchanged. Thus valid history rewrites, malformed placeholders, future appends, console output, and exports can all preserve a registered secret, contrary to the no-preserved-secrets requirement.
+Required repair: use a redaction marker guaranteed not to contain any registered secret (or remove the value), and verify the final serialized output against the complete redaction corpus. Add regressions for '已删除' and '[已删除]' across rewrite, malformed history, future append, and export.
+
+Other verified repairs
+- packages/agent-host/src/pi-runtime-pool.ts:167-169 excludes resetting slots from acquisition; 451-480 clears ownership before reset and retires on failure; 283-309 detaches maps synchronously and idempotently.
+- packages/agent-host/src/pi-runtime-pool.ts:184-220 validates strictly increasing safe generations only for successful session-changing responses and centralizes facade sends/retirement.
+- packages/agent-host/src/pi-runtime-pool.ts:311-370 rechecks binding ownership after configure/switch awaits; getBinding at 390-394 returns a copied lease tuple.
+- packages/agent-host/src/pi-runtime.ts:55-58 and 91-103 emits monotonic sessionGeneration only after successful session changes; packages/agent-host/src/pi-runtime-supervisor.ts:121-124 forwards it.
+- apps/desktop/electron/main/ipc.ts:2254-2283 revalidates the captured binding after each awaited explicit-release cleanup step and uses the exact openSessions entry.
+- apps/desktop/electron/main/logger.ts:23-31 recursively redacts string values only; 35-89 decodes complete JSON string tokens with JSON.parse and uses valid placeholders for unsanitizable tokens; 91-95 terminates nonempty rewrites with one newline.
+
+Evidence and limitations
+- Inspected the supplied before/after evidence, including pool-workflow-blockers-after-final.txt, final-review-blockers-after.txt, ipc-blockers-final.txt, workflow-focused-final.txt, runtime-direct-facade-after.txt, logger-escaped-malformed-after.txt, binding-approval-focused-final-2.txt, and typecheck-final.txt. Evidence was not treated as a substitute for implementation/assertion inspection.
+- Runtime tests use FakeHandle/DeferredResetHandle (packages/agent-host/test/pi-runtime-pool.test.ts:6-65), not a real child process. No real-process lifecycle, IPC ordering, or shutdown behavior is verified.
+- The reviewer did not edit any existing file and created only this explicitly requested report. No files were staged, committed, or pushed. No test suite, targeted or full, was run; no destructive operation was performed.

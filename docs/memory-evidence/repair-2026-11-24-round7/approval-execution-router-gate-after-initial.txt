@@ -1,0 +1,186 @@
+(node:32508) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31168) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:2288) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:42980) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [31m❯[39m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts [2m([22m[2m5 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 67[2mms[22m[39m
+     [32m✓[39m approves by an authorized actor and audits both events[32m 13[2mms[22m[39m
+     [32m✓[39m denies unauthorized approver[32m 9[2mms[22m[39m
+     [32m✓[39m refuses to decide or execute a privacy-redacted proposal[32m 15[2mms[22m[39m
+[31m     [31m×[31m atomically updates only the current approved payload and rejects stale or redacted objects[39m[32m 21[2mms[22m[39m
+     [32m✓[39m cancels only the pending proposals for one session[32m 9[2mms[22m[39m
+ [31m❯[39m [30m[46m 1 [49m[39m apps/desktop/test/runtime-action-router.test.ts [2m([22m[2m39 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 43[2mms[22m[39m
+     [32m✓[39m denies host shell before approval or execution unless explicitly enabled[32m 6[2mms[22m[39m
+     [32m✓[39m executes an ordinary workspace write without requesting approval[32m 4[2mms[22m[39m
+     [32m✓[39m executes delete and move inside the workspace with no proposal[32m 1[2mms[22m[39m
+     [32m✓[39m passes workspace CRUD straight through in auto_review as well[32m 1[2mms[22m[39m
+     [32m✓[39m denies a structured write outside the workspace without asking[32m 1[2mms[22m[39m
+     [32m✓[39m hard-denies critical targets before approval or execution[32m 1[2mms[22m[39m
+     [32m✓[39m denies process execution when the platform is not ready[32m 1[2mms[22m[39m
+     [32m✓[39m asks a human for shell and never starts the Reviewer[32m 1[2mms[22m[39m
+     [32m✓[39m denies Ask mode shell when no human can approve[32m 1[2mms[22m[39m
+     [32m✓[39m asks a human for an external write[32m 0[2mms[22m[39m
+     [32m✓[39m does not execute when the user denies[32m 0[2mms[22m[39m
+     [32m✓[39m grants ordinary shell for the rest of the task after a task-scoped approval[32m 1[2mms[22m[39m
+     [32m✓[39m still asks again for a high-risk command under a task grant[32m 0[2mms[22m[39m
+     [32m✓[39m refuses a task scope for anything that is not ordinary shell[32m 0[2mms[22m[39m
+     [32m✓[39m drops the task grant for a new task[32m 1[2mms[22m[39m
+     [32m✓[39m rejects execution when the task is revoked while approval is pending[32m 0[2mms[22m[39m
+     [32m✓[39m rejects execution when the target identity changes after approval[32m 1[2mms[22m[39m
+[31m     [31m×[31m re-fetches the canonical action after the final allow audit and executes that object[39m[32m 7[2mms[22m[39m
+     [32m✓[39m fails closed when canonical approval is missing after the final allow audit[32m 0[2mms[22m[39m
+     [32m✓[39m uses the Reviewer for shell and still re-checks before executing[32m 1[2mms[22m[39m
+     [32m✓[39m sends only the minimal review context[32m 1[2mms[22m[39m
+     [32m✓[39m carries at most four compact tool evidence entries[32m 1[2mms[22m[39m
+     [32m✓[39m escalates a reviewer ask to a high-risk human approval[32m 1[2mms[22m[39m
+     [32m✓[39m rejects task scope when Reviewer requested high-risk confirmation[32m 0[2mms[22m[39m
+     [32m✓[39m does not execute on a reviewer deny[32m 0[2mms[22m[39m
+     [32m✓[39m opens the circuit breaker after three consecutive denials[32m 1[2mms[22m[39m
+     [32m✓[39m resets the denial counter after one allow[32m 0[2mms[22m[39m
+     [32m✓[39m refuses an identical denied action without asking the Reviewer again[32m 0[2mms[22m[39m
+     [32m✓[39m falls back to human approval when the Reviewer is unavailable[32m 0[2mms[22m[39m
+     [32m✓[39m does not send an oversized command to the Reviewer[32m 1[2mms[22m[39m
+     [32m✓[39m denies an unattended task when the Reviewer is unavailable[32m 0[2mms[22m[39m
+     [32m✓[39m denies an unattended Reviewer ask instead of opening human approval[32m 0[2mms[22m[39m
+     [32m✓[39m does not fall back to approval when the Reviewer is canceled by Task revoke[32m 5[2mms[22m[39m
+     [32m✓[39m never sends an external write or a remote push to the Reviewer[32m 0[2mms[22m[39m
+     [32m✓[39m records the policy version and timing in the audit summary[32m 0[2mms[22m[39m
+     [32m✓[39m keeps denials and evidence inside one task only[32m 0[2mms[22m[39m
+     [32m✓[39m clears task state when the task is revoked[32m 1[2mms[22m[39m
+     [32m✓[39m returns a failed result when the execution plane throws[32m 0[2mms[22m[39m
+     [32m✓[39m denies when the runtime action belongs to no live task[32m 0[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/runtime-action-router.test.ts[2m > [22mask mode[2m > [22mre-fetches the canonical action after the final allow audit and executes that object
+[31m[1mAssertionError[22m: expected "vi.fn()" to be called with arguments: [ ObjectContaining {"id": "r2"}, …(1) ][90m
+
+Received:
+
+[1m  1st vi.fn() call:
+
+[22m[33m@@ -1,8 +1,31 @@[90m
+[2m  [[22m
+[32m-   ObjectContaining {[90m
+[32m-     "id": "r2",[90m
+[31m+   {[90m
+[31m+     "agentId": "general",[90m
+[31m+     "approvalClass": "human_required",[90m
+[31m+     "capability": "fs.write",[90m
+[31m+     "id": "4c1a0d2f-1243-459e-9bf2-bbfe34e2bcf9",[90m
+[31m+     "payload": {[90m
+[31m+       "path": "C:/ws/report.docx",[90m
+[31m+     },[90m
+[31m+     "payloadHash": "8e62d6aecb2062c05e32fd89c40cf3d3c97dc1829fd0eb218ce77c693add1f73",[90m
+[31m+     "profileId": "general",[90m
+[31m+     "reason": "导出报告文件",[90m
+[31m+     "resources": [[90m
+[31m+       {[90m
+[31m+         "identity": "object:c:/ws/report.docx",[90m
+[31m+         "kind": "path",[90m
+[31m+         "parentIdentity": "object:c:/ws",[90m
+[31m+         "scope": "workspace",[90m
+[31m+         "value": "C:/ws/report.docx",[90m
+[31m+       },[90m
+[31m+     ],[90m
+[31m+     "risk": "write",[90m
+[31m+     "sessionId": "s1",[90m
+[31m+     "subjectId": "u1",[90m
+[31m+     "taskId": "t1",[90m
+[31m+     "toolName": "report.export",[90m
+[2m    },[22m
+[2m    {[22m
+[2m      "choice": "once",[22m
+[2m      "proposalId": "proposal-1",[22m
+[2m    },[22m
+
+[1m  2nd vi.fn() call:
+
+[22m[33m@@ -1,8 +1,31 @@[90m
+[2m  [[22m
+[32m-   ObjectContaining {[90m
+[32m-     "id": "r2",[90m
+[31m+   {[90m
+[31m+     "agentId": "general",[90m
+[31m+     "approvalClass": "human_required",[90m
+[31m+     "capability": "fs.write",[90m
+[31m+     "id": "ff5d37c3-2d5e-4e5e-8366-25c6036a782b",[90m
+[31m+     "payload": {[90m
+[31m+       "path": "C:/ws/report.docx",[90m
+[31m+     },[90m
+[31m+     "payloadHash": "8e62d6aecb2062c05e32fd89c40cf3d3c97dc1829fd0eb218ce77c693add1f73",[90m
+[31m+     "profileId": "general",[90m
+[31m+     "reason": "导出报告文件",[90m
+[31m+     "resources": [[90m
+[31m+       {[90m
+[31m+         "identity": "object:c:/ws/report.docx",[90m
+[31m+         "kind": "path",[90m
+[31m+         "parentIdentity": "object:c:/ws",[90m
+[31m+         "scope": "workspace",[90m
+[31m+         "value": "C:/ws/report.docx",[90m
+[31m+       },[90m
+[31m+     ],[90m
+[31m+     "risk": "write",[90m
+[31m+     "sessionId": "s1",[90m
+[31m+     "subjectId": "u1",[90m
+[31m+     "taskId": "t1",[90m
+[31m+     "toolName": "report.export",[90m
+[2m    },[22m
+[2m    {[22m
+[2m      "choice": "once",[22m
+[2m      "proposalId": "proposal-1",[22m
+[2m    },[22m
+[31m[90m
+
+Number of calls: [1m2[22m
+[31m[39m
+[36m [2m❯[22m apps/desktop/test/runtime-action-router.test.ts:[2m421:32[22m[39m
+    [90m419|[39m     )[33m;[39m
+    [90m420|[39m     [34mexpect[39m(result[33m.[39mstatus)[33m.[39m[34mtoBe[39m([32m'executed'[39m)[33m;[39m
+    [90m421|[39m     [34mexpect[39m(h[33m.[39mvalidateApproval)[33m.[39m[34mtoHaveBeenCalledWith[39m(
+    [90m   |[39m                                [31m^[39m
+    [90m422|[39m       expect[33m.[39m[34mobjectContaining[39m({ id[33m:[39m [32m'r2'[39m })[33m,[39m
+    [90m423|[39m       { choice[33m:[39m [32m'once'[39m[33m,[39m proposalId[33m:[39m [32m'proposal-1'[39m }[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22matomically updates only the current approved payload and rejects stale or redacted objects
+[31m[1mAssertionError[22m: expected { …(16) } to match object { …(5) }
+(12 matching properties omitted from actual)[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[33m@@ -3,8 +3,7 @@[39m
+[2m    "payload": {[22m
+[2m      "body": "secret",[22m
+[2m      "path": "C:/ws/chosen.txt",[22m
+[2m    },[22m
+[2m    "payloadHash": "1c6d2a52789cbd3012f66d2025f59b83ae9c7bef92bf0f94932dc6b0498f6aad",[22m
+[32m-   "privacyRedacted": false,[39m
+[2m    "status": "approved",[22m
+[2m  }[22m
+
+[36m [2m❯[22m packages/approval/test/gate.test.ts:[2m79:21[22m[39m
+    [90m 77|[39m
+    [90m 78|[39m     [35mconst[39m updated [33m=[39m gate[33m.[39m[34mupdateApprovedPayload[39m(approved[33m,[39m chosen)[33m;[39m
+    [90m 79|[39m     [34mexpect[39m(updated)[33m.[39m[34mtoMatchObject[39m({
+    [90m   |[39m                     [31m^[39m
+    [90m 80|[39m       id[33m:[39m approved[33m.[39mid[33m,[39m
+    [90m 81|[39m       status[33m:[39m [32m'approved'[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m2 failed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m42 passed[39m[22m[90m (44)[39m
+[2m   Start at [22m 22:00:28
+[2m   Duration [22m 3.27s[2m (transform 434ms, setup 19ms, import 2.37s, tests 110ms, environment 807ms)[22m
+

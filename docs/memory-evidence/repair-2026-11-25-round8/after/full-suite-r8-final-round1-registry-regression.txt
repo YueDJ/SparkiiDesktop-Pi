@@ -1,0 +1,273 @@
+(node:15376) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:8456) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:16188) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime-supervisor.test.ts (15 tests) 529ms
+(node:2256) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/tool-registry.test.ts (32 tests) 280ms
+(node:38068) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime-pool.test.ts (53 tests) 306ms
+(node:21864) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/coding-tools.test.ts (10 tests) 52ms
+(node:22116) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-round7-regression.test.ts (23 tests | 1 failed) 24035ms
+     ✓ R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files  1046ms
+     ✓ R7 privacy retry recovers an empty episode topic after restart and completes chat cleanup  1097ms
+     ✓ R7 privacy deletion discovers secrets nested only in pending operation extensions  738ms
+     ✓ R7 privacy deletion scrubs an invalid structural targetId field  737ms
+     ✓ R7 privacy deletion scrubs an invalid structural projectId field  772ms
+     ✓ R7 privacy deletion scrubs an invalid structural mergeIds field  757ms
+     ✓ R7 privacy deletion ignores whitespace-only episode topics without corrupting retained content  1034ms
+     ✓ R7 privacy deletion preserves pending UPDATE control fields when deleted text equals the op  818ms
+     × R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds 995ms
+     ✓ R7 privacy deletion includes superseded episode records in the global redaction corpus  994ms
+     ✓ R7 caller-mode memory deletion rechecks canonical approval after privacy redaction  671ms
+     ✓ R7 production privacy retry succeeds in the same process after truth rows are gone  1049ms
+     ✓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body  648ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes  1266ms
+     ✓ R7-P1-2 replacement preflight sees an indexed project after its registry entry is removed  1197ms
+     ✓ R7-P1-2 replacement preflight derives zero-entry project identity from scope_files  1253ms
+     ✓ R7-P1-3 source deletion detects indexed unregistered conflicts without an explicit workspace  1228ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes  1178ms
+     ✓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file  1238ms
+     ✓ R7-P1-3 valid source deletion updates unregistered project truth without reindexing it  1493ms
+     ✓ R7-P1-4 privacy deletion discovers indexed unregistered truth before reconciliation  1219ms
+     ✓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion  1271ms
+     ✓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution  1335ms
+(node:14520) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-r8-regression.test.ts (15 tests) 21588ms
+     ✓ R8 final review fences same-process and restarted reads when the privacy journal cannot be persisted  944ms
+     ✓ R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext  1887ms
+     ✓ R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext  1943ms
+     ✓ R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext  1964ms
+     ✓ R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext  1974ms
+     ✓ R8-P0-1 resumes from journal context after the chat row and Pi file are already gone  1496ms
+     ✓ R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers  1600ms
+     ✓ R8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent  1433ms
+     ✓ R8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret  1484ms
+     ✓ R8-P1-3 refuses to construct MemoryService through an unsafe memory-root junction  376ms
+     ✓ R8-P1-3 fences project repair before registry or truth reads  1140ms
+     ✓ R8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker  1448ms
+     ✓ R8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state  1318ms
+     ✓ R8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state  1306ms
+     ✓ R8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state  1271ms
+(node:36756) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-audit-regression.test.ts (31 tests) 22334ms
+     ✓ P1-2 LIKE fallback supports CRUD, search and rebuild  725ms
+     ✓ P1-2 corrupt SQLite is quarantined and rebuilt from truth without blocking startup  705ms
+     ✓ P1-3 copied workspace with the same projectId fails closed and preserves the first truth source  905ms
+     ✓ P1-4 default search and includeHistory never expose pending memories  638ms
+     ✓ P2 external truth edits reconcile list, injection and search  660ms
+     ✓ P2 master switch rejects manual add while disabled  314ms
+     ✓ P2 project archived state survives derived index rebuild  1207ms
+     ✓ P1-6 a missing cursor is rejected and truncation advances only through included messages  376ms
+     ✓ P1-6 rejects an intra-entry cursor beyond the actual entry text  347ms
+     ✓ P1-5 one invalid project UPDATE rejects the whole extraction batch  364ms
+     ✓ P1-1 privacy deletion wins over an in-flight model response and redacts diagnostics  594ms
+     ✓ P1-1 privacy deletion while target resolution is pending prevents the model send  605ms
+     ✓ P1-1 corrupt project registry makes privacy deletion fail closed  898ms
+     ✓ P1-1 duplicate ids corrupt the whole truth file instead of exposing both rows  684ms
+     ✓ P1-1 privacy deletion discovers the indexed workspace even when the registry omits it  1233ms
+     ✓ P1-3 privacy deletion fails closed when a copied project duplicates identity  897ms
+     ✓ P1-1 privacy deletion redacts retained diagnostic messages  652ms
+     ✓ P1-1 model and parse failures do not copy session content into diagnostics  338ms
+     ✓ P1-1 old prompt-log cleanup failures surface as repair warnings  586ms
+     ✓ P1-8 consolidation is single-flight across the first await  665ms
+     ✓ P1-8 a malformed consolidation element rejects the entire merge phase  680ms
+     ✓ truth parser rejects object-valued id instead of stringifying it  311ms
+     ✓ truth parser rejects object-valued text instead of stringifying it  315ms
+     ✓ cross-file duplicate ids are excluded from listing and injection until repaired  968ms
+     ✓ batch writes fail closed while a cross-file duplicate identity exists  951ms
+     ✓ removing a project truth file and registry reference clears its searchable index  900ms
+     ✓ episode approval rejects malformed mergeIds before changing episode or proposal state  898ms
+     ✓ privacy deletion removes both current and legacy episode proposals  1274ms
+     ✓ ordinary source deletion removes legacy pending episode proposals and repairs active source metadata  1253ms
+     ✓ malformed mergeIds are rejected before any pending or target mutation  693ms
+     ✓ P1-8 mergeIds approval is all-or-nothing  695ms
+(node:13068) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-consolidation.test.ts (19 tests) 13106ms
+     ✓ R8 final review rechecks the truth fence after the async target boundary  855ms
+     ✓ R8 final review rechecks the truth fence after the async slot boundary  838ms
+     ✓ R8 final review rechecks the truth fence after the async model boundary  862ms
+     ✓ R8 final review stops all later consolidation phases when privacy cleanup becomes pending during a model call  715ms
+     ✓ R8-P1-3 never sends indexed plaintext to consolidation while truth writes are blocked  893ms
+     ✓ 相似记忆只产出 pending 提案，绝不自动改 active  683ms
+     ✓ 批准合并提案后：保留条作废、被合并条作废、新条生效  756ms
+     ✓ 一次整合的模型调用不超过 3 次  647ms
+     ✓ 三个阶段全都有活时仍然 ≤3 次调用，第四件事顺延  1637ms
+     ✓ 拒绝合并阶段的对象字段而不是字符串化  660ms
+     ✓ 拒绝压缩阶段的对象字段而不是字符串化  355ms
+     ✓ 拒绝复核阶段的对象字段而不是字符串化  881ms
+     ✓ P2 情景压缩混合越界输出时整阶段丢弃，不留下部分提案  357ms
+     ✓ 空闲不足或距上次整合不足：不调用模型  320ms
+     ✓ 开关关闭或有交互会话在跑：不整合  328ms
+     ✓ 没有空闲槽：跳过并顺延，不排队、不做任何写入  647ms
+     ✓ 整合输出畸形：该阶段整批丢弃 + errors.db 记录 + 不产生提案  685ms
+     ✓ 没有可用模型，或确实无事可做：不调模型、不写库，各自返回对应出口  331ms
+     ✓ 模型给不存在的 targetId 或越界文本：忽略该条，不落提案  652ms
+(node:11924) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-truth-batch.test.ts (19 tests) 11869ms
+     ✓ restores every prior truth file and removes new files when a later write fails  812ms
+     ✓ R8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth  513ms
+     ✓ R8-P1-4 preserves rollback backups when the unverified journal cannot be removed  522ms
+     ✓ recovers an interrupted batch at startup before truth files are opened  794ms
+     ✓ recovers a new project batch from the registry committed before its truth file  783ms
+     ✓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing  788ms
+     ✓ rollback never recreates a missing project parent before path revalidation  782ms
+     ✓ R8 final review rejects an empty uncommitted journal without deleting the only original backup  781ms
+     ✓ quarantines a malformed journal and reports a warning instead of blocking startup  523ms
+     ✓ rejects journal paths outside memory truth and backup locations  783ms
+     ✓ rejects a truthy non-boolean committed marker without deleting uncommitted truth  507ms
+     ✓ rejects a committed journal that still contains rollback file items  512ms
+     ✓ rejects an unregistered outside project truth target during commit and recovery  786ms
+     ✓ keeps the only recovery evidence when the write-block marker cannot be persisted  505ms
+     ✓ keeps a committed batch and removes its recovery journal  760ms
+     ✓ rolls back the project registry when a later truth write fails  1181ms
+(node:42600) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-extraction.test.ts (20 tests) 9707ms
+     ✓ R8-P1-3 never sends indexed plaintext to the extraction model while truth writes are blocked  826ms
+     ✓ R8-P0-1 never sends indexed plaintext to another session while privacy cleanup is pending  626ms
+     ✓ JSON 协议 fail closed：畸形/越界/非法 op 整批抛错  350ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":{},"topics":[],"ops":[]}  326ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":["ADD"],"scope":"user","text":"事实"}]}  323ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":["user"],"text":"事实"}]}  339ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":"user","text":{},"excerpt":{}}]}  326ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":"user","text":"事实","importance":"2"}]}  335ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"UPDATE","targetId":["mem_x"],"text":{}}]}  315ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"SUPERSEDE","targetId":"mem_x","replacementText":{},"reason":{}}]}  303ms
+     ✓ 端到端：对话增量 → pending（含来源 excerpt）→ 批准 → 下一条会话注入  685ms
+     ✓ 驳回后进黑名单，同候选不再提案  705ms
+     ✓ 同 scope 高相似 ADD 降级为 UPDATE 候选  677ms
+     ✓ 畸形输出：整批丢弃 + errors.db 有记录 + 真相源无半批写入  335ms
+     ✓ 对象字段被拒绝时不写 pending、episode、真相文件或提取位点  335ms
+     ✓ auto 工作区的项目候选只落用户层  650ms
+     ✓ user 工作区的首条项目候选：项目文件尚不存在也能落 pending 并生成 projectId  904ms
+     ✓ 同一候选重复提炼：已有高相似 pending 时不再重复提案  703ms
+     ✓ 开关关闭：零模型调用  317ms
+     ✓ 槽位礼让：池满跳过、无排队；交互 acquire 不受影响  324ms
+(node:8) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-service.test.ts (11 tests) 8812ms
+     ✓ M1 step 0: FTS5 trigram 运行时可用  316ms
+     ✓ 手动新增用户记忆 → 注入块真的含 <memory> 与文本；注入不重置时钟  563ms
+     ✓ 跨项目模糊回忆：情景摘要命中并带项目线索，同一检索两次命中与增量一致  338ms
+     ✓ 检索命中才重置时钟，且同一检索连跑两次命中与增量一致  568ms
+     ✓ 项目记忆只建在 user 工作区；auto 不建；归档停注入  1225ms
+     ✓ 项目搬迁：文件移动后按 projectId 自愈重索引  940ms
+     ✓ 损坏文件停止该 scope 注入并出修复入口；修复后恢复  1524ms
+     ✓ 置顶、编辑、删除、重建索引全通  689ms
+     ✓ 普通删除保留历史版本，includeHistory 才真删  742ms
+     ✓ 索引重建不丢 pending；隐私删除清黑名单；普通删除会话标记来源已删除  746ms
+     ✓ pending 出口：批准 ADD / 驳回进黑名单 / target 已删降级 ADD / 源会话删除失效  1159ms
+(node:7860) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/workspace-file-service.integration.test.ts (6 tests | 1 skipped) 3690ms
+     ✓ allows a normal in-workspace write/read and audits sessionId→projectPath  1109ms
+     ✓ lists the workspace root with path "." (P1 rejects an empty path)  372ms
+     ✓ writes and reads back binary bytes through the fenced workspace  1469ms
+     ✓ rejects a REAL hard-link alias (nlink > 1) inside the workspace  554ms
+(node:28744) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-tools.test.ts (6 tests) 3305ms
+     ✓ memory_remember 直接写入 active 并审计  624ms
+     ✓ memory_forget 先弹审批；拒绝不删，批准才三处真删  584ms
+     ✓ memory_search 只读命中并强化（不重置其他记忆）  566ms
+     ✓ 总开关关闭时三工具均被拒，无写入无检索  323ms
+     ✓ memory_remember(scope: agent) 使用当前 profileId 并校验智能体存在  881ms
+     ✓ 工具名与鞍附加同源：签名 agent 清单不变，平台统一追加  325ms
+(node:30500) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-index-fallback.test.ts (2 tests) 1161ms
+     ✓ keeps truth writes and reads working after disk open failure  592ms
+     ✓ keeps truth writes and reads working after disk query failure  568ms
+(node:36952) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | apps/desktop/test/logger.test.ts > Logger > appends structured jsonl and exports
+start {"profile":"contract-review"}
+
+stderr | apps/desktop/test/logger.test.ts > Logger > drops entries below the configured level
+kept ""
+
+ ✓ |1| apps/desktop/test/logger.test.ts (33 tests) 691ms
+(node:22648) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/workflow-broker.test.ts (34 tests) 602ms
+(node:9992) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-settings-pane.test.tsx (3 tests) 602ms
+     ✓ 导航有「记忆」；显示隐私明示；手动新增走 IPC  322ms
+(node:12484) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/windows-platform.test.ts (9 tests) 217ms
+(node:41796) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/workspace-executor.test.ts (17 tests) 112ms
+(node:29500) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/workspace-file-service.test.ts (17 tests) 72ms
+(node:33728) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-fence-canonical.test.ts (11 tests) 52ms
+(node:25816) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/runtime-action-router.test.ts (39 tests) 36ms
+(node:26812) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-fence.test.ts (4 tests) 20ms
+(node:14076) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/action-normalizer.test.ts (12 tests) 11ms
+(node:1400) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/workspace-relocation.test.ts (11 tests) 12ms
+(node:7200) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/workspace.test.ts (5 tests) 10ms
+(node:10804) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/task-lifecycle.test.ts (6 tests) 8ms
+(node:19892) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-scoring.test.ts (6 tests) 6ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds
+AssertionError: expected '{"text":"[已删除]"}' to contain 'PRIVATE_OTHER_CARRIER_27B4A'
+
+Expected: "PRIVATE_OTHER_CARRIER_27B4A"
+Received: "{"text":"[已删除]"}"
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:348:49
+    346|     expect(existsSync(sessionFile)).toBe(false);
+    347|     expect(() => service.searchMemory(secret, { includeHistory: true }…
+    348|     expect(sessions.get('other-retry')?.inputs).toContain(otherSecret);
+       |                                                 ^
+    349|
+    350|     service.close();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 27 passed (28)
+      Tests  1 failed | 467 passed | 1 skipped (469)
+   Start at  21:01:47
+   Duration  170.49s (transform 2.66s, setup 302ms, import 20.80s, tests 123.22s, environment 21.05s)
+
+
+exit=1

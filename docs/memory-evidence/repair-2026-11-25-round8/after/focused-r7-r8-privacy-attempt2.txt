@@ -1,0 +1,91 @@
+(node:18552) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:38220) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:10340) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-round7-regression.test.ts (23 tests | 2 failed) 24372ms
+     ✓ R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files  1076ms
+     × R7 privacy retry recovers an empty episode topic after restart and completes chat cleanup 1101ms
+     ✓ R7 privacy deletion discovers secrets nested only in pending operation extensions  808ms
+     ✓ R7 privacy deletion scrubs an invalid structural targetId field  757ms
+     ✓ R7 privacy deletion scrubs an invalid structural projectId field  822ms
+     ✓ R7 privacy deletion scrubs an invalid structural mergeIds field  736ms
+     ✓ R7 privacy deletion ignores whitespace-only episode topics without corrupting retained content  1077ms
+     ✓ R7 privacy deletion preserves pending UPDATE control fields when deleted text equals the op  832ms
+     × R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds 1028ms
+     ✓ R7 privacy deletion includes superseded episode records in the global redaction corpus  1051ms
+     ✓ R7 caller-mode memory deletion rechecks canonical approval after privacy redaction  609ms
+     ✓ R7 production privacy retry succeeds in the same process after truth rows are gone  1085ms
+     ✓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body  623ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes  1259ms
+     ✓ R7-P1-2 replacement preflight sees an indexed project after its registry entry is removed  1267ms
+     ✓ R7-P1-2 replacement preflight derives zero-entry project identity from scope_files  1258ms
+     ✓ R7-P1-3 source deletion detects indexed unregistered conflicts without an explicit workspace  1207ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes  1186ms
+     ✓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file  1237ms
+     ✓ R7-P1-3 valid source deletion updates unregistered project truth without reindexing it  1493ms
+     ✓ R7-P1-4 privacy deletion discovers indexed unregistered truth before reconciliation  1217ms
+     ✓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion  1259ms
+     ✓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution  1381ms
+(node:41032) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-r8-regression.test.ts (12 tests) 19445ms
+     ✓ R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext  1770ms
+     ✓ R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext  2052ms
+     ✓ R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext  1991ms
+     ✓ R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext  2057ms
+     ✓ R8-P0-1 resumes from journal context after the chat row and Pi file are already gone  1516ms
+     ✓ R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers  1526ms
+     ✓ R8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent  1430ms
+     ✓ R8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret  1447ms
+     ✓ R8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker  1515ms
+     ✓ R8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state  1359ms
+     ✓ R8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state  1407ms
+     ✓ R8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state  1373ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7 privacy retry recovers an empty episode topic after restart and completes chat cleanup
+AssertionError: expected [Function] to not throw an error but 'Error: 该记忆没有来源会话，无法执行隐私删除' was thrown
+
+- Expected:
+undefined
+
++ Received:
+"Error: 该记忆没有来源会话，无法执行隐私删除"
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:219:76
+    217|     });
+    218|     expect(() => service.addMemory({ scope: 'user', text: 'blocked', s…
+    219|     expect(() => service.deleteMemory(target.id, { mode: 'privacy' }))…
+       |                                                                            ^
+    220|     expect(sessions.get('private-session')).toBeUndefined();
+    221|     expect(sessions.get('other-session')?.inputs).not.toContain(secret…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds
+Error: 该记忆没有来源会话，无法执行隐私删除
+ ❯ MemoryService.privacySourceFor apps/desktop/electron/main/memory/service.ts:761:27
+    759|     const recovery = this.store.privacyRecoveryFor(id);
+    760|     const sessionId = indexed?.source_session ?? recovery?.sourceSessi…
+    761|     if (!sessionId) throw new Error('该记忆没有来源会话，无法执行隐私删除');
+       |                           ^
+    762|     return { sessionId, ...(indexed?.workspace_path ?? recovery?.works…
+    763|       ? { workspacePath: indexed?.workspace_path ?? recovery?.workspac…
+ ❯ MemoryService.deleteMemory apps/desktop/electron/main/memory/service.ts:774:27
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:354:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  2 failed | 33 passed (35)
+   Start at  13:32:57
+   Duration  46.78s (transform 308ms, setup 41ms, import 1.04s, tests 43.82s, environment 1.54s)
+

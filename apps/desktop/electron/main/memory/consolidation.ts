@@ -2,6 +2,7 @@ import type { Logger } from '../logger.js';
 import type { ErrorStore } from '../error-store.js';
 import type { MemoryService } from './service.js';
 import type { InternalSlot, ModelTargetLike } from './extraction.js';
+import type { AddMemoryRequest } from './service.js';
 import { recordMemoryError } from './fts.js';
 import { trigramSimilarity } from './ops.js';
 
@@ -71,11 +72,16 @@ export class IdleConsolidator {
     this.timer = null;
   }
 
+  private assertAvailable(): void {
+    this.deps.service.store.assertReadAvailable();
+  }
+
   async runOnce(): Promise<ConsolidationResult> {
     const settings = this.deps.service.getSettings();
     if (!settings.enabled || !settings.idleConsolidation) {
       return { skipped: 'disabled', calls: 0, proposals: 0, digests: 0 };
     }
+    this.assertAvailable();
     const now = this.now();
     if (now - this.lastActivityAt < settings.consolidateIdleMinutes * 60_000) {
       return { skipped: 'not-idle', calls: 0, proposals: 0, digests: 0 };
@@ -86,38 +92,50 @@ export class IdleConsolidator {
     if (this.deps.isBusy?.()) return { skipped: 'busy', calls: 0, proposals: 0, digests: 0 };
     if (this.running) return { skipped: 'busy', calls: 0, proposals: 0, digests: 0 };
 
-    const target = await this.deps.target();
-    if (!target) return { skipped: 'no-model', calls: 0, proposals: 0, digests: 0 };
-
-    let slot: InternalSlot | null = null;
-    if (this.deps.acquireInternalSlot) {
-      slot = await this.deps.acquireInternalSlot(target);
-      if (!slot) {
-        void this.deps.logger?.log({
-          level: 'info', msg: 'memory consolidation skipped: no idle slot',
-          ctx: { model: `${target.provider}/${target.modelId}` },
-        });
-        return { skipped: 'no-idle-slot', calls: 0, proposals: 0, digests: 0 };
-      }
-    }
-
     this.running = true;
+    let slot: InternalSlot | null = null;
     let calls = 0;
     let proposals = 0;
     let digests = 0;
-    const ask = async (prompt: string): Promise<string> => {
-      calls += 1;
-      return slot?.complete ? slot.complete(prompt, target) : this.deps.complete(prompt, target);
-    };
-
     try {
+      const target = await this.deps.target();
+      this.assertAvailable();
+      if (!target) return { skipped: 'no-model', calls: 0, proposals: 0, digests: 0 };
+      if (this.deps.acquireInternalSlot) {
+        slot = await this.deps.acquireInternalSlot(target);
+        this.assertAvailable();
+        if (!slot) {
+          void this.deps.logger?.log({
+            level: 'info', msg: 'memory consolidation skipped: no idle slot',
+            ctx: { model: `${target.provider}/${target.modelId}` },
+          });
+          return { skipped: 'no-idle-slot', calls: 0, proposals: 0, digests: 0 };
+        }
+      }
+      const ask = async (prompt: string): Promise<string> => {
+        this.assertAvailable();
+        calls += 1;
+        try {
+          const raw = await (slot?.complete ? slot.complete(prompt, target) : this.deps.complete(prompt, target));
+          this.assertAvailable();
+          return raw;
+        } catch (error) {
+          this.assertAvailable();
+          throw error;
+        }
+      };
+      this.assertAvailable();
+      this.deps.service.synchronize();
+      this.assertAvailable();
       const merges = await this.mergePhase(ask, () => calls < CONSOLIDATION_MAX_CALLS);
       proposals += merges;
       const compressed = await this.compressPhase(ask, () => calls < CONSOLIDATION_MAX_CALLS);
-      digests += compressed;
+      proposals += compressed.proposals;
+      digests += compressed.digests;
       const stale = await this.stalePhase(ask, () => calls < CONSOLIDATION_MAX_CALLS);
       proposals += stale;
 
+      this.assertAvailable();
       this.deps.service.store.setConsolidationLastRun(now);
       void this.deps.logger?.log({
         level: 'info', msg: 'memory consolidation finished',
@@ -133,6 +151,7 @@ export class IdleConsolidator {
 
   /** A：同 scope 高相似 active 记忆 → 合并成一条的提案。 */
   private async mergePhase(ask: (prompt: string) => Promise<string>, canCall: () => boolean): Promise<number> {
+    this.assertAvailable();
     const pairs = this.findSimilarPairs();
     if (!pairs.length || !canCall()) return 0;
     const list = pairs
@@ -148,11 +167,12 @@ export class IdleConsolidator {
     let raw: string;
     try {
       raw = await ask(prompt);
-    } catch (error) {
-      recordMemoryError(this.deps.errors, 'consolidate-merge', error instanceof Error ? error.message : String(error));
+    } catch {
+      this.assertAvailable();
+      recordMemoryError(this.deps.errors, 'consolidate-merge', '记忆整合模型调用失败');
       return 0;
     }
-    let parsed: { merges?: Array<{ keepId?: string; dropId?: string; text?: string }> };
+    let parsed: { merges?: unknown };
     try {
       parsed = JSON.parse(raw.trim());
     } catch {
@@ -160,43 +180,55 @@ export class IdleConsolidator {
       void this.deps.logger?.log({ level: 'warn', msg: 'memory consolidation merge discarded', ctx: { reason: 'invalid-json' } });
       return 0;
     }
-    if (!Array.isArray(parsed.merges)) return 0;
-    const pairIds = new Set(pairs.flatMap(([a, b]) => [a.id, b.id]));
-    let proposals = 0;
+    if (!parsed || !Array.isArray(parsed.merges)) return 0;
+    const requests: AddMemoryRequest[] = [];
     for (const merge of parsed.merges.slice(0, PHASE_LIMIT)) {
-      const keepId = String(merge.keepId ?? '');
-      const dropId = String(merge.dropId ?? '');
-      const text = String(merge.text ?? '').trim();
-      if (!keepId || !dropId || !text || text.length > 200) continue;
-      if (!pairIds.has(keepId) || !pairIds.has(dropId) || keepId === dropId) continue;
+      if (!merge || typeof merge !== 'object' || Array.isArray(merge)) return 0;
+      const item = merge as Record<string, unknown>;
+      if (typeof item.keepId !== 'string' || typeof item.dropId !== 'string' || typeof item.text !== 'string') return 0;
+      const keepId = item.keepId;
+      const dropId = item.dropId;
+      const text = item.text.trim();
+      if (!keepId || !dropId || !text || text.length > 200 || keepId === dropId) return 0;
+      if (!pairs.some(([a, b]) => (a.id === keepId && b.id === dropId) || (a.id === dropId && b.id === keepId))) return 0;
       const keep = this.deps.service.store.rowFor(keepId);
-      if (!keep || keep.status !== 'active') continue;
+      if (!keep || keep.status !== 'active') return 0;
       const drop = this.deps.service.store.rowFor(dropId);
-      if (!drop || drop.status !== 'active') continue;
-
-      // 合并提案：保留 keep，替换为合并后的陈述；drop 在批准时一并作废（mergeIds）。
-      this.deps.service.addMemory({
+      if (!drop || drop.status !== 'active' || drop.file_ref !== keep.file_ref || drop.scope !== keep.scope) return 0;
+      requests.push({
         scope: keep.scope,
         text,
         status: 'pending',
         sourceKind: 'consolidated',
         ...this.workspaceOf(keep),
         excerpt: `整合：合并「${keep.text}」与「${dropId}」`,
-        pendingOp: { op: 'SUPERSEDE', targetId: keepId, proposedText: text, mergeIds: [dropId] },
+        pendingOp: {
+          op: 'SUPERSEDE', targetId: keepId, proposedText: text, mergeIds: [dropId],
+          idempotencyKey: `merge:${[keepId, dropId].sort().join(':')}:${text}`,
+        },
       });
-      proposals += 1;
     }
-    return proposals;
+    if (!requests.length) return 0;
+    this.assertAvailable();
+    try {
+      return this.deps.service.addMemoriesBatch(requests).ids.length;
+    } catch (error) {
+      this.assertAvailable();
+      recordMemoryError(this.deps.errors, 'consolidate-merge', error instanceof Error ? error.message : String(error));
+      return 0;
+    }
   }
 
   /** B：30 天以上的长情景摘要 → 二次压缩。 */
-  private async compressPhase(ask: (prompt: string) => Promise<string>, canCall: () => boolean): Promise<number> {
+  private async compressPhase(ask: (prompt: string) => Promise<string>, canCall: () => boolean): Promise<{ proposals: number; digests: number }> {
+    this.assertAvailable();
+    const empty = { proposals: 0, digests: 0 };
     const cutoff = this.now() - EPISODE_COMPRESS_AFTER_DAYS * 86_400_000;
     const stale = this.deps.service.store
       .listEpisodes()
       .filter((e) => e.ts < cutoff && e.summary.length > 80)
       .slice(0, PHASE_LIMIT);
-    if (!stale.length || !canCall()) return 0;
+    if (!stale.length || !canCall()) return empty;
     const list = stale.map((e) => `${e.sessionId}\t${e.summary}`).join('\n');
     const prompt = [
       '你是记忆压缩器。只输出一个 JSON 对象，不要解释、不要代码块。',
@@ -207,37 +239,58 @@ export class IdleConsolidator {
     let raw: string;
     try {
       raw = await ask(prompt);
-    } catch (error) {
-      recordMemoryError(this.deps.errors, 'consolidate-compress', error instanceof Error ? error.message : String(error));
-      return 0;
+    } catch {
+      this.assertAvailable();
+      recordMemoryError(this.deps.errors, 'consolidate-compress', '记忆压缩模型调用失败');
+      return empty;
     }
-    let parsed: { digests?: Array<{ sessionId?: string; summary?: string }> };
+    let parsed: { digests?: unknown };
     try {
       parsed = JSON.parse(raw.trim());
     } catch {
       recordMemoryError(this.deps.errors, 'consolidate-parse', 'compress 阶段输出不是合法 JSON');
       void this.deps.logger?.log({ level: 'warn', msg: 'memory consolidation compress discarded', ctx: { reason: 'invalid-json' } });
-      return 0;
+      return empty;
     }
-    if (!Array.isArray(parsed.digests)) return 0;
+    if (!parsed || !Array.isArray(parsed.digests)) return empty;
     const known = new Set(stale.map((e) => e.sessionId));
-    let digests = 0;
-    for (const item of parsed.digests) {
-      const sessionId = String(item.sessionId ?? '');
-      const summary = String(item.summary ?? '').trim();
-      if (!known.has(sessionId) || !summary || summary.length > 160) continue;
-      this.deps.service.store.updateEpisodeSummary(sessionId, summary);
-      digests += 1;
+    const requests: AddMemoryRequest[] = [];
+    for (const digest of parsed.digests.slice(0, PHASE_LIMIT)) {
+      if (!digest || typeof digest !== 'object' || Array.isArray(digest)) return empty;
+      const item = digest as Record<string, unknown>;
+      if (typeof item.sessionId !== 'string' || typeof item.summary !== 'string') return empty;
+      const sessionId = item.sessionId;
+      const summary = item.summary.trim();
+      if (!known.has(sessionId) || !summary || summary.length > 40) return empty;
+      requests.push({
+        scope: `episode:${sessionId}`,
+        text: summary,
+        status: 'pending',
+        sourceKind: 'consolidated',
+        excerpt: '空闲整合：压缩会话摘要',
+        pendingOp: {
+          op: 'EPISODE_UPDATE', targetId: sessionId, proposedText: summary,
+          idempotencyKey: `episode:${sessionId}:${summary}`,
+        },
+      });
     }
-    return digests;
+    if (!requests.length) return empty;
+    this.assertAvailable();
+    try {
+      const result = this.deps.service.addMemoriesBatch(requests);
+      return { proposals: result.ids.length, digests: requests.length };
+    } catch (error) {
+      this.assertAvailable();
+      recordMemoryError(this.deps.errors, 'consolidate-compress', error instanceof Error ? error.message : String(error));
+      return empty;
+    }
   }
 
   /** C：长期未更新的项目事实 → 过期复核提案（仍走 pending）。 */
   private async stalePhase(ask: (prompt: string) => Promise<string>, canCall: () => boolean): Promise<number> {
+    this.assertAvailable();
     const cutoff = this.now() - 180 * 86_400_000;
-    const rows = this.deps.service.store.db.prepare(
-      "SELECT id, scope, text, updated_at FROM memories WHERE status = 'active' AND scope LIKE 'project:%' AND updated_at < ? ORDER BY updated_at ASC LIMIT ?",
-    ).all(cutoff, PHASE_LIMIT) as Array<{ id: string; scope: string; text: string; updated_at: number }>;
+    const rows = this.deps.service.store.consolidationStaleProjectRows(cutoff, PHASE_LIMIT);
     if (!rows.length || !canCall()) return 0;
     const list = rows.map((r) => `${r.id} 「${r.text}」`).join('\n');
     const prompt = [
@@ -249,11 +302,12 @@ export class IdleConsolidator {
     let raw: string;
     try {
       raw = await ask(prompt);
-    } catch (error) {
-      recordMemoryError(this.deps.errors, 'consolidate-stale', error instanceof Error ? error.message : String(error));
+    } catch {
+      this.assertAvailable();
+      recordMemoryError(this.deps.errors, 'consolidate-stale', '记忆复核模型调用失败');
       return 0;
     }
-    let parsed: { ops?: Array<{ targetId?: string; replacementText?: string }> };
+    let parsed: { ops?: unknown };
     try {
       parsed = JSON.parse(raw.trim());
     } catch {
@@ -261,27 +315,40 @@ export class IdleConsolidator {
       void this.deps.logger?.log({ level: 'warn', msg: 'memory consolidation stale discarded', ctx: { reason: 'invalid-json' } });
       return 0;
     }
-    if (!Array.isArray(parsed.ops)) return 0;
+    if (!parsed || !Array.isArray(parsed.ops)) return 0;
     const allowed = new Set(rows.map((r) => r.id));
-    let proposals = 0;
+    const requests: AddMemoryRequest[] = [];
     for (const op of parsed.ops.slice(0, PHASE_LIMIT)) {
-      const targetId = String(op.targetId ?? '');
-      const replacementText = String(op.replacementText ?? '').trim();
-      if (!allowed.has(targetId) || !replacementText || replacementText.length > 200) continue;
+      if (!op || typeof op !== 'object' || Array.isArray(op)) return 0;
+      const item = op as Record<string, unknown>;
+      if (typeof item.targetId !== 'string' || typeof item.replacementText !== 'string') return 0;
+      const targetId = item.targetId;
+      const replacementText = item.replacementText.trim();
+      if (!allowed.has(targetId) || !replacementText || replacementText.length > 200) return 0;
       const row = this.deps.service.store.rowFor(targetId);
-      if (!row || row.status !== 'active') continue;
-      this.deps.service.addMemory({
+      if (!row || row.status !== 'active') return 0;
+      requests.push({
         scope: row.scope,
         text: replacementText,
         status: 'pending',
         sourceKind: 'consolidated',
         ...this.workspaceOf(row),
         excerpt: `整合：复核过期项目事实 ${targetId}`,
-        pendingOp: { op: 'SUPERSEDE', targetId, proposedText: replacementText },
+        pendingOp: {
+          op: 'SUPERSEDE', targetId, proposedText: replacementText,
+          idempotencyKey: `stale:${targetId}:${replacementText}`,
+        },
       });
-      proposals += 1;
     }
-    return proposals;
+    if (!requests.length) return 0;
+    this.assertAvailable();
+    try {
+      return this.deps.service.addMemoriesBatch(requests).ids.length;
+    } catch (error) {
+      this.assertAvailable();
+      recordMemoryError(this.deps.errors, 'consolidate-stale', error instanceof Error ? error.message : String(error));
+      return 0;
+    }
   }
 
   /** 项目层提案要带回工作区，否则真相源解析不出文件。 */
@@ -291,16 +358,15 @@ export class IdleConsolidator {
 
   /** 同 scope 内相似度 ≥0.85 的 active 记忆对（取前 PHASE_LIMIT 组，id 去重）。 */
   private findSimilarPairs(): Array<[MemoryRow, MemoryRow]> {
-    const rows = this.deps.service.store.db.prepare(
-      "SELECT id, scope, text, updated_at FROM memories WHERE status = 'active' ORDER BY scope, updated_at DESC",
-    ).all() as MemoryRow[];
+    this.assertAvailable();
+    const rows = this.deps.service.store.consolidationSimilarRows();
     const pairs: Array<[MemoryRow, MemoryRow]> = [];
     const used = new Set<string>();
     for (let i = 0; i < rows.length; i += 1) {
       for (let j = i + 1; j < rows.length; j += 1) {
         const a = rows[i];
         const b = rows[j];
-        if (a.scope !== b.scope) continue;
+        if (a.scope !== b.scope || a.file_ref !== b.file_ref) continue;
         if (used.has(a.id) || used.has(b.id)) continue;
         if (trigramSimilarity(a.text, b.text) < 0.85) continue;
         pairs.push([a, b]);
@@ -313,4 +379,4 @@ export class IdleConsolidator {
   }
 }
 
-type MemoryRow = { id: string; scope: string; text: string; updated_at: number };
+type MemoryRow = { id: string; scope: string; text: string; updated_at: number; file_ref: string };

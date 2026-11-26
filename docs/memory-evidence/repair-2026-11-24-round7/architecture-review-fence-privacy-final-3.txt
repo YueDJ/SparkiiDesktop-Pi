@@ -1,0 +1,76 @@
+CHANGES_REQUIRED
+Task-id: R7-REVIEW-FENCE-PRIVACY
+Review date: 2026-11-25
+Scope: R7-P0-1 workspace fence and R7-P1-1 privacy deletion only
+
+VERDICT
+
+CHANGES_REQUIRED — 2 blocking findings, both in R7-P1-1. No blocking finding was verified in R7-P0-1.
+
+The exact F1/F2/F3 regressions are repaired for the cases now covered by production-object tests. However, F2's required schema-aware structural-field validation is still absent, and valid whitespace-only episode text introduces a new global-redaction corruption path.
+
+F1/F2/F3 RE-REVIEW
+
+F1 — FIXED for the reported empty-string/restart case.
+- apps/desktop/electron/main/memory/service.ts:90-92 drops empty strings; :758-763 accepts legacy empty strings while retaining strict type/ID validation, then restores texts, tombstones and ID-to-session mappings.
+- apps/desktop/test/memory-round7-regression.test.ts:194-224 uses the real appendEpisode producer with topics ['', secret], injects chat cleanup failure, constructs a new MemoryService, blocks source-session writes, retries through deleteMemory, and checks target-session deletion, surviving-chat/SQLite scrubbing and journal removal. The assertions and implementation were inspected; this focused test passed again.
+
+F2 — FIXED for nested extension content, but NOT fully repaired; see F4 below.
+- apps/desktop/electron/main/memory/service.ts:73-88 recursively discovers non-structural pendingOp strings, and :814-824 includes them before journal persistence.
+- apps/desktop/test/memory-round7-regression.test.ts:226-242 makes a nested extension value the secret's sole pendingOp source and checks raw truth, list output, chat and SQLite. This focused test passed again.
+- The remaining defect is that top-level structural keys are exempted and preserved without validation.
+
+F3 — FIXED for schema-valid control enums.
+- apps/desktop/electron/main/memory/store.ts:1085-1098 preserves only valid op/degradedFrom enum values, recursively redacts invalid values, and retains operation identity fields.
+- apps/desktop/test/memory-round7-regression.test.ts:244-257 deletes text exactly equal to UPDATE, confirms the surviving pending UPDATE remains UPDATE, approves it, and verifies target replacement and pending-row consumption. This focused test passed again.
+
+BLOCKING FINDINGS
+
+F4 — Invalid pendingOp identity/control shapes bypass both corpus discovery and truth redaction, so plaintext can survive privacy deletion.
+Evidence:
+- The schema declares targetId/projectId as strings and mergeIds as a string array (apps/desktop/electron/main/memory/types.ts:13-20), but truth parsing casts any pendingOp object without validating those fields (apps/desktop/electron/main/memory/store.ts:112-123).
+- Production addMemory stores the supplied pendingOp wholesale (apps/desktop/electron/main/memory/service.ts:504-525); addMemoriesBatch does the same (apps/desktop/electron/main/memory/service.ts:599-608). Legacy truth can therefore contain invalid structural shapes.
+- The collector excludes targetId/projectId/mergeIds solely by key name, without first validating their shape (apps/desktop/electron/main/memory/service.ts:73-88). A target-session pendingOp such as mergeIds: { nested: [secret] } contributes no secret to removedTexts at service.ts:814-824.
+- The truth redactor then unconditionally returns those same fields unchanged (apps/desktop/electron/main/memory/store.ts:1096). Thus even when the same secret is known from another target field, a surviving invalid structural value remains plaintext.
+Impact: a secret carried only in an invalid/legacy structural field is omitted from the global approval/audit/error/log/chat corpus and can remain in surviving user.json and SQLite. This is the same privacy guarantee as F2, not merely malformed-input handling.
+Required repair:
+1. Validate each top-level structural field before exempting/preserving it: targetId/projectId must have the appropriate string identity shape and mergeIds must be an array of valid string IDs.
+2. Recursively collect and redact invalid structural values; only validated identity metadata may bypass content redaction.
+3. Add a real MemoryService regression where the sole target secret is inside an invalid structural shape and a surviving other-session entry/chat/audit carries it; assert raw truth and retained stores no longer contain it.
+
+F5 — Whitespace-only episode topics become a global deletion token and silently corrupt unrelated retained text.
+Evidence:
+- Production extraction accepts every string in topics and does not trim or reject whitespace-only entries (apps/desktop/electron/main/memory/ops.ts:37-42,79-82); the batch persists those topics at apps/desktop/electron/main/memory/extraction.ts:168-178.
+- Privacy normalization filters only text.length > 0 (apps/desktop/electron/main/memory/service.ts:90-92), so a valid topic ' ' survives normalization and is collected verbatim at service.ts:816-823.
+- That value is journaled and passed to every global scrubber. Truth redaction performs output.split(value).join('[已删除]') (apps/desktop/electron/main/memory/store.ts:1065-1074); equivalent unconditional replacement is used by audits, errors, chat and logs.
+- After these destructive rewrites, privacyDeleteBySession clears the journal and returns success (apps/desktop/electron/main/memory/service.ts:852-858).
+Impact: deleting one session with a whitespace-only topic replaces ordinary spaces throughout unrelated memories, pending content, chat inputs, audit payloads and log strings, causing silent cross-session data corruption. Tabs/newlines and other whitespace-only strings have the same class of effect.
+Required repair:
+1. Treat whitespace-only corpus entries as empty while retaining the original value for non-empty content, so leading/trailing whitespace in real secrets is not lost.
+2. Apply the same normalization before journal persistence and in legacy-journal loading.
+3. Add a production extraction/appendEpisode regression with topics [' '] and unrelated multiword memory/chat/audit content; verify deletion succeeds without altering unrelated text.
+
+VERIFIED NON-BLOCKING AREAS
+
+R7-P0-1:
+- packages/agent-host/src/workspace-search-tools.ts:43-98 prunes case variants before fd traversal; :122-129 and :158-164 prevent grep re-inclusion; :250-279 filters ls before native limiting/sorting.
+- packages/agent-host/src/tool-registry.ts:41-122 rejects direct lexical reserved paths and canonically rechecks approved aliases; :176-179 applies that guard to ls/grep/find.
+- packages/agent-host/src/workspace-tools.ts:17-49 recursively rejects reserved descendants before delete/move approval.
+- apps/desktop/electron/main/security/workspace-tree-fence.ts:22-44 fails closed on reserved/reparse descendants; workspace-file-service.ts:277-303 and workspace-executor.ts:400-460 fence before mutation.
+- Focused workspace fence selection passed 12/12. No additional P0 blocker was verified.
+
+R7-P1-1 previously repaired paths:
+- Journal-before-destruction ordering, restart retry, deleted-session tombstones, all episode history collection, surviving episode/FTS rebuild, retained Gate-state scrubbing, SQLite compaction and non-raw future memory-tool audit summaries remain present, subject to F4/F5 above.
+- Focused privacy selection passed 6/6, including the exact F1/F2/F3 regressions and the original all-retained-state privacy case.
+
+TESTING AND CONSTRAINTS
+
+Focused commands run:
+- pnpm exec vitest run apps/desktop/test/memory-round7-regression.test.ts -t "R7 privacy|R7-P1-1 privacy" — 6 passed, 13 skipped.
+- pnpm exec vitest run packages/agent-host/test/tool-registry.test.ts -t "sparkii|reserved|ordinary" — 12 passed, 20 skipped.
+
+No full suite and no typecheck were run in this review. Existing third-review typecheck/test evidence was inspected but not treated as a substitute for source/assertion review. F4/F5 were identified by direct implementation/data-contract analysis; no new custom fixture was added or executed.
+
+Accepted limitations (unchanged): Windows main-process TOCTOU; symlink EPERM skips; untested recursive hard-link aliases outside .sparkii.
+
+Reviewer did not edit source, tests, configuration or the handoff file; did not stage, commit or push; and did not run destructive repository commands or full suites. The only file written was this explicitly requested final report.

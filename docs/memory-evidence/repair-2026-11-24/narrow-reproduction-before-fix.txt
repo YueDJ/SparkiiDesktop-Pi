@@ -1,0 +1,235 @@
+(node:34016) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:35356) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:30076) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21840) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:27948) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36736) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |0| packages/agent-host/test/pi-runtime-pool.test.ts (29 tests | 1 failed) 143ms
+     ✓ P1-7 reserves cold-start capacity before supervisor startup 3ms
+     ✓ reuses a free slot across release 1ms
+     ✓ queues beyond maxAgents and wakes on release 11ms
+     × wakes queued sessions when maxAgents increases 7ms
+     ✓ sends new_session on release 1ms
+     ✓ retires a slot whose new_session fails instead of reusing it 1ms
+     ✓ reports the live session id through getSessionId 0ms
+     ✓ clears sessionId before sending new_session on release 1ms
+     ✓ stamps the next session on the same slot after release 1ms
+     ✓ renames a session id while keeping the same client 0ms
+     ✓ renameSession is a no-op when the source id is unknown 0ms
+     ✓ broadcasts a command to every live runtime process 0ms
+     ✓ emits a snapshot after acquire, release and rename 1ms
+     ✓ wakes a queued session with its original saddle and meta 1ms
+     ✓ reuses one process and sends the next session's skillsDir on configure_session 0ms
+     ✓ updateMeta patches a live slot label and emits a snapshot 0ms
+     ✓ updateMeta patches a queued session without waking it 0ms
+     ✓ snapshot uses 新会话 when acquire has no label, not the session id 0ms
+     ✓ updateMeta follows renameSession so a temp key can receive the real title 0ms
+     ✓ updateMeta is a no-op for an unknown session 0ms
+     ✓ hides internal probe slots and queue items from the snapshot 2ms
+     ✓ drops a crashed slot instead of handing it to the next acquire 2ms
+     ✓ m9：await start() 期间池被 stopAll ⇒ acquire 复检 stopped、停掉新 supervisor 并拒绝 1ms
+     ✓ stopAll waits for every cold-start supervisor and repeated calls share the same shutdown 46ms
+     ✓ releases cold-start capacity when supervisor creation fails 1ms
+     ✓ stopAll during a queued bind rejects the request instead of returning a stopped slot 15ms
+     ✓ continues queued binds after configure_session fails without rebinding the failed request 16ms
+     ✓ stopAll rejects when a child never confirms process exit 2ms
+     ✓ M3：stopAll 等到子进程 exit 才 resolve（kill 不自动退出时由超时兜底） 29ms
+stdout | apps/desktop/test/logger.test.ts > Logger > appends structured jsonl and exports
+start {"profile":"contract-review"}
+
+stderr | apps/desktop/test/logger.test.ts > Logger > drops entries below the configured level
+kept ""
+
+ ❯ |1| apps/desktop/test/logger.test.ts (6 tests | 1 failed) 34ms
+     ✓ appends structured jsonl and exports 14ms
+     ✓ drops entries below the configured level 9ms
+     ✓ echoes to console with level mapping 2ms
+     ✓ does not echo to console when echo is disabled 1ms
+     ✓ constructor and logging stay non-blocking when the log file path is a directory 2ms
+     × circular console context cannot reject logging or lose the message 4ms
+ ❯ |1| apps/desktop/test/memory-truth-batch.test.ts (15 tests | 1 failed) 5269ms
+     ✓ restores every prior truth file and removes new files when a later write fails  543ms
+     ✓ recovers an interrupted batch at startup before truth files are opened  523ms
+     ✓ recovers a new project batch from the registry committed before its truth file  532ms
+     ✓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing  537ms
+     × does not write or quarantine outside a junctioned memory root during failed recovery 20ms
+     ✓ quarantines a malformed journal and reports a warning instead of blocking startup 255ms
+     ✓ rejects journal paths outside memory truth and backup locations 286ms
+     ✓ rejects a truthy non-boolean committed marker without deleting uncommitted truth 270ms
+     ✓ rejects a committed journal that still contains rollback file items  301ms
+     ✓ rejects an unregistered outside project truth target during commit and recovery 280ms
+     ✓ rejects a project truth target reached through a junction even when its workspace is registered 11ms
+     ✓ treats a dangling write-block junction as a persistent block 6ms
+     ✓ keeps the only recovery evidence when the write-block marker cannot be persisted 264ms
+     ✓ keeps a committed batch and removes its recovery journal  522ms
+     ✓ rolls back the project registry when a later truth write fails  918ms
+ ❯ |1| apps/desktop/test/memory-audit-regression.test.ts (29 tests | 3 failed) 11183ms
+     ✓ P1-2 LIKE fallback supports CRUD, search and rebuild  490ms
+     ✓ P1-2 corrupt SQLite is quarantined and rebuilt from truth without blocking startup  432ms
+     ✓ P1-3 copied workspace with the same projectId fails closed and preserves the first truth source  435ms
+     ✓ P1-4 default search and includeHistory never expose pending memories  359ms
+     ✓ P2 external truth edits reconcile list, injection and search  407ms
+     ✓ P2 master switch rejects manual add while disabled 76ms
+     ✓ P2 project archived state survives derived index rebuild  698ms
+     ✓ P1-6 a missing cursor is rejected and truncation advances only through included messages 73ms
+     ✓ P1-6 rejects an intra-entry cursor beyond the actual entry text 62ms
+     ✓ P1-5 one invalid project UPDATE rejects the whole extraction batch 85ms
+     ✓ P1-1 privacy deletion wins over an in-flight model response and redacts diagnostics 86ms
+     ✓ P1-1 privacy deletion while target resolution is pending prevents the model send 78ms
+     ✓ P1-1 corrupt project registry makes privacy deletion fail closed  348ms
+     ✓ P1-1 duplicate ids corrupt the whole truth file instead of exposing both rows  419ms
+     ✓ P1-1 privacy deletion discovers the indexed workspace even when the registry omits it  642ms
+     ✓ P1-3 privacy deletion fails closed when a copied project duplicates identity  391ms
+     ✓ P1-1 privacy deletion redacts retained diagnostic messages  426ms
+     ✓ P1-1 model and parse failures do not copy session content into diagnostics 72ms
+     ✓ P1-1 old prompt-log cleanup failures surface as repair warnings 73ms
+     ✓ P1-8 consolidation is single-flight across the first await  394ms
+     ✓ P1-8 a malformed consolidation element rejects the entire merge phase  462ms
+     ✓ cross-file duplicate ids are excluded from listing and injection until repaired  688ms
+     × batch writes fail closed while a cross-file duplicate identity exists 744ms
+     × removing a project truth file and registry reference clears its searchable index 422ms
+     × episode approval rejects malformed mergeIds before changing episode or proposal state 434ms
+     ✓ privacy deletion removes both current and legacy episode proposals  792ms
+     ✓ ordinary source deletion removes legacy pending episode proposals and repairs active source metadata  757ms
+     ✓ malformed mergeIds are rejected before any pending or target mutation  439ms
+     ✓ P1-8 mergeIds approval is all-or-nothing  395ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/logger.test.ts > Logger > circular console context cannot reject logging or lose the message
+AssertionError: promise rejected "TypeError: Converting circular structure …" instead of resolving
+ ❯ apps/desktop/test/logger.test.ts:61:73
+     59|     ctx.self = ctx;
+     60|     try {
+     61|       await expect(logger.log({ level: 'info', msg: '循环上下文仍应记录', ctx }…
+       |                                                                         ^
+     62|       expect(logSpy).toHaveBeenCalled();
+     63|       expect(logger.export()).toContain('循环上下文仍应记录');
+
+Caused by: TypeError: Converting circular structure to JSON
+    --> starting at object with constructor 'Object'
+    --- property 'self' closes the circle
+ ❯ Logger.log apps/desktop/electron/main/logger.ts:61:44
+ ❯ apps/desktop/test/logger.test.ts:61:27
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > batch writes fail closed while a cross-file duplicate identity exists
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:393:87
+    391|     const before = readFileSync(userMemoryFile(dataDir), 'utf8');
+    392|
+    393|     expect(() => service!.addMemoriesBatch([{ scope: 'user', text: '冲突…
+       |                                                                                       ^
+    394|     expect(readFileSync(userMemoryFile(dataDir), 'utf8')).toBe(before);
+    395|     expect(service!.list().pending).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > removing a project truth file and registry reference clears its searchable index
+AssertionError: expected [ { …(8) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "id": "mem_8474f1d4-2520-4034-b7ae-c16fc7d9481a",
++     "kind": "memory",
++     "projectId": "proj_6bb84b45-b87d-45d1-8ea4-44e6e41f6354",
++     "scope": "project:proj_6bb84b45-b87d-45d1-8ea4-44e6e41f6354",
++     "score": 0.000001,
++     "status": "active",
++     "text": "已删除项目敏感正文",
++     "workspacePath": "C:/Users/YDJ/AppData/Local/Temp/sparkii-audit-9T47Fm/deleted-project",
++   },
++ ]
+
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:407:43
+    405|     removeProjectRef(dataDir, workspace);
+    406|
+    407|     expect(service!.searchMemory('敏感正文')).toEqual([]);
+       |                                           ^
+    408|     expect(service!.list().scopes.flatMap((scope) => scope.entries).ma…
+    409|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > episode approval rejects malformed mergeIds before changing episode or proposal state
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:424:67
+    422|     });
+    423|
+    424|     expect(() => service!.resolvePending(proposal.id, 'approve')).toTh…
+       |                                                                   ^
+    425|     expect(service!.store.listEpisodes().find((episode) => episode.ses…
+    426|     expect(service!.list().pending.map((entry) => entry.id)).toEqual([…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > truth batch journal > does not write or quarantine outside a junctioned memory root during failed recovery
+AssertionError: expected '记忆真相批次仍处于写入阻断状态：记忆批次日志损坏：记忆真相路径包含链接：C…' to contain '保持只读'
+
+Expected: "保持只读"
+Received: "记忆真相批次仍处于写入阻断状态：记忆批次日志损坏：记忆真相路径包含链接：C:\Users\YDJ\AppData\Local\Temp\sparkii-truth-batch-qJ5gKS\data\memory"
+
+ ❯ apps/desktop/test/memory-truth-batch.test.ts:154:33
+    152|     const warnings = recoverTruthBatch(dataDir);
+    153|
+    154|     expect(warnings.join('\n')).toContain('保持只读');
+       |                                 ^
+    155|     expect(readFileSync(journalPath, 'utf8')).toBe('{broken');
+    156|     expect(existsSync(join(outside, '.truth-write-block.json'))).toBe(…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  |0| packages/agent-host/test/pi-runtime-pool.test.ts > PiRuntimePool > wakes queued sessions when maxAgents increases
+AssertionError: expected [ FakeHandle{ sent: [], …(3) } ] to have a length of 2 but got 1
+
+- Expected
++ Received
+
+- 2
++ 1
+
+ ❯ packages/agent-host/test/pi-runtime-pool.test.ts:86:21
+     84|     pool.setMaxAgents(2);
+     85|
+     86|     expect(handles).toHaveLength(2);
+       |                     ^
+     87|     handles[1].ready();
+     88|     await expect(queued).resolves.toBeTruthy();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  4 failed (4)
+      Tests  6 failed | 73 passed (79)
+   Start at  16:53:57
+   Duration  14.62s (transform 743ms, setup 155ms, import 2.95s, tests 16.63s, environment 2.58s)
+

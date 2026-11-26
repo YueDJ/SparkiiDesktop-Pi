@@ -1,0 +1,1 @@
+57ab2583264705467b2d8f1389ea2a14e4f7cddb916de3586dda031301108704 *docs/memory-evidence/repair-2026-11-25-round8/source-sha256.txt

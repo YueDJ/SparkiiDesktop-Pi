@@ -1,0 +1,569 @@
+(node:17852) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:41864) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:18400) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mlists builtin whitelist plus custom providers through a probe slot[32m 29[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msaveSettings writes only custom providers to models.json and stores the per-provider key[32m 37[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mgetApiKey returns the per-provider key and getSettings includes the active provider key[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mgetSettings reports hasApiKey without returning the secret[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mgetApiKey(sparkiirag) returns null even when keyring has the secret[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mgetApiKey also hides sparkiionto and both knowledge keyring names[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msaveSettings rejects a custom provider whose id collides with a knowledge credential id[32m 16[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mtestKnowledgeConnection probes healthz → info → datasets with the onto settings and token[32m 16[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mtestKnowledgeConnection honours an unsaved override[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mlistKnowledgeDatasets tells 401 (credential) from 403 (permission) and flags an /info mismatch[32m 17[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mkeeps testRagConnection as a thin sparkiirag wrapper[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mtestRagConnection keeps the legacy "no key" wording[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mempty saveRagSettings apiKey keeps the keyring value[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msaveSettings does not wipe rag[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msaveSettings does not wipe documentParse[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mdownload huggingface URL is rejected[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mpromptSession refuses sparkiirag profiles when RAG is unconfigured[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mpromptSession does not create a session when sparkiirag is unconfigured[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mpromptSession opens the session when allowDegradedKnowledge is set (product §15)[32m 14[2mms[22m[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msetSessionKnowledge stores selection and promptSession migrates draft key before prompt[32m 36[2mms[22m[39m
+[31m   → expected false to be true // Object.is equality[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mempty retrieval returns first then aborts and appends refused knowledge_turn[32m 10[2mms[22m[39m
+[31m   → expected false to be true // Object.is equality[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mdoes not copy leftover draft selection onto an existing session[32m 13[2mms[22m[39m
+[31m   → expected false to be true // Object.is equality[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22maborts when the session dataset is no longer visible[32m 13[2mms[22m[39m
+[31m   → expected 'Connector read origin is missing, sta…' to be '所选知识库已不可见，请重新选择' // Object.is equality[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mempty search after a sealed hit aborts a new turn[32m 12[2mms[22m[39m
+[31m   → expected false to be true // Object.is equality[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mopenRagDocument with an Onto backend still fetches through the ontology client cache segment[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mopenRagDocument defaults to sparkiirag and returns a bounded error when the credential is missing[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msetSessionKnowledge rejects invalid payload[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mgetRuntimePool returns the pool snapshot[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mlistModels uses the caller-provided key instead of the stored keyring key[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mpromptSession routes to settings active provider and default model when the session has no model[32m 7[2mms[22m[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mpromptSession creates a session and sends the first prompt[32m 10[2mms[22m[39m
+[31m   → expected [ { type: 'new_session' }, …(4) ] to deep equally contain { type: 'prompt', …(2) }[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mR7 coalesces concurrent promptSession opens for one existing session id[32m 40[2mms[22m[39m
+[31m   → session s1 has no current prompt turn[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mR7 promptSession rejects a stale binding while model key lookup is suspended[32m 19[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mR7 promptSession rejects a stale binding after deferred get_state before sending[32m 19[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mR7 stale task admission cannot replace a same-id replacement grant[32m 30[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mR7 session creation failure cannot release or delete a same-id replacement[32m 30[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mcreateSession binds a workspace WITHOUT sending a prompt (P9, holds slot + 15s idle release)[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mB1: a late agent_settled never revokes a Grant that is not this prompt's[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msetChatWorkspace(null) allocates a new Documents auto path[32m 4[2mms[22m[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mpromptSession does not duplicate model application when the model is already in the saddle[32m 10[2mms[22m[39m
+[31m   → expected [ { type: 'new_session' }, …(4) ] to deep equally contain { type: 'prompt', …(2) }[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mlistChatSessions excludes empty sessions from the local store[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mlistChatSessions includes DB-only P9 sessions when includeEmpty is true[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mlistChatSessions falls back to project.json.name through the fenced service[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mgetChatState does not acquire when a session has no lease[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mschedules idle release after agent_settled and releases after timeout[32m 8[2mms[22m[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mdoes not idle-release a knowledge session on agent_end before agent_settled[32m 27[2mms[22m[39m
+[31m   → expected false to be true // Object.is equality[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mdoes not idle-release or title a workflow session after agent_settled[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mrejects a transient prompt waiter after its slot is rebound instead of forwarding the new session event[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mR7 rejects a transient prompt waiter after same-id release and reacquire without forwarding the new binding event[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mR7 rejects a transient prompt when a successful send completes after same-id rebinding[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mR7 cancels every same-id transient waiter without old completion erasing the replacement[32m 38[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mstamps chat-events with the live slot sessionId, not the subscribe-time id[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mstamps over an inner sessionId carried by the event[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mdrops events while the slot has no session bound[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msends session_unbound before releasing the slot so the spinner stops[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mlogs and stops stamping when the pi child exits[32m 27[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mstops forwarding client events after the workflow slot is released[32m 16[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22midle-releases a post-run workflow slot so a later runWorkflow is not blocked[32m 30[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mworkflow selectModel routes to settings active provider and default model[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mworkflow selectModel prefers the session-selected model[32m 25[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mlistThinkingLevels probes a model and returns available thinking levels[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msetChatThinkingLevel stores the session level and remembers it per model[32m 23[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mpromptSession applies the session thinking level before prompt[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msetChatModel applies the selected model to the open Pi session[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msetChatThinkingLevel applies the selected level to the open Pi session[32m 9[2mms[22m[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mqueues a follow_up by default while the Pi session is streaming[32m 7[2mms[22m[39m
+[31m   → session s1 has no current prompt turn[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mabortChat clears the queue before aborting and returns the cleared items[32m 8[2mms[22m[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mconnector_read document.read is handled by executeDocumentRead[32m 7[2mms[22m[39m
+[31m   → expected false to be true // Object.is equality[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mconnector_read rejects an ontology tool name outside the whitelist[32m 9[2mms[22m[39m
+[31m   → expected { ok: false, error: { …(2) } } to match object { ok: false, …(1) }
+(1 matching property omitted from actual)[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mconnector_read writes exactly one audit per ontology tool call and records the query text[32m 7[2mms[22m[39m
+[31m   → expected [] to have a length of 1 but got +0[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mreports document-parse spawn failures to the error center as 文档解析[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mabortChat calls failSession before Pi abort[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mreleaseSessionSlot calls failSession before unbind[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mR7 does not release a same-id replacement while an explicit slot release is awaiting task shutdown[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mgetDocumentParse handler exists[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mdownloadDocumentParseModule without production hashes fails with offline import hint[32m 4[2mms[22m[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mqueueMutate rebuilds both queues from the current Pi snapshot[32m 7[2mms[22m[39m
+[31m   → session s1 has no current prompt turn[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mpromptSession stages attachments into the session workspace before prompting[32m 32[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mpromptSession sends images directly and stages only non-image attachments[32m 22[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mpromptSession creates a session and stages attachments into the chosen workspace[32m 17[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mpromptSession registers the proposal broker when creating a session[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mgetModelOptions without agentId uses generic chat requirements instead of a default agent[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mclassifies current DeepSeek models with orthogonal capabilities[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mpromptSession refuses to create a session without profileId[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mensureSessionRecord does not invent profileId general when pinning a Pi-only session[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mchooseDocument grants the selected path for readDocumentBytes[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mopenChatSession ENOENT still returns session inputs[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mopens a live session from getBranch + streamingMessage, not get_messages[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mrecovers the micro-gap assistant from get_messages only while streaming without a slot message[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mskips the micro-gap when the last assistant is already on the branch[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mdoes not read get_messages when the live session is idle[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mdead session reads JSONL entries only (no preview)[32m 22[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mR8 final review uses the raw Pi carrier for dead-session reads and runtime acquisition[32m 21[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msetChatTitle notifies the renderer so the sidebar can show the filename[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msetChatTitle updates the runtime pool label instead of leaving the session id[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mreopening a session acquires the pool with displayName and Pi title, not the uuid prefix[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mreopening a nameless workflow session uses 新会话, not the skill body[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mreopening still acquires display meta when listing Pi sessions fails[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msetChatTitle rejects empty titles and agent writes after a user lock[32m 39[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mlistChatSessions does not put firstMessage into title[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mcompleteText forwards text to complete without renaming the session[32m 38[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mdoes not auto-title a chat session on agent_end[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mimports, lists, audits, and uninstalls a user skill[32m 50[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mreturns no-user-library when no skillLibrary user agent is assembled[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mprefers SPARKII_E2E_SKILL_DIR for chooseSkillFolder[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mopens the user skills dir after creating it[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mlists skills for an agent id from that agent skillsDir only[32m 28[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mallocateAutoWorkspace returns a Documents path and does not create it[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mallocateAutoWorkspace rejects unknown agent[32m 2[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mchooseWorkspace mkdirs an absolute defaultPath and forwards it[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mchooseWorkspace ignores a relative defaultPath without mkdir[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mopenWorkspace mkdirs an absolute path and opens it[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mopenWorkspace ignores a relative path without mkdir[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mrunWorkflow without workspacePath allocates Documents path and does not mkdir[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mrunWorkflow with an allocated path keeps workspaceKind auto[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mR8-P0-2 privacy deletion stops the active task, extraction and Pi binding before memory cleanup[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mR8 round7 B1 privacy deletion waits for a cancelled opening bind before destructive cleanup[32m 35[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mR8-P0-2 stops an active document parser even when no Pi binding exists[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mR8-P0-2 does not delete memory or release a same-id replacement while task shutdown is awaiting[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mR8-P0-2 cancels a same-id session opening before pool acquisition[32m 21[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mR8-P0-2 releases a stale acquisition instead of letting it bind after privacy deletion[32m 34[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mR8 final review releases a stale setChatTitle acquisition after privacy deletion starts[32m 30[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mR8-P0-2 never releases a same-client replacement installed while a stale acquisition resumes[32m 36[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mretired task capability IPC[2m > [22mdoes not expose task capability or user revocation handlers[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mpermission mode IPC[2m > [22mreads the session permission mode and host semantics without leaking credentials[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mpermission mode IPC[2m > [22mwrites the mode, ends the running task and audits the change[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mpermission mode IPC[2m > [22mrevokes the shell task grant when the mode changes[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mpermission mode IPC[2m > [22mR8 review runtime B8 persists the mode and revokes the original grant before cancellation awaits[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mpermission mode IPC[2m > [22mrefuses a permission mode the profile does not allow[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mpermission mode IPC[2m > [22mreports the reviewer as unavailable when Main has no worker[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mpermission mode IPC[2m > [22mdoes not expose the Reviewer worker in the user runtime pool[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mpermission mode IPC[2m > [22mruns an approved shell command through the host adapter and reports host semantics[32m 17[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mP10 relocateWorkspace IPC[2m > [22mregisters the channel, moves files, updates all session records and broadcasts[32m 20[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 runtime round3 B1 cancels a pending production admission on stop[32m 92[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 runtime round3 B1 cancels a pending production admission on workspace-change[32m 54[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 B1 rejects stale 'settings' commands after a same-client replacement[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 B1 rejects stale 'key' commands after a same-client replacement[32m 21[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 B1 rejects stale 'model' commands after a same-client replacement[32m 37[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 B1 rejects stale 'complete' commands after a same-client replacement[32m 36[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 B1 rejects a stale key lookup before writing the original prompt[32m 20[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 B1 does not overwrite a replacement model while set_model is deferred[32m 95[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 runtime round3 B4 stale abort cannot revoke or command a same-lease replacement task[32m 51[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 runtime round3 B4 rejects stale { name: 'thinking', command: 'set_thinking_level' } commands after a same-client rebind[32m 86[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 runtime round3 B4 rejects stale { name: 'workspace', command: 'configure_session' } commands after a same-client rebind[32m 93[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 runtime round3 B4 rejects a stale workflow journal after its append await[32m 98[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 runtime round3 B4 relocation cannot configure a replacement binding[32m 89[2mms[22m[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 round5 blocker1 keeps the workflow proposal dispatcher bound to its original admission[32m 44[2mms[22m[39m
+[31m   → expected Error: session wf-r8-proposal workflow pr… to match object { message: StringMatching{…} }[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 round5 r2 cleans workflow bookkeeping when onReady fails before an admission[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 round5 r2 does not end a replacement when onReady fails before returning its admission[32m 23[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 round5 r2 preserves replacement bookkeeping when workflow cleanup awaits[32m 36[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 round5 blocker5 waits for prior prompt turns to settle before arming queued replacements[32m 57[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 round6 keeps a delivered prompt barrier after post-send get_state rejects and ignores an unstarted late settled[32m 106[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 round7 B2 completes a deterministic prompt failure and lets the next prompt run[32m 44[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 round7 B2 ignores late correlated and generic errors after abort without ending replacement B[32m 67[2mms[22m[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 round5 blocker3 rejects steer, follow-up and runtime actions while replacement ownership is pending[32m 94[2mms[22m[39m
+[31m   → expected { …(4) } to match object { status: 'denied', …(1) }
+(6 matching properties omitted from actual)[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 review runtime B7 rejects an out-of-order prompt after send (reuseTaskId=false)[32m 47[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 review runtime B7 rejects an out-of-order prompt after send (reuseTaskId=true)[32m 47[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 B2 stale export admission cannot replace or revoke a replacement task[32m 106[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 B2 approval cannot append a journal after a same-client rebind[32m 59[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 runtime round3 B5 export propagates journal 'rejection' and revokes only its grant[32m 48[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 runtime round3 B5 export propagates journal 'success false' and revokes only its grant[32m 63[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 runtime round3 B5 stale export journal failure cannot revoke a replacement task[32m 96[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 runtime round3 B5 export rejects when its binding changes during the journal await[32m 74[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mapproval execution canonical race regressions[2m > [22mblocks proposal-mode connector execution when privacy redaction wins during the dialog await[32m 16[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mapproval execution canonical race regressions[2m > [22mblocks proposal-mode connector execution when privacy redaction wins during the audit await[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mapproval execution canonical race regressions[2m > [22mblocks proposal-mode connector execution when privacy redaction wins during the gateway await[32m 19[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mapproval execution canonical race regressions[2m > [22mcommits the chosen export path to the canonical proposal before connector execution[32m 13[2mms[22m[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mapproval execution canonical race regressions[2m > [22mblocks caller-mode workspace execution when privacy redaction wins during the revalidation await[33m 2020[2mms[22m[39m
+[31m   → caller approval was not requested: [][39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mapproval execution canonical race regressions[2m > [22mblocks caller-mode workspace execution when privacy redaction wins during the audit await[33m 2021[2mms[22m[39m
+[31m   → caller approval was not requested: [][39m
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 18 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msetSessionKnowledge stores selection and promptSession migrates draft key before prompt
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m apps/desktop/test/ipc.test.ts:[2m1009:21[22m[39m
+    [90m1007|[39m     const read = (rt as any).__onConnectorRead;
+    [90m1008|[39m     const out = await read?.({ requestId: 'r1', toolName: 'knowledge.s…
+    [90m1009|[39m     expect(out?.ok).toBe(true);
+    [90m   |[39m                     [31m^[39m
+    [90m1010|[39m     expect(retrieveBody?.dataset_ids).toEqual(['law', 'hr']);
+    [90m1011|[39m   });
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/18]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mempty retrieval returns first then aborts and appends refused knowledge_turn
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m apps/desktop/test/ipc.test.ts:[2m1073:21[22m[39m
+    [90m1071|[39m     const read = (rt as any).__onConnectorRead;
+    [90m1072|[39m     const out = await read?.({ requestId: 'r1', toolName: 'knowledge.s…
+    [90m1073|[39m     expect(out?.ok).toBe(true);
+    [90m   |[39m                     [31m^[39m
+    [90m1074|[39m     expect(Array.isArray((out as { data?: { chunks?: unknown[] } })?.d…
+    [90m1075|[39m     await waitUntil(() => sent.some((c) => c.type === 'abort'));
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/18]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mdoes not copy leftover draft selection onto an existing session
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m apps/desktop/test/ipc.test.ts:[2m1154:21[22m[39m
+    [90m1152|[39m     const read = (rt as any).__onConnectorRead;
+    [90m1153|[39m     const out = await read?.({ requestId: 'r1', toolName: 'knowledge.s…
+    [90m1154|[39m     expect(out?.ok).toBe(true);
+    [90m   |[39m                     [31m^[39m
+    [90m1155|[39m     expect(retrieveBody?.dataset_ids).toEqual(['law']);
+    [90m1156|[39m   });
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/18]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22maborts when the session dataset is no longer visible
+[31m[1mAssertionError[22m: expected 'Connector read origin is missing, sta…' to be '所选知识库已不可见，请重新选择' // Object.is equality[39m
+
+Expected: [32m"所选知识库已不可见，请重新选择"[39m
+Received: [31m"Connector read origin is missing, stale, or superseded"[39m
+
+[36m [2m❯[22m apps/desktop/test/ipc.test.ts:[2m1212:71[22m[39m
+    [90m1210|[39m     const out = await read?.({ requestId: 'r1', toolName: 'knowledge.s…
+    [90m1211|[39m     expect(out?.ok).toBe(false);
+    [90m1212|[39m     expect((out as { error?: { message?: string } })?.error?.message).…
+    [90m   |[39m                                                                       [31m^[39m
+    [90m1213|[39m     await waitUntil(() => sent.some((c) => c.type === 'abort'));
+    [90m1214|[39m     const refused = sent.find((c) => c.type === 'append_workflow_entry…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/18]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mempty search after a sealed hit aborts a new turn
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m apps/desktop/test/ipc.test.ts:[2m1290:21[22m[39m
+    [90m1288|[39m     const read = (rt as any).__onConnectorRead;
+    [90m1289|[39m     const hit = await read?.({ requestId: 'r1', toolName: 'knowledge.s…
+    [90m1290|[39m     expect(hit?.ok).toBe(true);
+    [90m   |[39m                     [31m^[39m
+    [90m1291|[39m     emit?.({ type: 'message_end', message: { role: 'assistant', conten…
+    [90m1292|[39m     await Promise.resolve();
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/18]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mpromptSession creates a session and sends the first prompt
+[31m[1mAssertionError[22m: expected [ { type: 'new_session' }, …(4) ] to deep equally contain { type: 'prompt', …(2) }[39m
+
+[32m- Expected:[39m
+{
+  "message": "hello",
+  "promptId": Any<String>,
+  "type": "prompt",
+}
+
+[31m+ Received:[39m
+[
+  {
+    "type": "new_session",
+  },
+  {
+    "type": "get_state",
+  },
+  {
+    "type": "get_state",
+  },
+  {
+    "message": "hello",
+    "originToken": "dd731a9e-e656-417d-82b6-a760fd0e5cb3",
+    "promptId": "14ea74cd-3dfd-45b7-93c8-1e1656f06141",
+    "type": "prompt",
+  },
+  {
+    "type": "get_state",
+  },
+]
+
+[36m [2m❯[22m apps/desktop/test/ipc.test.ts:[2m1499:18[22m[39m
+    [90m1497|[39m
+    [90m1498|[39m     expect(result).toMatchObject({ ok: true, sessionId: 's-new' });
+    [90m1499|[39m     expect(sent).toContainEqual({ type: 'prompt', message: 'hello', pr…
+    [90m   |[39m                  [31m^[39m
+    [90m1500|[39m     expect(rt.pool.acquire).toHaveBeenCalled();
+    [90m1501|[39m     expect((rt as any).chatSessions.create).toHaveBeenCalledWith(expec…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/18]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mR7 coalesces concurrent promptSession opens for one existing session id
+[31m[1mError[22m: session s1 has no current prompt turn[39m
+[36m [2m❯[22m promptSession apps/desktop/electron/main/ipc.ts:[2m2232:15[22m[39m
+    [90m2230|[39m       if (!activeTurn || !activeTurn.readyForSettled || !activeTurn.ad…
+    [90m2231|[39m         || activeTurn.client !== open.slot.client || activeTurn.lease …
+    [90m2232|[39m         throw new Error(`session ${resolvedSessionId} has no current p…
+    [90m   |[39m               [31m^[39m
+    [90m2233|[39m       }
+    [90m2234|[39m       queuedAdmission = activeTurn.admission;
+[90m [2m❯[22m apps/desktop/test/ipc.test.ts:[2m1534:5[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/18]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mpromptSession does not duplicate model application when the model is already in the saddle
+[31m[1mAssertionError[22m: expected [ { type: 'new_session' }, …(4) ] to deep equally contain { type: 'prompt', …(2) }[39m
+
+[32m- Expected:[39m
+{
+  "message": "hello",
+  "promptId": Any<String>,
+  "type": "prompt",
+}
+
+[31m+ Received:[39m
+[
+  {
+    "type": "new_session",
+  },
+  {
+    "type": "get_state",
+  },
+  {
+    "type": "get_state",
+  },
+  {
+    "message": "hello",
+    "originToken": "458602e3-df37-411a-9caf-5636956b66f3",
+    "promptId": "70326863-9eee-4d58-b661-24f09260cd0c",
+    "type": "prompt",
+  },
+  {
+    "type": "get_state",
+  },
+]
+
+[36m [2m❯[22m apps/desktop/test/ipc.test.ts:[2m1907:18[22m[39m
+    [90m1905|[39m
+    [90m1906|[39m     expect(sent).not.toContainEqual({ type: 'set_model', provider: 'ki…
+    [90m1907|[39m     expect(sent).toContainEqual({ type: 'prompt', message: 'hello', pr…
+    [90m   |[39m                  [31m^[39m
+    [90m1908|[39m     expect((rt as any).chatSessions.create).toHaveBeenCalledWith(
+    [90m1909|[39m       expect.objectContaining({ model: 'kimi/kimi-for-coding' }),
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/18]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mdoes not idle-release a knowledge session on agent_end before agent_settled
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m apps/desktop/test/ipc.test.ts:[2m2157:103[22m[39m
+    [90m2155|[39m     await Promise.resolve();
+    [90m2156|[39m     await Promise.resolve();
+    [90m2157|[39m     expect(sent.some((c) => c.type === 'append_workflow_entry' && c.cu…
+    [90m   |[39m                                                                                                       [31m^[39m
+    [90m2158|[39m     await vi.advanceTimersByTimeAsync(60_000);
+    [90m2159|[39m     expect(rt.pool.release).toHaveBeenCalledWith('s1', 1);
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/18]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mqueues a follow_up by default while the Pi session is streaming
+[31m[1mError[22m: session s1 has no current prompt turn[39m
+[36m [2m❯[22m promptSession apps/desktop/electron/main/ipc.ts:[2m2232:15[22m[39m
+    [90m2230|[39m       if (!activeTurn || !activeTurn.readyForSettled || !activeTurn.ad…
+    [90m2231|[39m         || activeTurn.client !== open.slot.client || activeTurn.lease …
+    [90m2232|[39m         throw new Error(`session ${resolvedSessionId} has no current p…
+    [90m   |[39m               [31m^[39m
+    [90m2233|[39m       }
+    [90m2234|[39m       queuedAdmission = activeTurn.admission;
+[90m [2m❯[22m apps/desktop/test/ipc.test.ts:[2m3133:20[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/18]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mconnector_read document.read is handled by executeDocumentRead
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m apps/desktop/test/ipc.test.ts:[2m3243:21[22m[39m
+    [90m3241|[39m     });
+    [90m3242|[39m     const out = await read?.({ requestId: 'r1', toolName: 'document.re…
+    [90m3243|[39m     expect(out?.ok).toBe(true);
+    [90m   |[39m                     [31m^[39m
+    [90m3244|[39m     expect(out?.error?.message).not.toBe('unhandled');
+    [90m3245|[39m     expect(executeDocumentReadMock).toHaveBeenCalled();
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/18]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mconnector_read rejects an ontology tool name outside the whitelist
+[31m[1mAssertionError[22m: expected { ok: false, error: { …(2) } } to match object { ok: false, …(1) }
+(1 matching property omitted from actual)[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[2m    "error": {[22m
+[32m-     "code": "CONNECTOR_DENIED",[39m
+[31m+     "code": "ORIGIN_REQUIRED",[39m
+[2m    },[22m
+[2m    "ok": false,[22m
+[2m  }[22m
+
+[36m [2m❯[22m apps/desktop/test/ipc.test.ts:[2m3300:17[22m[39m
+    [90m3298|[39m     const read = (rt as any).__onConnectorRead;
+    [90m3299|[39m     const out = await read?.({ requestId: 'r0', toolName: 'ontology.un…
+    [90m3300|[39m     expect(out).toMatchObject({ ok: false, error: { code: 'CONNECTOR_D…
+    [90m   |[39m                 [31m^[39m
+    [90m3301|[39m   });
+    [90m3302|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/18]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mconnector_read writes exactly one audit per ontology tool call and records the query text
+[31m[1mAssertionError[22m: expected [] to have a length of 1 but got +0[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 1[39m
+[31m+ 0[39m
+
+[36m [2m❯[22m apps/desktop/test/ipc.test.ts:[2m3371:22[22m[39m
+    [90m3369|[39m     await read?.({ requestId: 'r1', toolName: 'ontology.query', args: …
+    [90m3370|[39m     const appended = auditAppend.mock.calls;
+    [90m3371|[39m     expect(appended).toHaveLength(1);
+    [90m   |[39m                      [31m^[39m
+    [90m3372|[39m     const row = JSON.stringify(appended[0]);
+    [90m3373|[39m     expect(row).toContain('ontology.query');
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/18]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mqueueMutate rebuilds both queues from the current Pi snapshot
+[31m[1mError[22m: session s1 has no current prompt turn[39m
+[36m [2m❯[22m promptSession apps/desktop/electron/main/ipc.ts:[2m2232:15[22m[39m
+    [90m2230|[39m       if (!activeTurn || !activeTurn.readyForSettled || !activeTurn.ad…
+    [90m2231|[39m         || activeTurn.client !== open.slot.client || activeTurn.lease …
+    [90m2232|[39m         throw new Error(`session ${resolvedSessionId} has no current p…
+    [90m   |[39m               [31m^[39m
+    [90m2233|[39m       }
+    [90m2234|[39m       queuedAdmission = activeTurn.admission;
+[90m [2m❯[22m apps/desktop/test/ipc.test.ts:[2m3610:5[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/18]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 round5 blocker1 keeps the workflow proposal dispatcher bound to its original admission
+[31m[1mAssertionError[22m: expected Error: session wf-r8-proposal workflow pr… to match object { message: StringMatching{…} }[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- {[39m
+[32m-   "message": StringMatching /proposal.*no longer active/i,[39m
+[31m+ Error {[39m
+[31m+   "message": "session wf-r8-proposal workflow proposal origin is not executable",[39m
+[2m  }[22m
+
+[36m [2m❯[22m apps/desktop/test/ipc.test.ts:[2m6360:36[22m[39m
+    [90m6358|[39m
+    [90m6359|[39m     expect(outcome).toHaveProperty('error');
+    [90m6360|[39m     expect((outcome as any).error).toMatchObject({ message: expect.str…
+    [90m   |[39m                                    [31m^[39m
+    [90m6361|[39m     expect(proposals).toHaveLength(1);
+    [90m6362|[39m     expect(proposals[0].taskId).toBe(originalTaskId);
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/18]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mR8 runtime binding regressions[2m > [22mR8 round5 blocker3 rejects steer, follow-up and runtime actions while replacement ownership is pending
+[31m[1mAssertionError[22m: expected { …(4) } to match object { status: 'denied', …(1) }
+(6 matching properties omitted from actual)[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[2m    "error": {[22m
+[32m-     "code": "TASK_REVOKED",[39m
+[31m+     "code": "ORIGIN_REQUIRED",[39m
+[2m    },[22m
+[2m    "status": "denied",[22m
+[2m  }[22m
+
+[36m [2m❯[22m apps/desktop/test/ipc.test.ts:[2m6746:20[22m[39m
+    [90m6744|[39m     expect(steer).toBeInstanceOf(Error);
+    [90m6745|[39m     expect(followUp).toBeInstanceOf(Error);
+    [90m6746|[39m     expect(action).toMatchObject({ status: 'denied', error: { code: 'T…
+    [90m   |[39m                    [31m^[39m
+    [90m6747|[39m     expect(workspaceExecute).not.toHaveBeenCalled();
+    [90m6748|[39m     expect(h.sent.some((command) => command.type === 'steer' || comman…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/18]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mapproval execution canonical race regressions[2m > [22mblocks caller-mode workspace execution when privacy redaction wins during the revalidation await
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mapproval execution canonical race regressions[2m > [22mblocks caller-mode workspace execution when privacy redaction wins during the audit await
+[31m[1mError[22m: caller approval was not requested: [][39m
+[36m [2m❯[22m apps/desktop/test/ipc.test.ts:[2m7280:15[22m[39m
+    [90m7278|[39m         await waitUntil(() => h.approvalEvents.length === 1);
+    [90m7279|[39m       } catch (error) {
+    [90m7280|[39m         throw new Error(`caller approval was not requested: ${JSON.str…
+    [90m   |[39m               [31m^[39m
+    [90m7281|[39m           h.audit.append.mock.calls.map(([event]) => event.action),
+    [90m7282|[39m         )}`, { cause: error });
+
+[31m[1mCaused by: Error[22m: timed out waiting[39m
+[36m [2m❯[22m waitUntil apps/desktop/test/ipc.test.ts:[2m163:47[22m[39m
+[90m [2m❯[22m apps/desktop/test/ipc.test.ts:[2m7278:9[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/18]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m18 failed[39m[22m[2m | [22m[1m[32m151 passed[39m[22m[90m (169)[39m
+[2m   Start at [22m 11:19:37
+[2m   Duration [22m 14.75s[2m (transform 2.13s, setup 33ms, import 6.19s, tests 7.47s, environment 858ms)[22m
+

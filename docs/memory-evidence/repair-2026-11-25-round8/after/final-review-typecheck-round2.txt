@@ -1,0 +1,15 @@
+(node:7436) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+npm notice run typecheck
+npm notice run pnpm -r --if-present run typecheck
+(node:10988) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Scope: 9 of 10 workspace projects
+packages/ui typecheck$ tsc --noEmit -p tsconfig.json
+packages/ui typecheck: Done
+apps/desktop typecheck$ tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.electron.json
+apps/desktop typecheck: electron/main/chat-session-store.ts(152,48): error TS2322: Type 'undefined' is not assignable to type 'string'.
+apps/desktop typecheck: Failed
+C:\Users\YDJ\Desktop\SparkiiDesktop-Pi\apps\desktop:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @sparkii/desktop@0.1.7 typecheck: `tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.electron.json`
+Exit status 2

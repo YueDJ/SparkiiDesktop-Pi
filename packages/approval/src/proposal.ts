@@ -13,6 +13,7 @@ export interface ProposalRequest {
 export type ProposalSubmission = ProposalRequest & { requestId: string };
 export interface Proposal {
   id: string; requestId: string; profileId: string; sessionId: string;
+  taskId?: string;
   toolName: string; targetSystem: string; summary: string;
   preview?: ApprovalPreview;
   payloadHash: string; payload: unknown; risk: SideEffect;
@@ -20,6 +21,7 @@ export interface Proposal {
   status: ProposalStatus; createdAt: number;
   decidedAt?: number; decisionBy?: string; decisionNote?: string;
   execution?: { ok: boolean; result?: unknown; error?: string };
+  privacyRedacted?: boolean;
 }
 
 export function toPreviewLines(text: string): string[] {
@@ -44,7 +46,7 @@ export function summarizePayload(value: unknown, maxLen = 512): string {
   return s.length > maxLen ? `${s.slice(0, maxLen)}…` : s;
 }
 
-export function createProposal(req: ProposalSubmission, meta: { profileId: string; sessionId: string }): Proposal {
+export function createProposal(req: ProposalSubmission, meta: { profileId: string; sessionId: string; taskId?: string }): Proposal {
   return {
     id: randomUUID(), requestId: req.requestId, ...meta, toolName: req.toolName, targetSystem: req.targetSystem,
     summary: req.summary, payloadHash: hashPayload(req.payload), payload: req.payload,

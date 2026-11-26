@@ -1,0 +1,40 @@
+(node:14092) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36636) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:26500) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | apps/desktop/test/r8-probe-profile.tmp.test.ts > profiles native probes for the basic memory path
+R8_PROBE_PROFILE count=0 elapsedMs=5313.8406 id=mem_44bf472a-c4d3-41e1-8deb-62d2acf39490
+
+ × |1| apps/desktop/test/r8-probe-profile.tmp.test.ts > profiles native probes for the basic memory path 5940ms
+   → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/r8-probe-profile.tmp.test.ts > profiles native probes for the basic memory path
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/r8-probe-profile.tmp.test.ts:20:1
+     18| import { MemoryService } from '../electron/main/memory/service.js';
+     19|
+     20| it('profiles native probes for the basic memory path', () => {
+       | ^
+     21|   const root = mkdtempSync(join(tmpdir(), 'sparkii-r8-profile-'));
+     22|   const service = new MemoryService({ dataDir: join(root, 'data') });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  09:40:45
+   Duration  7.48s (transform 163ms, setup 29ms, import 516ms, tests 5.94s, environment 810ms)
+
+
+EXIT_CODE=1

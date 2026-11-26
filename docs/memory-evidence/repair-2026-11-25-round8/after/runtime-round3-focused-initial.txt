@@ -1,0 +1,417 @@
+(node:42552) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:28272) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:14208) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32116) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:40968) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/task-lifecycle.test.ts (12 tests) 10ms
+ ✓ |1| apps/desktop/test/workflow-broker.test.ts (34 tests) 619ms
+ ❯ |1| apps/desktop/test/ipc.test.ts (155 tests | 13 failed) 8415ms
+     ✓ lists builtin whitelist plus custom providers through a probe slot 21ms
+     ✓ saveSettings writes only custom providers to models.json and stores the per-provider key 37ms
+     ✓ getApiKey returns the per-provider key and getSettings includes the active provider key 25ms
+     ✓ getSettings reports hasApiKey without returning the secret 4ms
+     ✓ getApiKey(sparkiirag) returns null even when keyring has the secret 3ms
+     ✓ getApiKey also hides sparkiionto and both knowledge keyring names 8ms
+     ✓ saveSettings rejects a custom provider whose id collides with a knowledge credential id 11ms
+     ✓ testKnowledgeConnection probes healthz → info → datasets with the onto settings and token 12ms
+     ✓ testKnowledgeConnection honours an unsaved override 4ms
+     ✓ listKnowledgeDatasets tells 401 (credential) from 403 (permission) and flags an /info mismatch 13ms
+     ✓ keeps testRagConnection as a thin sparkiirag wrapper 5ms
+     ✓ testRagConnection keeps the legacy "no key" wording 4ms
+     ✓ empty saveRagSettings apiKey keeps the keyring value 5ms
+     ✓ saveSettings does not wipe rag 28ms
+     ✓ saveSettings does not wipe documentParse 31ms
+     ✓ download huggingface URL is rejected 4ms
+     ✓ promptSession refuses sparkiirag profiles when RAG is unconfigured 4ms
+     ✓ promptSession does not create a session when sparkiirag is unconfigured 7ms
+     ✓ promptSession opens the session when allowDegradedKnowledge is set (product §15) 9ms
+     ✓ setSessionKnowledge stores selection and promptSession migrates draft key before prompt 29ms
+     ✓ empty retrieval returns first then aborts and appends refused knowledge_turn 30ms
+     ✓ does not copy leftover draft selection onto an existing session 8ms
+     ✓ aborts when the session dataset is no longer visible 24ms
+     ✓ empty search after a sealed hit aborts a new turn 32ms
+     ✓ openRagDocument with an Onto backend still fetches through the ontology client cache segment 13ms
+     ✓ openRagDocument defaults to sparkiirag and returns a bounded error when the credential is missing 3ms
+     ✓ setSessionKnowledge rejects invalid payload 3ms
+     ✓ getRuntimePool returns the pool snapshot 4ms
+     ✓ listModels uses the caller-provided key instead of the stored keyring key 27ms
+     ✓ promptSession routes to settings active provider and default model when the session has no model 9ms
+     ✓ promptSession creates a session and sends the first prompt 5ms
+     ✓ R7 coalesces concurrent promptSession opens for one existing session id 27ms
+     ✓ R7 promptSession rejects a stale binding while model key lookup is suspended 15ms
+     ✓ R7 promptSession rejects a stale binding after deferred get_state before sending 16ms
+     × R7 stale task admission cannot replace a same-id replacement grant 33ms
+     ✓ R7 session creation failure cannot release or delete a same-id replacement 32ms
+     ✓ createSession binds a workspace WITHOUT sending a prompt (P9, holds slot + 15s idle release) 12ms
+     ✓ B1: a late agent_settled never revokes a Grant that is not this prompt's 8ms
+     × setChatWorkspace(null) allocates a new Documents auto path 10ms
+     ✓ promptSession does not duplicate model application when the model is already in the saddle 7ms
+     ✓ listChatSessions excludes empty sessions from the local store 3ms
+     ✓ listChatSessions includes DB-only P9 sessions when includeEmpty is true 3ms
+     ✓ listChatSessions falls back to project.json.name through the fenced service 6ms
+     ✓ getChatState does not acquire when a session has no lease 4ms
+     ✓ schedules idle release after agent_settled and releases after timeout 5ms
+     ✓ does not idle-release a knowledge session on agent_end before agent_settled 10ms
+     ✓ does not idle-release or title a workflow session after agent_settled 9ms
+     ✓ rejects a transient prompt waiter after its slot is rebound instead of forwarding the new session event 4ms
+     ✓ R7 rejects a transient prompt waiter after same-id release and reacquire without forwarding the new binding event 3ms
+     ✓ R7 rejects a transient prompt when a successful send completes after same-id rebinding 5ms
+     ✓ R7 cancels every same-id transient waiter without old completion erasing the replacement 35ms
+     ✓ stamps chat-events with the live slot sessionId, not the subscribe-time id 4ms
+     ✓ stamps over an inner sessionId carried by the event 4ms
+     ✓ drops events while the slot has no session bound 3ms
+     ✓ sends session_unbound before releasing the slot so the spinner stops 3ms
+     ✓ logs and stops stamping when the pi child exits 3ms
+     ✓ stops forwarding client events after the workflow slot is released 27ms
+     ✓ idle-releases a post-run workflow slot so a later runWorkflow is not blocked 33ms
+     ✓ workflow selectModel routes to settings active provider and default model 6ms
+     ✓ workflow selectModel prefers the session-selected model 5ms
+     ✓ listThinkingLevels probes a model and returns available thinking levels 4ms
+     × setChatThinkingLevel stores the session level and remembers it per model 3ms
+     ✓ promptSession applies the session thinking level before prompt 4ms
+     ✓ setChatModel applies the selected model to the open Pi session 23ms
+     ✓ setChatThinkingLevel applies the selected level to the open Pi session 8ms
+     ✓ queues a follow_up by default while the Pi session is streaming 4ms
+     ✓ abortChat clears the queue before aborting and returns the cleared items 4ms
+     ✓ connector_read document.read is handled by executeDocumentRead 4ms
+     ✓ connector_read rejects an ontology tool name outside the whitelist 3ms
+     ✓ connector_read writes exactly one audit per ontology tool call and records the query text 6ms
+     ✓ reports document-parse spawn failures to the error center as 文档解析 5ms
+     ✓ abortChat calls failSession before Pi abort 6ms
+     ✓ releaseSessionSlot calls failSession before unbind 4ms
+     ✓ R7 does not release a same-id replacement while an explicit slot release is awaiting task shutdown 6ms
+     ✓ getDocumentParse handler exists 3ms
+     ✓ downloadDocumentParseModule without production hashes fails with offline import hint 4ms
+     ✓ queueMutate rebuilds both queues from the current Pi snapshot 8ms
+     ✓ promptSession stages attachments into the session workspace before prompting 14ms
+     ✓ promptSession sends images directly and stages only non-image attachments 16ms
+     ✓ promptSession creates a session and stages attachments into the chosen workspace 15ms
+     ✓ promptSession registers the proposal broker when creating a session 7ms
+     ✓ getModelOptions without agentId uses generic chat requirements instead of a default agent 4ms
+     ✓ classifies current DeepSeek models with orthogonal capabilities 3ms
+     ✓ promptSession refuses to create a session without profileId 5ms
+     ✓ ensureSessionRecord does not invent profileId general when pinning a Pi-only session 3ms
+     ✓ chooseDocument grants the selected path for readDocumentBytes 5ms
+     ✓ openChatSession ENOENT still returns session inputs 3ms
+     ✓ opens a live session from getBranch + streamingMessage, not get_messages 4ms
+     ✓ recovers the micro-gap assistant from get_messages only while streaming without a slot message 5ms
+     ✓ skips the micro-gap when the last assistant is already on the branch 2ms
+     ✓ does not read get_messages when the live session is idle 2ms
+     ✓ dead session reads JSONL entries only (no preview) 25ms
+     ✓ setChatTitle notifies the renderer so the sidebar can show the filename 4ms
+     ✓ setChatTitle updates the runtime pool label instead of leaving the session id 5ms
+     ✓ reopening a session acquires the pool with displayName and Pi title, not the uuid prefix 4ms
+     ✓ reopening a nameless workflow session uses 新会话, not the skill body 4ms
+     ✓ reopening still acquires display meta when listing Pi sessions fails 4ms
+     ✓ setChatTitle rejects empty titles and agent writes after a user lock 35ms
+     ✓ listChatSessions does not put firstMessage into title 4ms
+     ✓ completeText forwards text to complete without renaming the session 35ms
+     ✓ does not auto-title a chat session on agent_end 4ms
+     ✓ imports, lists, audits, and uninstalls a user skill 44ms
+     ✓ returns no-user-library when no skillLibrary user agent is assembled 2ms
+     ✓ prefers SPARKII_E2E_SKILL_DIR for chooseSkillFolder 3ms
+     ✓ opens the user skills dir after creating it 5ms
+     ✓ lists skills for an agent id from that agent skillsDir only 18ms
+     ✓ allocateAutoWorkspace returns a Documents path and does not create it 2ms
+     ✓ allocateAutoWorkspace rejects unknown agent 2ms
+     ✓ chooseWorkspace mkdirs an absolute defaultPath and forwards it 2ms
+     ✓ chooseWorkspace ignores a relative defaultPath without mkdir 2ms
+     ✓ openWorkspace mkdirs an absolute path and opens it 2ms
+     ✓ openWorkspace ignores a relative path without mkdir 2ms
+     ✓ runWorkflow without workspacePath allocates Documents path and does not mkdir 2ms
+     ✓ runWorkflow with an allocated path keeps workspaceKind auto 3ms
+     × R8-P0-2 privacy deletion stops the active task, extraction and Pi binding before memory cleanup 7ms
+     ✓ R8-P0-2 stops an active document parser even when no Pi binding exists 3ms
+     × R8-P0-2 does not delete memory or release a same-id replacement while task shutdown is awaiting 5ms
+     × R8-P0-2 cancels a same-id session opening before pool acquisition 2016ms
+     × R8-P0-2 releases a stale acquisition instead of letting it bind after privacy deletion 2019ms
+     ✓ R8 final review releases a stale setChatTitle acquisition after privacy deletion starts 16ms
+     × R8-P0-2 never releases a same-client replacement installed while a stale acquisition resumes 2009ms
+     ✓ does not expose task capability or user revocation handlers 1ms
+     ✓ reads the session permission mode and host semantics without leaking credentials 2ms
+     ✓ writes the mode, ends the running task and audits the change 1ms
+     ✓ revokes the shell task grant when the mode changes 1ms
+     ✓ refuses a permission mode the profile does not allow 1ms
+     ✓ reports the reviewer as unavailable when Main has no worker 1ms
+     ✓ does not expose the Reviewer worker in the user runtime pool 1ms
+     ✓ runs an approved shell command through the host adapter and reports host semantics 11ms
+     × registers the channel, moves files, updates all session records and broadcasts 7ms
+     ✓ R8 runtime round3 B1 cancels a pending production admission on stop 84ms
+     ✓ R8 runtime round3 B1 cancels a pending production admission on workspace-change 46ms
+     ✓ R8 B1 rejects stale 'settings' commands after a same-client replacement 5ms
+     ✓ R8 B1 rejects stale 'key' commands after a same-client replacement 25ms
+     × R8 B1 rejects stale 'model' commands after a same-client replacement 4ms
+     × R8 B1 rejects stale 'complete' commands after a same-client replacement 5ms
+     ✓ R8 B1 rejects a stale key lookup before writing the original prompt 19ms
+     × R8 B1 does not overwrite a replacement model while set_model is deferred 9ms
+     ✓ R8 runtime round3 B4 stale abort cannot revoke or command a same-lease replacement task 43ms
+     ✓ R8 runtime round3 B4 rejects stale { name: 'thinking', command: 'set_thinking_level' } commands after a same-client rebind 75ms
+     ✓ R8 runtime round3 B4 rejects stale { name: 'workspace', command: 'configure_session' } commands after a same-client rebind 72ms
+     ✓ R8 runtime round3 B4 rejects a stale workflow journal after its append await 87ms
+     ✓ R8 runtime round3 B4 relocation cannot configure a replacement binding 104ms
+     × R8 B2 stale export admission cannot replace or revoke a replacement task 95ms
+     ✓ R8 B2 approval cannot append a journal after a same-client rebind 52ms
+     ✓ R8 runtime round3 B5 export propagates journal 'rejection' and revokes only its grant 60ms
+     ✓ R8 runtime round3 B5 export propagates journal 'success false' and revokes only its grant 64ms
+     ✓ R8 runtime round3 B5 stale export journal failure cannot revoke a same-task-ID replacement 91ms
+     ✓ R8 runtime round3 B5 export rejects when its binding changes during the journal await 73ms
+     ✓ blocks proposal-mode connector execution when privacy redaction wins during the dialog await 12ms
+     ✓ blocks proposal-mode connector execution when privacy redaction wins during the audit await 15ms
+     ✓ blocks proposal-mode connector execution when privacy redaction wins during the gateway await 8ms
+     ✓ commits the chosen export path to the canonical proposal before connector execution 5ms
+     ✓ blocks caller-mode workspace execution when privacy redaction wins during the revalidation await 43ms
+     ✓ blocks caller-mode workspace execution when privacy redaction wins during the audit await 55ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 13 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/ipc.test.ts > ipc provider handlers > R7 stale task admission cannot replace a same-id replacement grant
+AssertionError: expected [Function] to throw error including 'session s1 is no longer bound' but got 'session s1 admission cancelled'
+
+Expected: "session s1 is no longer bound"
+Received: "session s1 admission cancelled"
+
+ ❯ apps/desktop/test/ipc.test.ts:1644:24
+    1642|     releaseAdmission();
+    1643|
+    1644|     await expect(stale).rejects.toThrow('session s1 is no longer bound…
+       |                        ^
+    1645|     expect(taskLifecycle.active('s1')?.taskId).toBe(replacementTaskId);
+    1646|     expect(sent.filter((command) => command.type === 'prompt').map((co…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/13]⎯
+
+ FAIL  |1| apps/desktop/test/ipc.test.ts > ipc provider handlers > setChatWorkspace(null) allocates a new Documents auto path
+Error: session s1 is no longer bound
+ ❯ assertCapturedBinding apps/desktop/electron/main/ipc.ts:1021:15
+    1019|     if (client === undefined) {
+    1020|       if (binding !== undefined || rt.pool.get(sessionId) !== undefine…
+    1021|         throw new Error(`session ${sessionId} is no longer bound`);
+       |               ^
+    1022|       }
+    1023|       return;
+ ❯ assertCurrent apps/desktop/electron/main/ipc.ts:2125:7
+ ❯ apps/desktop/electron/main/ipc.ts:2131:5
+ ❯ apps/desktop/test/ipc.test.ts:1839:51
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/13]⎯
+
+ FAIL  |1| apps/desktop/test/ipc.test.ts > ipc provider handlers > setChatThinkingLevel stores the session level and remembers it per model
+Error: session s1 is no longer bound
+ ❯ assertCapturedBinding apps/desktop/electron/main/ipc.ts:1021:15
+    1019|     if (client === undefined) {
+    1020|       if (binding !== undefined || rt.pool.get(sessionId) !== undefine…
+    1021|         throw new Error(`session ${sessionId} is no longer bound`);
+       |               ^
+    1022|       }
+    1023|       return;
+ ❯ assertBinding apps/desktop/electron/main/ipc.ts:2081:39
+ ❯ apps/desktop/electron/main/ipc.ts:2082:5
+ ❯ apps/desktop/test/ipc.test.ts:2947:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/13]⎯
+
+ FAIL  |1| apps/desktop/test/ipc.test.ts > ipc user skill library > R8-P0-2 privacy deletion stops the active task, extraction and Pi binding before memory cleanup
+AssertionError: expected "vi.fn()" to be called with arguments: [ 's-private', 'session-ended' ]
+
+Received:
+
+  1st vi.fn() call:
+
+  [
+    "s-private",
+    "session-ended",
++   undefined,
+  ]
+
+
+Number of calls: 1
+
+ ❯ apps/desktop/test/ipc.test.ts:4926:19
+    4924|     try {
+    4925|       await expect(Promise.resolve(handlers.get('sparkii:deleteMemory'…
+    4926|       expect(end).toHaveBeenCalledWith('s-private', 'session-ended');
+       |                   ^
+    4927|       expect(cancel).toHaveBeenCalledWith('s-private');
+    4928|       expect(supervisorMocks.failSession).toHaveBeenCalledWith('s-priv…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/13]⎯
+
+ FAIL  |1| apps/desktop/test/ipc.test.ts > ipc user skill library > R8-P0-2 does not delete memory or release a same-id replacement while task shutdown is awaiting
+AssertionError: expected "vi.fn()" to be called with arguments: [ 's-private', 'session-ended' ]
+
+Received:
+
+  1st vi.fn() call:
+
+  [
+    "s-private",
+    "session-ended",
++   undefined,
+  ]
+
+
+Number of calls: 1
+
+ ❯ apps/desktop/test/ipc.test.ts:5013:19
+    5011|       finishShutdown();
+    5012|       await expect(deleting).rejects.toThrow('重新绑定');
+    5013|       expect(end).toHaveBeenCalledWith('s-private', 'session-ended');
+       |                   ^
+    5014|       expect(cancel).toHaveBeenCalledWith('s-private');
+    5015|       expect(memory.deleteMemory).not.toHaveBeenCalled();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/13]⎯
+
+ FAIL  |1| apps/desktop/test/ipc.test.ts > ipc user skill library > R8-P0-2 cancels a same-id session opening before pool acquisition
+Error: timed out waiting
+ ❯ waitUntil apps/desktop/test/ipc.test.ts:163:47
+    161|   const start = Date.now();
+    162|   while (!predicate()) {
+    163|     if (Date.now() - start > timeoutMs) throw new Error('timed out wai…
+       |                                               ^
+    164|     await new Promise((r) => setTimeout(r, 10));
+    165|   }
+ ❯ apps/desktop/test/ipc.test.ts:5052:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/13]⎯
+
+ FAIL  |1| apps/desktop/test/ipc.test.ts > ipc user skill library > R8-P0-2 releases a stale acquisition instead of letting it bind after privacy deletion
+Error: timed out waiting
+ ❯ waitUntil apps/desktop/test/ipc.test.ts:163:47
+    161|   const start = Date.now();
+    162|   while (!predicate()) {
+    163|     if (Date.now() - start > timeoutMs) throw new Error('timed out wai…
+       |                                               ^
+    164|     await new Promise((r) => setTimeout(r, 10));
+    165|   }
+ ❯ apps/desktop/test/ipc.test.ts:5096:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/13]⎯
+
+ FAIL  |1| apps/desktop/test/ipc.test.ts > ipc user skill library > R8-P0-2 never releases a same-client replacement installed while a stale acquisition resumes
+Error: timed out waiting
+ ❯ waitUntil apps/desktop/test/ipc.test.ts:163:47
+    161|   const start = Date.now();
+    162|   while (!predicate()) {
+    163|     if (Date.now() - start > timeoutMs) throw new Error('timed out wai…
+       |                                               ^
+    164|     await new Promise((r) => setTimeout(r, 10));
+    165|   }
+ ❯ apps/desktop/test/ipc.test.ts:5187:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/13]⎯
+
+ FAIL  |1| apps/desktop/test/ipc.test.ts > P10 relocateWorkspace IPC > registers the channel, moves files, updates all session records and broadcasts
+Error: session s1 is no longer bound
+ ❯ assertCapturedBinding apps/desktop/electron/main/ipc.ts:1021:15
+    1019|     if (client === undefined) {
+    1020|       if (binding !== undefined || rt.pool.get(sessionId) !== undefine…
+    1021|         throw new Error(`session ${sessionId} is no longer bound`);
+       |               ^
+    1022|       }
+    1023|       return;
+ ❯ assertBinding apps/desktop/electron/main/ipc.ts:2167:39
+ ❯ apps/desktop/electron/main/ipc.ts:2168:5
+ ❯ apps/desktop/test/ipc.test.ts:5610:26
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/13]⎯
+
+ FAIL  |1| apps/desktop/test/ipc.test.ts > R8 runtime binding regressions > R8 B1 rejects stale 'model' commands after a same-client replacement
+ FAIL  |1| apps/desktop/test/ipc.test.ts > R8 runtime binding regressions > R8 B1 rejects stale 'complete' commands after a same-client replacement
+Error: session s1 is no longer bound
+ ❯ assertCapturedBinding apps/desktop/electron/main/ipc.ts:1021:15
+    1019|     if (client === undefined) {
+    1020|       if (binding !== undefined || rt.pool.get(sessionId) !== undefine…
+    1021|         throw new Error(`session ${sessionId} is no longer bound`);
+       |               ^
+    1022|       }
+    1023|       return;
+ ❯ apps/desktop/electron/main/ipc.ts:1934:5
+ ❯ apps/desktop/test/ipc.test.ts:5742:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/13]⎯
+
+ FAIL  |1| apps/desktop/test/ipc.test.ts > R8 runtime binding regressions > R8 B1 does not overwrite a replacement model while set_model is deferred
+Error: session s1 is no longer bound
+ ❯ assertCapturedBinding apps/desktop/electron/main/ipc.ts:1021:15
+    1019|     if (client === undefined) {
+    1020|       if (binding !== undefined || rt.pool.get(sessionId) !== undefine…
+    1021|         throw new Error(`session ${sessionId} is no longer bound`);
+       |               ^
+    1022|       }
+    1023|       return;
+ ❯ apps/desktop/electron/main/ipc.ts:1934:5
+ ❯ apps/desktop/test/ipc.test.ts:5830:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/13]⎯
+
+ FAIL  |1| apps/desktop/test/ipc.test.ts > R8 runtime binding regressions > R8 B2 stale export admission cannot replace or revoke a replacement task
+AssertionError: expected [Function] to throw error including 'session s1 is no longer bound' but got 'session s1 admission cancelled'
+
+Expected: "session s1 is no longer bound"
+Received: "session s1 admission cancelled"
+
+ ❯ apps/desktop/test/ipc.test.ts:6137:24
+    6135|     admissionGate.resolve();
+    6136|
+    6137|     await expect(stale).rejects.toThrow('session s1 is no longer bound…
+       |                        ^
+    6138|     expect(h.taskLifecycle.active('s1')?.taskId).toBe(replacementTask?…
+    6139|     expect(h.registry.get('s1')?.taskId).toBe(replacementTask?.taskId);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/13]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 3 unhandled errors during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+Error: session s-private is no longer bound
+ ❯ assertCapturedBinding apps/desktop/electron/main/ipc.ts:1021:15
+ ❯ apps/desktop/electron/main/ipc.ts:1934:5
+
+This error originated in "apps/desktop/test/ipc.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "R8-P0-2 cancels a same-id session opening before pool acquisition". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+Error: session s-private is no longer bound
+ ❯ assertCapturedBinding apps/desktop/electron/main/ipc.ts:1021:15
+ ❯ apps/desktop/electron/main/ipc.ts:1934:5
+
+This error originated in "apps/desktop/test/ipc.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "R8-P0-2 releases a stale acquisition instead of letting it bind after privacy deletion". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+Error: session s-private is no longer bound
+ ❯ assertCapturedBinding apps/desktop/electron/main/ipc.ts:1021:15
+ ❯ apps/desktop/electron/main/ipc.ts:1934:5
+
+This error originated in "apps/desktop/test/ipc.test.ts" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "R8-P0-2 never releases a same-client replacement installed while a stale acquisition resumes". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  13 failed | 188 passed (201)
+     Errors  3 errors
+   Start at  00:27:04
+   Duration  14.86s (transform 2.67s, setup 60ms, import 8.99s, tests 9.04s, environment 2.52s)
+
+
+exit=1

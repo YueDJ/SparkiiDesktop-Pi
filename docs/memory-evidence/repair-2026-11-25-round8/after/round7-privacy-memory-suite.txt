@@ -1,0 +1,127 @@
+COMMAND=NO_COLOR=1 pnpm exec vitest run apps/desktop/test/memory-truth-batch.test.ts apps/desktop/test/memory-r8-regression.test.ts apps/desktop/test/memory-round7-regression.test.ts apps/desktop/test/memory-extraction.test.ts --maxWorkers=1 --no-file-parallelism
+(node:16660) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:39324) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:13760) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-r8-regression.test.ts (50 tests) 43348ms
+     ✓ R8-REPAIR-MEMORY truth B symlink replacement makes production rebuild fail closed  327ms
+     ✓ R8-REPAIR-MEMORY truth B hardlink replacement makes production list fail closed  333ms
+     ✓ R8-REPAIR-MEMORY truth B hardlink replacement makes production search fail closed  334ms
+     ✓ R8-REPAIR-MEMORY truth B hardlink replacement makes production rebuild fail closed  320ms
+     ✓ R8-REPAIR-MEMORY truth B non-symlink-reparse replacement makes production list fail closed  323ms
+     ✓ R8-REPAIR-MEMORY truth B non-symlink-reparse replacement makes production search fail closed  318ms
+     ✓ R8-REPAIR-MEMORY truth B non-symlink-reparse replacement makes production rebuild fail closed  332ms
+     ✓ R8-REPAIR-MEMORY truth C default fence and rebuilt SandboxProbe batch mode stay integrated  357ms
+     ✓ R8 review privacy B5 zeroes a plaintext journal temp file before a failed removal  878ms
+     ✓ R8 final review fences same-process and restarted reads when the privacy journal cannot be persisted  889ms
+     ✓ R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext  1344ms
+     ✓ R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext  1365ms
+     ✓ R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext  1539ms
+     ✓ R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext  1709ms
+     ✓ R8-P0-1 resumes from journal context after the chat row and Pi file are already gone  1430ms
+     ✓ R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers  1867ms
+     ✓ R8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent  1429ms
+     ✓ R8 review B3 registers chat secrets before sink cleanup and protects later chat writes after failure  1408ms
+     ✓ R8-P0-1 restores privacy sink fences before truth recovery can restore plaintext  1385ms
+     ✓ R8 review B3 cleans Pi and chat carriers before a safe-root truth write-block aborts startup  773ms
+     ✓ R8 review B5 rejects dangling privacy journal directory and file links without reading targets  437ms
+     ✓ R8 review B5 refuses to clear a privacy journal whose identity changed during cleanup  1124ms
+     ✓ R8-REPAIR-MEMORY refuses to delete a journal when the zero-write readback contains a nonzero byte  863ms
+     ✓ R8-REPAIR-MEMORY digest-mismatch startup temp evidence persists a privacy write-block without deleting context  625ms
+     ✓ R8-REPAIR-MEMORY session-mismatch startup temp evidence persists a privacy write-block without deleting context  597ms
+     ✓ R8-REPAIR-MEMORY malformed startup temp evidence persists a privacy write-block without deleting context  685ms
+     ✓ R8-REPAIR-MEMORY promotes a valid startup temp journal and automatically resumes its privacy deletion  1170ms
+     ✓ R8-REPAIR-MEMORY fences Windows non-symlink reparse attributes on the privacy directory before temp reads and cleanup  633ms
+     ✓ R8-REPAIR-MEMORY fences Windows non-symlink reparse attributes on the privacy file before temp reads and cleanup  613ms
+     ✓ R8-REPAIR-MEMORY continues Gate Audit Error Logger cleanup when store privacy registration fails  748ms
+     ✓ R8 review B4 rotates memory markers when the deleted text collides with %s  675ms
+     ✓ R8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret  1292ms
+     ✓ R8-P1-3 fences project repair before registry or truth reads  391ms
+     ✓ R8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker  560ms
+     ✓ R8 privacy review reads the raw Pi path before chat redaction can alter it  1018ms
+     ✓ R8 privacy review resumes a secret-named Pi carrier after restart  1359ms
+     ✓ R8 privacy review retries independent carriers after a same-process truth rollback block  1257ms
+     ✓ R8 privacy review removes a plaintext journal temp file left before rename  1075ms
+     ✓ R8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state  813ms
+     ✓ R8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state  764ms
+     ✓ R8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state  770ms
+     ✓ re-fences a privacy journal before zeroing even when cleanup already verified its identity  894ms
+     ✓ fences a real ancestor junction before Pi carrier deletion and retries normally after it is removed  1183ms
+     ✓ fences a non-symlink reparse Pi carrier directory before rmSync  938ms
+     ✓ fences a non-symlink reparse Pi carrier file before rmSync  981ms
+     ✓ detects Pi carrier identity replacement before deletion and preserves external bytes across retry  1086ms
+     ✓ detects Pi carrier identity replacement before deletion and preserves external bytes across restart  1500ms
+(node:11268) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-round7-regression.test.ts (34 tests) 51236ms
+     ✓ R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files  1683ms
+     ✓ R7 privacy retry recovers an empty episode topic after restart and completes chat cleanup  2007ms
+     ✓ R7 privacy deletion discovers secrets nested only in pending operation extensions  1092ms
+     ✓ R7 privacy deletion scrubs an invalid structural targetId field  1137ms
+     ✓ R7 privacy deletion scrubs an invalid structural projectId field  1119ms
+     ✓ R7 privacy deletion scrubs an invalid structural mergeIds field  1137ms
+     ✓ R7 privacy deletion ignores whitespace-only episode topics without corrupting retained content  1224ms
+     ✓ R7 privacy deletion preserves pending UPDATE control fields when deleted text equals the op  1518ms
+     ✓ R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds  1848ms
+     ✓ R7 privacy deletion includes superseded episode records in the global redaction corpus  1112ms
+     ✓ R7 caller-mode memory deletion rechecks canonical approval after privacy redaction  578ms
+     ✓ R7 production privacy retry succeeds in the same process after truth rows are gone  1563ms
+     ✓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body  531ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes  1914ms
+     ✓ R7-P1-2 replacement preflight sees an indexed project after its registry entry is removed  1571ms
+     ✓ R7-P1-2 replacement preflight derives zero-entry project identity from scope_files  2015ms
+     ✓ R7-P1-3 source deletion detects indexed unregistered conflicts without an explicit workspace  1481ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes  1552ms
+     ✓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file  1653ms
+     ✓ R7-P1-3 valid source deletion updates unregistered project truth without reindexing it  2359ms
+     ✓ R8-REPAIR-MEMORY truth A1 source deletion ignores auto-list-only truth while updating registered and indexed projects  2163ms
+     ✓ R8-REPAIR-MEMORY truth A2 privacy deletion ignores auto-list-only truth while deleting registered and indexed projects  2298ms
+     ✓ R7-P1-4 privacy deletion discovers indexed unregistered truth before reconciliation  1718ms
+     ✓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion  1922ms
+     ✓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution  3020ms
+     ✓ retains the production privacy journal until a failed Gate listener succeeds on retry  984ms
+     ✓ collects deleted, survivor and nested dynamic keys, preserves controls, and scrubs later writes after restart  2111ms
+     ✓ fails closed instead of overwriting two dynamic keys that redact to the same marker  955ms
+     ✓ scrubs legal-looking nested structural fields in survivor and future pending operations  1537ms
+     ✓ registers deleted-only top-level structural IDs and scrubs the same value in survivor text  1122ms
+     ✓ fails closed when a retained or future top-level structural ID matches a registered secret  777ms
+     ✓ rejects a future top-level structural ID that matches an already registered secret  985ms
+     ✓ redacts addMemoriesBatch episode truth, index, FTS, search and restart reads  1225ms
+     ✓ redacts direct appendEpisode and updateEpisodeSummary ingress after privacy deletion  1325ms
+(node:41544) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-truth-batch.test.ts (49 tests) 6691ms
+     ✓ rolls back the project registry when a later truth write fails  569ms
+     ✓ R8 truth round3 B1 merges canonical project aliases into one truth and index bucket  402ms
+     ✓ R8 final review fences registered project reads and self-healing through an ancestor junction  439ms
+     ✓ R8 final review rejects unregistered duplicate project identity before single or batch commits  438ms
+(node:27076) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-extraction.test.ts (21 tests) 11100ms
+     ✓ R8-P1-3 never sends indexed plaintext to the extraction model while truth writes are blocked  466ms
+     ✓ R8-P0-1 never sends indexed plaintext to another session while privacy cleanup is pending  489ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":["ADD"],"scope":"user","text":"事实"}]}  344ms
+     ✓ 端到端：对话增量 → pending（含来源 excerpt）→ 批准 → 下一条会话注入  858ms
+     ✓ 驳回后进黑名单，同候选不再提案  956ms
+     ✓ 同 scope 高相似 ADD 降级为 UPDATE 候选  779ms
+     ✓ 畸形输出：整批丢弃 + errors.db 有记录 + 真相源无半批写入  365ms
+     ✓ 对象字段被拒绝时不写 pending、episode、真相文件或提取位点  388ms
+     ✓ auto 工作区的项目候选只落用户层  588ms
+     ✓ user 工作区的首条项目候选：项目文件尚不存在也能落 pending 并生成 projectId  886ms
+     ✓ 同一候选重复提炼：已有高相似 pending 时不再重复提案  993ms
+     ✓ 开关关闭：零模型调用  600ms
+     ✓ R8 round7 redacts a registered secret reintroduced by production extraction episode output  1509ms
+
+ Test Files  4 passed (4)
+      Tests  154 passed (154)
+   Start at  08:14:03
+   Duration  121.21s (transform 1.15s, setup 75ms, import 3.84s, tests 112.38s, environment 4.04s)
+
+
+EXIT_CODE=0

@@ -1,0 +1,41 @@
+(node:25812) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:23708) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:4976) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | apps/desktop/test/r8-probe-profile.tmp.test.ts > profiles native probes for the basic memory path
+R8_PROBE_PROFILE count=221 constructedMs=0.0005999999998493877 addedMs=3115.0791000000004 firstBlockMs=1158.4751999999999 secondBlockMs=1195.0870000000004 id=mem_f13b4c90-2232-440b-aea2-437a3cd16410
+221 at flushPathInspection (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-path.ts:66:30)
+
+ × |1| apps/desktop/test/r8-probe-profile.tmp.test.ts > profiles native probes for the basic memory path 6093ms
+   → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/r8-probe-profile.tmp.test.ts > profiles native probes for the basic memory path
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/r8-probe-profile.tmp.test.ts:8:1
+      6| import { reparseAttributes } from '../electron/main/memory/truth-path.…
+      7|
+      8| it('profiles native probes for the basic memory path', () => {
+       | ^
+      9|   const root = mkdtempSync(join(tmpdir(), 'sparkii-r8-profile-'));
+     10|   let count = 0;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  09:51:14
+   Duration  7.66s (transform 175ms, setup 31ms, import 556ms, tests 6.09s, environment 798ms)
+
+
+EXIT_CODE=1

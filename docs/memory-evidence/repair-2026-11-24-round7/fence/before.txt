@@ -1,0 +1,191 @@
+(node:34180) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:18920) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:16888) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mresolves coding and connector tool names
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mfails closed on unknown tool names
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mwires coding writes to the Runtime action requester
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mresolves the ontology connector tool surface
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mread tool returns WORKSPACE_NOT_CREATED when workspace missing
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mresolves relative read paths against workspaceRoot instead of anchor cwd
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mread tool returns inline image content for an image file
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mreads a skill-root file when the workspace does not exist
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mstill reads workspace files when the workspace exists
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mdenies another agent's skill path even when workspace exists
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mdenies trust-anchor reads even when the file is inside the workspace
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mdenies symlink escapes from the workspace
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mdenies directly reading a hard-linked file
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22masks Main before reading a workspace file
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrejects a canonical .sparkii path returned by the runtime authorization boundary
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mstill returns WORKSPACE_NOT_CREATED for workspace paths when workspace is missing
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mlists a skill-root directory when the workspace does not exist
+ [31m×[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mgrep excludes root and nested .sparkii content before formatting output[32m 52[2mms[22m[39m
+[31m   → expected 'src/app.ts:1: export const visible = …' not to contain '.sparkii'[39m
+ [31m×[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mgrep cannot reinclude .sparkii through an explicit positive glob[32m 37[2mms[22m[39m
+[31m   → expected '.sparkii/code.txt.sparkii/memory.json…' not to contain 'R7-RETAINED-CONTENT-CANARY'[39m
+ [31m×[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mfind excludes retained directories while returning ordinary workspace files[32m 31[2mms[22m[39m
+[31m   → expected '.sparkii/\n.sparkii/code.txt.sparkii/…' not to contain '.sparkii'[39m
+ [31m×[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mfind cannot target .sparkii with its glob pattern[32m 27[2mms[22m[39m
+[31m   → expected '.sparkii/code.txt.sparkii/\n.sparkii/…' not to contain 'memory.json'[39m
+ [31m×[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mls filters .sparkii before entries are counted or formatted[32m 6[2mms[22m[39m
+[31m   → expected '.sparkii/\nnotes.txt\n\n[2 entries li…' to contain 'src/'[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mgrep rejects direct .sparkii paths before approval[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mfind rejects direct .sparkii paths before approval[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mls rejects direct .sparkii paths before approval[32m 2[2mms[22m[39m
+ [31m×[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mdoes not follow a real directory link into retained content[32m 62[2mms[22m[39m
+[31m   → expected '.sparkii/\n.sparkii/code.txt.sparkii/…' not to contain 'memory.json'[39m
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22misolates user-library and package skill roots across two agent saddles
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 6 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mgrep excludes root and nested .sparkii content before formatting output
+[31m[1mAssertionError[22m: expected 'src/app.ts:1: export const visible = …' not to contain '.sparkii'[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- .sparkii[39m
+[31m+ src/app.ts:1: export const visible = "R7-RETAINED-CONTENT-CANARY";[39m
+[31m+ .sparkii/code.txt.sparkii/memory.json:1: R7-RETAINED-CONTENT-CANARY[39m
+[31m+ src/nested/.sparkii/memory.json:1: R7-RETAINED-CONTENT-CANARY[39m
+
+[36m [2m❯[22m packages/agent-host/test/tool-registry.test.ts:[2m331:24[22m[39m
+    [90m329|[39m       [35mconst[39m text [33m=[39m result[33m.[39mcontent[33m?.[39m[[34m0[39m][33m?.[39mtext [33m??[39m [32m""[39m[33m;[39m
+    [90m330|[39m       [34mexpect[39m(text)[33m.[39m[34mtoContain[39m([32m"src/app.ts"[39m)[33m;[39m
+    [90m331|[39m       [34mexpect[39m(text)[33m.[39mnot[33m.[39m[34mtoContain[39m([32m".sparkii"[39m)[33m;[39m
+    [90m   |[39m                        [31m^[39m
+    [90m332|[39m       [34mexpect[39m(text)[33m.[39mnot[33m.[39m[34mtoContain[39m([32m"memory.json"[39m)[33m;[39m
+    [90m333|[39m       expect(requestAction).toHaveBeenCalledWith(expect.objectContaini…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mgrep cannot reinclude .sparkii through an explicit positive glob
+[31m[1mAssertionError[22m: expected '.sparkii/code.txt.sparkii/memory.json…' not to contain 'R7-RETAINED-CONTENT-CANARY'[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- R7-RETAINED-CONTENT-CANARY[39m
+[31m+ .sparkii/code.txt.sparkii/memory.json:1: R7-RETAINED-CONTENT-CANARY[39m
+[31m+ [7msrc/nested/.sparkii/memory.json:1: [27mR7-RETAINED-CONTENT-CANARY[39m
+
+[36m [2m❯[22m packages/agent-host/test/tool-registry.test.ts:[2m346:45[22m[39m
+    [90m344|[39m         glob[33m:[39m [32m"**/.sparkii/**"[39m[33m,[39m
+    [90m345|[39m       })[33m;[39m
+    [90m346|[39m       [34mexpect[39m(result[33m.[39mcontent[33m?.[39m[[34m0[39m][33m?.[39mtext)[33m.[39mnot[33m.[39m[34mtoContain[39m(canary)[33m;[39m
+    [90m   |[39m                                             [31m^[39m
+    [90m347|[39m       [34mexpect[39m(result[33m.[39mcontent[33m?.[39m[[34m0[39m][33m?.[39mtext)[33m.[39mnot[33m.[39m[34mtoContain[39m([32m".sparkii"[39m)[33m;[39m
+    [90m348|[39m     })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mfind excludes retained directories while returning ordinary workspace files
+[31m[1mAssertionError[22m: expected '.sparkii/\n.sparkii/code.txt.sparkii/…' not to contain '.sparkii'[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- .sparkii[39m
+[31m+ .sparkii[7m/[27m[39m
+[31m+ .sparkii/code.txt.sparkii/[39m
+[31m+ .sparkii/code.txt.sparkii/memory.json[39m
+[31m+ notes.txt[39m
+[31m+ src/[39m
+[31m+ src/app.ts[39m
+[31m+ src/nested/[39m
+[31m+ src/nested/.sparkii/[39m
+[31m+ src/nested/.sparkii/memory.json[39m
+
+[36m [2m❯[22m packages/agent-host/test/tool-registry.test.ts:[2m356:24[22m[39m
+    [90m354|[39m       [34mexpect[39m(text)[33m.[39m[34mtoContain[39m([32m"src/app.ts"[39m)[33m;[39m
+    [90m355|[39m       [34mexpect[39m(text)[33m.[39m[34mtoContain[39m([32m"notes.txt"[39m)[33m;[39m
+    [90m356|[39m       [34mexpect[39m(text)[33m.[39mnot[33m.[39m[34mtoContain[39m([32m".sparkii"[39m)[33m;[39m
+    [90m   |[39m                        [31m^[39m
+    [90m357|[39m       [34mexpect[39m(text)[33m.[39mnot[33m.[39m[34mtoContain[39m([32m"memory.json"[39m)[33m;[39m
+    [90m358|[39m     })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mfind cannot target .sparkii with its glob pattern
+[31m[1mAssertionError[22m: expected '.sparkii/code.txt.sparkii/\n.sparkii/…' not to contain 'memory.json'[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- memory.json[39m
+[31m+ .sparkii/code.txt.sparkii/[39m
+[31m+ .sparkii/code.txt.sparkii/memory.json[39m
+[31m+ [7msrc/nested/.sparkii/[27mmemory.json[39m
+
+[36m [2m❯[22m packages/agent-host/test/tool-registry.test.ts:[2m363:45[22m[39m
+    [90m361|[39m       [35mconst[39m ws [33m=[39m [34mworkspaceFixture[39m()[33m;[39m
+    [90m362|[39m       const { result } = await execute("find", ws, { pattern: "**/.spa…
+    [90m363|[39m       [34mexpect[39m(result[33m.[39mcontent[33m?.[39m[[34m0[39m][33m?.[39mtext)[33m.[39mnot[33m.[39m[34mtoContain[39m([32m"memory.json"[39m)[33m;[39m
+    [90m   |[39m                                             [31m^[39m
+    [90m364|[39m       [34mexpect[39m(result[33m.[39mcontent[33m?.[39m[[34m0[39m][33m?.[39mtext)[33m.[39mnot[33m.[39m[34mtoContain[39m([32m".sparkii"[39m)[33m;[39m
+    [90m365|[39m     })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mls filters .sparkii before entries are counted or formatted
+[31m[1mAssertionError[22m: expected '.sparkii/\nnotes.txt\n\n[2 entries li…' to contain 'src/'[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- src/[39m
+[31m+ .sparkii/[39m
+[31m+ notes.txt[39m
+[31m+[39m
+[31m+ [2 entries limit reached. Use limit=4 for more][39m
+
+[36m [2m❯[22m packages/agent-host/test/tool-registry.test.ts:[2m372:20[22m[39m
+    [90m370|[39m       [35mconst[39m text [33m=[39m result[33m.[39mcontent[33m?.[39m[[34m0[39m][33m?.[39mtext [33m??[39m [32m""[39m[33m;[39m
+    [90m371|[39m       [34mexpect[39m(text)[33m.[39m[34mtoContain[39m([32m"notes.txt"[39m)[33m;[39m
+    [90m372|[39m       [34mexpect[39m(text)[33m.[39m[34mtoContain[39m([32m"src/"[39m)[33m;[39m
+    [90m   |[39m                    [31m^[39m
+    [90m373|[39m       [34mexpect[39m(text)[33m.[39mnot[33m.[39m[34mtoContain[39m([32m".sparkii"[39m)[33m;[39m
+    [90m374|[39m     })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mdoes not follow a real directory link into retained content
+[31m[1mAssertionError[22m: expected '.sparkii/\n.sparkii/code.txt.sparkii/…' not to contain 'memory.json'[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- memory.json[39m
+[31m+ .sparkii/[39m
+[31m+ .sparkii/code.txt.sparkii/[39m
+[31m+ .sparkii/code.txt.sparkii/memory.json[39m
+[31m+ notes.txt[39m
+[31m+ retained-link[39m
+[31m+ src/[39m
+[31m+ src/app.ts[39m
+[31m+ src/nested/[39m
+[31m+ src/nested/.sparkii/[39m
+[31m+ [7msrc/nested/.sparkii/[27mmemory.json[39m
+
+[36m [2m❯[22m packages/agent-host/test/tool-registry.test.ts:[2m394:50[22m[39m
+    [90m392|[39m       expect(grep.result.content?.[0]?.text).not.toContain("retained-l…
+    [90m393|[39m       expect(find.result.content?.[0]?.text).not.toContain("retained-l…
+    [90m394|[39m       expect(find.result.content?.[0]?.text).not.toContain("memory.jso…
+    [90m   |[39m                                                  [31m^[39m
+    [90m395|[39m     })[33m;[39m
+    [90m396|[39m   })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m6 failed[39m[22m[2m | [22m[1m[32m3 passed[39m[22m[2m | [22m[33m18 skipped[39m[90m (27)[39m
+[2m   Start at [22m 19:08:38
+[2m   Duration [22m 2.25s[2m (transform 257ms, setup 0ms, import 1.83s, tests 224ms, environment 0ms)[22m
+

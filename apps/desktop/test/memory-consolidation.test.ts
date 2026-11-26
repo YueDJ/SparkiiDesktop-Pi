@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ErrorStore } from '../electron/main/error-store.js';
 import { MemoryService } from '../electron/main/memory/service.js';
+import { memoryDir } from '../electron/main/memory/settings.js';
 import { IdleConsolidator, CONSOLIDATION_MAX_CALLS } from '../electron/main/memory/consolidation.js';
 
 let root: string;
@@ -50,6 +51,78 @@ function makeIdle(c: IdleConsolidator): void {
 }
 
 describe('idle consolidation', () => {
+  it.each(['target', 'slot', 'model'] as const)('R8 final review rechecks the truth fence after the async %s boundary', async (boundary) => {
+    service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正文不超过三句' });
+    service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正文不超过三句话' });
+    let release: ((value: any) => void) | undefined;
+    let enteredResolve: (() => void) | undefined;
+    const entered = new Promise<void>((resolve) => { enteredResolve = resolve; });
+    const deferred = new Promise<any>((resolve) => { release = resolve; });
+    const complete = vi.fn(async () => {
+      enteredResolve?.();
+      return deferred;
+    });
+    const releaseSlot = vi.fn(async () => {});
+    const c = consolidator(complete, {
+      target: boundary === 'target'
+        ? () => { enteredResolve?.(); return deferred; }
+        : () => ({ provider: 'p', modelId: 'm' }),
+      acquireInternalSlot: boundary === 'slot'
+        ? async () => { enteredResolve?.(); return deferred; }
+        : async () => ({ complete: boundary === 'model' ? complete : undefined, release: releaseSlot } as any),
+    });
+    makeIdle(c);
+    const running = c.runOnce();
+    await entered;
+    writeFileSync(join(memoryDir(dataDir), '.truth-write-block.json'), JSON.stringify({ warnings: ['injected async fence'] }));
+    release?.(boundary === 'model' ? '{"merges":[]}' : { provider: 'p', modelId: 'm', complete, release: releaseSlot });
+    await expect(running).rejects.toThrow(/写入阻断/);
+    if (boundary !== 'model') expect(complete).not.toHaveBeenCalled();
+    expect(() => service.store.getConsolidationLastRun()).toThrow(/写入阻断/);
+    expect(() => service.store.setConsolidationLastRun(clock)).toThrow(/写入阻断/);
+    if (boundary === 'slot') expect(releaseSlot).toHaveBeenCalledTimes(1);
+  });
+
+  it('R8 final review stops all later consolidation phases when privacy cleanup becomes pending during a model call', async () => {
+    service.close();
+    service = new MemoryService({
+      dataDir, errors, sessionExists: () => true,
+      deleteChatSession: () => { throw new Error('injected chat cleanup failure'); },
+    });
+    service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正文不超过三句', sessionId: 'private' });
+    service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正文不超过三句话', sessionId: 'private' });
+    let release: ((value: string) => void) | undefined;
+    let enteredResolve: (() => void) | undefined;
+    const entered = new Promise<void>((resolve) => { enteredResolve = resolve; });
+    const response = new Promise<string>((resolve) => { release = resolve; });
+    const complete = vi.fn(async () => {
+      enteredResolve?.();
+      return response;
+    });
+    const c = consolidator(complete);
+    makeIdle(c);
+    const running = c.runOnce();
+    await entered;
+    expect(() => service.privacyDeleteBySession('private')).toThrow('隐私清理失败');
+    release?.('{"merges":[]}');
+    await expect(running).rejects.toThrow(/隐私删除尚未完成/);
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(() => service.store.getConsolidationLastRun()).toThrow(/隐私删除尚未完成/);
+    expect(() => service.store.setConsolidationLastRun(clock)).toThrow(/隐私删除尚未完成/);
+  });
+
+  it('R8-P1-3 never sends indexed plaintext to consolidation while truth writes are blocked', async () => {
+    service.addMemory({ scope: 'user', text: 'R8_CONSOLIDATION_SECRET_71C 用户要求所有汇报先给结论，正文不超过三句' });
+    service.addMemory({ scope: 'user', text: 'R8_CONSOLIDATION_SECRET_71C 用户要求所有汇报先给结论，正文不超过三句话' });
+    writeFileSync(join(memoryDir(dataDir), '.truth-write-block.json'), JSON.stringify({ warnings: ['injected rollback failure'] }));
+    const complete = vi.fn(async () => '{"merges":[]}');
+    const c = consolidator(complete);
+    makeIdle(c);
+
+    await expect(c.runOnce()).rejects.toThrow(/写入阻断/);
+    expect(complete).not.toHaveBeenCalled();
+  });
+
   it('相似记忆只产出 pending 提案，绝不自动改 active', async () => {
     const a = service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正文不超过三句' });
     const b = service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正文不超过三句话' });
@@ -128,14 +201,82 @@ describe('idle consolidation', () => {
     const result = await c.runOnce();
     expect(result.calls).toBe(3);
     expect(calls.length).toBe(3);
-    expect(result.proposals).toBe(2);
+    expect(result.proposals).toBe(3);
     expect(result.digests).toBe(1);
     const digest = service.store.listEpisodes().find((e) => e.sessionId === 'sess-old');
-    expect(digest?.summary).toBe('旧项目：报价已确认');
+    expect(digest?.summary).toBe('很长的旧摘要'.repeat(20));
     // 三轮全走 pending，active 一条没被自动改
     const projectRow = service.list().scopes.find((s) => s.kind === 'project')?.entries.find((e) => e.id === project.id);
     expect(projectRow?.status).toBe('active');
-    expect(service.list().pending).toHaveLength(2);
+    expect(service.list().pending).toHaveLength(3);
+  });
+
+  it('拒绝合并阶段的对象字段而不是字符串化', async () => {
+    const a = service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正文不超过三句' });
+    const b = service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正文不超过三句话' });
+    const c = consolidator(async () => JSON.stringify({
+      merges: [
+        { keepId: a.id, dropId: b.id, text: '合法合并' },
+        { keepId: a.id, dropId: b.id, text: { secret: '不得字符串化' } },
+      ],
+    }));
+    makeIdle(c);
+    expect((await c.runOnce()).proposals).toBe(0);
+    expect(service.list().pending).toEqual([]);
+  });
+
+  it('拒绝压缩阶段的对象字段而不是字符串化', async () => {
+    service.store.appendEpisode({
+      sessionId: 'sess-object', agentId: 'general', workspacePath: '/w', ts: clock - 40 * DAY,
+      summary: '很长的旧摘要'.repeat(20), topics: ['旧'],
+    });
+    const c = consolidator(async () => JSON.stringify({
+      digests: [
+        { sessionId: 'sess-object', summary: '合法摘要' },
+        { sessionId: 'sess-object', summary: { secret: '不得字符串化' } },
+      ],
+    }));
+    makeIdle(c);
+    const result = await c.runOnce();
+    expect(result.proposals).toBe(0);
+    expect(result.digests).toBe(0);
+    expect(service.list().pending).toEqual([]);
+  });
+
+  it('拒绝复核阶段的对象字段而不是字符串化', async () => {
+    const project = service.addMemory({
+      scope: 'project', text: '本项目报价为 2024 年报价单口径',
+      workspacePath: join(root, 'ws-object'), workspaceKind: 'user',
+    });
+    clock += 200 * DAY;
+    const c = consolidator(async () => JSON.stringify({
+      ops: [
+        { targetId: project.id, replacementText: '合法复核' },
+        { targetId: project.id, replacementText: { secret: '不得字符串化' } },
+      ],
+    }));
+    makeIdle(c);
+    expect((await c.runOnce()).proposals).toBe(0);
+    expect(service.list().pending).toEqual([]);
+  });
+
+  it('P2 情景压缩混合越界输出时整阶段丢弃，不留下部分提案', async () => {
+    service.store.appendEpisode({
+      sessionId: 'sess-compress', agentId: 'general', workspacePath: '/w', ts: clock - 40 * DAY,
+      summary: '很长的旧摘要'.repeat(20), topics: ['旧'],
+    });
+    const c = consolidator(async () => JSON.stringify({
+      digests: [
+        { sessionId: 'sess-compress', summary: '这是一个严格不超过四十个字的压缩结论用于验证待确认流程' },
+        { sessionId: 'sess-compress', summary: '这个摘要超过了四十个字因此必须被拒绝不能进入待确认流程'.repeat(3) },
+      ],
+    }));
+    makeIdle(c);
+    const result = await c.runOnce();
+    expect(result.proposals).toBe(0);
+    expect(result.digests).toBe(0);
+    expect(service.store.listEpisodes()[0].summary).toBe('很长的旧摘要'.repeat(20));
+    expect(service.list().pending).toHaveLength(0);
   });
 
   it('空闲不足或距上次整合不足：不调用模型', async () => {

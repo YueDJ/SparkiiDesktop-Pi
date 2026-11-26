@@ -1,0 +1,69 @@
+(node:20188) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:27812) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:34792) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-r8-regression.test.ts (12 tests) 19841ms
+     ✓ R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext  1986ms
+     ✓ R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext  2076ms
+     ✓ R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext  2034ms
+     ✓ R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext  2108ms
+     ✓ R8-P0-1 resumes from journal context after the chat row and Pi file are already gone  1486ms
+     ✓ R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers  1576ms
+     ✓ R8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent  1491ms
+     ✓ R8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret  1497ms
+     ✓ R8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker  1468ms
+     ✓ R8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state  1357ms
+     ✓ R8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state  1394ms
+     ✓ R8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state  1364ms
+(node:34236) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-truth-batch.test.ts (18 tests | 1 failed) 10982ms
+     ✓ restores every prior truth file and removes new files when a later write fails  777ms
+     ✓ R8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth  506ms
+     × R8-P1-4 preserves rollback backups when the unverified journal cannot be removed 503ms
+     ✓ recovers an interrupted batch at startup before truth files are opened  763ms
+     ✓ recovers a new project batch from the registry committed before its truth file  781ms
+     ✓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing  800ms
+     ✓ rollback never recreates a missing project parent before path revalidation  791ms
+     ✓ does not write or quarantine outside a junctioned memory root during failed recovery 9ms
+     ✓ quarantines a malformed journal and reports a warning instead of blocking startup  501ms
+     ✓ rejects journal paths outside memory truth and backup locations  760ms
+     ✓ rejects a truthy non-boolean committed marker without deleting uncommitted truth  497ms
+     ✓ rejects a committed journal that still contains rollback file items  497ms
+     ✓ rejects an unregistered outside project truth target during commit and recovery  773ms
+     ✓ rejects a project truth target reached through a junction even when its workspace is registered 266ms
+     ✓ treats a dangling write-block junction as a persistent block 258ms
+     ✓ keeps the only recovery evidence when the write-block marker cannot be persisted  521ms
+     ✓ keeps a committed batch and removes its recovery journal  744ms
+     ✓ rolls back the project registry when a later truth write fails  1234ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > truth batch journal > R8-P1-4 preserves rollback backups when the unverified journal cannot be removed
+AssertionError: expected '{"version":1,"files":[{"target":"C:\\…' to contain 'C:\Users\YDJ\AppData\Local\Temp\spark…'
+
+Expected: "C:\Users\YDJ\AppData\Local\Temp\sparkii-truth-batch-kr0kh3\data\memory\user.json"
+Received: "{"version":1,"files":[{"target":"C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-kr0kh3\\data\\memory\\user.json","backup":"C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-kr0kh3\\data\\memory\\.truth-backups\\0.backup","existed":true}]}"
+
+ ❯ apps/desktop/test/memory-truth-batch.test.ts:96:57
+     94|     expect(readFileSync(target, 'utf8')).toBe(original);
+     95|     expect(readFileSync(backup, 'utf8')).toBe(original);
+     96|     expect(readFileSync(`${journalPath}.held`, 'utf8')).toContain(targ…
+       |                                                         ^
+     97|     expect(existsSync(journalPath)).toBe(true);
+     98|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 29 passed (30)
+   Start at  13:23:13
+   Duration  33.78s (transform 312ms, setup 58ms, import 914ms, tests 30.82s, environment 1.62s)
+

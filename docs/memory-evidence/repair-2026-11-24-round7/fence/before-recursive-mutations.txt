@@ -1,0 +1,87 @@
+(node:38068) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:38676) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:31760) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/workspace-tools.test.ts[2m > [22mworkspace tools[2m > [22mdeclares structured delete and move schemas
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/workspace-tools.test.ts[2m > [22mworkspace tools[2m > [22msends delete as a Runtime Action with a workspace-relative target
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/workspace-tools.test.ts[2m > [22mworkspace tools[2m > [22msends move source and destination without trusting a Runtime scope
+ [31m×[39m [30m[43m 0 [49m[39m packages/agent-host/test/workspace-tools.test.ts[2m > [22mworkspace tools[2m > [22mdelete rejects a recursive target containing .sparkii before Main is called[32m 10[2mms[22m[39m
+[31m   → promise resolved "{ content: [ { …(2) } ], …(1) }" instead of rejecting[39m
+ [31m×[39m [30m[43m 0 [49m[39m packages/agent-host/test/workspace-tools.test.ts[2m > [22mworkspace tools[2m > [22mmove rejects a recursive target containing .sparkii before Main is called[32m 3[2mms[22m[39m
+[31m   → promise resolved "{ content: [ { …(2) } ], …(1) }" instead of rejecting[39m
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/workspace-tools.test.ts[2m > [22mworkspace tools[2m > [22mrejects paths outside the workspace before Main is called
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/workspace-tools.test.ts[2m > [22mworkspace tools[2m > [22mdelete rejects a recursive target containing .sparkii before Main is called
+[31m[1mAssertionError[22m: promise resolved "{ content: [ { …(2) } ], …(1) }" instead of rejecting[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "content": [[39m
+[31m+     {[39m
+[31m+       "text": "{\"path\":\"C:\\\\Users\\\\YDJ\\\\AppData\\\\Local\\\\Temp\\\\ws-tools-TRQsNz\\\\src\"}",[39m
+[31m+       "type": "text",[39m
+[31m+     },[39m
+[31m+   ],[39m
+[31m+   "details": {[39m
+[31m+     "path": "C:\\Users\\YDJ\\AppData\\Local\\Temp\\ws-tools-TRQsNz\\src",[39m
+[31m+   },[39m
+[2m  }[22m
+
+[36m [2m❯[22m packages/agent-host/test/workspace-tools.test.ts:[2m131:7[22m[39m
+    [90m129|[39m       () [33m=>[39m {}[33m,[39m
+    [90m130|[39m       toolCtx[33m,[39m
+    [90m131|[39m     ))[33m.[39mrejects[33m.[39m[34mtoThrow[39m([36m/\.sparkii 是平台保留目录/[39m)[33m;[39m
+    [90m   |[39m       [31m^[39m
+    [90m132|[39m     [34mexpect[39m(h[33m.[39mrequestAction)[33m.[39mnot[33m.[39m[34mtoHaveBeenCalled[39m()[33m;[39m
+    [90m133|[39m   })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/workspace-tools.test.ts[2m > [22mworkspace tools[2m > [22mmove rejects a recursive target containing .sparkii before Main is called
+[31m[1mAssertionError[22m: promise resolved "{ content: [ { …(2) } ], …(1) }" instead of rejecting[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "content": [[39m
+[31m+     {[39m
+[31m+       "text": "{\"path\":\"C:\\\\Users\\\\YDJ\\\\AppData\\\\Local\\\\Temp\\\\ws-tools-qX3R5k\\\\renamed\"}",[39m
+[31m+       "type": "text",[39m
+[31m+     },[39m
+[31m+   ],[39m
+[31m+   "details": {[39m
+[31m+     "path": "C:\\Users\\YDJ\\AppData\\Local\\Temp\\ws-tools-qX3R5k\\renamed",[39m
+[31m+   },[39m
+[2m  }[22m
+
+[36m [2m❯[22m packages/agent-host/test/workspace-tools.test.ts:[2m131:7[22m[39m
+    [90m129|[39m       () [33m=>[39m {}[33m,[39m
+    [90m130|[39m       toolCtx[33m,[39m
+    [90m131|[39m     ))[33m.[39mrejects[33m.[39m[34mtoThrow[39m([36m/\.sparkii 是平台保留目录/[39m)[33m;[39m
+    [90m   |[39m       [31m^[39m
+    [90m132|[39m     [34mexpect[39m(h[33m.[39mrequestAction)[33m.[39mnot[33m.[39m[34mtoHaveBeenCalled[39m()[33m;[39m
+    [90m133|[39m   })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[33m4 skipped[39m[90m (6)[39m
+[2m   Start at [22m 19:16:51
+[2m   Duration [22m 699ms[2m (transform 153ms, setup 0ms, import 405ms, tests 15ms, environment 0ms)[22m
+

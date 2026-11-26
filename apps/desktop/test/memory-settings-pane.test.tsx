@@ -2,7 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, act } from '@testing-library/react';
 import { SettingsView } from '../src/shell/SettingsView.js';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 const SETTINGS = {
   enabled: true,
@@ -54,6 +57,52 @@ describe('settings — memory pane', () => {
       scope: 'user', text: '用户要求先给结论',
     })));
     await waitFor(() => expect(screen.getAllByText('用户要求先给结论').length).toBeGreaterThan(0));
+  });
+
+  it('损坏项目的修复草稿、空重建和覆盖修复按各自工作区隔离且需确认', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const repairProjectMemory = vi.fn().mockResolvedValue({ ok: true });
+    const scopes = ['/ws/a', '/ws/b'].map((workspacePath, index) => ({
+      scope: `project:proj_${index}`, kind: 'project', label: `项目 ${index}`, projectId: `proj_${index}`,
+      workspacePath, corrupt: true, entries: [],
+    }));
+    const api = {
+      ...makeApi(),
+      listMemories: vi.fn().mockResolvedValue({
+        scopes, pending: [], agents: [{ id: 'general', name: '通用' }], projects: [],
+        settings: SETTINGS, ftsAvailable: true, warnings: [],
+      }),
+      repairProjectMemory,
+    };
+    render(<SettingsView api={api as never} initialPane="memory" />);
+    await waitFor(() => expect(screen.getAllByText('该项目的记忆内容无法读取，已暂停使用。确认后可重新整理。')).toHaveLength(2));
+    fireEvent.click(screen.getAllByRole('button', { name: '重新整理' })[0]);
+    expect(confirm).toHaveBeenCalled();
+    expect(repairProjectMemory).not.toHaveBeenCalled();
+
+    confirm.mockReturnValue(true);
+    fireEvent.click(screen.getAllByRole('button', { name: '重新整理' })[0]);
+    await waitFor(() => expect(repairProjectMemory).toHaveBeenCalledWith('/ws/a', 'empty'));
+    await screen.findByText('已重新整理');
+    repairProjectMemory.mockClear();
+    confirm.mockClear();
+
+    const areas = screen.getAllByLabelText('修复内容');
+    fireEvent.change(areas[1], { target: { value: 'B 的修复内容' } });
+    confirm.mockReturnValue(false);
+    fireEvent.click(screen.getAllByRole('button', { name: '按提供内容修复' })[1]);
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('覆盖'));
+    expect(repairProjectMemory).not.toHaveBeenCalled();
+
+    fireEvent.change(areas[0], { target: { value: 'A 的修复草稿' } });
+    confirm.mockReturnValue(true);
+    fireEvent.click(screen.getAllByRole('button', { name: '按提供内容修复' })[0]);
+    await waitFor(() => expect(repairProjectMemory).toHaveBeenCalledWith('/ws/a', 'replace', 'A 的修复草稿'));
+    expect(repairProjectMemory).toHaveBeenCalledTimes(1);
+    await screen.findByText('已按提供内容修复');
+    expect(screen.getAllByLabelText('修复内容').map((area) => (area as HTMLTextAreaElement).value)).toEqual([
+      'A 的修复草稿', 'B 的修复内容',
+    ]);
   });
 
   it('面板开着时收到 pending_added 事件：当场重新拉取，新候选立刻出现在待确认区', async () => {

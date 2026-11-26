@@ -1,0 +1,48 @@
+(node:15152) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:40372) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:24596) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-round7-regression.test.ts (23 tests) 25865ms
+     ✓ R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files  1327ms
+     ✓ R7 privacy retry recovers an empty episode topic after restart and completes chat cleanup  1182ms
+     ✓ R7 privacy deletion discovers secrets nested only in pending operation extensions  800ms
+     ✓ R7 privacy deletion scrubs an invalid structural targetId field  802ms
+     ✓ R7 privacy deletion scrubs an invalid structural projectId field  855ms
+     ✓ R7 privacy deletion scrubs an invalid structural mergeIds field  827ms
+     ✓ R7 privacy deletion ignores whitespace-only episode topics without corrupting retained content  1077ms
+     ✓ R7 privacy deletion preserves pending UPDATE control fields when deleted text equals the op  831ms
+     ✓ R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds  1142ms
+     ✓ R7 privacy deletion includes superseded episode records in the global redaction corpus  1119ms
+     ✓ R7 caller-mode memory deletion rechecks canonical approval after privacy redaction  677ms
+     ✓ R7 production privacy retry succeeds in the same process after truth rows are gone  1168ms
+     ✓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body  711ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes  1355ms
+     ✓ R7-P1-2 replacement preflight sees an indexed project after its registry entry is removed  1261ms
+     ✓ R7-P1-2 replacement preflight derives zero-entry project identity from scope_files  1324ms
+     ✓ R7-P1-3 source deletion detects indexed unregistered conflicts without an explicit workspace  1268ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes  1306ms
+     ✓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file  1322ms
+     ✓ R7-P1-3 valid source deletion updates unregistered project truth without reindexing it  1579ms
+     ✓ R7-P1-4 privacy deletion discovers indexed unregistered truth before reconciliation  1334ms
+     ✓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion  1280ms
+     ✓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution  1313ms
+(node:33856) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/chat-session-store.test.ts (12 tests) 171ms
+(node:9672) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/error-store.test.ts (5 tests) 115ms
+
+ Test Files  3 passed (3)
+      Tests  40 passed (40)
+   Start at  21:05:53
+   Duration  30.33s (transform 331ms, setup 58ms, import 1.04s, tests 26.15s, environment 2.53s)
+
+
+exit=0

@@ -1,0 +1,25 @@
+task-id: R7-RUNTIME-LOGGER-IMPL
+working-directory: C:\Users\YDJ\Desktop\SparkiiDesktop-Pi
+expected-head: 101487d3f612764766cc024d4b28dbf846a926cf
+
+Regression tests were added before production fixes.
+
+Before (expected failure):
+pnpm exec vitest run packages/agent-host/test/pi-runtime-pool.test.ts
+pnpm exec vitest run apps/desktop/test/logger.test.ts
+
+After:
+pnpm exec vitest run packages/agent-host/test/pi-runtime-pool.test.ts
+pnpm exec vitest run apps/desktop/test/logger.test.ts
+pnpm exec vitest run packages/agent-host/test/pi-runtime-supervisor.test.ts apps/desktop/test/shutdown-order.test.ts apps/desktop/test/memory-extraction.test.ts apps/desktop/test/memory-consolidation.test.ts
+pnpm --filter @sparkii/desktop typecheck
+
+Diff review:
+git diff -- packages/agent-host/src/pi-runtime-pool.ts packages/agent-host/test/pi-runtime-pool.test.ts apps/desktop/electron/main/logger.ts apps/desktop/test/logger.test.ts
+git diff --check -- packages/agent-host/src/pi-runtime-pool.ts packages/agent-host/test/pi-runtime-pool.test.ts apps/desktop/electron/main/logger.ts apps/desktop/test/logger.test.ts
+
+Limitations:
+- No real child process was used. Runtime-pool regressions exercise the production pool and supervisor with FakeHandle/DeferredResetHandle test doubles.
+- Logger regressions exercise the production Logger against real temporary JSONL files.
+- The full suite was not run; the main agent owns final full-suite verification.
+- Pre-existing uncommitted changes were preserved. No staging, commit, push, dependency installation, CI edit, git config change, or real user-data/install-directory access was performed.

@@ -3,7 +3,6 @@ import {
   lstat,
   mkdir,
   open,
-  readdir,
   rename,
   rm,
 } from 'node:fs/promises';
@@ -24,10 +23,16 @@ import {
   type WorkspacePathInfo,
   type WorkspacePathProbe,
 } from '@sparkii/approval';
+import { isPlatformReservedPath } from '@sparkii/agent-host';
+import {
+  collectWorkspaceTree,
+  WorkspaceTreeFenceError,
+} from './workspace-tree-fence.js';
 
 export type WorkspaceExecutionCode =
   | 'UNSUPPORTED_TOOL'
   | 'SCOPE_DENIED'
+  | 'DENIED'
   | 'CRITICAL_TARGET'
   | 'TRUST_ANCHOR'
   | 'TARGET_CHANGED'
@@ -137,6 +142,17 @@ export function createWorkspaceExecutor(opts: {
       );
     }
     const inspected = await inspect(resource.value);
+    if (isPlatformReservedPath(inspected.canonicalPath)) {
+      throw new WorkspaceExecutionError('DENIED', '.sparkii 是平台保留目录');
+    }
+    let component = resolve(resource.value);
+    while (isInside(grant.workspaceRoot, component) && component !== resolve(grant.workspaceRoot)) {
+      const info = await inspect(component);
+      if (info.isReparsePoint) {
+        throw new WorkspaceExecutionError('REPARSE_POINT', 'workspace path component is a reparse point');
+      }
+      component = dirname(component);
+    }
     if (inspected.exists) {
       const current = await lstat(inspected.canonicalPath, { bigint: true });
       if (!current.isDirectory() && current.nlink > 1n) {
@@ -257,6 +273,10 @@ export function createWorkspaceExecutor(opts: {
     let current = resolve(root);
     for (const segment of rel.split(/[\\/]+/).filter(Boolean)) {
       current = join(current, segment);
+      const probed = await inspect(current);
+      if (probed.isReparsePoint) {
+        throw new WorkspaceExecutionError('REPARSE_POINT', `workspace path component is a reparse point: ${current}`);
+      }
       let info;
       try {
         info = await lstat(current, { bigint: true });
@@ -279,6 +299,9 @@ export function createWorkspaceExecutor(opts: {
     content: string,
     mustExist: boolean,
   ): Promise<'created' | 'modified'> => {
+    if (isPlatformReservedPath(target)) {
+      throw new WorkspaceExecutionError('DENIED', '.sparkii 是平台保留目录');
+    }
     const targetExists = await exists(target);
     if (mustExist && !targetExists) {
       throw new WorkspaceExecutionError('TARGET_INVALID', 'edit target does not exist');
@@ -320,20 +343,17 @@ export function createWorkspaceExecutor(opts: {
   };
 
   const collectTree = async (target: string): Promise<string[]> => {
-    const info = await lstat(target);
-    if (info.isSymbolicLink()) {
-      throw new WorkspaceExecutionError(
-        'REPARSE_POINT',
-        'recursive delete encountered a reparse point',
+    try {
+      return await collectWorkspaceTree(
+        target,
+        async (path) => (await inspect(path)).isReparsePoint,
       );
+    } catch (error) {
+      if (error instanceof WorkspaceTreeFenceError) {
+        throw new WorkspaceExecutionError(error.code, error.message);
+      }
+      throw error;
     }
-    if (!info.isDirectory()) return [target];
-    const out: string[] = [];
-    for (const name of await readdir(target)) {
-      out.push(...await collectTree(join(target, name)));
-    }
-    out.push(target);
-    return out;
   };
 
   return {
@@ -419,6 +439,7 @@ export function createWorkspaceExecutor(opts: {
             'move destination already exists',
           );
         }
+        await collectTree(source.canonicalPath);
         const baseRoot = await ensureRoot(grant, destinationResource.scope);
         await ensureDirectoryChain(baseRoot, dirname(destination.canonicalPath));
         try {

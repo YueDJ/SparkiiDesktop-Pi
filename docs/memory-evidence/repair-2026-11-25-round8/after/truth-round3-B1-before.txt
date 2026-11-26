@@ -1,0 +1,73 @@
+(node:34912) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:14508) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:9124) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-truth-batch.test.ts (34 tests | 1 failed | 33 skipped) 590ms
+     ↓ restores every prior truth file and removes new files when a later write fails
+     ↓ R8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth
+     ↓ R8-P1-4 preserves rollback backups when the unverified journal cannot be removed
+     ↓ recovers an interrupted batch at startup before truth files are opened
+     ↓ recovers a new project batch from the registry committed before its truth file
+     ↓ R8 final review resumes a partially rolled-back new project with startup-injected authorization
+     ↓ R8 final review keeps rollback backups when journal removal fails after truth restoration
+     ↓ R8 final review does not roll back committed truth when post-commit backup cleanup fails
+     ↓ R8 final review retries orphan backup cleanup without quarantining restored truth
+     ↓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing
+     ↓ rollback never recreates a missing project parent before path revalidation
+     ↓ does not write or quarantine outside a junctioned memory root during failed recovery
+     ↓ R8 final review rejects an empty uncommitted journal without deleting the only original backup
+     ↓ quarantines a malformed journal and reports a warning instead of blocking startup
+     ↓ rejects journal paths outside memory truth and backup locations
+     ↓ rejects a truthy non-boolean committed marker without deleting uncommitted truth
+     ↓ rejects a committed journal that still contains rollback file items
+     ↓ rejects an unregistered outside project truth target during commit and recovery
+     ↓ rejects a project truth target reached through a junction even when its workspace is registered
+     ↓ treats a dangling write-block junction as a persistent block
+     ↓ keeps the only recovery evidence when the write-block marker cannot be persisted
+     ↓ keeps a committed batch and removes its recovery journal
+     ↓ rolls back the project registry when a later truth write fails
+     × R8 truth round3 B1 rejects canonical duplicate change targets before journal creation 588ms
+     ↓ R8 truth round3 B2 ignores journal projectFiles as recovery authorization
+     ↓ R8 truth round3 B3 rebuild fails closed when truth changes before index commit and then indexes one snapshot
+     ↓ R8 truth round3 B3 reconcile fails closed when truth changes before index commit and then indexes one snapshot
+     ↓ R8 truth round3 B3 replaceScopeIndex fails closed when truth changes before index commit and then indexes one snapshot
+     ↓ R8 truth round3 B5 rejects a hard-linked main database without changing external SQLite
+     ↓ R8 truth round3 B5 rejects a hard-linked -wal sidecar before SQLite opens
+     ↓ R8 truth round3 B5 rejects a hard-linked -shm sidecar before SQLite opens
+     ↓ R8 truth round3 B5 rejects a hard-linked -journal sidecar before SQLite opens
+     ↓ R8 truth round3 B5 refuses corrupt-database isolation and fallback while a sidecar is hard-linked
+     ↓ R8 truth round3 B5 rejects a main-database symlink and stays fail closed on Windows symlink EPERM
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > truth batch journal > R8 truth round3 B1 rejects canonical duplicate change targets before journal creation
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-truth-batch.test.ts:506:54
+    504|     if (process.platform === 'win32') changes.set(join(dir, 'USER.JSON…
+    505|
+    506|     expect(() => commitTruthBatch(dataDir, changes)).toThrow(/重复目标/);
+       |                                                      ^
+    507|     expect(readFileSync(target, 'utf8')).toBe('ORIGINAL_TRUTH_B1');
+    508|     expect(existsSync(journalPath)).toBe(false);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 33 skipped (34)
+   Start at  23:39:05
+   Duration  2.19s (transform 194ms, setup 64ms, import 548ms, tests 590ms, environment 811ms)
+

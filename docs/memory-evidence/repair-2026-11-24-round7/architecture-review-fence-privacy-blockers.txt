@@ -1,0 +1,11 @@
+CHANGES_REQUIRED
+Task-id: R7-REVIEW-FENCE-PRIVACY
+
+Blocking findings from the independent read-only review:
+
+1. Proposal-mode execution re-fetched canonical Gate state only immediately after decide(), then awaited save dialog/audit/gateway work and passed the stale captured object to the executor. Privacy redaction replaces canonical proposals, so the final canonical check after side effects could not prevent execution.
+2. Caller-mode ApprovalResolution carried no proposal identity. The router awaited revalidation/audit and then called options.execute without a final canonical Gate check, leaving a privacy-invalidation window.
+
+Required repair: re-fetch and validate canonical approved, non-redacted, identity-bound proposal state after every execution-path await and immediately before invoking the handler; carry proposal identity through caller-mode resolution and validate again immediately before execution. Add focused regressions that pause each await window, invoke gate.redactTexts(...), and prove the handler is never called.
+
+This is not an approval.

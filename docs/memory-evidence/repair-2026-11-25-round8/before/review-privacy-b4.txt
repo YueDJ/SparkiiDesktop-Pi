@@ -1,0 +1,56 @@
+(node:18292) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10760) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:12408) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |0| packages/approval/test/gate.test.ts (17 tests | 1 failed | 16 skipped) 27ms
+     ↓ approves by an authorized actor and audits both events
+     ↓ denies unauthorized approver
+     ↓ refuses to decide or execute a privacy-redacted proposal
+     × R8 review privacy B4 fails the gate closed when audit registry persistence fails 26ms
+     ↓ atomically updates only the current approved payload and rejects stale or redacted objects
+     ↓ persistently fences submit, note and approved payload ingress (restart=false)
+     ↓ persistently fences submit, note and approved payload ingress (restart=true)
+     ↓ invalidates proposals by registered pattern hits for 已删除
+     ↓ invalidates proposals by registered pattern hits for [已删除]
+     ↓ invalidates proposals by registered pattern hits for marker
+     ↓ R8 round3 fences physical-newline fragments in existing and future proposals (restart=false)
+     ↓ R8 round3 fences physical-newline fragments in existing and future proposals (restart=true)
+     ↓ R8 round3 submit returns the canonical proposal after invalidation during a pending audit append
+     ↓ R8 final review expire returns the canonical proposal after privacy invalidation during audit
+     ↓ R8 final review cancelSession returns the canonical proposal after privacy invalidation during audit
+     ↓ R8 final review fences pending reads when audit cleanup fails after registry persistence
+     ↓ cancels only the pending proposals for one session
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |0| packages/approval/test/gate.test.ts > ApprovalGate > R8 review privacy B4 fails the gate closed when audit registry persistence fails
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ packages/approval/test/gate.test.ts:73:38
+     71|
+     72|     expect(() => gate.redactTexts([secret])).toThrow();
+     73|     expect(() => gate.listPending()).toThrow(/approval privacy cleanup…
+       |                                      ^
+     74|     expect(() => gate.get(pending.id)).toThrow(/approval privacy clean…
+     75|     await expect(gate.submit({
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 16 skipped (17)
+   Start at  03:19:38
+   Duration  483ms (transform 85ms, setup 0ms, import 275ms, tests 27ms, environment 0ms)
+

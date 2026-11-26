@@ -1,0 +1,61 @@
+(node:38656) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37860) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:38416) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:38096) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:6268) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:23796) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime-pool.test.ts (29 tests) 155ms
+stdout | apps/desktop/test/logger.test.ts > Logger > appends structured jsonl and exports
+start {"profile":"contract-review"}
+
+stderr | apps/desktop/test/logger.test.ts > Logger > drops entries below the configured level
+kept ""
+
+ ✓ |1| apps/desktop/test/logger.test.ts (6 tests) 51ms
+ ✓ |1| apps/desktop/test/memory-truth-batch.test.ts (15 tests) 6456ms
+     ✓ restores every prior truth file and removes new files when a later write fails  777ms
+     ✓ recovers an interrupted batch at startup before truth files are opened  512ms
+     ✓ recovers a new project batch from the registry committed before its truth file  521ms
+     ✓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing  534ms
+     ✓ rejects journal paths outside memory truth and backup locations  528ms
+     ✓ rejects an unregistered outside project truth target during commit and recovery  545ms
+     ✓ keeps a committed batch and removes its recovery journal  515ms
+     ✓ rolls back the project registry when a later truth write fails  1454ms
+ ✓ |1| apps/desktop/test/memory-audit-regression.test.ts (29 tests) 20011ms
+     ✓ P1-2 LIKE fallback supports CRUD, search and rebuild  1245ms
+     ✓ P1-2 corrupt SQLite is quarantined and rebuilt from truth without blocking startup  704ms
+     ✓ P1-3 copied workspace with the same projectId fails closed and preserves the first truth source  670ms
+     ✓ P1-4 default search and includeHistory never expose pending memories  602ms
+     ✓ P2 external truth edits reconcile list, injection and search  644ms
+     ✓ P2 project archived state survives derived index rebuild  1210ms
+     ✓ P1-1 corrupt project registry makes privacy deletion fail closed  625ms
+     ✓ P1-1 duplicate ids corrupt the whole truth file instead of exposing both rows  642ms
+     ✓ P1-1 privacy deletion discovers the indexed workspace even when the registry omits it  1145ms
+     ✓ P1-3 privacy deletion fails closed when a copied project duplicates identity  591ms
+     ✓ P1-1 privacy deletion redacts retained diagnostic messages  868ms
+     ✓ P1-8 consolidation is single-flight across the first await  856ms
+     ✓ P1-8 a malformed consolidation element rejects the entire merge phase  891ms
+     ✓ cross-file duplicate ids are excluded from listing and injection until repaired  1104ms
+     ✓ batch writes fail closed while a cross-file duplicate identity exists  1113ms
+     ✓ removing a project truth file and registry reference clears its searchable index  636ms
+     ✓ episode approval rejects malformed mergeIds before changing episode or proposal state  552ms
+     ✓ privacy deletion removes both current and legacy episode proposals  1620ms
+     ✓ ordinary source deletion removes legacy pending episode proposals and repairs active source metadata  1593ms
+     ✓ malformed mergeIds are rejected before any pending or target mutation  1103ms
+     ✓ P1-8 mergeIds approval is all-or-nothing  1085ms
+
+ Test Files  4 passed (4)
+      Tests  79 passed (79)
+   Start at  16:58:14
+   Duration  23.52s (transform 737ms, setup 53ms, import 3.05s, tests 26.67s, environment 2.59s)
+

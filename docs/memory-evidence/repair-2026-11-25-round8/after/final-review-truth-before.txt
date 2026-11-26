@@ -1,0 +1,92 @@
+(node:28476) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:8012) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:7932) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-truth-batch.test.ts (37 tests | 2 failed | 35 skipped) 2757ms
+     ↓ restores every prior truth file and removes new files when a later write fails
+     ↓ R8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth
+     ↓ R8-P1-4 preserves rollback backups when the unverified journal cannot be removed
+     ↓ recovers an interrupted batch at startup before truth files are opened
+     ↓ recovers a new project batch from the registry committed before its truth file
+     ↓ R8 final review resumes a partially rolled-back new project with startup-injected authorization
+     ↓ R8 final review keeps rollback backups when journal removal fails after truth restoration
+     ↓ R8 final review does not roll back committed truth when post-commit backup cleanup fails
+     ↓ R8 final review retries orphan backup cleanup without quarantining restored truth
+     ↓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing
+     ↓ rollback never recreates a missing project parent before path revalidation
+     ↓ does not write or quarantine outside a junctioned memory root during failed recovery
+     ↓ R8 final review rejects an empty uncommitted journal without deleting the only original backup
+     ↓ quarantines a malformed journal and reports a warning instead of blocking startup
+     ↓ rejects journal paths outside memory truth and backup locations
+     ↓ rejects a truthy non-boolean committed marker without deleting uncommitted truth
+     ↓ rejects a committed journal that still contains rollback file items
+     ↓ rejects an unregistered outside project truth target during commit and recovery
+     ↓ rejects a project truth target reached through a junction even when its workspace is registered
+     ↓ treats a dangling write-block junction as a persistent block
+     ↓ keeps the only recovery evidence when the write-block marker cannot be persisted
+     ↓ keeps a committed batch and removes its recovery journal
+     ↓ rolls back the project registry when a later truth write fails
+     ↓ R8 truth round3 B1 rejects canonical duplicate change targets before journal creation
+     ↓ R8 truth round3 B1 merges canonical project aliases into one truth and index bucket
+     × R8 final review fences registered project reads and self-healing through an ancestor junction 1351ms
+     × R8 final review rejects unregistered duplicate project identity before single or batch commits 1405ms
+     ↓ R8 truth round3 B2 ignores journal projectFiles as recovery authorization
+     ↓ R8 truth round3 B3 rebuild fails closed when truth changes before index commit and then indexes one snapshot
+     ↓ R8 truth round3 B3 reconcile fails closed when truth changes before index commit and then indexes one snapshot
+     ↓ R8 truth round3 B3 replaceScopeIndex fails closed when truth changes before index commit and then indexes one snapshot
+     ↓ R8 truth round3 B5 rejects a hard-linked main database without changing external SQLite
+     ↓ R8 truth round3 B5 rejects a hard-linked -wal sidecar before SQLite opens
+     ↓ R8 truth round3 B5 rejects a hard-linked -shm sidecar before SQLite opens
+     ↓ R8 truth round3 B5 rejects a hard-linked -journal sidecar before SQLite opens
+     ↓ R8 truth round3 B5 refuses corrupt-database isolation and fallback while a sidecar is hard-linked
+     ↓ R8 truth round3 B5 rejects a main-database symlink and stays fail closed on Windows symlink EPERM
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > truth batch journal > R8 final review fences registered project reads and self-healing through an ancestor junction
+AssertionError: expected '{"scopes":[{"scope":"user","kind":"us…' not to contain 'OUTSIDE_SECRET_92D'
+
+Expected: "OUTSIDE_SECRET_92D"
+Received: "{"scopes":[{"scope":"user","kind":"user","label":"用户记忆","entries":[]},{"scope":"project:proj_124a4a9b-f1bd-4a8a-aec9-1bb01afc1c16","kind":"project","label":"项目记忆 · C:/Users/YDJ/AppData/Local/Temp/sparkii-truth-batch-NyRayH/junction-read-workspace","projectId":"proj_124a4a9b-f1bd-4a8a-aec9-1bb01afc1c16","workspacePath":"C:/Users/YDJ/AppData/Local/Temp/sparkii-truth-batch-NyRayH/junction-read-workspace","archived":false,"entries":[{"id":"mem_549715a2-aa3a-4cbc-b4dd-98a599584eaf","text":"OUTSIDE_SECRET_92D","status":"active","pinned":false,"importance":2,"createdAt":1795626072890,"updatedAt":1795626072890,"source":null,"supersededBy":null,"pendingOp":null,"scope":"project:proj_124a4a9b-f1bd-4a8a-aec9-1bb01afc1c16","usage":{"lastAccessedAt":null,"accessCount":0},"sourceDeleted":false,"projectId":"proj_124a4a9b-f1bd-4a8a-aec9-1bb01afc1c16","workspacePath":"C:/Users/YDJ/AppData/Local/Temp/sparkii-truth-batch-NyRayH/junction-read-workspace"}]}],"pending":[],"agents":[],"projects":[{"projectId":"proj_124a4a9b-f1bd-4a8a-aec9-1bb01afc1c16","workspacePath":"C:/Users/YDJ/AppData/Local/Temp/sparkii-truth-batch-NyRayH/junction-read-workspace","archived":false}],"settings":{"enabled":true,"autoExtract":true,"idleConsolidation":true,"halfLifeDays":{"user":180,"agent":90,"project":60,"episode":14},"budgets":{"user":500,"agent":300,"project":800},"extractionDebounceMs":90000,"minUserTurns":3,"consolidateIdleMinutes":10,"consolidateIntervalHours":24},"ftsAvailable":true,"warnings":[]}"
+
+ ❯ apps/desktop/test/memory-truth-batch.test.ts:557:50
+    555|       expect(service.ensureProject(workspace, 'user')).toBeNull();
+    556|       expect(readFileSync(projectRegistryFile(dataDir), 'utf8')).toBe(…
+    557|       expect(JSON.stringify(service.list())).not.toContain('OUTSIDE_SE…
+       |                                                  ^
+    558|       expect(service.searchMemory('OUTSIDE_SECRET_92D')).toEqual([]);
+    559|       expect(service.rebuildIndex().corrupt).toContain(target);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > truth batch journal > R8 final review rejects unregistered duplicate project identity before single or batch commits
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-truth-batch.test.ts:581:10
+    579|
+    580|       expect(() => service.addMemory({ scope: 'project', workspacePath…
+    581|         .toThrow(/记忆 id 跨文件重复/);
+       |          ^
+    582|       expect(() => service.addMemoriesBatch([{ scope: 'project', works…
+    583|         .toThrow(/记忆 id 跨文件重复/);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 35 skipped (37)
+   Start at  01:01:10
+   Duration  4.25s (transform 186ms, setup 30ms, import 473ms, tests 2.76s, environment 791ms)
+

@@ -1,0 +1,184 @@
+(node:29112) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16472) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:7932) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-r8-regression.test.ts (59 tests | 8 failed | 50 skipped) 3131ms
+     ↓ R8-REPAIR-MEMORY truth B symlink replacement makes production list fail closed
+     ↓ R8-REPAIR-MEMORY truth B symlink replacement makes production search fail closed
+     ↓ R8-REPAIR-MEMORY truth B symlink replacement makes production rebuild fail closed
+     ↓ R8-REPAIR-MEMORY truth B hardlink replacement makes production list fail closed
+     ↓ R8-REPAIR-MEMORY truth B hardlink replacement makes production search fail closed
+     ↓ R8-REPAIR-MEMORY truth B hardlink replacement makes production rebuild fail closed
+     ↓ R8-REPAIR-MEMORY truth B non-symlink-reparse replacement makes production list fail closed
+     ↓ R8-REPAIR-MEMORY truth B non-symlink-reparse replacement makes production search fail closed
+     ↓ R8-REPAIR-MEMORY truth B non-symlink-reparse replacement makes production rebuild fail closed
+     ↓ R8-REPAIR-MEMORY truth C default fence and rebuilt SandboxProbe batch mode stay integrated
+     ↓ R8 review privacy B5 zeroes a plaintext journal temp file before a failed removal
+     ↓ R8 final review fences same-process and restarted reads when the privacy journal cannot be persisted
+     ↓ R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext
+     ↓ R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext
+     ↓ R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext
+     ↓ R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext
+     ↓ R8-P0-1 resumes from journal context after the chat row and Pi file are already gone
+     ↓ R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers
+     ↓ R8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent
+     ↓ R8 review B3 registers chat secrets before sink cleanup and protects later chat writes after failure
+     ↓ R8-P0-1 restores privacy sink fences before truth recovery can restore plaintext
+     ↓ R8 review B3 cleans Pi and chat carriers before a safe-root truth write-block aborts startup
+     ↓ R8 review B5 rejects dangling privacy journal directory and file links without reading targets
+     ↓ refuses to clear a privacy journal whose identity changed during cleanup
+     × fences the journal read source identity before accepting parsed privacy content 407ms
+     ↓ R8-REPAIR-MEMORY refuses to delete a journal when the zero-write readback contains a nonzero byte
+     ↓ R8-REPAIR-MEMORY digest-mismatch startup temp evidence persists a privacy write-block without deleting context
+     ↓ R8-REPAIR-MEMORY session-mismatch startup temp evidence persists a privacy write-block without deleting context
+     ↓ R8-REPAIR-MEMORY malformed startup temp evidence persists a privacy write-block without deleting context
+     ↓ R8-REPAIR-MEMORY promotes a valid startup temp journal and automatically resumes its privacy deletion
+     ↓ R8-REPAIR-MEMORY fences Windows non-symlink reparse attributes on the privacy directory before temp reads and cleanup
+     ↓ R8-REPAIR-MEMORY fences Windows non-symlink reparse attributes on the privacy file before temp reads and cleanup
+     ↓ R8-REPAIR-MEMORY continues Gate Audit Error Logger cleanup when store privacy registration fails
+     ↓ R8 review B4 rotates memory markers when the deleted text collides with %s
+     ↓ R8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret
+     ↓ R8-P1-3 refuses to construct MemoryService through an unsafe memory-root junction
+     ↓ R8-P1-3 fences project repair before registry or truth reads
+     ↓ R8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker
+     ↓ R8 privacy review reads the raw Pi path before chat redaction can alter it
+     ↓ R8 privacy review resumes a secret-named Pi carrier after restart
+     ↓ R8 privacy review retries independent carriers after a same-process truth rollback block
+     ↓ R8 privacy review removes a plaintext journal temp file left before rename
+     × refuses to zero or remove an externally linked corrupt file after the fresh probe 172ms
+     × refuses to zero or remove an externally linked journal file after the fresh probe 169ms
+     × freshly probes and validates journal content after rename before privacy truth cleanup 735ms
+     ✓ rejects a post-rename reparse journal before privacy truth cleanup  746ms
+     × rejects a pre-existing agents junction before list, search or rebuild can enumerate it 234ms
+     × rejects a pre-existing episode-proposals junction before list, search or rebuild can enumerate it 228ms
+     × rejects a pre-existing agents non-symlink reparse directory before list, search or rebuild can enumerate it 222ms
+     × rejects a pre-existing episode-proposals non-symlink reparse directory before list, search or rebuild can enumerate it 216ms
+     ↓ R8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state
+     ↓ R8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state
+     ↓ R8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state
+     ↓ re-fences a privacy journal before zeroing even when cleanup already verified its identity
+     ↓ fences a real ancestor junction before Pi carrier deletion and retries normally after it is removed
+     ↓ fences a non-symlink reparse Pi carrier directory before rmSync
+     ↓ fences a non-symlink reparse Pi carrier file before rmSync
+     ↓ detects Pi carrier identity replacement before deletion and preserves external bytes across retry
+     ↓ detects Pi carrier identity replacement before deletion and preserves external bytes across restart
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 privacy recovery regressions > fences the journal read source identity before accepting parsed privacy content
+AssertionError: expected error to be instance of TruthPathSafetyError
+
+- Expected:
+[Function TruthPathSafetyError]
+
++ Received:
+Error {
+  "message": "ENOENT: no such file or directory, lstat 'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-r8-memory-IGhIuQ\\data\\memory\\privacy-pending\\7ae99811b2c7c696275f6aca5adcedd71a90d8ab3ced71cd81d7e2c8020628fd.json'",
+  "errno": -4058,
+  "code": "ENOENT",
+  "syscall": "lstat",
+  "path": "C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-r8-memory-IGhIuQ\\data\\memory\\privacy-pending\\7ae99811b2c7c696275f6aca5adcedd71a90d8ab3ced71cd81d7e2c8020628fd.json",
+}
+
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:518:74
+    516|     };
+    517|
+    518|     expect(() => (service as any).readPrivacyJournal(journal, identity…
+       |                                                                          ^
+    519|     expect(injected).toBe(true);
+    520|     expect(existsSync(journal)).toBe(false);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 truth review B3 database cleanup identity fence > refuses to zero or remove an externally linked corrupt file after the fresh probe
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 truth review B3 database cleanup identity fence > refuses to zero or remove an externally linked journal file after the fresh probe
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:874:43
+    872|     })(service.store.compact.bind(service.store));
+    873|
+    874|     expect(() => service.store.compact()).toThrow(/硬链接|只有一个|普通|单链接/);
+       |                                           ^
+    875|     expect(injected).toBe(1);
+    876|     expect(readFileSync(external)).toEqual(originalBytes);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 truth review B4 privacy journal rename fence > freshly probes and validates journal content after rename before privacy truth cleanup
+AssertionError: expected '{"version":1,"sessionId":"private-ses…' to be '{corrupt' // Object.is equality
+
+- Expected
++ Received
+
+- {corrupt
++ {"version":1,"sessionId":"private-session","texts":["R8_PRIVATE_private-session_71C","R8_EXCERPT_private-session_92D","project R8_PRIVATE_private-session_71C"],"memoryIds":[],"workspacePaths":["C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-r8-memory-EkWw1D\\workspace","C:/Users/YDJ/AppData/Local/Temp/sparkii-r8-memory-EkWw1D/workspace"]}
++
+
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:909:101
+    907|     expect(postRenameReads).toBeGreaterThan(0);
+    908|     expect(pendingJournals()).toHaveLength(1);
+    909|     expect(readFileSync(join(memoryDir(dataDir), 'privacy-pending', pe…
+       |                                                                                                     ^
+    910|     expect(readFileSync(userMemoryFile(dataDir))).toEqual(originalTrut…
+    911|     expect(await audit.exportJsonl()).not.toContain(secret);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 truth review B5 scope directory enumeration fence > rejects a pre-existing agents junction before list, search or rebuild can enumerate it
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 truth review B5 scope directory enumeration fence > rejects a pre-existing episode-proposals junction before list, search or rebuild can enumerate it
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:952:59
+    950|     ];
+    951|
+    952|     for (const operation of operations) expect(operation).toThrow(/链接|…
+       |                                                           ^
+    953|
+    954|     expect(readFileSync(externalFile, 'utf8')).toBe(JSON.stringify({ v…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 truth review B5 scope directory enumeration fence > rejects a pre-existing agents non-symlink reparse directory before list, search or rebuild can enumerate it
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 truth review B5 scope directory enumeration fence > rejects a pre-existing episode-proposals non-symlink reparse directory before list, search or rebuild can enumerate it
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:966:59
+    964|     ];
+    965|
+    966|     for (const operation of operations) expect(operation).toThrow(/重解析…
+       |                                                           ^
+    967|
+    968|     expect(existsSync(externalFile)).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  8 failed | 1 passed | 50 skipped (59)
+   Start at  08:56:59
+   Duration  5.16s (transform 350ms, setup 32ms, import 995ms, tests 3.13s, environment 804ms)
+

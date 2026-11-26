@@ -1,0 +1,248 @@
+(node:37132) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:38668) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10436) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-executor.test.ts[2m > [22mWorkspaceExecutor[2m > [22mcreates nested files atomically inside the workspace[32m 20[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-executor.test.ts[2m > [22mWorkspaceExecutor[2m > [22mlazily creates a missing admitted workspace on the first write[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-executor.test.ts[2m > [22mWorkspaceExecutor[2m > [22mcan create and register a missing workspace before shell execution[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-executor.test.ts[2m > [22mWorkspaceExecutor[2m > [22mreplaces existing content without writing a partial file[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-executor.test.ts[2m > [22mWorkspaceExecutor[2m > [22mwrites task scratch but rejects input-resource writes[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-executor.test.ts[2m > [22mWorkspaceExecutor[2m > [22mrejects a target identity or parent identity change before mutation[32m 51[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-executor.test.ts[2m > [22mWorkspaceExecutor[2m > [22mrejects a payload whose hash no longer matches the normalized action[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.test.ts[2m > [22mworkspace file service — P1 hard conditions (product §14 R1)[2m > [22mwrites and reads a file inside the fixed workspace, auditing both[32m 13[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.test.ts[2m > [22mworkspace file service — P1 hard conditions (product §14 R1)[2m > [22mrejects a read outside the workspace (.. escape) and records a failed audit[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.test.ts[2m > [22mworkspace file service — P1 hard conditions (product §14 R1)[2m > [22mrejects an absolute-path escape[32m 2[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.test.ts[2m > [22mworkspace file service — P1 hard conditions (product §14 R1)[2m > [22mrejects a target marked as reparse point (symlink escape)[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.test.ts[2m > [22mworkspace file service — P1 hard conditions (product §14 R1)[2m > [22mrefuses an unknown session and a session with no workspace (fail closed)[32m 2[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.test.ts[2m > [22mworkspace file service — P1 hard conditions (product §14 R1)[2m > [22mrefuses to delete the workspace root itself[32m 3[2mms[22m[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.test.ts[2m > [22mworkspace file service — P1 hard conditions (product §14 R1)[2m > [22mrejects delete of an ordinary parent containing nested .sparkii/secret[32m 14[2mms[22m[39m
+[31m   → expected true to be false // Object.is equality[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.test.ts[2m > [22mworkspace file service — P1 hard conditions (product §14 R1)[2m > [22mrejects rename of an ordinary parent containing nested .sparkii/secret[32m 55[2mms[22m[39m
+[31m   → expected true to be false // Object.is equality[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.test.ts[2m > [22mworkspace file service — P1 hard conditions (product §14 R1)[2m > [22mrejects move of an ordinary parent containing nested .sparkii/secret[32m 14[2mms[22m[39m
+[31m   → expected true to be false // Object.is equality[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.test.ts[2m > [22mworkspace file service — P1 hard conditions (product §14 R1)[2m > [22mrejects delete of an ordinary parent containing nested .SpArKiI/secret[32m 11[2mms[22m[39m
+[31m   → expected true to be false // Object.is equality[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.test.ts[2m > [22mworkspace file service — P1 hard conditions (product §14 R1)[2m > [22mrejects rename of an ordinary parent containing nested .SpArKiI/secret[32m 10[2mms[22m[39m
+[31m   → expected true to be false // Object.is equality[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.test.ts[2m > [22mworkspace file service — P1 hard conditions (product §14 R1)[2m > [22mrejects move of an ordinary parent containing nested .SpArKiI/secret[32m 8[2mms[22m[39m
+[31m   → expected true to be false // Object.is equality[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.test.ts[2m > [22mworkspace file service — P1 hard conditions (product §14 R1)[2m > [22mcontinues to reject direct reserved delete and rename/move requests[32m 2[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.test.ts[2m > [22mworkspace file service — P1 hard conditions (product §14 R1)[2m > [22mdeletes and moves ordinary trees without reserved descendants[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.test.ts[2m > [22mworkspace file service — P1 hard conditions (product §14 R1)[2m > [22mcontinues to list ordinary root entries while hiding .sparkii[32m 3[2mms[22m[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.test.ts[2m > [22mworkspace file service — P1 hard conditions (product §14 R1)[2m > [22mcontinues to list ordinary root entries while hiding .SpArKiI[32m 6[2mms[22m[39m
+[31m   → expected [ '.SpArKiI', 'input', 'project.json' ] to deeply equal [ 'input', 'project.json' ][39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.test.ts[2m > [22mworkspace file service — P1 hard conditions (product §14 R1)[2m > [22mrename/move require a valid destination inside the workspace[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-executor.test.ts[2m > [22mWorkspaceExecutor[2m > [22mrejects reparse targets and trust-anchor paths[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-executor.test.ts[2m > [22mWorkspaceExecutor[2m > [22mrejects files with hardlink aliases instead of modifying the shared object[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-executor.test.ts[2m > [22mWorkspaceExecutor[2m > [22mdeletes ordinary files and subdirectories but never the workspace root[32m 11[2mms[22m[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-executor.test.ts[2m > [22mWorkspaceExecutor[2m > [22mrejects deleting an ordinary parent containing nested .sparkii/secret[32m 20[2mms[22m[39m
+[31m   → promise resolved "{ …(2) }" instead of rejecting[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-executor.test.ts[2m > [22mWorkspaceExecutor[2m > [22mrejects deleting an ordinary parent containing nested .SpArKiI/secret[32m 8[2mms[22m[39m
+[31m   → promise resolved "{ …(2) }" instead of rejecting[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-executor.test.ts[2m > [22mWorkspaceExecutor[2m > [22mrejects moving an ordinary parent containing nested .sparkii/secret[32m 8[2mms[22m[39m
+[31m   → promise resolved "{ …(2) }" instead of rejecting[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-executor.test.ts[2m > [22mWorkspaceExecutor[2m > [22mrejects moving an ordinary parent containing nested .SpArKiI/secret[32m 8[2mms[22m[39m
+[31m   → promise resolved "{ …(2) }" instead of rejecting[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-executor.test.ts[2m > [22mWorkspaceExecutor[2m > [22mcontinues to reject direct reserved delete and move requests[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-executor.test.ts[2m > [22mWorkspaceExecutor[2m > [22mmoves an ordinary directory without reserved descendants[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-executor.test.ts[2m > [22mWorkspaceExecutor[2m > [22mmoves files inside the workspace and rejects external destinations[32m 7[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 11 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/workspace-executor.test.ts[2m > [22mWorkspaceExecutor[2m > [22mrejects deleting an ordinary parent containing nested .sparkii/secret
+[31m[1mAssertionError[22m: promise resolved "{ …(2) }" instead of rejecting[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "changes": [[39m
+[31m+     {[39m
+[31m+       "kind": "deleted",[39m
+[31m+       "path": "C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-executor-8cPGxq\\workspace\\generated\\nested\\.sparkii\\secret",[39m
+[31m+     },[39m
+[31m+     {[39m
+[31m+       "kind": "deleted",[39m
+[31m+       "path": "C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-executor-8cPGxq\\workspace\\generated\\nested\\.sparkii",[39m
+[31m+     },[39m
+[31m+     {[39m
+[31m+       "kind": "deleted",[39m
+[31m+       "path": "C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-executor-8cPGxq\\workspace\\generated\\nested",[39m
+[31m+     },[39m
+[31m+     {[39m
+[31m+       "kind": "deleted",[39m
+[31m+       "path": "C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-executor-8cPGxq\\workspace\\generated",[39m
+[31m+     },[39m
+[31m+   ],[39m
+[31m+   "path": "C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-executor-8cPGxq\\workspace\\generated",[39m
+[2m  }[22m
+
+[36m [2m❯[22m apps/desktop/test/workspace-executor.test.ts:[2m291:9[22m[39m
+    [90m289|[39m         [34maction[39m([32m'delete'[39m[33m,[39m { path[33m:[39m parent }[33m,[39m [[34mresource[39m(parent)])[33m,[39m
+    [90m290|[39m         s[33m.[39mgrant[33m,[39m
+    [90m291|[39m       ))[33m.[39mrejects[33m.[39m[34mtoMatchObject[39m({ code[33m:[39m [32m'DENIED'[39m })[33m;[39m
+    [90m   |[39m         [31m^[39m
+    [90m292|[39m       [34mexpect[39m([34mexistsSync[39m(parent))[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m293|[39m       [34mexpect[39m([34mreadFileSync[39m(secret[33m,[39m [32m'utf8'[39m))[33m.[39m[34mtoBe[39m([32m'keep'[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/11]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/workspace-executor.test.ts[2m > [22mWorkspaceExecutor[2m > [22mrejects deleting an ordinary parent containing nested .SpArKiI/secret
+[31m[1mAssertionError[22m: promise resolved "{ …(2) }" instead of rejecting[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "changes": [[39m
+[31m+     {[39m
+[31m+       "kind": "deleted",[39m
+[31m+       "path": "C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-executor-zmIGUD\\workspace\\generated\\nested\\.SpArKiI\\secret",[39m
+[31m+     },[39m
+[31m+     {[39m
+[31m+       "kind": "deleted",[39m
+[31m+       "path": "C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-executor-zmIGUD\\workspace\\generated\\nested\\.SpArKiI",[39m
+[31m+     },[39m
+[31m+     {[39m
+[31m+       "kind": "deleted",[39m
+[31m+       "path": "C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-executor-zmIGUD\\workspace\\generated\\nested",[39m
+[31m+     },[39m
+[31m+     {[39m
+[31m+       "kind": "deleted",[39m
+[31m+       "path": "C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-executor-zmIGUD\\workspace\\generated",[39m
+[31m+     },[39m
+[31m+   ],[39m
+[31m+   "path": "C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-executor-zmIGUD\\workspace\\generated",[39m
+[2m  }[22m
+
+[36m [2m❯[22m apps/desktop/test/workspace-executor.test.ts:[2m291:9[22m[39m
+    [90m289|[39m         [34maction[39m([32m'delete'[39m[33m,[39m { path[33m:[39m parent }[33m,[39m [[34mresource[39m(parent)])[33m,[39m
+    [90m290|[39m         s[33m.[39mgrant[33m,[39m
+    [90m291|[39m       ))[33m.[39mrejects[33m.[39m[34mtoMatchObject[39m({ code[33m:[39m [32m'DENIED'[39m })[33m;[39m
+    [90m   |[39m         [31m^[39m
+    [90m292|[39m       [34mexpect[39m([34mexistsSync[39m(parent))[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m293|[39m       [34mexpect[39m([34mreadFileSync[39m(secret[33m,[39m [32m'utf8'[39m))[33m.[39m[34mtoBe[39m([32m'keep'[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/11]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/workspace-executor.test.ts[2m > [22mWorkspaceExecutor[2m > [22mrejects moving an ordinary parent containing nested .sparkii/secret
+[31m[1mAssertionError[22m: promise resolved "{ …(2) }" instead of rejecting[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "changes": [[39m
+[31m+     {[39m
+[31m+       "kind": "moved",[39m
+[31m+       "path": "C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-executor-QNUd52\\workspace\\generated",[39m
+[31m+       "to": "C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-executor-QNUd52\\workspace\\moved",[39m
+[31m+     },[39m
+[31m+   ],[39m
+[31m+   "path": "C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-executor-QNUd52\\workspace\\moved",[39m
+[2m  }[22m
+
+[36m [2m❯[22m apps/desktop/test/workspace-executor.test.ts:[2m311:9[22m[39m
+    [90m309|[39m         [34maction[39m([32m'move'[39m[33m,[39m { [35mfrom[39m[33m,[39m to }[33m,[39m [[34mresource[39m([35mfrom[39m)[33m,[39m [34mresource[39m(to)])[33m,[39m
+    [90m310|[39m         s[33m.[39mgrant[33m,[39m
+    [90m311|[39m       ))[33m.[39mrejects[33m.[39m[34mtoMatchObject[39m({ code[33m:[39m [32m'DENIED'[39m })[33m;[39m
+    [90m   |[39m         [31m^[39m
+    [90m312|[39m       [34mexpect[39m([34mexistsSync[39m([35mfrom[39m))[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m313|[39m       [34mexpect[39m([34mexistsSync[39m(to))[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/11]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/workspace-executor.test.ts[2m > [22mWorkspaceExecutor[2m > [22mrejects moving an ordinary parent containing nested .SpArKiI/secret
+[31m[1mAssertionError[22m: promise resolved "{ …(2) }" instead of rejecting[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "changes": [[39m
+[31m+     {[39m
+[31m+       "kind": "moved",[39m
+[31m+       "path": "C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-executor-zcb4dM\\workspace\\generated",[39m
+[31m+       "to": "C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-executor-zcb4dM\\workspace\\moved",[39m
+[31m+     },[39m
+[31m+   ],[39m
+[31m+   "path": "C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-executor-zcb4dM\\workspace\\moved",[39m
+[2m  }[22m
+
+[36m [2m❯[22m apps/desktop/test/workspace-executor.test.ts:[2m311:9[22m[39m
+    [90m309|[39m         [34maction[39m([32m'move'[39m[33m,[39m { [35mfrom[39m[33m,[39m to }[33m,[39m [[34mresource[39m([35mfrom[39m)[33m,[39m [34mresource[39m(to)])[33m,[39m
+    [90m310|[39m         s[33m.[39mgrant[33m,[39m
+    [90m311|[39m       ))[33m.[39mrejects[33m.[39m[34mtoMatchObject[39m({ code[33m:[39m [32m'DENIED'[39m })[33m;[39m
+    [90m   |[39m         [31m^[39m
+    [90m312|[39m       [34mexpect[39m([34mexistsSync[39m([35mfrom[39m))[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m313|[39m       [34mexpect[39m([34mexistsSync[39m(to))[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/11]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.test.ts[2m > [22mworkspace file service — P1 hard conditions (product §14 R1)[2m > [22mrejects delete of an ordinary parent containing nested .sparkii/secret
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.test.ts[2m > [22mworkspace file service — P1 hard conditions (product §14 R1)[2m > [22mrejects rename of an ordinary parent containing nested .sparkii/secret
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.test.ts[2m > [22mworkspace file service — P1 hard conditions (product §14 R1)[2m > [22mrejects move of an ordinary parent containing nested .sparkii/secret
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.test.ts[2m > [22mworkspace file service — P1 hard conditions (product §14 R1)[2m > [22mrejects delete of an ordinary parent containing nested .SpArKiI/secret
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.test.ts[2m > [22mworkspace file service — P1 hard conditions (product §14 R1)[2m > [22mrejects rename of an ordinary parent containing nested .SpArKiI/secret
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.test.ts[2m > [22mworkspace file service — P1 hard conditions (product §14 R1)[2m > [22mrejects move of an ordinary parent containing nested .SpArKiI/secret
+[31m[1mAssertionError[22m: expected true to be false // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- false[39m
+[31m+ true[39m
+
+[36m [2m❯[22m apps/desktop/test/workspace-file-service.test.ts:[2m142:25[22m[39m
+    [90m140|[39m         [33m...[39m(op [33m===[39m [32m'delete'[39m [33m?[39m {} [33m:[39m { to[33m:[39m [32m'moved'[39m })[33m,[39m
+    [90m141|[39m       })[33m;[39m
+    [90m142|[39m       [34mexpect[39m(result[33m.[39mok)[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+    [90m   |[39m                         [31m^[39m
+    [90m143|[39m       [35mif[39m ([33m![39mresult[33m.[39mok) [34mexpect[39m(result[33m.[39mcode)[33m.[39m[34mtoBe[39m([32m'DENIED'[39m)[33m;[39m
+    [90m144|[39m       [34mexpect[39m([34mexistsSync[39m(parent))[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/11]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.test.ts[2m > [22mworkspace file service — P1 hard conditions (product §14 R1)[2m > [22mcontinues to list ordinary root entries while hiding .SpArKiI
+[31m[1mAssertionError[22m: expected [ '.SpArKiI', 'input', 'project.json' ] to deeply equal [ 'input', 'project.json' ][39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  [[22m
+[31m+   ".SpArKiI",[39m
+[2m    "input",[22m
+[2m    "project.json",[22m
+[2m  ][22m
+
+[36m [2m❯[22m apps/desktop/test/workspace-file-service.test.ts:[2m205:61[22m[39m
+    [90m203|[39m       const result = await service.execute('list', { sessionId: 's1', …
+    [90m204|[39m       [34mexpect[39m(result[33m.[39mok)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m205|[39m       if (result.ok) expect(result.entries?.slice().sort()).toEqual(['…
+    [90m   |[39m                                                             [31m^[39m
+    [90m206|[39m     }[33m,[39m
+    [90m207|[39m   )[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/11]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m2 failed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[31m11 failed[39m[22m[2m | [22m[1m[32m23 passed[39m[22m[90m (34)[39m
+[2m   Start at [22m 20:40:01
+[2m   Duration [22m 3.49s[2m (transform 787ms, setup 62ms, import 4.42s, tests 369ms, environment 1.69s)[22m
+

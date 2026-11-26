@@ -1,0 +1,61 @@
+(node:21580) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:8012) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:32264) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:15324) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:38328) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24580) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime-pool.test.ts (23 tests | 22 skipped) 4ms
+ ✓ |0| packages/agent-host/test/tool-registry.test.ts (18 tests | 17 skipped) 5ms
+ ✓ |1| apps/desktop/test/memory-fence-canonical.test.ts (9 tests) 99ms
+ ❯ |1| apps/desktop/test/memory-audit-regression.test.ts (12 tests | 1 failed | 11 skipped) 91ms
+     ↓ P1-2 LIKE fallback supports CRUD, search and rebuild
+     ↓ P1-2 corrupt SQLite is quarantined and rebuilt from truth without blocking startup
+     ↓ P1-3 copied workspace with the same projectId fails closed and preserves the first truth source
+     ↓ P1-4 default search and includeHistory never expose pending memories
+     ↓ P2 external truth edits reconcile list, injection and search
+     ↓ P2 master switch rejects manual add while disabled
+     ↓ P2 project archived state survives derived index rebuild
+     × P1-6 a missing cursor is rejected and truncation advances only through included messages 89ms
+     ↓ P1-5 one invalid project UPDATE rejects the whole extraction batch
+     ↓ P1-1 privacy deletion wins over an in-flight model response and redacts diagnostics
+     ↓ P1-8 consolidation is single-flight across the first await
+     ↓ P1-8 mergeIds approval is all-or-nothing
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > P1-6 a missing cursor is rejected and truncation advances only through included messages
+AssertionError: expected '助手：第二条\n用户：第三条' not to contain '第三条'
+
+- Expected
++ Received
+
+- 第三条
++ 助手：第二条
++ 用户：第三条
+
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:130:30
+    128|     const limited = readSessionMaterial(file, 'e1', 12);
+    129|     expect(limited.text).toContain('第二条');
+    130|     expect(limited.text).not.toContain('第三条');
+       |                              ^
+    131|     expect(limited.lastEntryId).toBe('e2');
+    132|     expect(readSessionMaterial(file, limited.lastEntryId, 6000).text).…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 3 passed (4)
+      Tests  1 failed | 11 passed | 50 skipped (62)
+   Start at  12:54:54
+   Duration  3.24s (transform 1.14s, setup 46ms, import 5.81s, tests 199ms, environment 1.77s)
+

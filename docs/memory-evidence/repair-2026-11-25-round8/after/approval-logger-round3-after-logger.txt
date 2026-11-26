@@ -1,0 +1,56 @@
+(node:25732) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37960) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:4148) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8 final review redactSession cannot be undone by an unawaited append
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8 final review redactMemoryPromptLogs cannot be undone by an unawaited append
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8 final review keeps future log writes redacted after restart without plaintext in the registry
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR7 never preserves the registered marker secret 已删除
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR7 never preserves the registered marker secret [已删除]
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR7 redaction cannot recreate a registered secret across the marker boundary: "x\"[已删除]"
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR7 redaction cannot recreate a registered secret across the marker boundary: "x\\[已删除]"
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR7 redaction cannot recreate a registered secret across the marker boundary: "x\n[已删除]"
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mappends structured jsonl and exports
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mdrops entries below the configured level
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mechoes to console with level mapping
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mdoes not echo to console when echo is disabled
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mconstructor and logging stay non-blocking when the log file path is a directory
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mcircular console context cannot reject logging or lose the message
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mredactSession terminates a rewritten nonempty JSONL file before the next append
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mredactMemoryPromptLogs terminates a rewritten nonempty JSONL file before the next append
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mredacts string values without changing JSON schema field names during session redaction or export
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22muses structured redaction for future writes and exports
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8 round3 redactSession replaces dynamic registered keys with a schema-safe placeholder[32m 16[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8 round3 redactMemoryPromptLogs replaces dynamic registered keys with a schema-safe placeholder[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8 round3 export replaces dynamic registered keys with a schema-safe placeholder[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8 round3 rejects dynamic keys in future appends and after restart while preserving normal schema[32m 21[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8 round3 uses a placeholder that cannot recreate a registered level secret[32m 23[2mms[22m[39m
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mmemory-prompt redaction keeps normal logs as valid JSONL with structured value redaction
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mretains malformed normal log lines while removing their registered secrets
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mredactSession scrubs every JSON escape encoding in malformed history without changing valid record schemas
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mredactMemoryPromptLogs scrubs every JSON escape encoding in malformed history without changing valid record schemas
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mexport scrubs every JSON escape encoding in malformed history without changing valid record schemas
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\n" and records use "\n"
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\n" and records use "\r\n"
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\n" and records use "\r"
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\r\n" and records use "\n"
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\r\n" and records use "\r\n"
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\r\n" and records use "\r"
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\r" and records use "\n"
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\r" and records use "\r\n"
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\r" and records use "\r"
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mserializes context once so a stateful toJSON cannot lose the basic message
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m5 passed[39m[22m[2m | [22m[33m33 skipped[39m[90m (38)[39m
+[2m   Start at [22m 23:45:21
+[2m   Duration [22m 1.24s[2m (transform 72ms, setup 30ms, import 178ms, tests 77ms, environment 783ms)[22m
+
+
+exit=0

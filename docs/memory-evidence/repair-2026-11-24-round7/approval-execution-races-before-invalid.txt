@@ -1,0 +1,43 @@
+(node:33924) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:40596) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:35092) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Suites 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m [ apps/desktop/test/ipc.test.ts ][22m
+[31m[1mError[22m: Transform failed with 1 error:
+
+[31m[PARSE_ERROR] [0mIdentifier `DEFAULT_TOOL_DESCRIPTORS` has already been declared
+    [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m apps/desktop/test/ipc.test.ts:12:3 [38;5;246m][0m
+    [38;5;246m│[0m
+ [38;5;246m12 │[0m [38;5;249m [0m[38;5;249m [0mDEFAULT_TOOL_DESCRIPTORS[38;5;249m,[0m
+ [38;5;240m   │[0m   ────────────┬───────────  
+ [38;5;240m   │[0m               ╰───────────── `DEFAULT_TOOL_DESCRIPTORS` has already been declared here
+ [38;5;240m   │[0m 
+ [38;5;246m25 │[0m [38;5;249m [0m[38;5;249m [0mDEFAULT_TOOL_DESCRIPTORS[38;5;249m,[0m
+ [38;5;240m   │[0m   ────────────┬───────────  
+ [38;5;240m   │[0m               ╰───────────── It can not be redeclared here
+[38;5;246m────╯[0m
+[39m
+  Plugin: [35mvite:oxc[39m
+  File: [36mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/test/ipc.test.ts[39m
+[90m [2m❯[22m transformWithOxc node_modules/.pnpm/vite@8.2.2_@types+node@26.4.0_esbuild@0.28.2_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:[2m4103:19[22m[39m
+[90m [2m❯[22m TransformPluginContext.transform node_modules/.pnpm/vite@8.2.2_@types+node@26.4.0_esbuild@0.28.2_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:[2m4174:26[22m[39m
+[90m [2m❯[22m EnvironmentPluginContainer.transform node_modules/.pnpm/vite@8.2.2_@types+node@26.4.0_esbuild@0.28.2_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:[2m30932:51[22m[39m
+[90m [2m❯[22m loadAndTransform node_modules/.pnpm/vite@8.2.2_@types+node@26.4.0_esbuild@0.28.2_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:[2m20671:26[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [2mno tests[22m
+[2m   Start at [22m 21:45:28
+[2m   Duration [22m 1.02s[2m (transform 18ms, setup 31ms, import 0ms, tests 0ms, environment 776ms)[22m
+

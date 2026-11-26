@@ -1,0 +1,282 @@
+COMMAND: pnpm exec vitest run apps/desktop/test/task-lifecycle.test.ts --reporter=verbose
+(node:12996) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37564) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:17728) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/task-lifecycle.test.ts[2m > [22mTaskLifecycle[2m > [22mstarts a live grant and rejects actions after end[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/task-lifecycle.test.ts[2m > [22mTaskLifecycle[2m > [22mruns process, network, and gateway cancellation hooks once and waits for them[32m 1[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/task-lifecycle.test.ts[2m > [22mTaskLifecycle[2m > [22mrevokes the previous task when a replacement grant starts[32m 0[2mms[22m[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/task-lifecycle.test.ts[2m > [22mTaskLifecycle[2m > [22mchecks ownership and admission generation at the grant commit point before replacing a live task[32m 5[2mms[22m[39m
+[31m   → expected [Function] to throw error matching /admission.*cancelled/i but got 'stale binding'[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/task-lifecycle.test.ts[2m > [22mTaskLifecycle[2m > [22mcancels an uncommitted admission synchronously when the session ends with session-ended[32m 3[2mms[22m[39m
+[31m   → promise resolved "{ taskId: 'task-session-ended', …(15) }" instead of rejecting[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/task-lifecycle.test.ts[2m > [22mTaskLifecycle[2m > [22mcancels an uncommitted admission synchronously when the session ends with workspace-changed[32m 1[2mms[22m[39m
+[31m   → promise resolved "{ …(16) }" instead of rejecting[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/task-lifecycle.test.ts[2m > [22mTaskLifecycle[2m > [22mcancels an uncommitted admission synchronously when the session ends with runtime-released[32m 1[2mms[22m[39m
+[31m   → promise resolved "{ …(16) }" instead of rejecting[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/task-lifecycle.test.ts[2m > [22mTaskLifecycle[2m > [22mcancels a future grant revoked by task id while its factory is awaiting[32m 1[2mms[22m[39m
+[31m   → promise resolved "{ taskId: 'revoked-future-task', …(15) }" instead of rejecting[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/task-lifecycle.test.ts[2m > [22mTaskLifecycle[2m > [22mallows only the latest concurrent admission to commit when factories resolve out of order[32m 1[2mms[22m[39m
+[31m   → promise resolved "{ taskId: 'first-task', …(15) }" instead of rejecting[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/task-lifecycle.test.ts[2m > [22mTaskLifecycle[2m > [22mrechecks admission after commit and revokes the grant invalidated by onStarted[32m 1[2mms[22m[39m
+[31m   → promise resolved "{ taskId: 't1', sessionId: 's1', …(14) }" instead of rejecting[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/task-lifecycle.test.ts[2m > [22mTaskLifecycle[2m > [22mregisters cancellation hooks at grant commit before revocation can overtake startup[32m 0[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/task-lifecycle.test.ts[2m > [22mTaskLifecycle[2m > [22mkeeps one task isolated from another session[32m 0[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 7 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/task-lifecycle.test.ts[2m > [22mTaskLifecycle[2m > [22mchecks ownership and admission generation at the grant commit point before replacing a live task
+[31m[1mAssertionError[22m: expected [Function] to throw error matching /admission.*cancelled/i but got 'stale binding'[39m
+
+[32m- Expected:[39m
+/admission.*cancelled/i
+
+[31m+ Received:[39m
+"stale binding"
+
+[36m [2m❯[22m apps/desktop/test/task-lifecycle.test.ts:[2m91:38[22m[39m
+    [90m 89|[39m     [35mawait[39m [33mPromise[39m[33m.[39m[34mresolve[39m()[33m;[39m
+    [90m 90|[39m     await lifecycle.start(async () => grant({ taskId: 'replacement-tas…
+    [90m 91|[39m     const rejected = expect(oldStart).rejects.toThrow(/admission.*canc…
+    [90m   |[39m                                      [31m^[39m
+    [90m 92|[39m     [34mreleaseOld[39m()[33m;[39m
+    [90m 93|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/task-lifecycle.test.ts[2m > [22mTaskLifecycle[2m > [22mcancels an uncommitted admission synchronously when the session ends with session-ended
+[31m[1mAssertionError[22m: promise resolved "{ taskId: 'task-session-ended', …(15) }" instead of rejecting[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "actorId": "u1",[39m
+[31m+   "agentId": "general",[39m
+[31m+   "createdAt": 1,[39m
+[31m+   "expiresAt": 1795621457904,[39m
+[31m+   "externalCapabilities": [],[39m
+[31m+   "inputRoots": [],[39m
+[31m+   "networkDomains": [],[39m
+[31m+   "permissionMode": "ask",[39m
+[31m+   "planMode": "execute",[39m
+[31m+   "profileId": "general",[39m
+[31m+   "scratchRoot": "C:/scratch/t1",[39m
+[31m+   "sessionId": "s1",[39m
+[31m+   "taskId": "task-session-ended",[39m
+[31m+   "unattended": false,[39m
+[31m+   "workspaceIdentity": "dir:1",[39m
+[31m+   "workspaceRoot": "C:/ws",[39m
+[2m  }[22m
+
+[36m [2m❯[22m apps/desktop/test/task-lifecycle.test.ts:[2m109:40[22m[39m
+    [90m107|[39m         [35mreturn[39m [34mgrant[39m({ taskId[33m:[39m [32m`task-[39m[36m${[39mreason[36m}[39m[32m`[39m })[33m;[39m
+    [90m108|[39m       }[33m,[39m undefined[33m,[39m undefined[33m,[39m [32m's1'[39m)[33m;[39m
+    [90m109|[39m       const rejected = expect(starting).rejects.toThrow(/admission.*ca…
+    [90m   |[39m                                        [31m^[39m
+    [90m110|[39m
+    [90m111|[39m       [35mawait[39m lifecycle[33m.[39m[34mend[39m([32m's1'[39m[33m,[39m reason)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/task-lifecycle.test.ts[2m > [22mTaskLifecycle[2m > [22mcancels an uncommitted admission synchronously when the session ends with workspace-changed
+[31m[1mAssertionError[22m: promise resolved "{ …(16) }" instead of rejecting[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "actorId": "u1",[39m
+[31m+   "agentId": "general",[39m
+[31m+   "createdAt": 1,[39m
+[31m+   "expiresAt": 1795621457907,[39m
+[31m+   "externalCapabilities": [],[39m
+[31m+   "inputRoots": [],[39m
+[31m+   "networkDomains": [],[39m
+[31m+   "permissionMode": "ask",[39m
+[31m+   "planMode": "execute",[39m
+[31m+   "profileId": "general",[39m
+[31m+   "scratchRoot": "C:/scratch/t1",[39m
+[31m+   "sessionId": "s1",[39m
+[31m+   "taskId": "task-workspace-changed",[39m
+[31m+   "unattended": false,[39m
+[31m+   "workspaceIdentity": "dir:1",[39m
+[31m+   "workspaceRoot": "C:/ws",[39m
+[2m  }[22m
+
+[36m [2m❯[22m apps/desktop/test/task-lifecycle.test.ts:[2m109:40[22m[39m
+    [90m107|[39m         [35mreturn[39m [34mgrant[39m({ taskId[33m:[39m [32m`task-[39m[36m${[39mreason[36m}[39m[32m`[39m })[33m;[39m
+    [90m108|[39m       }[33m,[39m undefined[33m,[39m undefined[33m,[39m [32m's1'[39m)[33m;[39m
+    [90m109|[39m       const rejected = expect(starting).rejects.toThrow(/admission.*ca…
+    [90m   |[39m                                        [31m^[39m
+    [90m110|[39m
+    [90m111|[39m       [35mawait[39m lifecycle[33m.[39m[34mend[39m([32m's1'[39m[33m,[39m reason)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/task-lifecycle.test.ts[2m > [22mTaskLifecycle[2m > [22mcancels an uncommitted admission synchronously when the session ends with runtime-released
+[31m[1mAssertionError[22m: promise resolved "{ …(16) }" instead of rejecting[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "actorId": "u1",[39m
+[31m+   "agentId": "general",[39m
+[31m+   "createdAt": 1,[39m
+[31m+   "expiresAt": 1795621457908,[39m
+[31m+   "externalCapabilities": [],[39m
+[31m+   "inputRoots": [],[39m
+[31m+   "networkDomains": [],[39m
+[31m+   "permissionMode": "ask",[39m
+[31m+   "planMode": "execute",[39m
+[31m+   "profileId": "general",[39m
+[31m+   "scratchRoot": "C:/scratch/t1",[39m
+[31m+   "sessionId": "s1",[39m
+[31m+   "taskId": "task-runtime-released",[39m
+[31m+   "unattended": false,[39m
+[31m+   "workspaceIdentity": "dir:1",[39m
+[31m+   "workspaceRoot": "C:/ws",[39m
+[2m  }[22m
+
+[36m [2m❯[22m apps/desktop/test/task-lifecycle.test.ts:[2m109:40[22m[39m
+    [90m107|[39m         [35mreturn[39m [34mgrant[39m({ taskId[33m:[39m [32m`task-[39m[36m${[39mreason[36m}[39m[32m`[39m })[33m;[39m
+    [90m108|[39m       }[33m,[39m undefined[33m,[39m undefined[33m,[39m [32m's1'[39m)[33m;[39m
+    [90m109|[39m       const rejected = expect(starting).rejects.toThrow(/admission.*ca…
+    [90m   |[39m                                        [31m^[39m
+    [90m110|[39m
+    [90m111|[39m       [35mawait[39m lifecycle[33m.[39m[34mend[39m([32m's1'[39m[33m,[39m reason)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/task-lifecycle.test.ts[2m > [22mTaskLifecycle[2m > [22mcancels a future grant revoked by task id while its factory is awaiting
+[31m[1mAssertionError[22m: promise resolved "{ taskId: 'revoked-future-task', …(15) }" instead of rejecting[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "actorId": "u1",[39m
+[31m+   "agentId": "general",[39m
+[31m+   "createdAt": 1,[39m
+[31m+   "expiresAt": 1795621457909,[39m
+[31m+   "externalCapabilities": [],[39m
+[31m+   "inputRoots": [],[39m
+[31m+   "networkDomains": [],[39m
+[31m+   "permissionMode": "ask",[39m
+[31m+   "planMode": "execute",[39m
+[31m+   "profileId": "general",[39m
+[31m+   "scratchRoot": "C:/scratch/t1",[39m
+[31m+   "sessionId": "s1",[39m
+[31m+   "taskId": "revoked-future-task",[39m
+[31m+   "unattended": false,[39m
+[31m+   "workspaceIdentity": "dir:1",[39m
+[31m+   "workspaceRoot": "C:/ws",[39m
+[2m  }[22m
+
+[36m [2m❯[22m apps/desktop/test/task-lifecycle.test.ts:[2m129:38[22m[39m
+    [90m127|[39m       [35mreturn[39m [34mgrant[39m({ taskId[33m:[39m [32m'revoked-future-task'[39m })[33m;[39m
+    [90m128|[39m     }[33m,[39m undefined[33m,[39m undefined[33m,[39m [32m's1'[39m)[33m;[39m
+    [90m129|[39m     const rejected = expect(starting).rejects.toThrow(/admission.*revo…
+    [90m   |[39m                                      [31m^[39m
+    [90m130|[39m
+    [90m131|[39m     [35mawait[39m lifecycle[33m.[39m[34mrevokeTask[39m([32m'revoked-future-task'[39m[33m,[39m [32m'user'[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/task-lifecycle.test.ts[2m > [22mTaskLifecycle[2m > [22mallows only the latest concurrent admission to commit when factories resolve out of order
+[31m[1mAssertionError[22m: promise resolved "{ taskId: 'first-task', …(15) }" instead of rejecting[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "actorId": "u1",[39m
+[31m+   "agentId": "general",[39m
+[31m+   "createdAt": 1,[39m
+[31m+   "expiresAt": 1795621457910,[39m
+[31m+   "externalCapabilities": [],[39m
+[31m+   "inputRoots": [],[39m
+[31m+   "networkDomains": [],[39m
+[31m+   "permissionMode": "ask",[39m
+[31m+   "planMode": "execute",[39m
+[31m+   "profileId": "general",[39m
+[31m+   "scratchRoot": "C:/scratch/t1",[39m
+[31m+   "sessionId": "s1",[39m
+[31m+   "taskId": "first-task",[39m
+[31m+   "unattended": false,[39m
+[31m+   "workspaceIdentity": "dir:1",[39m
+[31m+   "workspaceRoot": "C:/ws",[39m
+[2m  }[22m
+
+[36m [2m❯[22m apps/desktop/test/task-lifecycle.test.ts:[2m154:40[22m[39m
+    [90m152|[39m       [35mreturn[39m [34mgrant[39m({ taskId[33m:[39m [32m'second-task'[39m })[33m;[39m
+    [90m153|[39m     }[33m,[39m undefined[33m,[39m undefined[33m,[39m [32m's1'[39m)[33m;[39m
+    [90m154|[39m     const firstRejected = expect(first).rejects.toThrow(/admission.*ca…
+    [90m   |[39m                                        [31m^[39m
+    [90m155|[39m
+    [90m156|[39m     [34mreleaseSecond[39m()[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/task-lifecycle.test.ts[2m > [22mTaskLifecycle[2m > [22mrechecks admission after commit and revokes the grant invalidated by onStarted
+[31m[1mAssertionError[22m: promise resolved "{ taskId: 't1', sessionId: 's1', …(14) }" instead of rejecting[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "actorId": "u1",[39m
+[31m+   "agentId": "general",[39m
+[31m+   "createdAt": 1,[39m
+[31m+   "expiresAt": 1795621457911,[39m
+[31m+   "externalCapabilities": [],[39m
+[31m+   "inputRoots": [],[39m
+[31m+   "networkDomains": [],[39m
+[31m+   "permissionMode": "ask",[39m
+[31m+   "planMode": "execute",[39m
+[31m+   "profileId": "general",[39m
+[31m+   "scratchRoot": "C:/scratch/t1",[39m
+[31m+   "sessionId": "s1",[39m
+[31m+   "taskId": "t1",[39m
+[31m+   "unattended": false,[39m
+[31m+   "workspaceIdentity": "dir:1",[39m
+[31m+   "workspaceRoot": "C:/ws",[39m
+[2m  }[22m
+
+[36m [2m❯[22m apps/desktop/test/task-lifecycle.test.ts:[2m174:27[22m[39m
+    [90m172|[39m     }[33m,[39m [32m's1'[39m)[33m;[39m
+    [90m173|[39m
+    [90m174|[39m     [35mawait[39m [34mexpect[39m(starting)[33m.[39mrejects[33m.[39m[34mtoThrow[39m([36m/admission.*cancelled/i[39m)[33m;[39m
+    [90m   |[39m                           [31m^[39m
+    [90m175|[39m     [35mawait[39m lifecycle[33m.[39m[34mrevokeTask[39m([32m't1'[39m[33m,[39m [32m'duplicate'[39m)[33m;[39m
+    [90m176|[39m     [34mexpect[39m(lifecycle[33m.[39m[34mactive[39m([32m's1'[39m))[33m.[39m[34mtoBeUndefined[39m()[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m7 failed[39m[22m[2m | [22m[1m[32m5 passed[39m[22m[90m (12)[39m
+[2m   Start at [22m 23:43:16
+[2m   Duration [22m 1.67s[2m (transform 138ms, setup 33ms, import 594ms, tests 18ms, environment 825ms)[22m
+
+
+EXIT_CODE=1

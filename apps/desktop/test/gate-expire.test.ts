@@ -20,6 +20,12 @@ function submit(gate: ApprovalGate, sessionId: string, requestId: string) {
   );
 }
 
+const privacyMethods = {
+  redactValue: (value: unknown) => ({ value, redacted: false }),
+  redactText: (text: string) => text,
+  containsValue: () => false,
+};
+
 describe('ApprovalGate.abortPendingForQuit（§7.7 步骤 2 显式过期）', () => {
   it('expires every pending proposal, writes one audit event each, returns the count', async () => {
     const { audit, gate } = fresh();
@@ -74,6 +80,7 @@ describe('ApprovalGate.abortPendingForQuit（§7.7 步骤 2 显式过期）', ()
     const writes: string[] = [];
     // 慢速 append：若实现漏 await，方法会在写满 3 条前就 resolve。
     const slowAudit = {
+      ...privacyMethods,
       append: async (ev: { action: string }) => {
         await new Promise((r) => setTimeout(r, 5));
         writes.push(ev.action);
@@ -104,6 +111,7 @@ describe('ApprovalGate.abortPendingForQuit（§7.7 步骤 2 显式过期）', ()
   it('m10：abort 逐条写审计的 await 期间到达的 submit 同样被拒（窗口内也关闸）', async () => {
     const writes: string[] = [];
     const slowAudit = {
+      ...privacyMethods,
       append: async (ev: { action: string }) => {
         await new Promise((r) => setTimeout(r, 5));
         writes.push(ev.action);
@@ -122,6 +130,7 @@ describe('ApprovalGate.abortPendingForQuit（§7.7 步骤 2 显式过期）', ()
   it('m10：abort 中途抛错 ⇒ 闸门重开，后续 submit 仍可用', async () => {
     let calls = 0;
     const flakyAudit = {
+      ...privacyMethods,
       append: async () => {
         calls += 1;
         if (calls === 2) throw new Error('audit disk full');   // 第 1 次是 submit 的 proposal.created

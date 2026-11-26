@@ -1,0 +1,93 @@
+(node:20560) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37596) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:7092) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | apps/desktop/test/r8-probe-profile.tmp.test.ts > profiles legacy episode privacy deletion
+R8_PHASE constructor count=8 elapsedMs=430.6569000000002
+R8_CALLER constructor calls=2 at new MemoryStore (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:287:27)
+R8_CALLER constructor calls=2 at new MemoryStore (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:288:29)
+R8_CALLER constructor calls=1 at assertTruthRootSafe (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:295:3)
+R8_CALLER constructor calls=1 at recoverTruthBatch (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:312:49)
+R8_CALLER constructor calls=1 at entryExists (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:77:10)
+R8_CALLER constructor calls=1 at new MemoryStore (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:282:5)
+R8_PHASE add-current count=49 elapsedMs=1153.8204
+R8_CALLER add-current calls=7 at entryExists (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:77:10)
+R8_CALLER add-current calls=3 at atomicWrite (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/settings.ts:32:38)
+R8_CALLER add-current calls=3 at atomicWrite (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/settings.ts:46:62)
+R8_CALLER add-current calls=3 at atomicWrite (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/settings.ts:58:38)
+R8_CALLER add-current calls=3 at atomicWrite (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/settings.ts:73:21)
+R8_CALLER add-current calls=2 at MemoryStore.allScopeFiles (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:653:30)
+R8_CALLER add-current calls=2 at MemoryStore.readVerifiedScopeSnapshots (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:555:21)
+R8_CALLER add-current calls=2 at MemoryStore.readAuxTruthSnapshot (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:482:20)
+R8_CALLER add-current calls=2 at markRegularFileVerified (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:81:19)
+R8_CALLER add-current calls=2 at cleanup (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:264:3)
+R8_CALLER add-current calls=2 at cleanup (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:265:3)
+R8_CALLER add-current calls=1 at MemoryStore.assertAuxSnapshotCurrent (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:509:13)
+R8_PHASE add-legacy count=90 elapsedMs=1166.5455000000002
+R8_CALLER add-legacy calls=7 at entryExists (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:77:10)
+R8_CALLER add-legacy calls=3 at atomicWrite (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/settings.ts:32:38)
+R8_CALLER add-legacy calls=3 at atomicWrite (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/settings.ts:46:62)
+R8_CALLER add-legacy calls=3 at atomicWrite (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/settings.ts:58:38)
+R8_CALLER add-legacy calls=3 at atomicWrite (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/settings.ts:73:21)
+R8_CALLER add-legacy calls=2 at MemoryStore.allScopeFiles (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:653:30)
+R8_CALLER add-legacy calls=2 at MemoryStore.readVerifiedScopeSnapshots (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:555:21)
+R8_CALLER add-legacy calls=2 at MemoryStore.readAuxTruthSnapshot (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:482:20)
+R8_CALLER add-legacy calls=2 at markRegularFileVerified (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:81:19)
+R8_CALLER add-legacy calls=2 at cleanup (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:264:3)
+R8_CALLER add-legacy calls=2 at cleanup (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:265:3)
+R8_CALLER add-legacy calls=1 at MemoryStore.assertAuxSnapshotCurrent (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:509:13)
+R8_PHASE restart count=98 elapsedMs=346.7047999999995
+R8_CALLER restart calls=2 at new MemoryStore (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:287:27)
+R8_CALLER restart calls=2 at new MemoryStore (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:288:29)
+R8_CALLER restart calls=1 at assertTruthRootSafe (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:295:3)
+R8_CALLER restart calls=1 at recoverTruthBatch (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:312:49)
+R8_CALLER restart calls=1 at entryExists (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:77:10)
+R8_CALLER restart calls=1 at new MemoryStore (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:282:5)
+R8_PHASE privacy-current count=149 elapsedMs=1828.2637000000004
+R8_CALLER privacy-current calls=4 at MemoryService.assertPrivacyPathSafe (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/service.ts:906:5)
+R8_CALLER privacy-current calls=4 at C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:412:18
+R8_CALLER privacy-current calls=3 at atomicWrite (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/settings.ts:32:38)
+R8_CALLER privacy-current calls=3 at atomicWrite (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/settings.ts:46:62)
+R8_CALLER privacy-current calls=3 at atomicWrite (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/settings.ts:58:38)
+R8_CALLER privacy-current calls=3 at atomicWrite (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/settings.ts:73:21)
+R8_CALLER privacy-current calls=2 at entryExists (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:77:10)
+R8_CALLER privacy-current calls=2 at MemoryStore.allScopeFiles (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:653:30)
+R8_CALLER privacy-current calls=2 at MemoryService.renamePrivacyJournalVerified (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/service.ts:1081:44)
+R8_CALLER privacy-current calls=2 at MemoryStore.deleteMemoryEntriesBySession (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:1693:24)
+R8_CALLER privacy-current calls=2 at C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:397:23
+R8_CALLER privacy-current calls=2 at markRegularFileVerified (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:81:19)
+R8_PHASE privacy-legacy count=199 elapsedMs=1594.4633000000003
+R8_CALLER privacy-legacy calls=4 at MemoryService.assertPrivacyPathSafe (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/service.ts:906:5)
+R8_CALLER privacy-legacy calls=4 at C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:412:18
+R8_CALLER privacy-legacy calls=3 at atomicWrite (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/settings.ts:32:38)
+R8_CALLER privacy-legacy calls=3 at atomicWrite (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/settings.ts:46:62)
+R8_CALLER privacy-legacy calls=3 at atomicWrite (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/settings.ts:58:38)
+R8_CALLER privacy-legacy calls=3 at atomicWrite (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/settings.ts:73:21)
+R8_CALLER privacy-legacy calls=2 at entryExists (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:77:10)
+R8_CALLER privacy-legacy calls=2 at MemoryStore.allScopeFiles (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:653:30)
+R8_CALLER privacy-legacy calls=2 at MemoryService.renamePrivacyJournalVerified (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/service.ts:1081:44)
+R8_CALLER privacy-legacy calls=2 at MemoryStore.deleteMemoryEntriesBySession (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:1693:24)
+R8_CALLER privacy-legacy calls=2 at C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:397:23
+R8_CALLER privacy-legacy calls=2 at markRegularFileVerified (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:81:19)
+R8_PHASE list count=218 elapsedMs=606.3734999999997
+R8_CALLER list calls=6 at entryExists (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:77:10)
+R8_CALLER list calls=4 at MemoryStore.allScopeFiles (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:653:30)
+R8_CALLER list calls=4 at MemoryStore.readVerifiedScopeSnapshots (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:555:21)
+R8_CALLER list calls=2 at MemoryStore.readAuxTruthSnapshot (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:482:20)
+R8_CALLER list calls=2 at MemoryStore.readVerifiedScopeSnapshot (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:605:23)
+R8_CALLER list calls=1 at MemoryStore.assertAuxSnapshotCurrent (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:509:13)
+
+ ✓ |1| apps/desktop/test/r8-probe-profile.tmp.test.ts (1 test) 7150ms
+   ✓ profiles legacy episode privacy deletion  7148ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  12:04:04
+   Duration  9.08s (transform 214ms, setup 47ms, import 499ms, tests 7.15s, environment 1.12s)
+

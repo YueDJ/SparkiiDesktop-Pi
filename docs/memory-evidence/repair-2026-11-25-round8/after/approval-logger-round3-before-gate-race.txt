@@ -1,0 +1,72 @@
+(node:24464) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:25280) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:25172) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22mapproves by an authorized actor and audits both events
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22mdenies unauthorized approver
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22mrefuses to decide or execute a privacy-redacted proposal
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22matomically updates only the current approved payload and rejects stale or redacted objects
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22mpersistently fences submit, note and approved payload ingress (restart=false)
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22mpersistently fences submit, note and approved payload ingress (restart=true)
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22minvalidates proposals by registered pattern hits for 已删除
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22minvalidates proposals by registered pattern hits for [已删除]
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22minvalidates proposals by registered pattern hits for marker
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22mR8 round3 fences physical-newline fragments in existing and future proposals (restart=false)
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22mR8 round3 fences physical-newline fragments in existing and future proposals (restart=true)
+ [31m×[39m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22mR8 round3 submit returns the canonical proposal after invalidation during a pending audit append[32m 28[2mms[22m[39m
+[31m   → expected { …(13) } to be { …(14) } // Object.is equality[39m
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22mcancels only the pending proposals for one session
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts[2m > [22mApprovalGate[2m > [22mR8 round3 submit returns the canonical proposal after invalidation during a pending audit append
+[31m[1mAssertionError[22m: expected { …(13) } to be { …(14) } // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[2m    "createdAt": 1795621148148,[22m
+[2m    "executionMode": "proposal",[22m
+[2m    "id": "e0db2f86-e58b-497d-bf1f-e655eb022350",[22m
+[2m    "payload": {[22m
+[32m-     "body": "[已删除]",[39m
+[31m+     "body": "R8_GATE_AUDIT_RACE_SECRET_71C",[39m
+[2m    },[22m
+[2m    "payloadHash": "5fb10455c8390212c608058654b8b38df58e77deae1171471a13327533a53ab0",[22m
+[32m-   "privacyRedacted": true,[39m
+[2m    "profileId": "p",[22m
+[2m    "requestId": "audit-race",[22m
+[2m    "risk": "write",[22m
+[2m    "sessionId": "s",[22m
+[2m    "status": "pending",[22m
+[32m-   "summary": "summary [已删除]",[39m
+[31m+   "summary": "summary R8_GATE_AUDIT_RACE_SECRET_71C",[39m
+[2m    "targetSystem": "report",[22m
+[2m    "toolName": "report.export",[22m
+[2m  }[22m
+
+[36m [2m❯[22m packages/approval/test/gate.test.ts:[2m264:22[22m[39m
+    [90m262|[39m     [34mexpect[39m(canonical[33m.[39mprivacyRedacted)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m263|[39m     [34mexpect[39m([33mJSON[39m[33m.[39m[34mstringify[39m(canonical))[33m.[39mnot[33m.[39m[34mtoContain[39m(secret)[33m;[39m
+    [90m264|[39m     [34mexpect[39m(returned)[33m.[39m[34mtoBe[39m(canonical)[33m;[39m
+    [90m   |[39m                      [31m^[39m
+    [90m265|[39m     [34mexpect[39m(returned)[33m.[39mnot[33m.[39m[34mtoBe[39m(stale)[33m;[39m
+    [90m266|[39m     [34mexpect[39m([33mJSON[39m[33m.[39m[34mstringify[39m(returned))[33m.[39mnot[33m.[39m[34mtoContain[39m(secret)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[33m12 skipped[39m[90m (13)[39m
+[2m   Start at [22m 23:39:07
+[2m   Duration [22m 416ms[2m (transform 76ms, setup 0ms, import 210ms, tests 30ms, environment 0ms)[22m
+
+
+exit=1

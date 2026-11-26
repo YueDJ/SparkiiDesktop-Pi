@@ -1,0 +1,59 @@
+(node:31104) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:33948) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:6196) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-r8-regression.test.ts (27 tests | 1 failed | 26 skipped) 20338ms
+     × R8 review privacy B5 zeroes a plaintext journal temp file before a failed removal 20337ms
+     ↓ R8 final review fences same-process and restarted reads when the privacy journal cannot be persisted
+     ↓ R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext
+     ↓ R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext
+     ↓ R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext
+     ↓ R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext
+     ↓ R8-P0-1 resumes from journal context after the chat row and Pi file are already gone
+     ↓ R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers
+     ↓ R8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent
+     ↓ R8 review B3 registers chat secrets before sink cleanup and protects later chat writes after failure
+     ↓ R8-P0-1 restores privacy sink fences before truth recovery can restore plaintext
+     ↓ R8 review B3 cleans Pi and chat carriers before a safe-root truth write-block aborts startup
+     ↓ R8 review B5 rejects dangling privacy journal directory and file links without reading targets
+     ↓ R8 review B5 refuses to clear a privacy journal whose identity changed during cleanup
+     ↓ R8 review B4 rotates memory markers when the deleted text collides with 已删除
+     ↓ R8 review B4 rotates memory markers when the deleted text collides with [已删除]
+     ↓ R8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret
+     ↓ R8-P1-3 refuses to construct MemoryService through an unsafe memory-root junction
+     ↓ R8-P1-3 fences project repair before registry or truth reads
+     ↓ R8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker
+     ↓ R8 privacy review reads the raw Pi path before chat redaction can alter it
+     ↓ R8 privacy review resumes a secret-named Pi carrier after restart
+     ↓ R8 privacy review retries independent carriers after a same-process truth rollback block
+     ↓ R8 privacy review removes a plaintext journal temp file left before rename
+     ↓ R8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state
+     ↓ R8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state
+     ↓ R8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 privacy recovery regressions > R8 review privacy B5 zeroes a plaintext journal temp file before a failed removal
+AssertionError: expected undefined to be defined
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:136:18
+    134|     const dir = join(memoryDir(dataDir), 'privacy-pending');
+    135|     const temp = readdirSync(dir).find((name) => name.endsWith('.tmp')…
+    136|     expect(temp).toBeDefined();
+       |                  ^
+    137|     expect(observed).toBeDefined();
+    138|     expect(observed!.includes(Buffer.from(secret))).toBe(false);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 26 skipped (27)
+   Start at  03:20:40
+   Duration  22.32s (transform 267ms, setup 29ms, import 957ms, tests 20.34s, environment 814ms)
+

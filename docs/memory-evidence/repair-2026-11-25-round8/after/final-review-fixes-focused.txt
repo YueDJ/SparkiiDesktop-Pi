@@ -1,0 +1,313 @@
+(node:42884) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:14400) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:35060) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:42176) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:23448) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:34696) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12440) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:38416) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[90mstdout[2m | apps/desktop/test/logger.test.ts[2m > [22m[2mLogger[2m > [22m[2mappends structured jsonl and exports
+[22m[39mstart {"profile":"contract-review"}
+
+[90mstderr[2m | apps/desktop/test/logger.test.ts[2m > [22m[2mLogger[2m > [22m[2mdrops entries below the configured level
+[22m[39mkept ""
+
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/task-lifecycle.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [31m❯[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts [2m([22m[2m30 tests[22m[2m | [22m[31m9 failed[39m[2m)[22m[33m 631[2mms[22m[39m
+     [32m✓[39m R7 never preserves the registered marker secret 已删除[32m 20[2mms[22m[39m
+     [32m✓[39m R7 never preserves the registered marker secret [已删除][32m 16[2mms[22m[39m
+     [32m✓[39m R7 redaction cannot recreate a registered secret across the marker boundary: "x\"[已删除]"[32m 15[2mms[22m[39m
+     [32m✓[39m R7 redaction cannot recreate a registered secret across the marker boundary: "x\\[已删除]"[32m 19[2mms[22m[39m
+     [32m✓[39m R7 redaction cannot recreate a registered secret across the marker boundary: "x\n[已删除]"[32m 21[2mms[22m[39m
+     [32m✓[39m appends structured jsonl and exports[32m 18[2mms[22m[39m
+     [32m✓[39m drops entries below the configured level[32m 13[2mms[22m[39m
+     [32m✓[39m echoes to console with level mapping[32m 2[2mms[22m[39m
+     [32m✓[39m does not echo to console when echo is disabled[32m 1[2mms[22m[39m
+     [32m✓[39m constructor and logging stay non-blocking when the log file path is a directory[32m 2[2mms[22m[39m
+     [32m✓[39m circular console context cannot reject logging or lose the message[32m 15[2mms[22m[39m
+     [32m✓[39m redactSession terminates a rewritten nonempty JSONL file before the next append[32m 21[2mms[22m[39m
+     [32m✓[39m redactMemoryPromptLogs terminates a rewritten nonempty JSONL file before the next append[32m 15[2mms[22m[39m
+     [32m✓[39m redacts string values without changing JSON schema field names during session redaction or export[32m 9[2mms[22m[39m
+     [32m✓[39m uses structured redaction for future writes and exports[32m 22[2mms[22m[39m
+     [32m✓[39m memory-prompt redaction keeps normal logs as valid JSONL with structured value redaction[32m 17[2mms[22m[39m
+     [32m✓[39m retains malformed normal log lines while removing their registered secrets[32m 5[2mms[22m[39m
+     [32m✓[39m redactSession scrubs every JSON escape encoding in malformed history without changing valid record schemas[32m 27[2mms[22m[39m
+     [32m✓[39m redactMemoryPromptLogs scrubs every JSON escape encoding in malformed history without changing valid record schemas[32m 6[2mms[22m[39m
+     [32m✓[39m export scrubs every JSON escape encoding in malformed history without changing valid record schemas[32m 5[2mms[22m[39m
+[31m     [31m×[31m R8-P1-2 preserves JSONL record boundaries when the registered secret is "\n" and records use "\n"[39m[32m 67[2mms[22m[39m
+[31m     [31m×[31m R8-P1-2 preserves JSONL record boundaries when the registered secret is "\n" and records use "\r\n"[39m[32m 45[2mms[22m[39m
+[31m     [31m×[31m R8-P1-2 preserves JSONL record boundaries when the registered secret is "\n" and records use "\r"[39m[32m 24[2mms[22m[39m
+[31m     [31m×[31m R8-P1-2 preserves JSONL record boundaries when the registered secret is "\r\n" and records use "\n"[39m[32m 44[2mms[22m[39m
+[31m     [31m×[31m R8-P1-2 preserves JSONL record boundaries when the registered secret is "\r\n" and records use "\r\n"[39m[32m 36[2mms[22m[39m
+[31m     [31m×[31m R8-P1-2 preserves JSONL record boundaries when the registered secret is "\r\n" and records use "\r"[39m[32m 47[2mms[22m[39m
+[31m     [31m×[31m R8-P1-2 preserves JSONL record boundaries when the registered secret is "\r" and records use "\n"[39m[32m 13[2mms[22m[39m
+[31m     [31m×[31m R8-P1-2 preserves JSONL record boundaries when the registered secret is "\r" and records use "\r\n"[39m[32m 19[2mms[22m[39m
+[31m     [31m×[31m R8-P1-2 preserves JSONL record boundaries when the registered secret is "\r" and records use "\r"[39m[32m 49[2mms[22m[39m
+     [32m✓[39m serializes context once so a stateful toJSON cannot lose the basic message[32m 16[2mms[22m[39m
+ [31m❯[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts [2m([22m[2m135 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 1524[2mms[22m[39m
+     [32m✓[39m lists builtin whitelist plus custom providers through a probe slot[32m 21[2mms[22m[39m
+     [32m✓[39m saveSettings writes only custom providers to models.json and stores the per-provider key[32m 32[2mms[22m[39m
+     [32m✓[39m getApiKey returns the per-provider key and getSettings includes the active provider key[32m 9[2mms[22m[39m
+     [32m✓[39m getSettings reports hasApiKey without returning the secret[32m 5[2mms[22m[39m
+     [32m✓[39m getApiKey(sparkiirag) returns null even when keyring has the secret[32m 4[2mms[22m[39m
+     [32m✓[39m getApiKey also hides sparkiionto and both knowledge keyring names[32m 5[2mms[22m[39m
+     [32m✓[39m saveSettings rejects a custom provider whose id collides with a knowledge credential id[32m 12[2mms[22m[39m
+     [32m✓[39m testKnowledgeConnection probes healthz → info → datasets with the onto settings and token[32m 26[2mms[22m[39m
+     [32m✓[39m testKnowledgeConnection honours an unsaved override[32m 5[2mms[22m[39m
+     [32m✓[39m listKnowledgeDatasets tells 401 (credential) from 403 (permission) and flags an /info mismatch[32m 15[2mms[22m[39m
+     [32m✓[39m keeps testRagConnection as a thin sparkiirag wrapper[32m 6[2mms[22m[39m
+     [32m✓[39m testRagConnection keeps the legacy "no key" wording[32m 5[2mms[22m[39m
+     [32m✓[39m empty saveRagSettings apiKey keeps the keyring value[32m 6[2mms[22m[39m
+     [32m✓[39m saveSettings does not wipe rag[32m 11[2mms[22m[39m
+     [32m✓[39m saveSettings does not wipe documentParse[32m 26[2mms[22m[39m
+     [32m✓[39m download huggingface URL is rejected[32m 4[2mms[22m[39m
+     [32m✓[39m promptSession refuses sparkiirag profiles when RAG is unconfigured[32m 5[2mms[22m[39m
+     [32m✓[39m promptSession does not create a session when sparkiirag is unconfigured[32m 4[2mms[22m[39m
+     [32m✓[39m promptSession opens the session when allowDegradedKnowledge is set (product §15)[32m 14[2mms[22m[39m
+     [32m✓[39m setSessionKnowledge stores selection and promptSession migrates draft key before prompt[32m 13[2mms[22m[39m
+     [32m✓[39m empty retrieval returns first then aborts and appends refused knowledge_turn[32m 30[2mms[22m[39m
+     [32m✓[39m does not copy leftover draft selection onto an existing session[32m 9[2mms[22m[39m
+     [32m✓[39m aborts when the session dataset is no longer visible[32m 19[2mms[22m[39m
+     [32m✓[39m empty search after a sealed hit aborts a new turn[32m 36[2mms[22m[39m
+     [32m✓[39m openRagDocument with an Onto backend still fetches through the ontology client cache segment[32m 20[2mms[22m[39m
+     [32m✓[39m openRagDocument defaults to sparkiirag and returns a bounded error when the credential is missing[32m 4[2mms[22m[39m
+     [32m✓[39m setSessionKnowledge rejects invalid payload[32m 4[2mms[22m[39m
+     [32m✓[39m getRuntimePool returns the pool snapshot[32m 4[2mms[22m[39m
+     [32m✓[39m listModels uses the caller-provided key instead of the stored keyring key[32m 7[2mms[22m[39m
+     [32m✓[39m promptSession routes to settings active provider and default model when the session has no model[32m 14[2mms[22m[39m
+     [32m✓[39m promptSession creates a session and sends the first prompt[32m 10[2mms[22m[39m
+     [32m✓[39m R7 coalesces concurrent promptSession opens for one existing session id[32m 19[2mms[22m[39m
+     [32m✓[39m R7 promptSession rejects a stale binding while model key lookup is suspended[32m 15[2mms[22m[39m
+     [32m✓[39m R7 promptSession rejects a stale binding after deferred get_state before sending[32m 15[2mms[22m[39m
+     [32m✓[39m R7 stale task admission cannot replace a same-id replacement grant[32m 33[2mms[22m[39m
+     [32m✓[39m R7 session creation failure cannot release or delete a same-id replacement[32m 28[2mms[22m[39m
+     [32m✓[39m createSession binds a workspace WITHOUT sending a prompt (P9, holds slot + 15s idle release)[32m 11[2mms[22m[39m
+[31m     [31m×[31m B1: a late agent_settled never revokes a Grant that is not this prompt's[39m[32m 13[2mms[22m[39m
+     [32m✓[39m setChatWorkspace(null) allocates a new Documents auto path[32m 3[2mms[22m[39m
+     [32m✓[39m promptSession does not duplicate model application when the model is already in the saddle[32m 8[2mms[22m[39m
+     [32m✓[39m listChatSessions excludes empty sessions from the local store[32m 4[2mms[22m[39m
+     [32m✓[39m listChatSessions includes DB-only P9 sessions when includeEmpty is true[32m 6[2mms[22m[39m
+     [32m✓[39m listChatSessions falls back to project.json.name through the fenced service[32m 8[2mms[22m[39m
+     [32m✓[39m getChatState does not acquire when a session has no lease[32m 3[2mms[22m[39m
+     [32m✓[39m schedules idle release after agent_settled and releases after timeout[32m 8[2mms[22m[39m
+     [32m✓[39m does not idle-release a knowledge session on agent_end before agent_settled[32m 15[2mms[22m[39m
+     [32m✓[39m does not idle-release or title a workflow session after agent_settled[32m 8[2mms[22m[39m
+     [32m✓[39m rejects a transient prompt waiter after its slot is rebound instead of forwarding the new session event[32m 20[2mms[22m[39m
+     [32m✓[39m R7 rejects a transient prompt waiter after same-id release and reacquire without forwarding the new binding event[32m 16[2mms[22m[39m
+     [32m✓[39m R7 rejects a transient prompt when a successful send completes after same-id rebinding[32m 16[2mms[22m[39m
+     [32m✓[39m R7 cancels every same-id transient waiter without old completion erasing the replacement[32m 39[2mms[22m[39m
+     [32m✓[39m stamps chat-events with the live slot sessionId, not the subscribe-time id[32m 6[2mms[22m[39m
+     [32m✓[39m stamps over an inner sessionId carried by the event[32m 5[2mms[22m[39m
+     [32m✓[39m drops events while the slot has no session bound[32m 5[2mms[22m[39m
+     [32m✓[39m sends session_unbound before releasing the slot so the spinner stops[32m 5[2mms[22m[39m
+     [32m✓[39m logs and stops stamping when the pi child exits[32m 6[2mms[22m[39m
+     [32m✓[39m stops forwarding client events after the workflow slot is released[32m 21[2mms[22m[39m
+     [32m✓[39m idle-releases a post-run workflow slot so a later runWorkflow is not blocked[32m 18[2mms[22m[39m
+     [32m✓[39m workflow selectModel routes to settings active provider and default model[32m 6[2mms[22m[39m
+     [32m✓[39m workflow selectModel prefers the session-selected model[32m 6[2mms[22m[39m
+     [32m✓[39m listThinkingLevels probes a model and returns available thinking levels[32m 6[2mms[22m[39m
+     [32m✓[39m setChatThinkingLevel stores the session level and remembers it per model[32m 9[2mms[22m[39m
+     [32m✓[39m promptSession applies the session thinking level before prompt[32m 21[2mms[22m[39m
+     [32m✓[39m setChatModel applies the selected model to the open Pi session[32m 10[2mms[22m[39m
+     [32m✓[39m setChatThinkingLevel applies the selected level to the open Pi session[32m 10[2mms[22m[39m
+     [32m✓[39m queues a follow_up by default while the Pi session is streaming[32m 8[2mms[22m[39m
+     [32m✓[39m abortChat clears the queue before aborting and returns the cleared items[32m 9[2mms[22m[39m
+     [32m✓[39m connector_read document.read is handled by executeDocumentRead[32m 8[2mms[22m[39m
+     [32m✓[39m connector_read rejects an ontology tool name outside the whitelist[32m 23[2mms[22m[39m
+     [32m✓[39m connector_read writes exactly one audit per ontology tool call and records the query text[32m 13[2mms[22m[39m
+     [32m✓[39m reports document-parse spawn failures to the error center as 文档解析[32m 6[2mms[22m[39m
+     [32m✓[39m abortChat calls failSession before Pi abort[32m 9[2mms[22m[39m
+     [32m✓[39m releaseSessionSlot calls failSession before unbind[32m 5[2mms[22m[39m
+     [32m✓[39m R7 does not release a same-id replacement while an explicit slot release is awaiting task shutdown[32m 5[2mms[22m[39m
+     [32m✓[39m getDocumentParse handler exists[32m 4[2mms[22m[39m
+     [32m✓[39m downloadDocumentParseModule without production hashes fails with offline import hint[32m 4[2mms[22m[39m
+     [32m✓[39m queueMutate rebuilds both queues from the current Pi snapshot[32m 9[2mms[22m[39m
+     [32m✓[39m promptSession stages attachments into the session workspace before prompting[32m 17[2mms[22m[39m
+     [32m✓[39m promptSession sends images directly and stages only non-image attachments[32m 26[2mms[22m[39m
+     [32m✓[39m promptSession creates a session and stages attachments into the chosen workspace[32m 16[2mms[22m[39m
+     [32m✓[39m promptSession registers the proposal broker when creating a session[32m 8[2mms[22m[39m
+     [32m✓[39m getModelOptions without agentId uses generic chat requirements instead of a default agent[32m 4[2mms[22m[39m
+     [32m✓[39m classifies current DeepSeek models with orthogonal capabilities[32m 4[2mms[22m[39m
+     [32m✓[39m promptSession refuses to create a session without profileId[32m 5[2mms[22m[39m
+     [32m✓[39m ensureSessionRecord does not invent profileId general when pinning a Pi-only session[32m 4[2mms[22m[39m
+     [32m✓[39m chooseDocument grants the selected path for readDocumentBytes[32m 7[2mms[22m[39m
+     [32m✓[39m openChatSession ENOENT still returns session inputs[32m 4[2mms[22m[39m
+     [32m✓[39m opens a live session from getBranch + streamingMessage, not get_messages[32m 4[2mms[22m[39m
+     [32m✓[39m recovers the micro-gap assistant from get_messages only while streaming without a slot message[32m 5[2mms[22m[39m
+     [32m✓[39m skips the micro-gap when the last assistant is already on the branch[32m 4[2mms[22m[39m
+     [32m✓[39m does not read get_messages when the live session is idle[32m 5[2mms[22m[39m
+     [32m✓[39m dead session reads JSONL entries only (no preview)[32m 19[2mms[22m[39m
+     [32m✓[39m setChatTitle notifies the renderer so the sidebar can show the filename[32m 4[2mms[22m[39m
+     [32m✓[39m setChatTitle updates the runtime pool label instead of leaving the session id[32m 4[2mms[22m[39m
+     [32m✓[39m reopening a session acquires the pool with displayName and Pi title, not the uuid prefix[32m 4[2mms[22m[39m
+     [32m✓[39m reopening a nameless workflow session uses 新会话, not the skill body[32m 4[2mms[22m[39m
+     [32m✓[39m reopening still acquires display meta when listing Pi sessions fails[32m 5[2mms[22m[39m
+     [32m✓[39m setChatTitle rejects empty titles and agent writes after a user lock[32m 5[2mms[22m[39m
+     [32m✓[39m listChatSessions does not put firstMessage into title[32m 4[2mms[22m[39m
+     [32m✓[39m completeText forwards text to complete without renaming the session[32m 40[2mms[22m[39m
+     [32m✓[39m does not auto-title a chat session on agent_end[32m 8[2mms[22m[39m
+     [32m✓[39m imports, lists, audits, and uninstalls a user skill[32m 34[2mms[22m[39m
+     [32m✓[39m returns no-user-library when no skillLibrary user agent is assembled[32m 5[2mms[22m[39m
+     [32m✓[39m prefers SPARKII_E2E_SKILL_DIR for chooseSkillFolder[32m 3[2mms[22m[39m
+     [32m✓[39m opens the user skills dir after creating it[32m 7[2mms[22m[39m
+     [32m✓[39m lists skills for an agent id from that agent skillsDir only[32m 27[2mms[22m[39m
+     [32m✓[39m allocateAutoWorkspace returns a Documents path and does not create it[32m 3[2mms[22m[39m
+     [32m✓[39m allocateAutoWorkspace rejects unknown agent[32m 3[2mms[22m[39m
+     [32m✓[39m chooseWorkspace mkdirs an absolute defaultPath and forwards it[32m 5[2mms[22m[39m
+     [32m✓[39m chooseWorkspace ignores a relative defaultPath without mkdir[32m 3[2mms[22m[39m
+     [32m✓[39m openWorkspace mkdirs an absolute path and opens it[32m 5[2mms[22m[39m
+     [32m✓[39m openWorkspace ignores a relative path without mkdir[32m 3[2mms[22m[39m
+     [32m✓[39m runWorkflow without workspacePath allocates Documents path and does not mkdir[32m 4[2mms[22m[39m
+     [32m✓[39m runWorkflow with an allocated path keeps workspaceKind auto[32m 3[2mms[22m[39m
+     [32m✓[39m R8-P0-2 privacy deletion stops the active task, extraction and Pi binding before memory cleanup[32m 7[2mms[22m[39m
+     [32m✓[39m R8-P0-2 stops an active document parser even when no Pi binding exists[32m 3[2mms[22m[39m
+     [32m✓[39m R8-P0-2 does not delete memory or release a same-id replacement while task shutdown is awaiting[32m 4[2mms[22m[39m
+     [32m✓[39m R8-P0-2 cancels a same-id session opening before pool acquisition[32m 27[2mms[22m[39m
+     [32m✓[39m R8-P0-2 releases a stale acquisition instead of letting it bind after privacy deletion[32m 34[2mms[22m[39m
+     [32m✓[39m R8-P0-2 never releases a same-client replacement installed while a stale acquisition resumes[32m 36[2mms[22m[39m
+     [32m✓[39m does not expose task capability or user revocation handlers[32m 3[2mms[22m[39m
+     [32m✓[39m reads the session permission mode and host semantics without leaking credentials[32m 4[2mms[22m[39m
+     [32m✓[39m writes the mode, ends the running task and audits the change[32m 3[2mms[22m[39m
+     [32m✓[39m revokes the shell task grant when the mode changes[32m 3[2mms[22m[39m
+     [32m✓[39m refuses a permission mode the profile does not allow[32m 3[2mms[22m[39m
+     [32m✓[39m reports the reviewer as unavailable when Main has no worker[32m 3[2mms[22m[39m
+     [32m✓[39m does not expose the Reviewer worker in the user runtime pool[32m 3[2mms[22m[39m
+     [32m✓[39m runs an approved shell command through the host adapter and reports host semantics[32m 14[2mms[22m[39m
+     [32m✓[39m registers the channel, moves files, updates all session records and broadcasts[32m 18[2mms[22m[39m
+     [32m✓[39m blocks proposal-mode connector execution when privacy redaction wins during the dialog await[32m 9[2mms[22m[39m
+     [32m✓[39m blocks proposal-mode connector execution when privacy redaction wins during the audit await[32m 7[2mms[22m[39m
+     [32m✓[39m blocks proposal-mode connector execution when privacy redaction wins during the gateway await[32m 7[2mms[22m[39m
+     [32m✓[39m commits the chosen export path to the canonical proposal before connector execution[32m 7[2mms[22m[39m
+     [32m✓[39m blocks caller-mode workspace execution when privacy redaction wins during the revalidation await[32m 51[2mms[22m[39m
+     [32m✓[39m blocks caller-mode workspace execution when privacy redaction wins during the audit await[32m 49[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-consolidation.test.ts [2m([22m[2m15 tests[22m[2m)[22m[33m 10498[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-3 never sends indexed plaintext to consolidation while truth writes are blocked [33m 989[2mms[22m[39m
+     [33m[2m✓[22m[39m 相似记忆只产出 pending 提案，绝不自动改 active [33m 758[2mms[22m[39m
+     [33m[2m✓[22m[39m 批准合并提案后：保留条作废、被合并条作废、新条生效 [33m 772[2mms[22m[39m
+     [33m[2m✓[22m[39m 一次整合的模型调用不超过 3 次 [33m 689[2mms[22m[39m
+     [33m[2m✓[22m[39m 三个阶段全都有活时仍然 ≤3 次调用，第四件事顺延 [33m 1751[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝合并阶段的对象字段而不是字符串化 [33m 710[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝压缩阶段的对象字段而不是字符串化 [33m 370[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝复核阶段的对象字段而不是字符串化 [33m 940[2mms[22m[39m
+     [33m[2m✓[22m[39m P2 情景压缩混合越界输出时整阶段丢弃，不留下部分提案 [33m 369[2mms[22m[39m
+     [33m[2m✓[22m[39m 空闲不足或距上次整合不足：不调用模型 [33m 353[2mms[22m[39m
+     [33m[2m✓[22m[39m 开关关闭或有交互会话在跑：不整合 [33m 370[2mms[22m[39m
+     [33m[2m✓[22m[39m 没有空闲槽：跳过并顺延，不排队、不做任何写入 [33m 736[2mms[22m[39m
+     [33m[2m✓[22m[39m 整合输出畸形：该阶段整批丢弃 + errors.db 记录 + 不产生提案 [33m 679[2mms[22m[39m
+     [33m[2m✓[22m[39m 没有可用模型，或确实无事可做：不调模型、不写库，各自返回对应出口 [33m 344[2mms[22m[39m
+     [33m[2m✓[22m[39m 模型给不存在的 targetId 或越界文本：忽略该条，不落提案 [33m 666[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-extraction.test.ts [2m([22m[2m20 tests[22m[2m)[22m[33m 10434[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-3 never sends indexed plaintext to the extraction model while truth writes are blocked [33m 979[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 never sends indexed plaintext to another session while privacy cleanup is pending [33m 653[2mms[22m[39m
+     [33m[2m✓[22m[39m JSON 协议 fail closed：畸形/越界/非法 op 整批抛错 [33m 339[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝被强制字符串化的提取字段：{"sessionSummary":{},"topics":[],"ops":[]} [33m 337[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":["ADD"],"scope":"user","text":"事实"}]} [33m 337[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":["user"],"text":"事实"}]} [33m 362[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":"user","text":{},"excerpt":{}}]} [33m 331[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":"user","text":"事实","importance":"2"}]} [33m 351[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"UPDATE","targetId":["mem_x"],"text":{}}]} [33m 345[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"SUPERSEDE","targetId":"mem_x","replacementText":{},"reason":{}}]} [33m 336[2mms[22m[39m
+     [33m[2m✓[22m[39m 端到端：对话增量 → pending（含来源 excerpt）→ 批准 → 下一条会话注入 [33m 762[2mms[22m[39m
+     [33m[2m✓[22m[39m 驳回后进黑名单，同候选不再提案 [33m 762[2mms[22m[39m
+     [33m[2m✓[22m[39m 同 scope 高相似 ADD 降级为 UPDATE 候选 [33m 748[2mms[22m[39m
+     [33m[2m✓[22m[39m 畸形输出：整批丢弃 + errors.db 有记录 + 真相源无半批写入 [33m 369[2mms[22m[39m
+     [33m[2m✓[22m[39m 对象字段被拒绝时不写 pending、episode、真相文件或提取位点 [33m 345[2mms[22m[39m
+     [33m[2m✓[22m[39m auto 工作区的项目候选只落用户层 [33m 666[2mms[22m[39m
+     [33m[2m✓[22m[39m user 工作区的首条项目候选：项目文件尚不存在也能落 pending 并生成 projectId [33m 979[2mms[22m[39m
+     [33m[2m✓[22m[39m 同一候选重复提炼：已有高相似 pending 时不再重复提案 [33m 719[2mms[22m[39m
+     [33m[2m✓[22m[39m 开关关闭：零模型调用 [33m 367[2mms[22m[39m
+     [33m[2m✓[22m[39m 槽位礼让：池满跳过、无排队；交互 acquire 不受影响 [33m 345[2mms[22m[39m
+ [31m❯[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts [2m([22m[2m14 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 21058[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext [33m 2098[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext [33m 2060[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext [33m 2050[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext [33m 2073[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes from journal context after the chat row and Pi file are already gone [33m 1513[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers [33m 1541[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent [33m 1528[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret [33m 1475[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-3 refuses to construct MemoryService through an unsafe memory-root junction [33m 358[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-3 fences project repair before registry or truth reads [33m 1129[2mms[22m[39m
+[31m     [31m×[31m R8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker[39m[33m 1176[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state [33m 1328[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state [33m 1366[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state [33m 1360[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 11 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mB1: a late agent_settled never revokes a Grant that is not this prompt's
+[31m[1mError[22m: 无法解析工作区的真实对象身份[39m
+[36m [2m❯[22m createTaskGrant apps/desktop/electron/main/security/task-grant-factory.ts:[2m93:11[22m[39m
+    [90m 91|[39m   })[33m;[39m
+    [90m 92|[39m   if (!admission.ok || !admission.canonicalPath || !admission.identity…
+    [90m 93|[39m     [35mthrow[39m [35mnew[39m [33mTaskGrantAdmissionError[39m(admission)[33m;[39m
+    [90m   |[39m           [31m^[39m
+    [90m 94|[39m   }
+    [90m 95|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/11]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\n" and records use "\n"
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\n" and records use "\r\n"
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\n" and records use "\r"
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\r\n" and records use "\n"
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\r\n" and records use "\r\n"
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\r\n" and records use "\r"
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\r" and records use "\n"
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\r" and records use "\r\n"
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\r" and records use "\r"
+[31m[1mAssertionError[22m: redactMemoryPromptLogs: expected [ Array(4) ] to have a length of 3 but got 4[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 3[39m
+[31m+ 4[39m
+
+[36m [2m❯[22m apps/desktop/test/logger.test.ts:[2m357:34[22m[39m
+    [90m355|[39m       const output = operation === 'export' ? await logger.export() : …
+    [90m356|[39m       const records = output.split(/\r\n|\r|\n/).filter(Boolean).map((…
+    [90m357|[39m       expect(records, operation).toHaveLength(operation === 'redactSes…
+    [90m   |[39m                                  [31m^[39m
+    [90m358|[39m       expect(records[0]).toMatchObject({ ts: 1, level: 'info', msg: 'k…
+    [90m359|[39m       [34mexpect[39m(records[[34m0[39m][33m.[39mctx[33m.[39mdetail)[33m.[39mnot[33m.[39m[34mtoContain[39m(secret)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/11]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 truth write-block regressions[2m > [22mR8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m apps/desktop/test/memory-r8-regression.test.ts:[2m276:117[22m[39m
+    [90m274|[39m     expect(() => service.previewScope({ profileId: 'general', workspac…
+    [90m275|[39m     expect(() => service.archiveProject(workspace, true)).toThrow(/写入阻…
+    [90m276|[39m     expect(events.some((event) => event.type === 'repair_needed' && St…
+    [90m   |[39m                                                                                                                     [31m^[39m
+    [90m277|[39m
+    [90m278|[39m     service[33m.[39m[34mclose[39m()[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/11]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m3 failed[39m[22m[2m | [22m[1m[32m3 passed[39m[22m[90m (6)[39m
+[2m      Tests [22m [1m[31m11 failed[39m[22m[2m | [22m[1m[32m209 passed[39m[22m[90m (220)[39m
+[2m   Start at [22m 19:49:59
+[2m   Duration [22m 23.12s[2m (transform 3.16s, setup 122ms, import 9.42s, tests 44.15s, environment 6.66s)[22m
+

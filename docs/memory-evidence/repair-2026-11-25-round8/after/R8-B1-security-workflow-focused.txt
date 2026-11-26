@@ -1,0 +1,183 @@
+(node:31836) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24924) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:25180) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:40680) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:4572) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[31mx[39m[33m[39m[32m·[39m[33m[39m[31mx[39m[33m[39m[31mx[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[31mx[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[31mx[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[31mx[39m[33m[39m[31mx[39m[33m[39m[31mx[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 8 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/runtime-action-router.test.ts[2m > [22mask mode[2m > [22mrejects execution when a same-ID admission replaces the owner during approval
+[31m[1mAssertionError[22m: expected { requestId: 'r1', …(3) } to match object { status: 'denied', …(1) }
+(6 matching properties omitted from actual)[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[2m    "error": {[22m
+[32m-     "code": "TASK_REVOKED",[39m
+[31m+     "code": "APPROVAL_FAILED",[39m
+[2m    },[22m
+[2m    "status": "denied",[22m
+[2m  }[22m
+
+[36m [2m❯[22m apps/desktop/test/runtime-action-router.test.ts:[2m401:20[22m[39m
+    [90m399|[39m       h[33m.[39madmission[33m,[39m
+    [90m400|[39m     )[33m;[39m
+    [90m401|[39m     expect(result).toMatchObject({ status: 'denied', error: { code: 'T…
+    [90m   |[39m                    [31m^[39m
+    [90m402|[39m     [34mexpect[39m(h[33m.[39mexecute)[33m.[39mnot[33m.[39m[34mtoHaveBeenCalled[39m()[33m;[39m
+    [90m403|[39m   })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/runtime-action-router.test.ts[2m > [22mask mode[2m > [22mrejects execution when a same-ID admission replaces the owner during revalidation
+[31m[1mError[22m: task grant already exists; task id cannot be reused: t1[39m
+[36m [2m❯[22m TaskGrantRegistry.start packages/approval/src/security/task-grant-registry.ts:[2m42:13[22m[39m
+    [90m 40|[39m   [34mstart[39m(grant[33m:[39m [33mTaskGrant[39m)[33m:[39m [35mvoid[39m {
+    [90m 41|[39m     [35mif[39m ([35mthis[39m[33m.[39musedTaskIds[33m.[39m[34mhas[39m(grant[33m.[39mtaskId)) {
+    [90m 42|[39m       throw new Error(`task grant already exists; task id cannot be re…
+    [90m   |[39m             [31m^[39m
+    [90m 43|[39m     }
+    [90m 44|[39m     [35mthis[39m[33m.[39musedTaskIds[33m.[39m[34madd[39m(grant[33m.[39mtaskId)[33m;[39m
+[90m [2m❯[22m TaskLifecycle.start apps/desktop/electron/main/security/task-lifecycle.ts:[2m84:21[22m[39m
+[90m [2m❯[22m Object.startTask apps/desktop/test/runtime-action-router.test.ts:[2m148:5[22m[39m
+[90m [2m❯[22m Object.<anonymous> apps/desktop/test/runtime-action-router.test.ts:[2m418:7[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/runtime-action-router.test.ts[2m > [22mask mode[2m > [22mrejects execution when a same-ID admission replaces the owner during the allow audit
+[31m[1mError[22m: task grant already exists; task id cannot be reused: t1[39m
+[36m [2m❯[22m TaskGrantRegistry.start packages/approval/src/security/task-grant-registry.ts:[2m42:13[22m[39m
+    [90m 40|[39m   [34mstart[39m(grant[33m:[39m [33mTaskGrant[39m)[33m:[39m [35mvoid[39m {
+    [90m 41|[39m     [35mif[39m ([35mthis[39m[33m.[39musedTaskIds[33m.[39m[34mhas[39m(grant[33m.[39mtaskId)) {
+    [90m 42|[39m       throw new Error(`task grant already exists; task id cannot be re…
+    [90m   |[39m             [31m^[39m
+    [90m 43|[39m     }
+    [90m 44|[39m     [35mthis[39m[33m.[39musedTaskIds[33m.[39m[34madd[39m(grant[33m.[39mtaskId)[33m;[39m
+[90m [2m❯[22m TaskLifecycle.start apps/desktop/electron/main/security/task-lifecycle.ts:[2m84:21[22m[39m
+[90m [2m❯[22m Object.startTask apps/desktop/test/runtime-action-router.test.ts:[2m148:5[22m[39m
+[90m [2m❯[22m Object.onAudit apps/desktop/test/runtime-action-router.test.ts:[2m436:11[22m[39m
+[90m [2m❯[22m Object.append apps/desktop/test/runtime-action-router.test.ts:[2m141:9[22m[39m
+[90m [2m❯[22m auditDecision apps/desktop/electron/main/security/runtime-action-router.ts:[2m132:5[22m[39m
+[90m [2m❯[22m Object.route apps/desktop/electron/main/security/runtime-action-router.ts:[2m553:7[22m[39m
+[90m [2m❯[22m apps/desktop/test/runtime-action-router.test.ts:[2m440:20[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/workflow-broker.test.ts[2m > [22mR8 round5 r1 rejects workflow proposals when no admission can be proven
+[31m[1mAssertionError[22m: expected [Function] to throw error matching /admission is not ready/i but got 'session wf-session workflow proposal …'[39m
+
+[32m- Expected:[39m
+/admission is not ready/i
+
+[31m+ Received:[39m
+"session wf-session workflow proposal origin is not executable"
+
+[36m [2m❯[22m apps/desktop/test/workflow-broker.test.ts:[2m193:8[22m[39m
+    [90m191|[39m       requestId: 'unowned-proposal', toolName: 'memory_forget', target…
+    [90m192|[39m       summary: 'forget', payload: {}, risk: 'high-risk', executionMode…
+    [90m193|[39m     }))[33m.[39mrejects[33m.[39m[34mtoThrow[39m([36m/admission is not ready/i[39m)[33m;[39m
+    [90m   |[39m        [31m^[39m
+    [90m194|[39m     [34mexpect[39m(submit)[33m.[39m[34mtoHaveBeenCalledTimes[39m([34m1[39m)[33m;[39m
+    [90m195|[39m   } [35mfinally[39m {
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/workflow-broker.test.ts[2m > [22mrunWorkflow session id and JSONL[2m > [22mR8-P1-1 does not start the next workflow step after an between-step rebind
+[31m[1mAssertionError[22m: expected [] to have a length of 1 but got +0[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 1[39m
+[31m+ 0[39m
+
+[36m [2m❯[22m apps/desktop/test/workflow-broker.test.ts:[2m985:19[22m[39m
+    [90m983|[39m   [35mawait[39m running[33m;[39m
+    [90m984|[39m
+    [90m985|[39m   [34mexpect[39m(prompts)[33m.[39m[34mtoHaveLength[39m([34m1[39m)[33m;[39m
+    [90m   |[39m                   [31m^[39m
+    [90m986|[39m   [34mexpect[39m(prompts[[34m0[39m])[33m.[39m[34mtoMatch[39m([36m/^\/skill:第一步(?:\s|$)/[39m)[33m;[39m
+    [90m987|[39m   expect(appends.filter((entry) => entry.customType === 'workflow_step…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/workflow-broker.test.ts[2m > [22mrunWorkflow session id and JSONL[2m > [22mdoes not let a rebound session consume the previous workflow prompt
+[31m[1mAssertionError[22m: expected true to be false // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- false[39m
+[31m+ true[39m
+
+[36m [2m❯[22m apps/desktop/test/workflow-broker.test.ts:[2m1057:101[22m[39m
+    [90m1055|[39m     [35mawait[39m running[33m;[39m
+    [90m1056|[39m
+    [90m1057|[39m     expect(appends.some((a) => a.customType === 'workflow_step_end' &&…
+    [90m   |[39m                                                                                                     [31m^[39m
+    [90m1058|[39m     [34mexpect[39m([33mJSON[39m[33m.[39m[34mstringify[39m(appends))[33m.[39mnot[33m.[39m[34mtoContain[39m([32m'属于新会话的输出'[39m)[33m;[39m
+    [90m1059|[39m   })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/8]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/workflow-broker.test.ts[2m > [22mrunWorkflow session id and JSONL[2m > [22mdoes not let a same-client same-id rebinding consume the previous workflow prompt
+[31m[1mAssertionError[22m: expected true to be false // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- false[39m
+[31m+ true[39m
+
+[36m [2m❯[22m apps/desktop/test/workflow-broker.test.ts:[2m1104:101[22m[39m
+    [90m1102|[39m     [35mawait[39m running[33m;[39m
+    [90m1103|[39m
+    [90m1104|[39m     expect(appends.some((a) => a.customType === 'workflow_step_end' &&…
+    [90m   |[39m                                                                                                     [31m^[39m
+    [90m1105|[39m     expect(JSON.stringify(appends)).not.toContain('NEW-BINDING-OUTPUT'…
+    [90m1106|[39m     [34mexpect[39m(beforeRelease)[33m.[39mnot[33m.[39m[34mtoHaveBeenCalled[39m()[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/8]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/workflow-broker.test.ts[2m > [22mrunWorkflow session id and JSONL[2m > [22mstores full assistant text from message_update/message_end in step output
+[31m[1mAssertionError[22m: expected { stepId: 'review', …(3) } to match object { stepId: 'review', …(2) }
+(4 matching properties omitted from actual)[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[32m-   "output": "第3条存在期限不对齐",[39m
+[32m-   "status": "completed",[39m
+[31m+   "status": "failed",[39m
+[2m    "stepId": "review",[22m
+[2m  }[22m
+
+[36m [2m❯[22m apps/desktop/test/workflow-broker.test.ts:[2m1151:23[22m[39m
+    [90m1149|[39m     [35mawait[39m running[33m;[39m
+    [90m1150|[39m     const end = appends.find((a) => a.customType === 'workflow_step_en…
+    [90m1151|[39m     [34mexpect[39m(end[33m?.[39mdata)[33m.[39m[34mtoMatchObject[39m({
+    [90m   |[39m                       [31m^[39m
+    [90m1152|[39m       stepId[33m:[39m [32m'review'[39m[33m,[39m
+    [90m1153|[39m       status[33m:[39m [32m'completed'[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/8]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m1 passed[39m[22m[90m (3)[39m
+[2m      Tests [22m [1m[31m8 failed[39m[22m[2m | [22m[1m[32m90 passed[39m[22m[90m (98)[39m
+[2m   Start at [22m 11:55:41
+[2m   Duration [22m 4.34s[2m (transform 1.24s, setup 75ms, import 4.87s, tests 890ms, environment 2.76s)[22m
+

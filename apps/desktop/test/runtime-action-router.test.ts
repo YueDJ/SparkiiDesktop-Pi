@@ -12,9 +12,12 @@ import {
   DEFAULT_TOOL_DESCRIPTORS,
   createActionNormalizer,
 } from '../electron/main/security/action-normalizer.js';
-import { TaskLifecycle } from '../electron/main/security/task-lifecycle.js';
+import { TaskLifecycle, type TaskAdmissionToken } from '../electron/main/security/task-lifecycle.js';
 import { ShellGrantStore } from '../electron/main/security/shell-grant-store.js';
-import { createRuntimeActionRouter } from '../electron/main/security/runtime-action-router.js';
+import {
+  createRuntimeActionRouter,
+  type ApprovalResolution,
+} from '../electron/main/security/runtime-action-router.js';
 
 function key(value: string): string {
   return value.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
@@ -66,8 +69,11 @@ interface HarnessOptions {
   permissionMode?: 'ask' | 'auto_review';
   unattended?: boolean;
   taskId?: string;
-  approval?: { choice: 'once' | 'task' | 'deny' };
+  approval?: { choice: 'once' | 'task'; proposalId?: string } | { choice: 'deny' };
+  canonicalApproval?: (action: SecurityAction) => SecurityAction | null;
   review?: ReviewerDecision | Error;
+  allowShellExecution?: boolean;
+  onAudit?: (event: Record<string, unknown>) => void | Promise<void>;
 }
 
 const allowReview: ReviewerDecision = { decision: 'allow', risk: 'low', reason: '普通测试命令' };
@@ -81,12 +87,21 @@ async function harness(options: HarnessOptions = {}) {
     unattended: options.unattended ?? false,
     taskId: options.taskId ?? 't1',
   });
-  await lifecycle.start(async () => baseGrant);
+  let admission: TaskAdmissionToken | undefined;
+  await lifecycle.start(async () => baseGrant, (token) => { admission = token; }, undefined, baseGrant.sessionId);
   const auditEvents: Array<Record<string, unknown>> = [];
   const execute = vi.fn(async (_action: SecurityAction, _grant: TaskGrant) => ({
     result: { ok: true },
   }));
-  const requestApproval = vi.fn(async () => ({ choice: options.approval?.choice ?? 'once' }));
+  const requestApproval = vi.fn(async (): Promise<ApprovalResolution> => {
+    const approval = options.approval ?? { choice: 'once', proposalId: 'proposal-1' };
+    return approval.choice === 'deny'
+      ? approval
+      : { choice: approval.choice, proposalId: approval.proposalId ?? 'proposal-1' };
+  });
+  const validateApproval = vi.fn((action: SecurityAction, _approval: ApprovalResolution) =>
+    options.canonicalApproval ? options.canonicalApproval(action) : action,
+  );
   const review = vi.fn(async (_input: ShellReviewInput) => {
     if (options.review instanceof Error) throw options.review;
     return (options.review ?? allowReview) as ReviewerDecision;
@@ -94,6 +109,7 @@ async function harness(options: HarnessOptions = {}) {
   const revalidate = vi.fn(async () => true);
   const userTasks = new Map<string, string>([['s1', '把测试跑通并整理报告']]);
   const router = createRuntimeActionRouter({
+    allowShellExecution: options.allowShellExecution ?? true,
     lifecycle,
     normalizer: createActionNormalizer({
       descriptors: DEFAULT_TOOL_DESCRIPTORS,
@@ -111,6 +127,7 @@ async function harness(options: HarnessOptions = {}) {
     platformReady: options.platformReady ?? (() => true),
     execute,
     requestApproval,
+    validateApproval,
     revalidate,
     shellGrants,
     reviewerModel: 'deepseek-v4-flash',
@@ -119,22 +136,27 @@ async function harness(options: HarnessOptions = {}) {
     reviewShell: review,
     audit: {
       append: async (event) => {
-        auditEvents.push(event as Record<string, unknown>);
+        const record = event as Record<string, unknown>;
+        auditEvents.push(record);
+        await options.onAudit?.(record);
       },
     },
   });
   const startTask = async (patch: Partial<TaskGrant> = {}) => {
-    await lifecycle.end(baseGrant.sessionId, 'replaced');
+    await lifecycle.end(baseGrant.sessionId, 'replaced', admission);
     const next = grant({ ...baseGrant, ...patch });
-    await lifecycle.start(async () => next);
+    await lifecycle.start(async () => next, undefined, undefined, baseGrant.sessionId);
     return next;
   };
   return {
+    admission,
+    baseGrant,
     registry,
     lifecycle,
     router,
     execute,
     requestApproval,
+    validateApproval,
     revalidate,
     review,
     shellGrants,
@@ -163,6 +185,19 @@ let h: Harness;
 
 beforeEach(async () => {
   h = await harness();
+});
+
+describe('runtime shell boundary', () => {
+  it('denies host shell before approval or execution unless explicitly enabled', async () => {
+    h = await harness({ allowShellExecution: false, approval: { choice: 'once' } });
+    const result = await h.router.route(bash('shell-disabled', 'echo ok'), 's1');
+    expect(result.status).toBe('denied');
+    expect(result.error?.code).toBe('SHELL_DISABLED');
+    expect(h.requestApproval).not.toHaveBeenCalled();
+    expect(h.review).not.toHaveBeenCalled();
+    expect(h.execute).not.toHaveBeenCalled();
+    expect(h.auditEvents.at(-1)).toMatchObject({ action: 'action.denied', ruleId: 'platform.shell-disabled' });
+  });
 });
 
 describe('workspace CRUD passthrough', () => {
@@ -343,12 +378,66 @@ describe('ask mode', () => {
   it('rejects execution when the task is revoked while approval is pending', async () => {
     h.requestApproval.mockImplementationOnce(async () => {
       await h.lifecycle.end('s1', 'user');
-      return { choice: 'once' };
+      return { choice: 'once', proposalId: 'proposal-1' };
     });
     const result = await h.router.route(
       write({ path: 'C:/ws/report.docx' }, 'report.export'),
       's1',
     );
+    expect(result).toMatchObject({ status: 'denied', error: { code: 'TASK_REVOKED' } });
+    expect(h.execute).not.toHaveBeenCalled();
+  });
+
+  it('rejects execution when a same-ID admission replaces the owner during approval', async () => {
+    h.requestApproval.mockImplementationOnce(async () => {
+      await h.startTask();
+      return { choice: 'once', proposalId: 'proposal-1' };
+    });
+    const result = await h.router.route(
+      write({ path: 'C:/ws/report.docx' }, 'report.export'),
+      's1',
+      h.admission,
+    );
+    expect(result).toMatchObject({ status: 'denied', error: { code: 'TASK_REVOKED' } });
+    expect(h.execute).not.toHaveBeenCalled();
+  });
+
+  it('rejects execution when a same-ID admission replaces the owner during review', async () => {
+    h = await harness({ permissionMode: 'auto_review' });
+    h.review.mockImplementationOnce(async () => {
+      await h.startTask();
+      return allowReview;
+    });
+    const result = await h.router.route(bash('shell-stale-admission', 'echo ok'), 's1', h.admission);
+    expect(result).toMatchObject({ status: 'denied', error: { code: 'TASK_REVOKED' } });
+    expect(h.execute).not.toHaveBeenCalled();
+  });
+
+  it('rejects execution when a same-ID admission replaces the owner during revalidation', async () => {
+    h.revalidate.mockImplementationOnce(async () => {
+      await h.startTask();
+      return true;
+    });
+    const result = await h.router.route(
+      write({ path: 'C:/ws/report.docx' }, 'report.export'),
+      's1',
+      h.admission,
+    );
+    expect(result).toMatchObject({ status: 'denied', error: { code: 'TASK_REVOKED' } });
+    expect(h.execute).not.toHaveBeenCalled();
+  });
+
+  it('rejects execution when a same-ID admission replaces the owner during the allow audit', async () => {
+    let replaced = false;
+    h = await harness({
+      onAudit: async (event) => {
+        if (event.action === 'action.allowed' && !replaced) {
+          replaced = true;
+          await h.startTask();
+        }
+      },
+    });
+    const result = await h.router.route(write({ path: 'C:/ws/a.txt', content: 'x' }), 's1', h.admission);
     expect(result).toMatchObject({ status: 'denied', error: { code: 'TASK_REVOKED' } });
     expect(h.execute).not.toHaveBeenCalled();
   });
@@ -367,6 +456,49 @@ describe('ask mode', () => {
     expect(h.auditEvents).toContainEqual(expect.objectContaining({
       action: 'action.denied',
       ruleId: 'target.changed',
+    }));
+  });
+
+  it('re-fetches the canonical action after the final allow audit and executes that object', async () => {
+    const canonical = await h.router.route(
+      write({ path: 'C:/ws/report.docx' }, 'report.export'),
+      's1',
+    );
+    expect(canonical.status).toBe('executed');
+
+    const original = h.execute.mock.calls[0][0];
+    const replacement = { ...original, payload: { ...original.payload, canonical: true } };
+    h.validateApproval.mockImplementationOnce((action) => {
+      expect(h.auditEvents.at(-1)?.action).toBe('action.allowed');
+      return replacement;
+    });
+    h.execute.mockClear();
+    const result = await h.router.route(
+      { ...write({ path: 'C:/ws/report.docx' }, 'report.export'), requestId: 'r2' },
+      's1',
+    );
+    expect(result.status).toBe('executed');
+    expect(h.validateApproval).toHaveBeenCalledWith(
+      expect.objectContaining({ toolName: 'report.export', capability: 'fs.write' }),
+      { choice: 'once', proposalId: 'proposal-1' },
+    );
+    expect(h.execute).toHaveBeenCalledWith(replacement, expect.objectContaining({ taskId: 't1' }));
+  });
+
+  it('fails closed when canonical approval is missing after the final allow audit', async () => {
+    h.validateApproval.mockReturnValueOnce(null);
+    const result = await h.router.route(
+      write({ path: 'C:/ws/report.docx' }, 'report.export'),
+      's1',
+    );
+    expect(result).toMatchObject({
+      status: 'denied',
+      error: { code: 'APPROVAL_INVALIDATED' },
+    });
+    expect(h.execute).not.toHaveBeenCalled();
+    expect(h.auditEvents).toContainEqual(expect.objectContaining({
+      action: 'action.denied',
+      ruleId: 'approval.invalidated',
     }));
   });
 });

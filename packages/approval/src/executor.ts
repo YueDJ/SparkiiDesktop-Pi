@@ -8,7 +8,7 @@ export class ConnectorExecutor {
   register(name: string, handler: ToolHandler): void { this.handlers.set(name, handler); }
 
   async execute(p: Proposal, ctx: { actor: string }): Promise<Proposal> {
-    if (p.status !== 'approved') {
+    if (p.status !== 'approved' || p.privacyRedacted) {
       await this.audit.append({ actor: ctx.actor, action: 'execution.blocked', resource: p.toolName, decision: p.status === 'denied' ? 'denied' : 'expired', sessionId: p.sessionId });
       return p;
     }

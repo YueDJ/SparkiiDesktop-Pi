@@ -1,0 +1,150 @@
+(node:7216) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:41628) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:34152) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32932) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [31m❯[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-round7-regression.test.ts [2m([22m[2m25 tests[22m[2m | [22m[31m2 failed[39m[2m | [22m[33m23 skipped[39m[2m)[22m[33m 3430[2mms[22m[39m
+     [2m[90m↓[39m[22m R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files
+     [2m[90m↓[39m[22m R7 privacy retry recovers an empty episode topic after restart and completes chat cleanup
+     [2m[90m↓[39m[22m R7 privacy deletion discovers secrets nested only in pending operation extensions
+     [2m[90m↓[39m[22m R7 privacy deletion scrubs an invalid structural targetId field
+     [2m[90m↓[39m[22m R7 privacy deletion scrubs an invalid structural projectId field
+     [2m[90m↓[39m[22m R7 privacy deletion scrubs an invalid structural mergeIds field
+     [2m[90m↓[39m[22m R7 privacy deletion ignores whitespace-only episode topics without corrupting retained content
+     [2m[90m↓[39m[22m R7 privacy deletion preserves pending UPDATE control fields when deleted text equals the op
+     [2m[90m↓[39m[22m R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds
+     [2m[90m↓[39m[22m R7 privacy deletion includes superseded episode records in the global redaction corpus
+     [2m[90m↓[39m[22m R7 caller-mode memory deletion rechecks canonical approval after privacy redaction
+     [2m[90m↓[39m[22m R7 production privacy retry succeeds in the same process after truth rows are gone
+     [2m[90m↓[39m[22m R7-P1-1 future memory-tool audit summaries contain no raw query or memory body
+     [2m[90m↓[39m[22m R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes
+     [2m[90m↓[39m[22m R7-P1-2 replacement preflight sees an indexed project after its registry entry is removed
+     [2m[90m↓[39m[22m R7-P1-2 replacement preflight derives zero-entry project identity from scope_files
+     [2m[90m↓[39m[22m R7-P1-3 source deletion detects indexed unregistered conflicts without an explicit workspace
+     [2m[90m↓[39m[22m R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes
+     [2m[90m↓[39m[22m R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file
+     [2m[90m↓[39m[22m R7-P1-3 valid source deletion updates unregistered project truth without reindexing it
+[31m     [31m×[31m R8-REPAIR-MEMORY truth A1 source deletion ignores auto-list-only truth while updating registered and indexed projects[39m[33m 1489[2mms[22m[39m
+[31m     [31m×[31m R8-REPAIR-MEMORY truth A2 privacy deletion ignores auto-list-only truth while deleting registered and indexed projects[39m[33m 1939[2mms[22m[39m
+     [2m[90m↓[39m[22m R7-P1-4 privacy deletion discovers indexed unregistered truth before reconciliation
+     [2m[90m↓[39m[22m R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion
+     [2m[90m↓[39m[22m R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution
+ [31m❯[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts [2m([22m[2m44 tests[22m[2m | [22m[31m3 failed[39m[2m | [22m[33m34 skipped[39m[2m)[22m[33m 7966[2mms[22m[39m
+[31m     [31m×[31m R8-REPAIR-MEMORY truth B symlink replacement makes production list fail closed[39m[33m 694[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY truth B symlink replacement makes production search fail closed [33m 680[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY truth B symlink replacement makes production rebuild fail closed [33m 770[2mms[22m[39m
+[31m     [31m×[31m R8-REPAIR-MEMORY truth B hardlink replacement makes production list fail closed[39m[33m 829[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY truth B hardlink replacement makes production search fail closed [33m 781[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY truth B hardlink replacement makes production rebuild fail closed [33m 841[2mms[22m[39m
+[31m     [31m×[31m R8-REPAIR-MEMORY truth B non-symlink-reparse replacement makes production list fail closed[39m[33m 843[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY truth B non-symlink-reparse replacement makes production search fail closed [33m 789[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY truth B non-symlink-reparse replacement makes production rebuild fail closed [33m 866[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY truth C default fence and rebuilt SandboxProbe batch mode stay integrated [33m 871[2mms[22m[39m
+     [2m[90m↓[39m[22m R8 review privacy B5 zeroes a plaintext journal temp file before a failed removal
+     [2m[90m↓[39m[22m R8 final review fences same-process and restarted reads when the privacy journal cannot be persisted
+     [2m[90m↓[39m[22m R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext
+     [2m[90m↓[39m[22m R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext
+     [2m[90m↓[39m[22m R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext
+     [2m[90m↓[39m[22m R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext
+     [2m[90m↓[39m[22m R8-P0-1 resumes from journal context after the chat row and Pi file are already gone
+     [2m[90m↓[39m[22m R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers
+     [2m[90m↓[39m[22m R8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent
+     [2m[90m↓[39m[22m R8 review B3 registers chat secrets before sink cleanup and protects later chat writes after failure
+     [2m[90m↓[39m[22m R8-P0-1 restores privacy sink fences before truth recovery can restore plaintext
+     [2m[90m↓[39m[22m R8 review B3 cleans Pi and chat carriers before a safe-root truth write-block aborts startup
+     [2m[90m↓[39m[22m R8 review B5 rejects dangling privacy journal directory and file links without reading targets
+     [2m[90m↓[39m[22m R8 review B5 refuses to clear a privacy journal whose identity changed during cleanup
+     [2m[90m↓[39m[22m R8-REPAIR-MEMORY refuses to delete a journal when the zero-write readback contains a nonzero byte
+     [2m[90m↓[39m[22m R8-REPAIR-MEMORY digest-mismatch startup temp evidence persists a privacy write-block without deleting context
+     [2m[90m↓[39m[22m R8-REPAIR-MEMORY session-mismatch startup temp evidence persists a privacy write-block without deleting context
+     [2m[90m↓[39m[22m R8-REPAIR-MEMORY malformed startup temp evidence persists a privacy write-block without deleting context
+     [2m[90m↓[39m[22m R8-REPAIR-MEMORY promotes a valid startup temp journal and automatically resumes its privacy deletion
+     [2m[90m↓[39m[22m R8-REPAIR-MEMORY fences Windows non-symlink reparse attributes on the privacy directory before temp reads and cleanup
+     [2m[90m↓[39m[22m R8-REPAIR-MEMORY fences Windows non-symlink reparse attributes on the privacy file before temp reads and cleanup
+     [2m[90m↓[39m[22m R8-REPAIR-MEMORY continues Gate Audit Error Logger cleanup when store privacy registration fails
+     [2m[90m↓[39m[22m R8 review B4 rotates memory markers when the deleted text collides with %s
+     [2m[90m↓[39m[22m R8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret
+     [2m[90m↓[39m[22m R8-P1-3 refuses to construct MemoryService through an unsafe memory-root junction
+     [2m[90m↓[39m[22m R8-P1-3 fences project repair before registry or truth reads
+     [2m[90m↓[39m[22m R8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker
+     [2m[90m↓[39m[22m R8 privacy review reads the raw Pi path before chat redaction can alter it
+     [2m[90m↓[39m[22m R8 privacy review resumes a secret-named Pi carrier after restart
+     [2m[90m↓[39m[22m R8 privacy review retries independent carriers after a same-process truth rollback block
+     [2m[90m↓[39m[22m R8 privacy review removes a plaintext journal temp file left before rename
+     [2m[90m↓[39m[22m R8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state
+     [2m[90m↓[39m[22m R8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state
+     [2m[90m↓[39m[22m R8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 5 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 truth registry path regressions[2m > [22mR8-REPAIR-MEMORY truth B symlink replacement makes production list fail closed
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 truth registry path regressions[2m > [22mR8-REPAIR-MEMORY truth B hardlink replacement makes production list fail closed
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 truth registry path regressions[2m > [22mR8-REPAIR-MEMORY truth B non-symlink-reparse replacement makes production list fail closed
+[31m[1mAssertionError[22m: expected [Function invoke] to throw an error[39m
+
+[32m- Expected:[39m
+null
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m apps/desktop/test/memory-r8-regression.test.ts:[2m201:20[22m[39m
+    [90m199|[39m       [35mreturn[39m service[33m.[39m[34mrebuildIndex[39m()[33m;[39m
+    [90m200|[39m     }[33m;[39m
+    [90m201|[39m     [34mexpect[39m(invoke)[33m.[39m[34mtoThrow[39m([36m/链接|硬链接|重解析点/[39m)[33m;[39m
+    [90m   |[39m                    [31m^[39m
+    [90m202|[39m     expect(databaseBytes(memoryDbPath(dataDir))).not.toContain(replace…
+    [90m203|[39m     expect(readFileSync(replaced.externalRegistry)).toEqual(registryBe…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-round7-regression.test.ts[2m > [22mR7 memory regressions[2m > [22mR8-REPAIR-MEMORY truth A1 source deletion ignores auto-list-only truth while updating registered and indexed projects
+[31m[1mAssertionError[22m: expected [Function] to not throw an error but 'Error: journal 目标不是允许的记忆真相文件' was thrown[39m
+
+[32m- Expected:[39m
+undefined
+
+[31m+ Received:[39m
+"Error: journal 目标不是允许的记忆真相文件"
+
+[36m [2m❯[22m apps/desktop/test/memory-round7-regression.test.ts:[2m697:61[22m[39m
+    [90m695|[39m     const autoBefore = readFileSync(projectMemoryFile(seeded.autoWorks…
+    [90m696|[39m
+    [90m697|[39m     [34mexpect[39m(() [33m=>[39m service[33m.[39m[34mmarkSourcesDeleted[39m(sessionId))[33m.[39mnot[33m.[39m[34mtoThrow[39m()[33m;[39m
+    [90m   |[39m                                                             [31m^[39m
+    [90m698|[39m
+    [90m699|[39m     expect(readFileSync(projectMemoryFile(seeded.autoWorkspace))).toEq…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-round7-regression.test.ts[2m > [22mR7 memory regressions[2m > [22mR8-REPAIR-MEMORY truth A2 privacy deletion ignores auto-list-only truth while deleting registered and indexed projects
+[31m[1mError[22m: journal 目标不是允许的记忆真相文件[39m
+[36m [2m❯[22m validateTarget apps/desktop/electron/main/memory/truth-batch.ts:[2m159:9[22m[39m
+    [90m157|[39m     [35mreturn[39m canonical[33m;[39m
+    [90m158|[39m   }
+    [90m159|[39m   [35mthrow[39m [35mnew[39m [33mError[39m([32m'journal 目标不是允许的记忆真相文件'[39m)[33m;[39m
+    [90m   |[39m         [31m^[39m
+    [90m160|[39m }
+    [90m161|[39m
+[90m [2m❯[22m commitTruthBatch apps/desktop/electron/main/memory/truth-batch.ts:[2m390:23[22m[39m
+[90m [2m❯[22m MemoryStore.deleteMemoryEntriesBySession apps/desktop/electron/main/memory/store.ts:[2m1364:5[22m[39m
+[90m [2m❯[22m apps/desktop/electron/main/memory/service.ts:[2m1158:20[22m[39m
+[90m [2m❯[22m MemoryStore.runPrivacyCleanup apps/desktop/electron/main/memory/store.ts:[2m423:18[22m[39m
+[90m [2m❯[22m MemoryService.privacyDeleteBySession apps/desktop/electron/main/memory/service.ts:[2m1157:28[22m[39m
+[90m [2m❯[22m apps/desktop/test/memory-round7-regression.test.ts:[2m715:28[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m2 failed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[31m5 failed[39m[22m[2m | [22m[1m[32m7 passed[39m[22m[2m | [22m[33m57 skipped[39m[90m (69)[39m
+[2m   Start at [22m 05:42:49
+[2m   Duration [22m 9.88s[2m (transform 637ms, setup 48ms, import 1.75s, tests 11.40s, environment 1.67s)[22m
+

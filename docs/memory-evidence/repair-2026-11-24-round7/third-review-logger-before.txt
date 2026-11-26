@@ -1,0 +1,82 @@
+(node:38992) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:23996) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:6312) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/logger.test.ts (18 tests | 2 failed | 16 skipped) 51ms
+     × R7 never preserves the registered marker secret 已删除 25ms
+     × R7 never preserves the registered marker secret [已删除] 25ms
+     ↓ appends structured jsonl and exports
+     ↓ drops entries below the configured level
+     ↓ echoes to console with level mapping
+     ↓ does not echo to console when echo is disabled
+     ↓ constructor and logging stay non-blocking when the log file path is a directory
+     ↓ circular console context cannot reject logging or lose the message
+     ↓ redactSession terminates a rewritten nonempty JSONL file before the next append
+     ↓ redactMemoryPromptLogs terminates a rewritten nonempty JSONL file before the next append
+     ↓ redacts string values without changing JSON schema field names during session redaction or export
+     ↓ uses structured redaction for future writes and exports
+     ↓ memory-prompt redaction keeps normal logs as valid JSONL with structured value redaction
+     ↓ retains malformed normal log lines while removing their registered secrets
+     ↓ redactSession scrubs every JSON escape encoding in malformed history without changing valid record schemas
+     ↓ redactMemoryPromptLogs scrubs every JSON escape encoding in malformed history without changing valid record schemas
+     ↓ export scrubs every JSON escape encoding in malformed history without changing valid record schemas
+     ↓ serializes context once so a stateful toJSON cannot lose the basic message
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/logger.test.ts > Logger > R7 never preserves the registered marker secret 已删除
+AssertionError: expected '{"level":"info","msg":"before [[已删除]]…' not to contain '已删除'
+
+- Expected
++ Received
+
+- 已删除
++ {"level":"info","msg":"before [[已删除]]","ctx":{"detail":"[[已删除]]"}}
++ not-json [[已删除]]
++ {"ts":1795534850233,"level":"info","msg":"future [[已删除]]","ctx":{"detail":"[[已删除]]"}}
++
+
+ ❯ apps/desktop/test/logger.test.ts:40:26
+     38|     const exported = await logger.export();
+     39|     for (const output of [rewritten, exported]) {
+     40|       expect(output).not.toContain(secret);
+       |                          ^
+     41|       expect(output).not.toContain(JSON.stringify(secret).slice(1, -1)…
+     42|       expect(output.endsWith('\n')).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  |1| apps/desktop/test/logger.test.ts > Logger > R7 never preserves the registered marker secret [已删除]
+AssertionError: expected '{"level":"info","msg":"before [已删除]",…' not to contain '[已删除]'
+
+- Expected
++ Received
+
+- [已删除]
++ {"level":"info","msg":"before [已删除]","ctx":{"detail":"[已删除]"}}
++ not-json [已删除]
++ {"ts":1795534850256,"level":"info","msg":"future [已删除]","ctx":{"detail":"[已删除]"}}
++
+
+ ❯ apps/desktop/test/logger.test.ts:40:26
+     38|     const exported = await logger.export();
+     39|     for (const output of [rewritten, exported]) {
+     40|       expect(output).not.toContain(secret);
+       |                          ^
+     41|       expect(output).not.toContain(JSON.stringify(secret).slice(1, -1)…
+     42|       expect(output.endsWith('\n')).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 16 skipped (18)
+   Start at  23:40:49
+   Duration  1.11s (transform 55ms, setup 32ms, import 87ms, tests 51ms, environment 775ms)
+

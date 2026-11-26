@@ -1,0 +1,27 @@
+(node:26992) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31004) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:24872) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:38676) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/gate.test.ts (4 tests) 44ms
+ ✓ |1| apps/desktop/test/memory-round7-regression.test.ts (7 tests) 14684ms
+     ✓ R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files  1933ms
+     ✓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body  943ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes  2426ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes  3086ms
+     ✓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file  2128ms
+     ✓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion  2240ms
+     ✓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution  1927ms
+
+ Test Files  2 passed (2)
+      Tests  11 passed (11)
+   Start at  19:30:39
+   Duration  16.69s (transform 304ms, setup 40ms, import 1.01s, tests 14.73s, environment 926ms)
+

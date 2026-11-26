@@ -1,0 +1,236 @@
+(node:41884) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36456) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:27376) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [31m❯[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts [2m([22m[2m156 tests[22m[2m | [22m[31m1 failed[39m[2m | [22m[33m155 skipped[39m[2m)[22m[32m 40[2mms[22m[39m
+     [2m[90m↓[39m[22m lists builtin whitelist plus custom providers through a probe slot
+     [2m[90m↓[39m[22m saveSettings writes only custom providers to models.json and stores the per-provider key
+     [2m[90m↓[39m[22m getApiKey returns the per-provider key and getSettings includes the active provider key
+     [2m[90m↓[39m[22m getSettings reports hasApiKey without returning the secret
+     [2m[90m↓[39m[22m getApiKey(sparkiirag) returns null even when keyring has the secret
+     [2m[90m↓[39m[22m getApiKey also hides sparkiionto and both knowledge keyring names
+     [2m[90m↓[39m[22m saveSettings rejects a custom provider whose id collides with a knowledge credential id
+     [2m[90m↓[39m[22m testKnowledgeConnection probes healthz → info → datasets with the onto settings and token
+     [2m[90m↓[39m[22m testKnowledgeConnection honours an unsaved override
+     [2m[90m↓[39m[22m listKnowledgeDatasets tells 401 (credential) from 403 (permission) and flags an /info mismatch
+     [2m[90m↓[39m[22m keeps testRagConnection as a thin sparkiirag wrapper
+     [2m[90m↓[39m[22m testRagConnection keeps the legacy "no key" wording
+     [2m[90m↓[39m[22m empty saveRagSettings apiKey keeps the keyring value
+     [2m[90m↓[39m[22m saveSettings does not wipe rag
+     [2m[90m↓[39m[22m saveSettings does not wipe documentParse
+     [2m[90m↓[39m[22m download huggingface URL is rejected
+     [2m[90m↓[39m[22m promptSession refuses sparkiirag profiles when RAG is unconfigured
+     [2m[90m↓[39m[22m promptSession does not create a session when sparkiirag is unconfigured
+     [2m[90m↓[39m[22m promptSession opens the session when allowDegradedKnowledge is set (product §15)
+     [2m[90m↓[39m[22m setSessionKnowledge stores selection and promptSession migrates draft key before prompt
+     [2m[90m↓[39m[22m empty retrieval returns first then aborts and appends refused knowledge_turn
+     [2m[90m↓[39m[22m does not copy leftover draft selection onto an existing session
+     [2m[90m↓[39m[22m aborts when the session dataset is no longer visible
+     [2m[90m↓[39m[22m empty search after a sealed hit aborts a new turn
+     [2m[90m↓[39m[22m openRagDocument with an Onto backend still fetches through the ontology client cache segment
+     [2m[90m↓[39m[22m openRagDocument defaults to sparkiirag and returns a bounded error when the credential is missing
+     [2m[90m↓[39m[22m setSessionKnowledge rejects invalid payload
+     [2m[90m↓[39m[22m getRuntimePool returns the pool snapshot
+     [2m[90m↓[39m[22m listModels uses the caller-provided key instead of the stored keyring key
+     [2m[90m↓[39m[22m promptSession routes to settings active provider and default model when the session has no model
+     [2m[90m↓[39m[22m promptSession creates a session and sends the first prompt
+     [2m[90m↓[39m[22m R7 coalesces concurrent promptSession opens for one existing session id
+     [2m[90m↓[39m[22m R7 promptSession rejects a stale binding while model key lookup is suspended
+     [2m[90m↓[39m[22m R7 promptSession rejects a stale binding after deferred get_state before sending
+     [2m[90m↓[39m[22m R7 stale task admission cannot replace a same-id replacement grant
+     [2m[90m↓[39m[22m R7 session creation failure cannot release or delete a same-id replacement
+     [2m[90m↓[39m[22m createSession binds a workspace WITHOUT sending a prompt (P9, holds slot + 15s idle release)
+     [2m[90m↓[39m[22m B1: a late agent_settled never revokes a Grant that is not this prompt's
+     [2m[90m↓[39m[22m setChatWorkspace(null) allocates a new Documents auto path
+     [2m[90m↓[39m[22m promptSession does not duplicate model application when the model is already in the saddle
+     [2m[90m↓[39m[22m listChatSessions excludes empty sessions from the local store
+     [2m[90m↓[39m[22m listChatSessions includes DB-only P9 sessions when includeEmpty is true
+     [2m[90m↓[39m[22m listChatSessions falls back to project.json.name through the fenced service
+     [2m[90m↓[39m[22m getChatState does not acquire when a session has no lease
+     [2m[90m↓[39m[22m schedules idle release after agent_settled and releases after timeout
+     [2m[90m↓[39m[22m does not idle-release a knowledge session on agent_end before agent_settled
+     [2m[90m↓[39m[22m does not idle-release or title a workflow session after agent_settled
+     [2m[90m↓[39m[22m rejects a transient prompt waiter after its slot is rebound instead of forwarding the new session event
+     [2m[90m↓[39m[22m R7 rejects a transient prompt waiter after same-id release and reacquire without forwarding the new binding event
+     [2m[90m↓[39m[22m R7 rejects a transient prompt when a successful send completes after same-id rebinding
+     [2m[90m↓[39m[22m R7 cancels every same-id transient waiter without old completion erasing the replacement
+     [2m[90m↓[39m[22m stamps chat-events with the live slot sessionId, not the subscribe-time id
+     [2m[90m↓[39m[22m stamps over an inner sessionId carried by the event
+     [2m[90m↓[39m[22m drops events while the slot has no session bound
+     [2m[90m↓[39m[22m sends session_unbound before releasing the slot so the spinner stops
+     [2m[90m↓[39m[22m logs and stops stamping when the pi child exits
+     [2m[90m↓[39m[22m stops forwarding client events after the workflow slot is released
+     [2m[90m↓[39m[22m idle-releases a post-run workflow slot so a later runWorkflow is not blocked
+     [2m[90m↓[39m[22m workflow selectModel routes to settings active provider and default model
+     [2m[90m↓[39m[22m workflow selectModel prefers the session-selected model
+     [2m[90m↓[39m[22m listThinkingLevels probes a model and returns available thinking levels
+     [2m[90m↓[39m[22m setChatThinkingLevel stores the session level and remembers it per model
+     [2m[90m↓[39m[22m promptSession applies the session thinking level before prompt
+     [2m[90m↓[39m[22m setChatModel applies the selected model to the open Pi session
+     [2m[90m↓[39m[22m setChatThinkingLevel applies the selected level to the open Pi session
+     [2m[90m↓[39m[22m queues a follow_up by default while the Pi session is streaming
+     [2m[90m↓[39m[22m abortChat clears the queue before aborting and returns the cleared items
+     [2m[90m↓[39m[22m connector_read document.read is handled by executeDocumentRead
+     [2m[90m↓[39m[22m connector_read rejects an ontology tool name outside the whitelist
+     [2m[90m↓[39m[22m connector_read writes exactly one audit per ontology tool call and records the query text
+     [2m[90m↓[39m[22m reports document-parse spawn failures to the error center as 文档解析
+     [2m[90m↓[39m[22m abortChat calls failSession before Pi abort
+     [2m[90m↓[39m[22m releaseSessionSlot calls failSession before unbind
+     [2m[90m↓[39m[22m R7 does not release a same-id replacement while an explicit slot release is awaiting task shutdown
+     [2m[90m↓[39m[22m getDocumentParse handler exists
+     [2m[90m↓[39m[22m downloadDocumentParseModule without production hashes fails with offline import hint
+     [2m[90m↓[39m[22m queueMutate rebuilds both queues from the current Pi snapshot
+     [2m[90m↓[39m[22m promptSession stages attachments into the session workspace before prompting
+     [2m[90m↓[39m[22m promptSession sends images directly and stages only non-image attachments
+     [2m[90m↓[39m[22m promptSession creates a session and stages attachments into the chosen workspace
+     [2m[90m↓[39m[22m promptSession registers the proposal broker when creating a session
+     [2m[90m↓[39m[22m getModelOptions without agentId uses generic chat requirements instead of a default agent
+     [2m[90m↓[39m[22m classifies current DeepSeek models with orthogonal capabilities
+     [2m[90m↓[39m[22m promptSession refuses to create a session without profileId
+     [2m[90m↓[39m[22m ensureSessionRecord does not invent profileId general when pinning a Pi-only session
+     [2m[90m↓[39m[22m chooseDocument grants the selected path for readDocumentBytes
+     [2m[90m↓[39m[22m openChatSession ENOENT still returns session inputs
+     [2m[90m↓[39m[22m opens a live session from getBranch + streamingMessage, not get_messages
+     [2m[90m↓[39m[22m recovers the micro-gap assistant from get_messages only while streaming without a slot message
+     [2m[90m↓[39m[22m skips the micro-gap when the last assistant is already on the branch
+     [2m[90m↓[39m[22m does not read get_messages when the live session is idle
+     [2m[90m↓[39m[22m dead session reads JSONL entries only (no preview)
+[31m     [31m×[31m R8 final review uses the raw Pi carrier for dead-session reads and runtime acquisition[39m[32m 38[2mms[22m[39m
+     [2m[90m↓[39m[22m setChatTitle notifies the renderer so the sidebar can show the filename
+     [2m[90m↓[39m[22m setChatTitle updates the runtime pool label instead of leaving the session id
+     [2m[90m↓[39m[22m reopening a session acquires the pool with displayName and Pi title, not the uuid prefix
+     [2m[90m↓[39m[22m reopening a nameless workflow session uses 新会话, not the skill body
+     [2m[90m↓[39m[22m reopening still acquires display meta when listing Pi sessions fails
+     [2m[90m↓[39m[22m setChatTitle rejects empty titles and agent writes after a user lock
+     [2m[90m↓[39m[22m listChatSessions does not put firstMessage into title
+     [2m[90m↓[39m[22m completeText forwards text to complete without renaming the session
+     [2m[90m↓[39m[22m does not auto-title a chat session on agent_end
+     [2m[90m↓[39m[22m imports, lists, audits, and uninstalls a user skill
+     [2m[90m↓[39m[22m returns no-user-library when no skillLibrary user agent is assembled
+     [2m[90m↓[39m[22m prefers SPARKII_E2E_SKILL_DIR for chooseSkillFolder
+     [2m[90m↓[39m[22m opens the user skills dir after creating it
+     [2m[90m↓[39m[22m lists skills for an agent id from that agent skillsDir only
+     [2m[90m↓[39m[22m allocateAutoWorkspace returns a Documents path and does not create it
+     [2m[90m↓[39m[22m allocateAutoWorkspace rejects unknown agent
+     [2m[90m↓[39m[22m chooseWorkspace mkdirs an absolute defaultPath and forwards it
+     [2m[90m↓[39m[22m chooseWorkspace ignores a relative defaultPath without mkdir
+     [2m[90m↓[39m[22m openWorkspace mkdirs an absolute path and opens it
+     [2m[90m↓[39m[22m openWorkspace ignores a relative path without mkdir
+     [2m[90m↓[39m[22m runWorkflow without workspacePath allocates Documents path and does not mkdir
+     [2m[90m↓[39m[22m runWorkflow with an allocated path keeps workspaceKind auto
+     [2m[90m↓[39m[22m R8-P0-2 privacy deletion stops the active task, extraction and Pi binding before memory cleanup
+     [2m[90m↓[39m[22m R8-P0-2 stops an active document parser even when no Pi binding exists
+     [2m[90m↓[39m[22m R8-P0-2 does not delete memory or release a same-id replacement while task shutdown is awaiting
+     [2m[90m↓[39m[22m R8-P0-2 cancels a same-id session opening before pool acquisition
+     [2m[90m↓[39m[22m R8-P0-2 releases a stale acquisition instead of letting it bind after privacy deletion
+     [2m[90m↓[39m[22m R8 final review releases a stale setChatTitle acquisition after privacy deletion starts
+     [2m[90m↓[39m[22m R8-P0-2 never releases a same-client replacement installed while a stale acquisition resumes
+     [2m[90m↓[39m[22m does not expose task capability or user revocation handlers
+     [2m[90m↓[39m[22m reads the session permission mode and host semantics without leaking credentials
+     [2m[90m↓[39m[22m writes the mode, ends the running task and audits the change
+     [2m[90m↓[39m[22m revokes the shell task grant when the mode changes
+     [2m[90m↓[39m[22m refuses a permission mode the profile does not allow
+     [2m[90m↓[39m[22m reports the reviewer as unavailable when Main has no worker
+     [2m[90m↓[39m[22m does not expose the Reviewer worker in the user runtime pool
+     [2m[90m↓[39m[22m runs an approved shell command through the host adapter and reports host semantics
+     [2m[90m↓[39m[22m registers the channel, moves files, updates all session records and broadcasts
+     [2m[90m↓[39m[22m R8 runtime round3 B1 cancels a pending production admission on stop
+     [2m[90m↓[39m[22m R8 runtime round3 B1 cancels a pending production admission on workspace-change
+     [2m[90m↓[39m[22m R8 B1 rejects stale 'settings' commands after a same-client replacement
+     [2m[90m↓[39m[22m R8 B1 rejects stale 'key' commands after a same-client replacement
+     [2m[90m↓[39m[22m R8 B1 rejects stale 'model' commands after a same-client replacement
+     [2m[90m↓[39m[22m R8 B1 rejects stale 'complete' commands after a same-client replacement
+     [2m[90m↓[39m[22m R8 B1 rejects a stale key lookup before writing the original prompt
+     [2m[90m↓[39m[22m R8 B1 does not overwrite a replacement model while set_model is deferred
+     [2m[90m↓[39m[22m R8 runtime round3 B4 stale abort cannot revoke or command a same-lease replacement task
+     [2m[90m↓[39m[22m R8 runtime round3 B4 rejects stale { name: 'thinking', command: 'set_thinking_level' } commands after a same-client rebind
+     [2m[90m↓[39m[22m R8 runtime round3 B4 rejects stale { name: 'workspace', command: 'configure_session' } commands after a same-client rebind
+     [2m[90m↓[39m[22m R8 runtime round3 B4 rejects a stale workflow journal after its append await
+     [2m[90m↓[39m[22m R8 runtime round3 B4 relocation cannot configure a replacement binding
+     [2m[90m↓[39m[22m R8 B2 stale export admission cannot replace or revoke a replacement task
+     [2m[90m↓[39m[22m R8 B2 approval cannot append a journal after a same-client rebind
+     [2m[90m↓[39m[22m R8 runtime round3 B5 export propagates journal 'rejection' and revokes only its grant
+     [2m[90m↓[39m[22m R8 runtime round3 B5 export propagates journal 'success false' and revokes only its grant
+     [2m[90m↓[39m[22m R8 runtime round3 B5 stale export journal failure cannot revoke a same-task-ID replacement
+     [2m[90m↓[39m[22m R8 runtime round3 B5 export rejects when its binding changes during the journal await
+     [2m[90m↓[39m[22m blocks proposal-mode connector execution when privacy redaction wins during the dialog await
+     [2m[90m↓[39m[22m blocks proposal-mode connector execution when privacy redaction wins during the audit await
+     [2m[90m↓[39m[22m blocks proposal-mode connector execution when privacy redaction wins during the gateway await
+     [2m[90m↓[39m[22m commits the chosen export path to the canonical proposal before connector execution
+     [2m[90m↓[39m[22m blocks caller-mode workspace execution when privacy redaction wins during the revalidation await
+     [2m[90m↓[39m[22m blocks caller-mode workspace execution when privacy redaction wins during the audit await
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mR8 final review uses the raw Pi carrier for dead-session reads and runtime acquisition
+[31m[1mAssertionError[22m: expected [] to deeply equal [ { type: 'message', id: 'm1', …(3) } ][39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- [[39m
+[32m-   {[39m
+[32m-     "id": "m1",[39m
+[32m-     "message": {[39m
+[32m-       "content": "raw carrier",[39m
+[32m-       "role": "user",[39m
+[32m-     },[39m
+[32m-     "parentId": null,[39m
+[32m-     "timestamp": "2026-09-05T00:00:01.000Z",[39m
+[32m-     "type": "message",[39m
+[32m-   },[39m
+[32m- ][39m
+[31m+ [][39m
+
+[36m [2m❯[22m apps/desktop/test/ipc.test.ts:[2m4224:33[22m[39m
+    [90m4222|[39m
+    [90m4223|[39m     const opened = await handlers.get('sparkii:openChatSession')!(null…
+    [90m4224|[39m     expect.soft(opened.entries).toEqual([body]);
+    [90m   |[39m                                 [31m^[39m
+    [90m4225|[39m     expect.soft(rawPiSessionFile).toHaveBeenCalledWith('dead');
+    [90m4226|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mR8 final review uses the raw Pi carrier for dead-session reads and runtime acquisition
+[31m[1mAssertionError[22m: expected "vi.fn()" to be called with arguments: [ 'dead' ][90m
+
+Number of calls: [1m0[22m
+[31m[39m
+[36m [2m❯[22m apps/desktop/test/ipc.test.ts:[2m4225:35[22m[39m
+    [90m4223|[39m     const opened = await handlers.get('sparkii:openChatSession')!(null…
+    [90m4224|[39m     expect.soft(opened.entries).toEqual([body]);
+    [90m4225|[39m     expect.soft(rawPiSessionFile).toHaveBeenCalledWith('dead');
+    [90m   |[39m                                   [31m^[39m
+    [90m4226|[39m
+    [90m4227|[39m     await handlers.get('sparkii:openChatSession')!(null, 's1');
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mR8 final review uses the raw Pi carrier for dead-session reads and runtime acquisition
+[31m[1mAssertionError[22m: expected "vi.fn()" to be called with arguments: [ 's1', ObjectContaining{…} ][90m
+
+Number of calls: [1m0[22m
+[31m[39m
+[36m [2m❯[22m apps/desktop/test/ipc.test.ts:[2m4228:34[22m[39m
+    [90m4226|[39m
+    [90m4227|[39m     await handlers.get('sparkii:openChatSession')!(null, 's1');
+    [90m4228|[39m     expect.soft(rt.pool.acquire).toHaveBeenCalledWith('s1', expect.obj…
+    [90m   |[39m                                  [31m^[39m
+    [90m4229|[39m   });
+    [90m4230|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[33m155 skipped[39m[90m (156)[39m
+[2m   Start at [22m 01:08:05
+[2m   Duration [22m 6.72s[2m (transform 1.74s, setup 31ms, import 5.67s, tests 40ms, environment 787ms)[22m
+

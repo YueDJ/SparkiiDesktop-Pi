@@ -5,7 +5,7 @@
  * real symlink / hard-link fixtures, so the symlink-escapee and hard-link-alias
  * defenses are actually exercised rather than simulated.
  */
-import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, linkSync, existsSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, linkSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { homedir } from 'node:os';
@@ -14,6 +14,25 @@ import { createWindowsPathProbe } from '../electron/main/security/windows-platfo
 import { createWorkspaceFileService } from '../electron/main/security/workspace-file-service.js';
 
 interface AuditCall { action: string; decision?: string; sessionId?: string; payloadSummary?: string }
+
+function canCreateRealLink(kind: 'symlink' | 'hardlink'): boolean {
+  const base = mkdtempSync(join(tmpdir(), `bid-ws-${kind}-probe-`));
+  try {
+    const source = join(base, 'source.txt');
+    const link = join(base, 'link.txt');
+    writeFileSync(source, 'probe');
+    if (kind === 'symlink') symlinkSync(source, link, 'file');
+    else linkSync(source, link);
+    return true;
+  } catch {
+    return false;
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+}
+
+const realSymlinkAvailable = canCreateRealLink('symlink');
+const realHardlinkAvailable = canCreateRealLink('hardlink');
 
 function makeService(workspace: string) {
   const probe = createWindowsPathProbe({
@@ -103,20 +122,10 @@ describe('workspace file service — REAL probe integration (symlink / hard-link
     expect(audits.some((a) => a.decision === 'failed')).toBe(true);
   });
 
-  it('rejects a REAL symlink pointing outside the workspace', async () => {
+  it.skipIf(!realSymlinkAvailable)('rejects a REAL symlink pointing outside the workspace', async () => {
     const { workspace, outside } = tempLayout();
     const link = join(workspace, 'escape.txt');
-    try {
-      symlinkSync(join(outside, 'secret.txt'), link, 'file');
-    } catch (err) {
-      // Windows requires Developer Mode / elevation for symlinks. Emit a loud
-      // warning instead of silently passing — see known limitation in the tech
-      // design doc. The reparse-point logic is still covered by the mock-probe
-      // unit test; CI with elevation should run this case for real.
-      console.warn(`[ws-boundary] symlink fixture unavailable (${String(err)}); symlink-escape case skipped — run CI with Developer Mode to cover it for real`);
-      return;
-    }
-    if (!existsSync(link)) return;
+    symlinkSync(join(outside, 'secret.txt'), link, 'file');
     const { service, audits } = makeService(workspace);
     const r = await service.execute('read', { sessionId: 's1', path: 'escape.txt' });
     expect(r.ok).toBe(false);
@@ -124,16 +133,11 @@ describe('workspace file service — REAL probe integration (symlink / hard-link
     expect(audits.some((a) => a.decision === 'failed')).toBe(true);
   });
 
-  it('rejects a REAL hard-link alias (nlink > 1) inside the workspace', async () => {
+  it.skipIf(!realHardlinkAvailable)('rejects a REAL hard-link alias (nlink > 1) inside the workspace', async () => {
     const { workspace, outside } = tempLayout();
     const src = join(outside, 'secret.txt');
     const alias = join(workspace, 'alias.txt');
-    try {
-      linkSync(src, alias);
-    } catch {
-      return; // hard links across volumes may fail; skip
-    }
-    if (!existsSync(alias)) return;
+    linkSync(src, alias);
     const { service, audits } = makeService(workspace);
     const r = await service.execute('read', { sessionId: 's1', path: 'alias.txt' });
     expect(r.ok).toBe(false);

@@ -1,0 +1,91 @@
+(node:28748) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:40448) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:12028) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[90mstdout[2m | apps/desktop/test/logger.test.ts[2m > [22m[2mLogger[2m > [22m[2mappends structured jsonl and exports
+[22m[39mstart {"profile":"contract-review"}
+
+[90mstderr[2m | apps/desktop/test/logger.test.ts[2m > [22m[2mLogger[2m > [22m[2mdrops entries below the configured level
+[22m[39mkept ""
+
+ [31m❯[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts [2m([22m[2m16 tests[22m[2m | [22m[31m3 failed[39m[2m)[22m[33m 341[2mms[22m[39m
+     [32m✓[39m appends structured jsonl and exports[32m 21[2mms[22m[39m
+     [32m✓[39m drops entries below the configured level[32m 19[2mms[22m[39m
+     [32m✓[39m echoes to console with level mapping[32m 3[2mms[22m[39m
+     [32m✓[39m does not echo to console when echo is disabled[32m 2[2mms[22m[39m
+     [32m✓[39m constructor and logging stay non-blocking when the log file path is a directory[32m 4[2mms[22m[39m
+     [32m✓[39m circular console context cannot reject logging or lose the message[32m 18[2mms[22m[39m
+     [32m✓[39m redactSession terminates a rewritten nonempty JSONL file before the next append[32m 28[2mms[22m[39m
+     [32m✓[39m redactMemoryPromptLogs terminates a rewritten nonempty JSONL file before the next append[32m 23[2mms[22m[39m
+     [32m✓[39m redacts string values without changing JSON schema field names during session redaction or export[32m 39[2mms[22m[39m
+     [32m✓[39m uses structured redaction for future writes and exports[32m 16[2mms[22m[39m
+     [32m✓[39m memory-prompt redaction keeps normal logs as valid JSONL with structured value redaction[32m 31[2mms[22m[39m
+     [32m✓[39m retains malformed normal log lines while removing their registered secrets[32m 23[2mms[22m[39m
+[31m     [31m×[31m redactSession scrubs every JSON escape encoding in malformed history without changing valid record schemas[39m[32m 65[2mms[22m[39m
+[31m     [31m×[31m redactMemoryPromptLogs scrubs every JSON escape encoding in malformed history without changing valid record schemas[39m[32m 21[2mms[22m[39m
+[31m     [31m×[31m export scrubs every JSON escape encoding in malformed history without changing valid record schemas[39m[32m 5[2mms[22m[39m
+     [32m✓[39m serializes context once so a stateful toJSON cannot lose the basic message[32m 20[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 3 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mredactSession scrubs every JSON escape encoding in malformed history without changing valid record schemas
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mredactMemoryPromptLogs scrubs every JSON escape encoding in malformed history without changing valid record schemas
+[31m[1mAssertionError[22m: expected '{"ts":1,"level":"info","msg":"before"…' not to contain '"\u0052\u0037\/\"\\\b\f\n\r\t\u96ea\u…'[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- "\u0052\u0037\/\"\\\b\f\n\r\t\u96ea\ud83d\ude00"[39m
+[31m+ {"ts":1,"level":"info","msg":"before","ctx":{"sessionId":"kept","msg":"msg","level":"level","ctx":"ctx","nested":{"detail":"[已删除]"}}}[39m
+[31m+ {"level":"info","msg":"\u0052\u0037\/\"\\\b\f\n\r\t\u96ea\ud83d\ude00","ctx":{"sessionId":"kept","msg":"msg","level":"level","ctx":"ctx"}} trailing[39m
+[31m+ {"level":"info","msg":"\u0052\u0037\/\"\\\b\f\n\r\t\u96ea\ud83d\ude00\q","ctx":{"sessionId":"kept"}}[39m
+[31m+ {"level":"info","msg":"\u0052\u0037\/\"\\\b\f\n\r\t\u96ea\ud83d\ude00\u12[39m
+[31m+ {"ts":2,"level":"warn","msg":"after","ctx":{"sessionId":"kept","note":"untouched"}}[39m
+[31m+[39m
+
+[36m [2m❯[22m apps/desktop/test/logger.test.ts:[2m255:69[22m[39m
+    [90m253|[39m       const output = operation === 'export' ? await logger.export() : …
+    [90m254|[39m
+    [90m255|[39m       for (const encoding of forbiddenEncodings) expect(output).not.to…
+    [90m   |[39m                                                                     [31m^[39m
+    [90m256|[39m       [34mexpect[39m(output[33m.[39m[34mendsWith[39m([32m'\n'[39m))[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m257|[39m       [35mconst[39m lines [33m=[39m output[33m.[39m[34msplit[39m([32m'\n'[39m)[33m.[39m[34mfilter[39m([33mBoolean[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mexport scrubs every JSON escape encoding in malformed history without changing valid record schemas
+[31m[1mAssertionError[22m: expected '{"ts":1,"level":"info","msg":"before"…' not to contain '"\u0052\u0037\/\"\\\b\f\n\r\t\u96ea\u…'[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- "\u0052\u0037\/\"\\\b\f\n\r\t\u96ea\ud83d\ude00"[39m
+[31m+ {"ts":1,"level":"info","msg":"before","ctx":{"sessionId":"kept","msg":"msg","level":"level","ctx":"ctx","nested":{"detail":"[已删除]"}}}[39m
+[31m+ {"level":"info","msg":"\u0052\u0037\/\"\\\b\f\n\r\t\u96ea\ud83d\ude00","ctx":{"sessionId":"kept","msg":"msg","level":"level","ctx":"ctx"}} trailing[39m
+[31m+ {"level":"info","msg":"\u0052\u0037\/\"\\\b\f\n\r\t\u96ea\ud83d\ude00\q","ctx":{"sessionId":"kept"}}[39m
+[31m+ {"level":"info","msg":"\u0052\u0037\/\"\\\b\f\n\r\t\u96ea\ud83d\ude00\u12[39m
+[31m+ {"ts":2,"level":"warn","msg":"after","ctx":{"sessionId":"kept","note":"untouched"}}[39m
+[31m+[39m
+
+[36m [2m❯[22m apps/desktop/test/logger.test.ts:[2m255:69[22m[39m
+    [90m253|[39m       const output = operation === 'export' ? await logger.export() : …
+    [90m254|[39m
+    [90m255|[39m       for (const encoding of forbiddenEncodings) expect(output).not.to…
+    [90m   |[39m                                                                     [31m^[39m
+    [90m256|[39m       [34mexpect[39m(output[33m.[39m[34mendsWith[39m([32m'\n'[39m))[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m257|[39m       [35mconst[39m lines [33m=[39m output[33m.[39m[34msplit[39m([32m'\n'[39m)[33m.[39m[34mfilter[39m([33mBoolean[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m3 failed[39m[22m[2m | [22m[1m[32m13 passed[39m[22m[90m (16)[39m
+[2m   Start at [22m 21:21:15
+[2m   Duration [22m 2.02s[2m (transform 82ms, setup 66ms, import 122ms, tests 341ms, environment 1.19s)[22m
+

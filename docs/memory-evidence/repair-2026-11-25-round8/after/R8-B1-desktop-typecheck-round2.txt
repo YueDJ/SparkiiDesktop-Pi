@@ -1,0 +1,12 @@
+(node:23876) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+> @sparkii/desktop@0.1.7 typecheck C:\Users\YDJ\Desktop\SparkiiDesktop-Pi\apps\desktop
+> tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.electron.json
+
+electron/main/ipc.ts(2336,42): error TS2322: Type '"prompt"' is not assignable to type '"steer" | "followUp" | undefined'.
+electron/main/memory/truth-batch.ts(79,47): error TS2345: Argument of type 'TruthAttributeProbe | undefined' is not assignable to parameter of type 'TruthAttributeProbe'.
+  Type 'undefined' is not assignable to type 'TruthAttributeProbe'.
+C:\Users\YDJ\Desktop\SparkiiDesktop-Pi\apps\desktop:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @sparkii/desktop@0.1.7 typecheck: `tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.electron.json`
+Exit status 2

@@ -1,0 +1,153 @@
+(node:38584) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36560) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:28660) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[90mstdout[2m | apps/desktop/test/logger.test.ts[2m > [22m[2mLogger[2m > [22m[2mappends structured jsonl and exports
+[22m[39mstart {"profile":"contract-review"}
+
+[90mstderr[2m | apps/desktop/test/logger.test.ts[2m > [22m[2mLogger[2m > [22m[2mdrops entries below the configured level
+[22m[39mkept ""
+
+ [31m❯[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts [2m([22m[2m13 tests[22m[2m | [22m[31m6 failed[39m[2m)[22m[32m 185[2mms[22m[39m
+     [32m✓[39m appends structured jsonl and exports[32m 20[2mms[22m[39m
+     [32m✓[39m drops entries below the configured level[32m 17[2mms[22m[39m
+     [32m✓[39m echoes to console with level mapping[32m 3[2mms[22m[39m
+     [32m✓[39m does not echo to console when echo is disabled[32m 2[2mms[22m[39m
+     [32m✓[39m constructor and logging stay non-blocking when the log file path is a directory[32m 3[2mms[22m[39m
+     [32m✓[39m circular console context cannot reject logging or lose the message[32m 13[2mms[22m[39m
+[31m     [31m×[31m redactSession terminates a rewritten nonempty JSONL file before the next append[39m[32m 14[2mms[22m[39m
+[31m     [31m×[31m redactMemoryPromptLogs terminates a rewritten nonempty JSONL file before the next append[39m[32m 4[2mms[22m[39m
+[31m     [31m×[31m redacts string values without changing JSON schema field names during session redaction or export[39m[32m 31[2mms[22m[39m
+[31m     [31m×[31m uses structured redaction for future writes and exports[39m[32m 17[2mms[22m[39m
+[31m     [31m×[31m memory-prompt redaction keeps normal logs as valid JSONL with structured value redaction[39m[32m 25[2mms[22m[39m
+[31m     [31m×[31m retains malformed normal log lines while removing their registered secrets[39m[32m 23[2mms[22m[39m
+     [32m✓[39m serializes context once so a stateful toJSON cannot lose the basic message[32m 10[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 6 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mredactSession terminates a rewritten nonempty JSONL file before the next append
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mredactMemoryPromptLogs terminates a rewritten nonempty JSONL file before the next append
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m apps/desktop/test/logger.test.ts:[2m81:57[22m[39m
+    [90m 79|[39m       [35melse[39m logger[33m.[39m[34mredactMemoryPromptLogs[39m()[33m;[39m
+    [90m 80|[39m
+    [90m 81|[39m       [34mexpect[39m([34mreadFileSync[39m(path[33m,[39m [32m'utf8'[39m)[33m.[39m[34mendsWith[39m([32m'\n'[39m))[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   |[39m                                                         [31m^[39m
+    [90m 82|[39m       [35mawait[39m logger[33m.[39m[34mlog[39m({ level[33m:[39m [32m'info'[39m[33m,[39m msg[33m:[39m [32m'appended'[39m })[33m;[39m
+    [90m 83|[39m       const lines = readFileSync(path, 'utf8').split('\n').filter(Bool…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mredacts string values without changing JSON schema field names during session redaction or export
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m apps/desktop/test/logger.test.ts:[2m110:32[22m[39m
+    [90m108|[39m
+    [90m109|[39m     [35mconst[39m raw [33m=[39m [34mreadFileSync[39m(path[33m,[39m [32m'utf8'[39m)[33m;[39m
+    [90m110|[39m     [34mexpect[39m(raw[33m.[39m[34mendsWith[39m([32m'\n'[39m))[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   |[39m                                [31m^[39m
+    [90m111|[39m     [35mconst[39m entry [33m=[39m [33mJSON[39m[33m.[39m[34mparse[39m(raw)[33m;[39m
+    [90m112|[39m     expect(Object.keys(entry).sort()).toEqual(['ctx', 'level', 'msg', …
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22muses structured redaction for future writes and exports
+[31m[1mAssertionError[22m: expected { Object (ts, [已删除]) } to match object { level: 'info', msg: '[已删除]', …(1) }
+(4 matching properties omitted from actual)[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[32m-   "ctx": {[39m
+[32m-     "ctx": "[已删除]",[39m
+[32m-     "level": "[已删除]",[39m
+[32m-     "msg": "[已删除]",[39m
+[31m+   "[已删除]": {[39m
+[31m+     "[已删除]": "[已删除]",[39m
+[2m      "nested": [[22m
+[2m        "[已删除]",[22m
+[2m        {[22m
+[32m-         "msg": "normal",[39m
+[31m+         "[已删除]": "normal",[39m
+[2m        },[22m
+[2m      ],[22m
+[2m    },[22m
+[32m-   "level": "info",[39m
+[32m-   "msg": "[已删除]",[39m
+[31m+   "ts": 1795518717417,[39m
+[2m  }[22m
+
+[36m [2m❯[22m apps/desktop/test/logger.test.ts:[2m151:21[22m[39m
+    [90m149|[39m     }[33m;[39m
+    [90m150|[39m     const written = JSON.parse(readFileSync(join(dir, 'sparkii.log.jso…
+    [90m151|[39m     [34mexpect[39m(written)[33m.[39m[34mtoMatchObject[39m(expected)[33m;[39m
+    [90m   |[39m                     [31m^[39m
+    [90m152|[39m     expect(Object.keys(written).sort()).toEqual(['ctx', 'level', 'msg'…
+    [90m153|[39m     expect(Object.keys(written.ctx).sort()).toEqual(['ctx', 'level', '…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mmemory-prompt redaction keeps normal logs as valid JSONL with structured value redaction
+[31m[1mAssertionError[22m: expected false to be true // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- true[39m
+[31m+ false[39m
+
+[36m [2m❯[22m apps/desktop/test/logger.test.ts:[2m170:32[22m[39m
+    [90m168|[39m
+    [90m169|[39m     [35mconst[39m raw [33m=[39m [34mreadFileSync[39m(path[33m,[39m [32m'utf8'[39m)[33m;[39m
+    [90m170|[39m     [34mexpect[39m(raw[33m.[39m[34mendsWith[39m([32m'\n'[39m))[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m   |[39m                                [31m^[39m
+    [90m171|[39m     [35mconst[39m lines [33m=[39m raw[33m.[39m[34msplit[39m([32m'\n'[39m)[33m.[39m[34mfilter[39m([33mBoolean[39m)[33m;[39m
+    [90m172|[39m     [34mexpect[39m(lines)[33m.[39m[34mtoHaveLength[39m([34m1[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mretains malformed normal log lines while removing their registered secrets
+[31m[1mAssertionError[22m: expected undefined to be 'normal' // Object.is equality[39m
+
+[32m- Expected:[39m
+"normal"
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m apps/desktop/test/logger.test.ts:[2m191:48[22m[39m
+    [90m189|[39m     [34mexpect[39m(raw)[33m.[39m[34mtoContain[39m([32m'not-json [已删除]'[39m)[33m;[39m
+    [90m190|[39m     [34mexpect[39m(raw[33m.[39m[34msplit[39m([32m'\n'[39m)[33m.[39m[34mfilter[39m([33mBoolean[39m))[33m.[39m[34mtoHaveLength[39m([34m2[39m)[33m;[39m
+    [90m191|[39m     [34mexpect[39m([33mJSON[39m[33m.[39m[34mparse[39m(raw[33m.[39m[34msplit[39m([32m'\n'[39m)[[34m0[39m])[33m.[39mmsg)[33m.[39m[34mtoBe[39m([32m'normal'[39m)[33m;[39m
+    [90m   |[39m                                                [31m^[39m
+    [90m192|[39m   })[33m;[39m
+    [90m193|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m6 failed[39m[22m[2m | [22m[1m[32m7 passed[39m[22m[90m (13)[39m
+[2m   Start at [22m 19:11:55
+[2m   Duration [22m 1.88s[2m (transform 57ms, setup 36ms, import 87ms, tests 185ms, environment 1.25s)[22m
+

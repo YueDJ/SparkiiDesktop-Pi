@@ -1,0 +1,32 @@
+(node:24312) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:41776) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:42536) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:6596) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/workflow-broker.test.ts (27 tests) 572ms
+ ✓ |1| apps/desktop/test/memory-round7-regression.test.ts (12 tests) 19567ms
+     ✓ R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files  1839ms
+     ✓ R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds  1620ms
+     ✓ R7 privacy deletion includes superseded episode records in the global redaction corpus  2168ms
+     ✓ R7 caller-mode memory deletion rechecks canonical approval after privacy redaction  1244ms
+     ✓ R7 production privacy retry succeeds in the same process after truth rows are gone  1254ms
+     ✓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body  702ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes  1615ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes  1453ms
+     ✓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file  2462ms
+     ✓ R7-P1-3 valid source deletion updates unregistered project truth without reindexing it  2202ms
+     ✓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion  1525ms
+     ✓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution  1480ms
+
+ Test Files  2 passed (2)
+      Tests  39 passed (39)
+   Start at  21:19:53
+   Duration  22.58s (transform 1.38s, setup 110ms, import 5.10s, tests 20.14s, environment 3.12s)
+

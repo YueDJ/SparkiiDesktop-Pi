@@ -1,0 +1,255 @@
+COMMAND: pnpm exec vitest run apps/desktop/test/memory-truth-batch.test.ts apps/desktop/test/memory-r8-regression.test.ts apps/desktop/test/memory-round7-regression.test.ts --reporter=dot
+(node:11296) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:25732) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:27856) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:13620) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12208) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[31mx[39m[33m[39m[31mx[39m[33m[39m[32m·[39m[33m[39m[31mx[39m[33m[39m[31mx[39m[33m[39m[31mx[39m[33m[39m[31mx[39m[33m[39m[31mx[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[31mx[39m[33m[39m[32m·[39m[33m[39m[31mx[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[32m·[39m[33m[39m[31mx[39m[33m[39m[31mx[39m[33m[39m[31mx[39m[33m[39m[31mx[39m[33m[39m[31mx[39m[33m[39m[31mx[39m
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 15 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 final-round5 privacy B2/B3 production fences[2m > [22mre-fences a privacy journal before zeroing even when cleanup already verified its identity
+[31m[1mAssertionError[22m: expected true to be false // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- false[39m
+[31m+ true[39m
+
+[36m [2m❯[22m apps/desktop/test/memory-r8-regression.test.ts:[2m838:44[22m[39m
+    [90m836|[39m     expect(() => service.privacyDeleteBySession('private-session')).to…
+    [90m837|[39m     [34mexpect[39m(journalFences)[33m.[39m[34mtoBeGreaterThanOrEqual[39m([34m2[39m)[33m;[39m
+    [90m838|[39m     [34mexpect[39m(journalZeroedBeforeReplacement)[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+    [90m   |[39m                                            [31m^[39m
+    [90m839|[39m     [34mexpect[39m([34mreadFileSync[39m(external[33m,[39m [32m'utf8'[39m))[33m.[39m[34mtoBe[39m(externalBytes)[33m;[39m
+    [90m840|[39m     [34mexpect[39m([34mlstatSync[39m(journal[33m,[39m { bigint[33m:[39m [35mtrue[39m })[33m.[39mnlink)[33m.[39m[34mtoBe[39m([34m2n[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/15]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 final-round5 privacy B2/B3 production fences[2m > [22mfences a real ancestor junction before Pi carrier deletion and retries normally after it is removed
+[31m[1mAssertionError[22m: expected [Function] to throw an error[39m
+
+[32m- Expected:[39m
+null
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m apps/desktop/test/memory-r8-regression.test.ts:[2m858:69[22m[39m
+    [90m856|[39m     sessions[33m.[39m[34mupdate[39m([32m'private-session'[39m[33m,[39m { piSessionFile[33m:[39m piFile })[33m;[39m
+    [90m857|[39m
+    [90m858|[39m     expect(() => service.privacyDeleteBySession('private-session')).to…
+    [90m   |[39m                                                                     [31m^[39m
+    [90m859|[39m     [34mexpect[39m([34mreadFileSync[39m(victim[33m,[39m [32m'utf8'[39m))[33m.[39m[34mtoBe[39m(victimBytes)[33m;[39m
+    [90m860|[39m     [34mexpect[39m([34mexistsSync[39m(piFile))[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/15]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 final-round5 privacy B2/B3 production fences[2m > [22mfences a non-symlink reparse Pi carrier directory before rmSync
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 final-round5 privacy B2/B3 production fences[2m > [22mfences a non-symlink reparse Pi carrier file before rmSync
+[31m[1mAssertionError[22m: expected [Function] to throw an error[39m
+
+[32m- Expected:[39m
+null
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m apps/desktop/test/memory-r8-regression.test.ts:[2m883:69[22m[39m
+    [90m881|[39m     nativeProbeHarness.reparseTarget = where === 'directory' ? carrier…
+    [90m882|[39m
+    [90m883|[39m     expect(() => service.privacyDeleteBySession('private-session')).to…
+    [90m   |[39m                                                                     [31m^[39m
+    [90m884|[39m     [34mexpect[39m([34mreadFileSync[39m(piFile[33m,[39m [32m'utf8'[39m))[33m.[39m[34mtoBe[39m(carrierBytes)[33m;[39m
+    [90m885|[39m     [34mexpect[39m([34mpendingJournals[39m())[33m.[39m[34mtoHaveLength[39m([34m1[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/15]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 final-round5 privacy B2/B3 production fences[2m > [22mdetects Pi carrier identity replacement before deletion and preserves external bytes across retry
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 final-round5 privacy B2/B3 production fences[2m > [22mdetects Pi carrier identity replacement before deletion and preserves external bytes across restart
+[31m[1mAssertionError[22m: expected [Function] to throw an error[39m
+
+[32m- Expected:[39m
+null
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m apps/desktop/test/memory-r8-regression.test.ts:[2m910:69[22m[39m
+    [90m908|[39m     }[33m;[39m
+    [90m909|[39m
+    [90m910|[39m     expect(() => service.privacyDeleteBySession('private-session')).to…
+    [90m   |[39m                                                                     [31m^[39m
+    [90m911|[39m     [34mexpect[39m(carrierFences)[33m.[39m[34mtoBeGreaterThanOrEqual[39m([34m2[39m)[33m;[39m
+    [90m912|[39m     [34mexpect[39m([34mreadFileSync[39m(external[33m,[39m [32m'utf8'[39m))[33m.[39m[34mtoBe[39m(externalBytes)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/15]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-round7-regression.test.ts[2m > [22mR8 privacy B2 dynamic pending-operation keys[2m > [22mcollects deleted, survivor and nested dynamic keys, preserves controls, and scrubs later writes after restart
+[31m[1mAssertionError[22m: expected [ 'deleted key carrier', …(2) ] to include 'DYNAMIC_PENDING_KEY_SECRET_83C1'[39m
+[36m [2m❯[22m apps/desktop/test/memory-round7-regression.test.ts:[2m811:27[22m[39m
+    [90m809|[39m     const journalName = readdirSync(dir).find((name) => name.endsWith(…
+    [90m810|[39m     const journal = JSON.parse(readFileSync(join(dir, journalName), 'u…
+    [90m811|[39m     [34mexpect[39m(journal[33m.[39mtexts)[33m.[39m[34mtoContain[39m(secret)[33m;[39m
+    [90m   |[39m                           [31m^[39m
+    [90m812|[39m
+    [90m813|[39m     [34mrestartService[39m()[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/15]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-round7-regression.test.ts[2m > [22mR8 privacy B2 dynamic pending-operation keys[2m > [22mfails closed instead of overwriting two dynamic keys that redact to the same marker
+[31m[1mAssertionError[22m: expected [Function] to throw an error[39m
+
+[32m- Expected:[39m
+null
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m apps/desktop/test/memory-round7-regression.test.ts:[2m845:69[22m[39m
+    [90m843|[39m     [35mconst[39m before [33m=[39m [34mreadFileSync[39m([34muserMemoryFile[39m(dataDir))[33m;[39m
+    [90m844|[39m
+    [90m845|[39m     expect(() => service.privacyDeleteBySession('private-session')).to…
+    [90m   |[39m                                                                     [31m^[39m
+    [90m846|[39m     [34mexpect[39m([34mreadFileSync[39m([34muserMemoryFile[39m(dataDir)))[33m.[39m[34mtoEqual[39m(before)[33m;[39m
+    [90m847|[39m     [35mconst[39m dir [33m=[39m [34mjoin[39m(dataDir[33m,[39m [32m'memory'[39m[33m,[39m [32m'privacy-pending'[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/15]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 final-round5 B1 fresh-probe production boundaries[2m > [22mrejects a target converted to an external hardlink after the pre-backup probe
+[31m[1mAssertionError[22m: expected [Function] to throw an error[39m
+
+[32m- Expected:[39m
+null
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m apps/desktop/test/memory-truth-batch.test.ts:[2m912:83[22m[39m
+    [90m910|[39m     }[33m;[39m
+    [90m911|[39m
+    [90m912|[39m     expect(() => commitTruthBatch(dataDir, new Map([[target, 'NEW_TRUT…
+    [90m   |[39m                                                                                   [31m^[39m
+    [90m913|[39m     [34mexpect[39m(converted)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m914|[39m     [34mexpect[39m([34mreadFileSync[39m(external[33m,[39m [32m'utf8'[39m))[33m.[39m[34mtoBe[39m(externalBytes)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/15]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 final-round5 B1 fresh-probe production boundaries[2m > [22mrechecks restore identity after the rollback preflight and never overwrites an external hardlink
+[31m[1mAssertionError[22m: expected '' to contain '恢复失败'[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 恢复失败[39m
+
+[36m [2m❯[22m apps/desktop/test/memory-truth-batch.test.ts:[2m945:51[22m[39m
+    [90m943|[39m     }[33m;[39m
+    [90m944|[39m
+    [90m945|[39m     [34mexpect[39m([34mrecoverTruthBatch[39m(dataDir)[33m.[39m[34mjoin[39m([32m'\n'[39m))[33m.[39m[34mtoContain[39m([32m'恢复失败'[39m)[33m;[39m
+    [90m   |[39m                                                   [31m^[39m
+    [90m946|[39m     [34mexpect[39m(targetProbes)[33m.[39m[34mtoBeGreaterThanOrEqual[39m([34m3[39m)[33m;[39m
+    [90m947|[39m     [34mexpect[39m([34mreadFileSync[39m(external[33m,[39m [32m'utf8'[39m))[33m.[39m[34mtoBe[39m(externalBytes)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/15]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 final-round5 B1 fresh-probe production boundaries[2m > [22mfails closed when reconcile observes a reparse conversion after its first safe per-file probe
+[31m[1mAssertionError[22m: expected { id: 'mem_fresh_probe_snapshot' } to be undefined[39m
+
+[32m- Expected:[39m
+undefined
+
+[31m+ Received:[39m
+{
+  "id": "mem_fresh_probe_snapshot",
+}
+
+[36m [2m❯[22m apps/desktop/test/memory-truth-batch.test.ts:[2m969:82[22m[39m
+    [90m967|[39m       [35mif[39m (operation [33m===[39m [32m'reconcile'[39m) {
+    [90m968|[39m         [34mexpect[39m(() [33m=>[39m store[33m.[39m[34mreconcileAll[39m())[33m.[39mnot[33m.[39m[34mtoThrow[39m()[33m;[39m
+    [90m969|[39m         expect(store.db.prepare('SELECT id FROM memories WHERE id = ?'…
+    [90m   |[39m                                                                                  [31m^[39m
+    [90m970|[39m       } [35melse[39m {
+    [90m971|[39m         [34mexpect[39m(store[33m.[39m[34mrebuild[39m())[33m.[39m[34mtoMatchObject[39m({ corrupt[33m:[39m [target] })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/15]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 final-round5 B1 fresh-probe production boundaries[2m > [22mfails closed when rebuild observes a reparse conversion after its first safe per-file probe
+[31m[1mAssertionError[22m: expected { entries: 1, corrupt: [], …(1) } to match object { Object (corrupt) }
+(2 matching properties omitted from actual)[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[32m-   "corrupt": [[39m
+[32m-     "C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-obIF2U\\data\\memory\\user.json",[39m
+[32m-   ],[39m
+[31m+   "corrupt": [],[39m
+[2m  }[22m
+
+[36m [2m❯[22m apps/desktop/test/memory-truth-batch.test.ts:[2m971:33[22m[39m
+    [90m969|[39m         expect(store.db.prepare('SELECT id FROM memories WHERE id = ?'…
+    [90m970|[39m       } [35melse[39m {
+    [90m971|[39m         [34mexpect[39m(store[33m.[39m[34mrebuild[39m())[33m.[39m[34mtoMatchObject[39m({ corrupt[33m:[39m [target] })[33m;[39m
+    [90m   |[39m                                 [31m^[39m
+    [90m972|[39m         expect(store.db.prepare('SELECT id FROM memories WHERE id = ?'…
+    [90m973|[39m       }
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/15]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 final-round5 B1 fresh-probe production boundaries[2m > [22mviewOf freshly fences the row path and never returns external hardlink content
+[31m[1mAssertionError[22m: expected [Function] to throw an error[39m
+
+[32m- Expected:[39m
+null
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m apps/desktop/test/memory-truth-batch.test.ts:[2m994:51[22m[39m
+    [90m992|[39m       [34mlinkSync[39m(external[33m,[39m target)[33m;[39m
+    [90m993|[39m
+    [90m994|[39m       expect(() => store.viewOf(row, () => true)).toThrow(/硬链接|重解析|普通文…
+    [90m   |[39m                                                   [31m^[39m
+    [90m995|[39m       expect(readFileSync(external, 'utf8')).toContain('EXTERNAL_VIEW_…
+    [90m996|[39m     } [35mfinally[39m {
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/15]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 final-round5 B1 fresh-probe production boundaries[2m > [22mre-probes the second markSourcesDeleted read after allScopeFiles
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 final-round5 B1 fresh-probe production boundaries[2m > [22mre-probes the second deleteMemoryEntriesBySession read after allScopeFiles
+[31m[1mAssertionError[22m: expected [Function] to throw an error[39m
+
+[32m- Expected:[39m
+null
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m apps/desktop/test/memory-truth-batch.test.ts:[2m1024:10[22m[39m
+    [90m1022|[39m         if (operation === 'markSourcesDeleted') store.markSourcesDelet…
+    [90m1023|[39m         [35melse[39m store[33m.[39m[34mdeleteMemoryEntriesBySession[39m([32m'absent-session'[39m)[33m;[39m
+    [90m1024|[39m       })[33m.[39m[34mtoThrow[39m([36m/重解析|损坏/[39m)[33m;[39m
+    [90m   |[39m          [31m^[39m
+    [90m1025|[39m       [34mexpect[39m(injected)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m1026|[39m       expect(readFileSync(target, 'utf8')).toBe(memoryText(id, 'LOCAL_…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/15]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m3 failed[39m[22m[90m (3)[39m
+[2m      Tests [22m [1m[31m15 failed[39m[22m[2m | [22m[1m[32m111 passed[39m[22m[90m (126)[39m
+[2m   Start at [22m 06:31:25
+[2m   Duration [22m 120.44s[2m (transform 844ms, setup 99ms, import 1.74s, tests 194.07s, environment 2.67s)[22m
+

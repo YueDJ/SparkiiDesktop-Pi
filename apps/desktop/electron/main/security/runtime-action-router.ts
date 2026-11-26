@@ -23,7 +23,7 @@ import {
 } from './reviewer-policy.js';
 import type { ShellGrantStore } from './shell-grant-store.js';
 import type { ActionNormalizer } from './action-normalizer.js';
-import type { TaskLifecycle } from './task-lifecycle.js';
+import type { TaskLifecycle, TaskAdmissionToken } from './task-lifecycle.js';
 
 interface AuditSink {
   append(event: {
@@ -43,9 +43,9 @@ interface AuditSink {
   }): Promise<unknown>;
 }
 
-export interface ApprovalResolution {
-  choice: 'once' | 'task' | 'deny';
-}
+export type ApprovalResolution =
+  | { choice: 'deny' }
+  | { choice: 'once' | 'task'; proposalId: string };
 
 export interface RuntimeActionRouterOptions {
   lifecycle: TaskLifecycle;
@@ -74,15 +74,27 @@ export interface RuntimeActionRouterOptions {
     action: SecurityAction,
     grant: TaskGrant,
   ): Promise<boolean>;
+  /** Synchronously re-fetch and bind the approved canonical action. */
+  validateApproval(
+    action: SecurityAction,
+    approval: ApprovalResolution,
+  ): SecurityAction | null;
   audit: AuditSink;
   actor?: () => string;
   now?: () => number;
   platformName?: string;
   sandboxVersion?: string;
   hardDenyPolicyVersion?: string;
+  allowShellExecution?: boolean;
 }
 
 type Evidence = ShellReviewInput['recentEvidence'][number];
+type ApprovalSettlement = {
+  deniedResult?: ActionExecutionResult;
+  outcome?: PolicyOutcome;
+  approval?: ApprovalResolution;
+};
+type AssertTask = () => void;
 
 function denied(
   requestId: string,
@@ -218,8 +230,13 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
     fallback: PolicyOutcome,
     ruleId: string,
     reason: string,
+    assertTask: AssertTask,
     riskOverride?: SecurityRisk,
-  ): Promise<{ deniedResult: ActionExecutionResult } | { outcome: PolicyOutcome }> => {
+  ): Promise<{ deniedResult: ActionExecutionResult } | { outcome: PolicyOutcome; approval: ApprovalResolution }> => {
+    try { assertTask(); } catch {
+      await auditDecision(action, 'action.denied', 'task grant revoked before approval settlement', 'task-grant.revoked', 'denied');
+      return { deniedResult: denied(requestId, fallback, 'TASK_REVOKED', 'Task grant is no longer active') };
+    }
     if (approval.choice === 'deny') {
       await auditDecision(action, 'action.denied', 'user denied', 'user.denied', 'denied');
       return { deniedResult: denied(
@@ -247,7 +264,7 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
         'approved',
       );
     }
-    return { outcome: { decision: 'allow', ruleId, reason } };
+    return { outcome: { decision: 'allow', ruleId, reason }, approval };
   };
 
   const askUser = async (
@@ -255,10 +272,11 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
     action: SecurityAction,
     grant: TaskGrant,
     fallback: PolicyOutcome,
+    assertTask: AssertTask,
     riskOverride?: SecurityRisk,
-  ): Promise<{ deniedResult?: ActionExecutionResult; outcome?: PolicyOutcome }> => {
+  ): Promise<ApprovalSettlement> => {
     try {
-      options.lifecycle.assertActive(action.sessionId, action.taskId);
+      assertTask();
     } catch {
       await auditDecision(action, 'action.denied',
         'task grant revoked before human approval', 'task-grant.revoked', 'denied');
@@ -295,9 +313,10 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
       fallback,
       'user.approved',
       '用户已批准',
+      assertTask,
       riskOverride,
     );
-    return 'deniedResult' in settled ? settled : { outcome: settled.outcome };
+    return 'deniedResult' in settled ? settled : { outcome: settled.outcome, approval };
   };
 
   const reviewShell = async (
@@ -305,14 +324,16 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
     action: SecurityAction,
     grant: TaskGrant,
     fallback: PolicyOutcome,
-  ): Promise<{ deniedResult?: ActionExecutionResult; outcome?: PolicyOutcome }> => {
+    assertTask: AssertTask,
+    admission?: TaskAdmissionToken,
+  ): Promise<ApprovalSettlement> => {
     const started = Date.now();
     let reviewed: ReviewerDecision;
     try {
       reviewed = await options.reviewShell(buildReviewInput(action, grant));
     } catch (error) {
       try {
-        options.lifecycle.assertActive(action.sessionId, action.taskId);
+        assertTask();
       } catch {
         await auditDecision(action, 'action.denied',
           'task grant revoked while reviewer was running',
@@ -335,17 +356,20 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
         return { deniedResult: denied(requestId, fallback, 'REVIEWER_UNAVAILABLE',
           'Reviewer unavailable for unattended task') };
       }
-      const settled = await askUser(requestId, action, grant, fallback, 'high-risk');
+      const settled = await askUser(requestId, action, grant, fallback, assertTask, 'high-risk');
       if (settled.outcome) {
         return { outcome: {
           decision: 'allow',
           ruleId: 'reviewer.fallback-ask',
           reason: 'Reviewer 不可用，已转人工审批',
-        } };
+        }, approval: settled.approval };
       }
       return settled;
     }
 
+    try { assertTask(); } catch {
+      return { deniedResult: denied(requestId, fallback, 'TASK_REVOKED', 'Task grant was revoked during review') };
+    }
     await auditReviewer(action, 'reviewer.decision', {
       policyVersion: options.reviewerPolicyVersion,
       model: options.reviewerModel,
@@ -367,7 +391,10 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
           policyVersion: options.reviewerPolicyVersion,
           consecutiveDenials: count,
         }, 'denied', 'reviewer.circuit-open');
-        await options.lifecycle.end(action.sessionId, 'reviewer-circuit-open');
+        try { assertTask(); } catch {
+          return { deniedResult: denied(requestId, fallback, 'TASK_REVOKED', 'Task grant was revoked during review') };
+        }
+        await options.lifecycle.end(action.sessionId, 'reviewer-circuit-open', admission);
       }
       return { deniedResult: denied(
         requestId,
@@ -379,13 +406,13 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
 
     reviewerDenials.delete(action.taskId);
     if (reviewed.decision === 'ask') {
-      const settled = await askUser(requestId, action, grant, fallback, 'high-risk');
+      const settled = await askUser(requestId, action, grant, fallback, assertTask, 'high-risk');
       if (settled.outcome) {
         return { outcome: {
           decision: 'allow',
           ruleId: 'reviewer.ask-approved',
           reason: reviewed.reason,
-        } };
+        }, approval: settled.approval };
       }
       return settled;
     }
@@ -407,6 +434,7 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
     async route(
       request: RuntimeActionRequest,
       sessionId: string,
+      admission?: TaskAdmissionToken,
     ): Promise<ActionExecutionResult> {
       let grant: TaskGrant;
       try {
@@ -419,6 +447,17 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
         }, 'TASK_REVOKED', 'Task grant is no longer active');
       }
 
+      const assertTask = (): void => {
+        options.lifecycle.assertActive(sessionId, grant.taskId);
+        if (admission) options.lifecycle.assertCurrentAdmission(sessionId, admission);
+      };
+      const taskRevoked = (fallback: PolicyOutcome): ActionExecutionResult => denied(
+        request.requestId,
+        fallback,
+        'TASK_REVOKED',
+        'Task grant is no longer active',
+      );
+
       let action: SecurityAction;
       try {
         action = await options.normalizer.normalize(request, grant);
@@ -429,6 +468,20 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
           reason: error instanceof Error ? error.message : String(error),
         }, 'ACTION_NORMALIZATION_FAILED',
         error instanceof Error ? error.message : String(error));
+      }
+
+      try { assertTask(); } catch { return taskRevoked({ decision: 'deny', ruleId: 'task-grant.revoked', reason: 'Task grant is no longer active' }); }
+
+      if (action.capability === 'process.exec' && options.allowShellExecution !== true) {
+        const outcome: PolicyOutcome = {
+          decision: 'deny',
+          ruleId: 'platform.shell-disabled',
+          reason: '宿主 Shell 执行未开放',
+        };
+        recordEvidence(action, 'denied', `${outcome.ruleId}: ${outcome.reason}`);
+        await auditDecision(action, 'action.denied',
+          `${outcome.ruleId}: ${outcome.reason}`, outcome.ruleId, 'denied');
+        return denied(request.requestId, outcome, 'SHELL_DISABLED', outcome.reason);
       }
 
       let outcome = evaluatePolicy({
@@ -446,6 +499,7 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
         return denied(request.requestId, outcome, 'POLICY_DENIED', outcome.reason);
       }
 
+      let approval: ApprovalResolution | undefined;
       if (outcome.decision === 'ask') {
         await auditDecision(action, 'action.ask',
           `${outcome.ruleId}: ${outcome.reason}`, outcome.ruleId);
@@ -467,18 +521,20 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
             reason: '当前任务已允许普通 Shell',
           };
         } else if (grant.permissionMode === 'auto_review' && action.approvalClass === 'shell') {
-          const settled = await reviewShell(request.requestId, action, grant, outcome);
+          const settled = await reviewShell(request.requestId, action, grant, outcome, assertTask, admission);
           if (settled.deniedResult) return settled.deniedResult;
           outcome = settled.outcome!;
+          approval = settled.approval;
         } else {
-          const settled = await askUser(request.requestId, action, grant, outcome);
+          const settled = await askUser(request.requestId, action, grant, outcome, assertTask);
           if (settled.deniedResult) return settled.deniedResult;
           outcome = settled.outcome!;
+          approval = settled.approval;
         }
       }
 
       try {
-        options.lifecycle.assertActive(sessionId, action.taskId);
+        assertTask();
       } catch {
         await auditDecision(action, 'action.denied',
           'task grant revoked before execution', 'task-grant.revoked', 'denied');
@@ -492,18 +548,36 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
         return denied(request.requestId, outcome, 'TARGET_CHANGED',
           'Target identity or parent chain changed after normalization');
       }
+      try { assertTask(); } catch { return taskRevoked(outcome); }
 
       await auditDecision(action, 'action.allowed',
         `${outcome.ruleId}: ${outcome.reason}`, outcome.ruleId);
+      try { assertTask(); } catch { return taskRevoked(outcome); }
+      let executionAction = action;
+      if (approval) {
+        let canonical: SecurityAction | null = null;
+        try {
+          canonical = options.validateApproval(action, approval);
+        } catch {
+          // Missing or failing canonical accessors fail closed.
+        }
+        if (!canonical) {
+          await auditDecision(action, 'action.denied',
+            'approval was invalidated before execution', 'approval.invalidated', 'denied');
+          return denied(request.requestId, outcome, 'APPROVAL_INVALIDATED',
+            'Approval was invalidated before execution');
+        }
+        executionAction = canonical;
+      }
       try {
-        const execution = await options.execute(action, grant);
+        const execution = await options.execute(executionAction, grant);
         recordEvidence(
-          action,
+          executionAction,
           'executed',
           `${action.toolName}: ${outcome.ruleId}`,
           exitCodeOf(execution.result),
         );
-        await auditDecision(action, 'action.executed', outcome.ruleId, outcome.ruleId);
+        await auditDecision(executionAction, 'action.executed', outcome.ruleId, outcome.ruleId);
         return {
           requestId: request.requestId,
           status: 'executed',
@@ -512,8 +586,8 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
         };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        recordEvidence(action, 'failed', `${action.toolName} failed: ${message}`);
-        await auditDecision(action, 'action.failed', message, 'action.execution-failed');
+        recordEvidence(executionAction, 'failed', `${executionAction.toolName} failed: ${message}`);
+        await auditDecision(executionAction, 'action.failed', message, 'action.execution-failed');
         return {
           requestId: request.requestId,
           status: 'failed',

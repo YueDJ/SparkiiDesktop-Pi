@@ -1,0 +1,323 @@
+(node:24256) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21644) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:10264) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:34896) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37544) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:18336) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24856) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:17908) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:11964) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8 final review redactSession cannot be undone by an unawaited append[32m 13[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8 final review redactMemoryPromptLogs cannot be undone by an unawaited append[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8 final review keeps future log writes redacted after restart without plaintext in the registry[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR7 never preserves the registered marker secret 已删除[32m 13[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR7 never preserves the registered marker secret [已删除][32m 16[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/error-store.test.ts[2m > [22mErrorStore[2m > [22mR8 final review fences future error ids, messages and sources after cleanup and restart[32m 39[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/error-store.test.ts[2m > [22mErrorStore[2m > [22mappends, lists newest-first, and keeps read state[32m 24[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/error-store.test.ts[2m > [22mErrorStore[2m > [22mclears one or all[32m 24[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/error-store.test.ts[2m > [22mErrorStore[2m > [22mignores a second append with the same id so one failure is one row[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/error-store.test.ts[2m > [22mErrorStore[2m > [22mprunes records older than 30 days on append and list[32m 22[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/chat-session-store.test.ts[2m > [22mChatSessionStore[2m > [22mR8 final review fences future session creates, updates and relocation after privacy cleanup and restart[32m 56[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/chat-session-store.test.ts[2m > [22mChatSessionStore[2m > [22mcreates and reads a session keyed by pi session id[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/chat-session-store.test.ts[2m > [22mChatSessionStore[2m > [22mstores the piSessionFile overlay[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/chat-session-store.test.ts[2m > [22mChatSessionStore[2m > [22mupdates model and workspace[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/chat-session-store.test.ts[2m > [22mChatSessionStore[2m > [22mstores and updates the thinking level[32m 15[2mms[22m[39m
+[90mstdout[2m | apps/desktop/test/logger.test.ts[2m > [22m[2mLogger[2m > [22m[2mappends structured jsonl and exports
+[22m[39mstart {"profile":"contract-review"}
+
+[90mstderr[2m | apps/desktop/test/logger.test.ts[2m > [22m[2mLogger[2m > [22m[2mdrops entries below the configured level
+[22m[39mkept ""
+
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR7 redaction cannot recreate a registered secret across the marker boundary: "x\"[已删除]"[32m 37[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR7 redaction cannot recreate a registered secret across the marker boundary: "x\\[已删除]"[32m 21[2mms[22m[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR7 redaction cannot recreate a registered secret across the marker boundary: "x\n[已删除]"[32m 21[2mms[22m[39m
+[31m   → log redaction verification failed[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mappends structured jsonl and exports[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mdrops entries below the configured level[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mechoes to console with level mapping[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mdoes not echo to console when echo is disabled[32m 2[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mconstructor and logging stay non-blocking when the log file path is a directory[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mcircular console context cannot reject logging or lose the message[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mredactSession terminates a rewritten nonempty JSONL file before the next append[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mredactMemoryPromptLogs terminates a rewritten nonempty JSONL file before the next append[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/chat-session-store.test.ts[2m > [22mChatSessionStore[2m > [22mpersists manual sort order[32m 17[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/chat-session-store.test.ts[2m > [22mChatSessionStore[2m > [22mlists by profile and deletes[32m 18[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/chat-session-store.test.ts[2m > [22mChatSessionStore[2m > [22mmigrates a legacy schema by dropping the title column[32m 39[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/chat-session-store.test.ts[2m > [22mChatSessionStore[2m > [22mpersists titleLockedByUser and defaults to false[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/chat-session-store.test.ts[2m > [22mChatSessionStore[2m > [22mmigrates title_locked_by_user onto an existing db[32m 18[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/chat-session-store.test.ts[2m > [22mChatSessionStore[2m > [22mpersists permission mode with Ask as legacy default[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/chat-session-store.test.ts[2m > [22mChatSessionStore[2m > [22madds the permission column to a database written before it existed[32m 16[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mredacts string values without changing JSON schema field names during session redaction or export[32m 22[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22muses structured redaction for future writes and exports[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mmemory-prompt redaction keeps normal logs as valid JSONL with structured value redaction[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mretains malformed normal log lines while removing their registered secrets[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mredactSession scrubs every JSON escape encoding in malformed history without changing valid record schemas[32m 28[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mredactMemoryPromptLogs scrubs every JSON escape encoding in malformed history without changing valid record schemas[32m 21[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mexport scrubs every JSON escape encoding in malformed history without changing valid record schemas[32m 24[2mms[22m[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\n" and records use "\n"[32m 46[2mms[22m[39m
+[31m   → Unexpected token 'm', "malformed history" is not valid JSON[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\n" and records use "\r\n"[32m 31[2mms[22m[39m
+[31m   → Unexpected token 'm', "malformed history" is not valid JSON[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\n" and records use "\r"[32m 17[2mms[22m[39m
+[31m   → Unexpected token 'm', "malformed history" is not valid JSON[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\r\n" and records use "\n"[32m 19[2mms[22m[39m
+[31m   → Unexpected token 'm', "malformed history" is not valid JSON[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\r\n" and records use "\r\n"[32m 18[2mms[22m[39m
+[31m   → Unexpected token 'm', "malformed history" is not valid JSON[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\r\n" and records use "\r"[32m 38[2mms[22m[39m
+[31m   → Unexpected token 'm', "malformed history" is not valid JSON[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\r" and records use "\n"[32m 36[2mms[22m[39m
+[31m   → Unexpected token 'm', "malformed history" is not valid JSON[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\r" and records use "\r\n"[32m 13[2mms[22m[39m
+[31m   → Unexpected token 'm', "malformed history" is not valid JSON[39m
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\r" and records use "\r"[32m 31[2mms[22m[39m
+[31m   → Unexpected token 'm', "malformed history" is not valid JSON[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mserializes context once so a stateful toJSON cannot lose the basic message[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-consolidation.test.ts[2m > [22midle consolidation[2m > [22mR8 final review rechecks the truth fence after the async target boundary[33m 1027[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrestores every prior truth file and removes new files when a later write fails[33m 948[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8 final review fences same-process and restarted reads when the privacy journal cannot be persisted[33m 1228[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth[33m 545[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-consolidation.test.ts[2m > [22midle consolidation[2m > [22mR8 final review rechecks the truth fence after the async slot boundary[33m 942[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8-P1-4 preserves rollback backups when the unverified journal cannot be removed[33m 587[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-consolidation.test.ts[2m > [22midle consolidation[2m > [22mR8 final review rechecks the truth fence after the async model boundary[33m 997[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrecovers an interrupted batch at startup before truth files are opened[33m 867[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext[33m 2165[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mlists builtin whitelist plus custom providers through a probe slot[32m 20[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msaveSettings writes only custom providers to models.json and stores the per-provider key[32m 28[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mgetApiKey returns the per-provider key and getSettings includes the active provider key[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mgetSettings reports hasApiKey without returning the secret[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mgetApiKey(sparkiirag) returns null even when keyring has the secret[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mgetApiKey also hides sparkiionto and both knowledge keyring names[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msaveSettings rejects a custom provider whose id collides with a knowledge credential id[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-consolidation.test.ts[2m > [22midle consolidation[2m > [22mR8 final review stops all later consolidation phases when privacy cleanup becomes pending during a model call[33m 767[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mtestKnowledgeConnection probes healthz → info → datasets with the onto settings and token[32m 24[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mtestKnowledgeConnection honours an unsaved override[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mlistKnowledgeDatasets tells 401 (credential) from 403 (permission) and flags an /info mismatch[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mkeeps testRagConnection as a thin sparkiirag wrapper[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mtestRagConnection keeps the legacy "no key" wording[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mempty saveRagSettings apiKey keeps the keyring value[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msaveSettings does not wipe rag[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msaveSettings does not wipe documentParse[32m 21[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mdownload huggingface URL is rejected[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mpromptSession refuses sparkiirag profiles when RAG is unconfigured[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mpromptSession does not create a session when sparkiirag is unconfigured[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mpromptSession opens the session when allowDegradedKnowledge is set (product §15)[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msetSessionKnowledge stores selection and promptSession migrates draft key before prompt[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mempty retrieval returns first then aborts and appends refused knowledge_turn[32m 33[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mdoes not copy leftover draft selection onto an existing session[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22maborts when the session dataset is no longer visible[32m 36[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mempty search after a sealed hit aborts a new turn[32m 46[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mopenRagDocument with an Onto backend still fetches through the ontology client cache segment[32m 27[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mopenRagDocument defaults to sparkiirag and returns a bounded error when the credential is missing[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msetSessionKnowledge rejects invalid payload[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mgetRuntimePool returns the pool snapshot[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mlistModels uses the caller-provided key instead of the stored keyring key[32m 21[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mpromptSession routes to settings active provider and default model when the session has no model[32m 18[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mpromptSession creates a session and sends the first prompt[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mR7 coalesces concurrent promptSession opens for one existing session id[32m 21[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mR7 promptSession rejects a stale binding while model key lookup is suspended[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mR7 promptSession rejects a stale binding after deferred get_state before sending[32m 16[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mR7 stale task admission cannot replace a same-id replacement grant[32m 18[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mR7 session creation failure cannot release or delete a same-id replacement[32m 31[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mcreateSession binds a workspace WITHOUT sending a prompt (P9, holds slot + 15s idle release)[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mB1: a late agent_settled never revokes a Grant that is not this prompt's[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msetChatWorkspace(null) allocates a new Documents auto path[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mpromptSession does not duplicate model application when the model is already in the saddle[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mlistChatSessions excludes empty sessions from the local store[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mlistChatSessions includes DB-only P9 sessions when includeEmpty is true[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mlistChatSessions falls back to project.json.name through the fenced service[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mgetChatState does not acquire when a session has no lease[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mschedules idle release after agent_settled and releases after timeout[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mdoes not idle-release a knowledge session on agent_end before agent_settled[32m 17[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mdoes not idle-release or title a workflow session after agent_settled[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mrejects a transient prompt waiter after its slot is rebound instead of forwarding the new session event[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrecovers a new project batch from the registry committed before its truth file[33m 843[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mR7 rejects a transient prompt waiter after same-id release and reacquire without forwarding the new binding event[32m 16[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mR7 rejects a transient prompt when a successful send completes after same-id rebinding[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mR7 cancels every same-id transient waiter without old completion erasing the replacement[32m 32[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mstamps chat-events with the live slot sessionId, not the subscribe-time id[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mstamps over an inner sessionId carried by the event[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mdrops events while the slot has no session bound[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msends session_unbound before releasing the slot so the spinner stops[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mlogs and stops stamping when the pi child exits[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mstops forwarding client events after the workflow slot is released[32m 31[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22midle-releases a post-run workflow slot so a later runWorkflow is not blocked[32m 18[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mworkflow selectModel routes to settings active provider and default model[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mworkflow selectModel prefers the session-selected model[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mlistThinkingLevels probes a model and returns available thinking levels[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msetChatThinkingLevel stores the session level and remembers it per model[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mpromptSession applies the session thinking level before prompt[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msetChatModel applies the selected model to the open Pi session[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msetChatThinkingLevel applies the selected level to the open Pi session[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mqueues a follow_up by default while the Pi session is streaming[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mabortChat clears the queue before aborting and returns the cleared items[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mconnector_read document.read is handled by executeDocumentRead[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mconnector_read rejects an ontology tool name outside the whitelist[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mconnector_read writes exactly one audit per ontology tool call and records the query text[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mreports document-parse spawn failures to the error center as 文档解析[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mabortChat calls failSession before Pi abort[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mreleaseSessionSlot calls failSession before unbind[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mR7 does not release a same-id replacement while an explicit slot release is awaiting task shutdown[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mgetDocumentParse handler exists[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mdownloadDocumentParseModule without production hashes fails with offline import hint[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mqueueMutate rebuilds both queues from the current Pi snapshot[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mpromptSession stages attachments into the session workspace before prompting[32m 17[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mpromptSession sends images directly and stages only non-image attachments[32m 22[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mpromptSession creates a session and stages attachments into the chosen workspace[32m 17[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mpromptSession registers the proposal broker when creating a session[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mgetModelOptions without agentId uses generic chat requirements instead of a default agent[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mclassifies current DeepSeek models with orthogonal capabilities[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mpromptSession refuses to create a session without profileId[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mensureSessionRecord does not invent profileId general when pinning a Pi-only session[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mchooseDocument grants the selected path for readDocumentBytes[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mopenChatSession ENOENT still returns session inputs[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mopens a live session from getBranch + streamingMessage, not get_messages[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mrecovers the micro-gap assistant from get_messages only while streaming without a slot message[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mskips the micro-gap when the last assistant is already on the branch[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mdoes not read get_messages when the live session is idle[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mdead session reads JSONL entries only (no preview)[32m 17[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msetChatTitle notifies the renderer so the sidebar can show the filename[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msetChatTitle updates the runtime pool label instead of leaving the session id[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mreopening a session acquires the pool with displayName and Pi title, not the uuid prefix[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mreopening a nameless workflow session uses 新会话, not the skill body[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mreopening still acquires display meta when listing Pi sessions fails[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-consolidation.test.ts[2m > [22midle consolidation[2m > [22mR8-P1-3 never sends indexed plaintext to consolidation while truth writes are blocked[33m 957[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22msetChatTitle rejects empty titles and agent writes after a user lock[32m 36[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mlistChatSessions does not put firstMessage into title[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mcompleteText forwards text to complete without renaming the session[32m 41[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc provider handlers[2m > [22mdoes not auto-title a chat session on agent_end[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mimports, lists, audits, and uninstalls a user skill[32m 35[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mreturns no-user-library when no skillLibrary user agent is assembled[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mprefers SPARKII_E2E_SKILL_DIR for chooseSkillFolder[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mopens the user skills dir after creating it[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mlists skills for an agent id from that agent skillsDir only[32m 30[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mallocateAutoWorkspace returns a Documents path and does not create it[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mallocateAutoWorkspace rejects unknown agent[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mchooseWorkspace mkdirs an absolute defaultPath and forwards it[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mchooseWorkspace ignores a relative defaultPath without mkdir[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mopenWorkspace mkdirs an absolute path and opens it[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mopenWorkspace ignores a relative path without mkdir[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mrunWorkflow without workspacePath allocates Documents path and does not mkdir[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mrunWorkflow with an allocated path keeps workspaceKind auto[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mR8-P0-2 privacy deletion stops the active task, extraction and Pi binding before memory cleanup[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mR8-P0-2 stops an active document parser even when no Pi binding exists[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mR8-P0-2 does not delete memory or release a same-id replacement while task shutdown is awaiting[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mR8-P0-2 cancels a same-id session opening before pool acquisition[32m 26[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mR8-P0-2 releases a stale acquisition instead of letting it bind after privacy deletion[32m 44[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mR8 final review releases a stale setChatTitle acquisition after privacy deletion starts[32m 35[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mipc user skill library[2m > [22mR8-P0-2 never releases a same-client replacement installed while a stale acquisition resumes[32m 32[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mretired task capability IPC[2m > [22mdoes not expose task capability or user revocation handlers[32m 2[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mpermission mode IPC[2m > [22mreads the session permission mode and host semantics without leaking credentials[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mpermission mode IPC[2m > [22mwrites the mode, ends the running task and audits the change[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mpermission mode IPC[2m > [22mrevokes the shell task grant when the mode changes[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mpermission mode IPC[2m > [22mrefuses a permission mode the profile does not allow[32m 2[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mpermission mode IPC[2m > [22mreports the reviewer as unavailable when Main has no worker[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mpermission mode IPC[2m > [22mdoes not expose the Reviewer worker in the user runtime pool[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mpermission mode IPC[2m > [22mruns an approved shell command through the host adapter and reports host semantics[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mP10 relocateWorkspace IPC[2m > [22mregisters the channel, moves files, updates all session records and broadcasts[32m 16[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mapproval execution canonical race regressions[2m > [22mblocks proposal-mode connector execution when privacy redaction wins during the dialog await[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mapproval execution canonical race regressions[2m > [22mblocks proposal-mode connector execution when privacy redaction wins during the audit await[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mapproval execution canonical race regressions[2m > [22mblocks proposal-mode connector execution when privacy redaction wins during the gateway await[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mapproval execution canonical race regressions[2m > [22mcommits the chosen export path to the canonical proposal before connector execution[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mquarantines an unrecoverable journal without deleting partial truth when a backup is missing[33m 873[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mapproval execution canonical race regressions[2m > [22mblocks caller-mode workspace execution when privacy redaction wins during the revalidation await[32m 34[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts[2m > [22mapproval execution canonical race regressions[2m > [22mblocks caller-mode workspace execution when privacy redaction wins during the audit await[32m 46[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-consolidation.test.ts[2m > [22midle consolidation[2m > [22m相似记忆只产出 pending 提案，绝不自动改 active[33m 749[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext[33m 2133[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrollback never recreates a missing project parent before path revalidation[33m 881[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mdoes not write or quarantine outside a junctioned memory root during failed recovery[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-consolidation.test.ts[2m > [22midle consolidation[2m > [22m批准合并提案后：保留条作废、被合并条作废、新条生效[33m 789[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 final review rejects an empty uncommitted journal without deleting the only original backup[33m 803[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-consolidation.test.ts[2m > [22midle consolidation[2m > [22m一次整合的模型调用不超过 3 次[33m 656[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mquarantines a malformed journal and reports a warning instead of blocking startup[33m 536[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext[33m 2113[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrejects journal paths outside memory truth and backup locations[33m 805[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrejects a truthy non-boolean committed marker without deleting uncommitted truth[33m 539[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-consolidation.test.ts[2m > [22midle consolidation[2m > [22m三个阶段全都有活时仍然 ≤3 次调用，第四件事顺延[33m 1728[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrejects a committed journal that still contains rollback file items[33m 531[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-consolidation.test.ts[2m > [22midle consolidation[2m > [22m拒绝合并阶段的对象字段而不是字符串化[33m 693[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrejects an unregistered outside project truth target during commit and recovery[33m 816[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-consolidation.test.ts[2m > [22midle consolidation[2m > [22m拒绝压缩阶段的对象字段而不是字符串化[33m 360[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext[33m 2066[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrejects a project truth target reached through a junction even when its workspace is registered[32m 272[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mtreats a dangling write-block junction as a persistent block[32m 278[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-consolidation.test.ts[2m > [22midle consolidation[2m > [22m拒绝复核阶段的对象字段而不是字符串化[33m 951[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-consolidation.test.ts[2m > [22midle consolidation[2m > [22mP2 情景压缩混合越界输出时整阶段丢弃，不留下部分提案[33m 371[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mkeeps the only recovery evidence when the write-block marker cannot be persisted[33m 534[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 resumes from journal context after the chat row and Pi file are already gone[33m 1575[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-consolidation.test.ts[2m > [22midle consolidation[2m > [22m空闲不足或距上次整合不足：不调用模型[33m 339[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-consolidation.test.ts[2m > [22midle consolidation[2m > [22m开关关闭或有交互会话在跑：不整合[33m 328[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mkeeps a committed batch and removes its recovery journal[33m 793[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrolls back the project registry when a later truth write fails[33m 1250[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-consolidation.test.ts[2m > [22midle consolidation[2m > [22m没有空闲槽：跳过并顺延，不排队、不做任何写入[33m 775[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers[33m 1784[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-consolidation.test.ts[2m > [22midle consolidation[2m > [22m整合输出畸形：该阶段整批丢弃 + errors.db 记录 + 不产生提案[33m 692[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-consolidation.test.ts[2m > [22midle consolidation[2m > [22m没有可用模型，或确实无事可做：不调模型、不写库，各自返回对应出口[33m 346[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-consolidation.test.ts[2m > [22midle consolidation[2m > [22m模型给不存在的 targetId 或越界文本：忽略该条，不落提案[33m 676[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent[33m 1503[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret[33m 1402[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 truth write-block regressions[2m > [22mR8-P1-3 refuses to construct MemoryService through an unsafe memory-root junction[33m 346[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 truth write-block regressions[2m > [22mR8-P1-3 fences project repair before registry or truth reads[33m 1099[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 truth write-block regressions[2m > [22mR8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker[33m 1439[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy preflight regressions[2m > [22mR8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state[33m 1316[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy preflight regressions[2m > [22mR8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state[33m 1268[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy preflight regressions[2m > [22mR8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state[33m 1284[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 10 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR7 redaction cannot recreate a registered secret across the marker boundary: "x\n[已删除]"
+[31m[1mError[22m: log redaction verification failed[39m
+[36m [2m❯[22m Logger.rewrite apps/desktop/electron/main/logger.ts:[2m133:51[22m[39m
+    [90m131|[39m     [35mconst[39m temp [33m=[39m [32m`[39m[36m${[39mpath[36m}[39m[32m.redact.tmp`[39m[33m;[39m
+    [90m132|[39m     [35mlet[39m output [33m=[39m lines[33m.[39mlength [33m>[39m [34m0[39m [33m?[39m [32m`[39m[36m${[39mlines[33m.[39m[34mjoin[39m([32m'\n'[39m)[36m}[39m[32m\n`[39m [33m:[39m [32m''[39m[33m;[39m
+    [90m133|[39m     if (this.outputPreservesSecret(output)) throw new Error('log redac…
+    [90m   |[39m                                                   [31m^[39m
+    [90m134|[39m     [34mwriteFileSync[39m(temp[33m,[39m output[33m,[39m [32m'utf8'[39m)[33m;[39m
+    [90m135|[39m     [34mrenameSync[39m(temp[33m,[39m path)[33m;[39m
+[90m [2m❯[22m Logger.redactSession apps/desktop/electron/main/logger.ts:[2m164:10[22m[39m
+[90m [2m❯[22m apps/desktop/test/logger.test.ts:[2m101:14[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/10]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\n" and records use "\n"
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\n" and records use "\r\n"
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\n" and records use "\r"
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\r\n" and records use "\n"
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\r\n" and records use "\r\n"
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\r\n" and records use "\r"
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\r" and records use "\n"
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\r" and records use "\r\n"
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mR8-P1-2 preserves JSONL record boundaries when the registered secret is "\r" and records use "\r"
+[31m[1mSyntaxError[22m: Unexpected token 'm', "malformed history" is not valid JSON[39m
+[36m [2m❯[22m apps/desktop/test/logger.test.ts:[2m392:85[22m[39m
+    [90m390|[39m       else if (operation === 'redactMemoryPromptLogs') logger.redactMe…
+    [90m391|[39m       const output = operation === 'export' ? await logger.export() : …
+    [90m392|[39m       const records = output.split(/\r\n|\r|\n/).filter(Boolean).map((…
+    [90m   |[39m                                                                                     [31m^[39m
+    [90m393|[39m       [35mconst[39m expectedCount [33m=[39m operation [33m===[39m [32m'export'[39m [33m?[39m [34m5[39m [33m:[39m [34m4[39m[33m;[39m
+    [90m394|[39m       [34mexpect[39m(records[33m,[39m operation)[33m.[39m[34mtoHaveLength[39m(expectedCount)[33m;[39m
+[90m [2m❯[22m apps/desktop/test/logger.test.ts:[2m392:66[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/10]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m6 passed[39m[22m[90m (7)[39m
+[2m      Tests [22m [1m[31m10 failed[39m[22m[2m | [22m[1m[32m229 passed[39m[22m[90m (239)[39m
+[2m   Start at [22m 20:50:17
+[2m   Duration [22m 24.86s[2m (transform 3.19s, setup 274ms, import 7.14s, tests 52.09s, environment 8.53s)[22m
+
+
+exit=1

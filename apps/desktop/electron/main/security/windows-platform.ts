@@ -1,3 +1,4 @@
+import { execFile } from 'node:child_process';
 import {
   lstat,
   realpath,
@@ -21,12 +22,55 @@ export interface WindowsPlatformOptions {
   dataDir: string;
   volumes?: string[];
   credentialDirs?: string[];
+  /** Windows attribute reader; injectable for non-symlink reparse-point regressions. */
+  readReparsePointAttribute?: (path: string) => Promise<number>;
 }
 
 const WINDOWS_DEVICE_PATH = /^\\\\[.?]\\(?!UNC\\)/i;
 const WINDOWS_DEVICE_NAME =
   /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$/i;
 const MISSING_CODES = new Set(['ENOENT', 'ENOTDIR']);
+const FILE_ATTRIBUTE_REPARSE_POINT = 16;
+
+async function readWindowsReparsePointAttribute(path: string): Promise<number> {
+  const powershell = process.env.SystemRoot
+    ? win32.join(process.env.SystemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe')
+    : 'powershell.exe';
+  const stdout = await new Promise<string>((resolve, reject) => {
+    execFile(
+      powershell,
+      [
+        '-NoLogo', '-NoProfile', '-NonInteractive',
+        '-Command',
+        '[int]([System.IO.File]::GetAttributes($env:SPARKII_REPARSE_PATH) -band [System.IO.FileAttributes]::ReparsePoint)',
+      ],
+      {
+        windowsHide: true,
+        timeout: 5_000,
+        maxBuffer: 1024,
+        encoding: 'utf8',
+        env: { ...process.env, SPARKII_REPARSE_PATH: path },
+      },
+      (error, output) => error ? reject(error) : resolve(output),
+    );
+  });
+  const rawAttribute = stdout.trim();
+  if (rawAttribute !== '0' && rawAttribute !== String(FILE_ATTRIBUTE_REPARSE_POINT)) {
+    throw new Error('Windows reparse-point attribute probe returned an invalid result');
+  }
+  return Number(rawAttribute);
+}
+
+async function isWindowsReparsePoint(
+  path: string,
+  link: Awaited<ReturnType<typeof lstat>>,
+  readAttribute: (path: string) => Promise<number>,
+): Promise<boolean> {
+  // Node exposes symlinks (including junctions), but not the generic Windows
+  // FILE_ATTRIBUTE_REPARSE_POINT bit used by mount points and placeholders.
+  if (link.isSymbolicLink()) return true;
+  return await readAttribute(path) === FILE_ATTRIBUTE_REPARSE_POINT;
+}
 
 function stripExtendedPrefix(value: string): string {
   if (/^\\\\\?\\UNC\\/i.test(value)) return `\\\\${value.slice(8)}`;
@@ -114,8 +158,10 @@ function isSameOrDescendantKey(root: string, target: string): boolean {
 }
 
 export function createWindowsPathProbe(
-  _opts: WindowsPlatformOptions,
+  opts: WindowsPlatformOptions,
 ): WorkspacePathProbe {
+  const readReparsePointAttribute = opts.readReparsePointAttribute
+    ?? readWindowsReparsePointAttribute;
   const inspect = async (value: string): Promise<WorkspacePathInfo> => {
     const target = validateWindowsPath(value);
     const nearest = await nearestExisting(target);
@@ -137,7 +183,11 @@ export function createWindowsPathProbe(
         )}`,
       nearestExistingAncestor: nearestReal,
       isDirectory: exists ? nearestStats.isDirectory() : false,
-      isReparsePoint: nearestLink.isSymbolicLink(),
+      isReparsePoint: await isWindowsReparsePoint(
+        nearest.path,
+        nearestLink,
+        readReparsePointAttribute,
+      ),
       exists,
       linkCount: exists ? Number(nearestStats.nlink) : undefined,
     };

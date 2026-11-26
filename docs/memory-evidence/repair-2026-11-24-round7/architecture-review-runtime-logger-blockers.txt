@@ -1,0 +1,11 @@
+CHANGES_REQUIRED
+Task-id: R7-REVIEW-RUNTIME-LOGGER
+
+Blocking findings from the independent read-only review:
+
+1. bind() awaited configure_session/switch_session and then unconditionally cleared resetting and returned the slot without rechecking pool membership. A deterministic probe delivered a successful switch response and an invalid direct-facade new_session response in one turn; retirement removed the slot before the bind continuation, yet acquire() resolved with a killed slot.
+2. clientFor() reuses a stable facade per slot. Workflow and IPC ownership checks compared only pool.get(sessionId) with that facade, so same-session-ID release/reacquire was invisible. An old workflow prompt could consume new-generation output; the IPC successful-send handler also lacked post-send ownership validation.
+
+Required repair: before bind clears resetting/returns, synchronously verify pool membership, requested-session ownership, and no retirement. Expose a per-binding lease/epoch and validate client, session ID, and lease before subscription, before send, on every event, and after send completion, including successful IPC sends. Add same-ID release/reacquire regressions for workflow and IPC.
+
+Runtime evidence uses FakeHandle/DeferredResetHandle only; no real child process was used. This is not an approval.

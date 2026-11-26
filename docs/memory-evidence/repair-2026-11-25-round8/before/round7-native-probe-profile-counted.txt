@@ -1,0 +1,40 @@
+(node:23632) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:3696) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:12908) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | apps/desktop/test/r8-probe-profile.tmp.test.ts > profiles native probes for the basic memory path
+R8_PROBE_PROFILE count=221 elapsedMs=5404.3117 id=mem_e4d5e088-88bf-4228-a70b-1e6599ffbfb5
+
+ × |1| apps/desktop/test/r8-probe-profile.tmp.test.ts > profiles native probes for the basic memory path 6009ms
+   → Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/r8-probe-profile.tmp.test.ts > profiles native probes for the basic memory path
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/r8-probe-profile.tmp.test.ts:8:1
+      6| import { reparseAttributes } from '../electron/main/memory/truth-path.…
+      7|
+      8| it('profiles native probes for the basic memory path', () => {
+       | ^
+      9|   const root = mkdtempSync(join(tmpdir(), 'sparkii-r8-profile-'));
+     10|   let count = 0;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  09:42:10
+   Duration  7.53s (transform 172ms, setup 36ms, import 501ms, tests 6.01s, environment 801ms)
+
+
+EXIT_CODE=1

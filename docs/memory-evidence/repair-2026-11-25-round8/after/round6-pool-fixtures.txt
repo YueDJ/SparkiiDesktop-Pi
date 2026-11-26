@@ -1,0 +1,21 @@
+(node:17680) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:35016) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:14104) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime-pool-skill-isolation.test.ts (1 test) 1002ms
+     ✓ reloads Pi getSkills on the reused process after configure + new_session  1001ms
+(node:28312) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime-pool-saddle.test.ts (2 tests) 156ms
+
+ Test Files  2 passed (2)
+      Tests  3 passed (3)
+   Start at  07:50:13
+   Duration  1.70s (transform 68ms, setup 0ms, import 208ms, tests 1.16s, environment 0ms)
+

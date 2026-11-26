@@ -1,0 +1,134 @@
+(node:33480) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:15808) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:35472) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-round7-regression.test.ts (7 tests | 6 failed) 13504ms
+     × R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files 2366ms
+     × R7-P1-1 future memory-tool audit summaries contain no raw query or memory body 993ms
+     × R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes 2485ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes  1892ms
+     × R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file 2468ms
+     × R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion 1232ms
+     × R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution 2065ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files
+TypeError: sessions.privacyDelete is not a function
+ ❯ Object.deleteChatSession apps/desktop/test/memory-round7-regression.test.ts:45:48
+     43|     workspacePathOf: (id) => sessions.get(id)?.workspacePath,
+     44|     workspacePathsOf: () => sessions.list().map((session) => session.w…
+     45|     deleteChatSession: (id, texts) => sessions.privacyDelete(id, texts…
+       |                                                ^
+     46|     emit: (type, payload) => events.push({ type, payload }),
+     47|   });
+ ❯ MemoryService.privacyDeleteBySession apps/desktop/electron/main/memory/service.ts:719:15
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:122:13
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7-P1-1 future memory-tool audit summaries contain no raw query or memory body
+AssertionError: expected 'RAW_QUERY_MUST_NOT_BE_AUDITED_51C8' not to contain 'RAW_QUERY_MUST_NOT_BE_AUDITED_51C8'
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:165:30
+    163|     const summaries = (await audit.query({ action: 'memory.search' }))…
+    164|     expect(summaries).toHaveLength(1);
+    165|     expect(summaries[0]).not.toContain(secret);
+       |                              ^
+    166|     expect(summaries[0]).toMatch(/length|sha256|count/i);
+    167|     expect(JSON.stringify(await audit.query({ action: 'memory.forget' …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:182:82
+    180|     });
+    181|
+    182|     expect(() => service.repairProjectMemory(workspace, 'replace', rep…
+       |                                                                                  ^
+    183|     expect(readFileSync(projectMemoryFile(workspace), 'utf8')).toBe(br…
+    184|     expect(events.some((event) => event.type === 'memory_changed' && e…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:224:64
+    222|     const beforeB = readFileSync(projectMemoryFile(workspaceB));
+    223|
+    224|     expect(() => service.markSourcesDeleted('delete-session')).toThrow…
+       |                                                                ^
+    225|     expect(readFileSync(projectMemoryFile(workspaceA))).toEqual(before…
+    226|     expect(readFileSync(projectMemoryFile(workspaceB))).toEqual(before…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion
+AssertionError: expected [ { …(9) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "id": "mem_1fb51e51-881a-4715-af7b-4f3b996d6241",
++     "kind": "memory",
++     "projectId": "proj_34d284b4-70aa-4dfb-ba24-b6092604c344",
++     "scope": "project:proj_34d284b4-70aa-4dfb-ba24-b6092604c344",
++     "score": 0.000001,
++     "sessionId": "private-unregistered",
++     "status": "active",
++     "text": "UNREGISTERED_FACT_41A",
++     "workspacePath": "C:/Users/YDJ/AppData/Local/Temp/sparkii-r7-memory-dgeCDG/unregistered-r7",
++   },
++ ]
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:237:59
+    235|     writeFileSync(projectRegistryFile(dataDir), registry);
+    236|
+    237|     expect(service.searchMemory('UNREGISTERED_FACT_41A')).toEqual([]);
+       |                                                           ^
+    238|     expect(service.list().scopes.some((scope) => scope.projectId === a…
+    239|     service.deleteMemory(added.id, { mode: 'privacy' });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution
+AssertionError: expected [] to include 'mem_61e556df-65d3-4269-90f1-076ad161c…'
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:253:79
+    251|     const unchangedB = readFileSync(projectMemoryFile(workspaceB));
+    252|
+    253|     expect(service.searchMemory('B_UNCHANGED_FACT_41A').map((hit) => h…
+       |                                                                               ^
+    254|     expect(service.searchMemory('B_UNCHANGED_FACT_41A')).toEqual([]);
+    255|     expect(service.store.db.prepare('SELECT content_hash FROM scope_fi…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed | 1 passed (7)
+   Start at  19:14:28
+   Duration  15.38s (transform 241ms, setup 37ms, import 643ms, tests 13.50s, environment 979ms)
+

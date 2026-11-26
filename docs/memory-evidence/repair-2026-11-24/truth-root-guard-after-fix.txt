@@ -1,0 +1,29 @@
+(node:19780) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:27304) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:34092) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-truth-batch.test.ts (15 tests) 9855ms
+     ✓ restores every prior truth file and removes new files when a later write fails  1050ms
+     ✓ recovers an interrupted batch at startup before truth files are opened  791ms
+     ✓ recovers a new project batch from the registry committed before its truth file  791ms
+     ✓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing  767ms
+     ✓ quarantines a malformed journal and reports a warning instead of blocking startup  523ms
+     ✓ rejects journal paths outside memory truth and backup locations  770ms
+     ✓ rejects a truthy non-boolean committed marker without deleting uncommitted truth  514ms
+     ✓ rejects a committed journal that still contains rollback file items  518ms
+     ✓ rejects an unregistered outside project truth target during commit and recovery  753ms
+     ✓ keeps the only recovery evidence when the write-block marker cannot be persisted  504ms
+     ✓ keeps a committed batch and removes its recovery journal  746ms
+     ✓ rolls back the project registry when a later truth write fails  1611ms
+
+ Test Files  1 passed (1)
+      Tests  15 passed (15)
+   Start at  16:59:40
+   Duration  11.27s (transform 161ms, setup 33ms, import 373ms, tests 9.85s, environment 830ms)
+

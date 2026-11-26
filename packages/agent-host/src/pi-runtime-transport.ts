@@ -1,5 +1,6 @@
 import type { RpcCommand, RpcResponse, NormalizedEvent } from "./types.js";
 import type { ProposalRequest } from "@sparkii/approval";
+import type { RuntimeOriginToken } from "./runtime-actions.js";
 import type {
   ActionExecutionResult,
   RuntimeActionRequest,
@@ -29,22 +30,34 @@ export type ConnectorReadResult = {
 export type PiRuntimeEnvelope =
   | { direction: "main-to-runtime"; id: string; command: RpcCommand }
   | { direction: "runtime-to-main"; id: string; response: RpcResponse }
-  | { direction: "runtime-to-main"; event: NormalizedEvent }
+  | { direction: "runtime-to-main"; event: NormalizedEvent; sessionGeneration?: number }
   | { direction: "runtime-to-main"; ready: true }
-  | { direction: "runtime-to-main"; proposal: ProposalRequest & { requestId: string } }
-  | { direction: "main-to-runtime"; requestId: string; proposalDecision: ProposalDecision }
-  | { direction: "runtime-to-main"; action: RuntimeActionRequest }
-  | { direction: "main-to-runtime"; requestId: string; actionResult: ActionExecutionResult }
-  | { direction: "runtime-to-main"; connectorRead: ConnectorReadRequest }
-  | { direction: "main-to-runtime"; requestId: string; connectorReadResult: ConnectorReadResult };
+  | { direction: "runtime-to-main"; proposal: ProposalRequest & { requestId: string }; sessionGeneration?: number; originToken?: RuntimeOriginToken }
+  | { direction: "main-to-runtime"; requestId: string; proposalDecision: ProposalDecision; sessionGeneration?: number }
+  | { direction: "runtime-to-main"; action: RuntimeActionRequest; sessionGeneration?: number; originToken?: RuntimeOriginToken }
+  | { direction: "main-to-runtime"; requestId: string; actionResult: ActionExecutionResult; sessionGeneration?: number }
+  | { direction: "runtime-to-main"; connectorRead: ConnectorReadRequest; sessionGeneration?: number; originToken?: RuntimeOriginToken }
+  | { direction: "main-to-runtime"; requestId: string; connectorReadResult: ConnectorReadResult; sessionGeneration?: number };
 
 export function readyEnvelope(): PiRuntimeEnvelope {
   return { direction: "runtime-to-main", ready: true };
 }
 
+export interface PiRuntimeEventContext {
+  sessionGeneration: number;
+}
+
+export interface PiRuntimeRequestContext {
+  client: PiRuntimeClient;
+  sessionGeneration: number;
+  originToken?: RuntimeOriginToken;
+}
+
 export interface PiRuntimeClient {
+  readonly origin: string;
+  sessionGeneration(): number;
   send(command: RpcCommand): Promise<RpcResponse>;
-  onEvent(callback: (event: NormalizedEvent) => void): () => void;
+  onEvent(callback: (event: NormalizedEvent, context: PiRuntimeEventContext) => void): () => void;
   close(): void;
 }
 
@@ -63,28 +76,30 @@ export function responseEnvelope(id: string, response: RpcResponse): PiRuntimeEn
   return { direction: "runtime-to-main", id, response };
 }
 
-export function eventEnvelope(event: NormalizedEvent): PiRuntimeEnvelope {
-  return { direction: "runtime-to-main", event };
+export function eventEnvelope(event: NormalizedEvent, sessionGeneration = 0): PiRuntimeEnvelope {
+  return { direction: "runtime-to-main", event, sessionGeneration };
 }
 
-export function proposalEnvelope(proposal: ProposalRequest & { requestId: string }): PiRuntimeEnvelope {
-  return { direction: "runtime-to-main", proposal };
+export function proposalEnvelope(proposal: ProposalRequest & { requestId: string }, sessionGeneration = 0, originToken?: RuntimeOriginToken): PiRuntimeEnvelope {
+  return { direction: "runtime-to-main", proposal, sessionGeneration, ...(originToken ? { originToken } : {}) };
 }
 
 export function proposalDecisionEnvelope(
   requestId: string,
   proposalDecision: ProposalDecision,
+  sessionGeneration = 0,
 ): PiRuntimeEnvelope {
-  return { direction: "main-to-runtime", requestId, proposalDecision };
+  return { direction: "main-to-runtime", requestId, proposalDecision, sessionGeneration };
 }
 
-export function connectorReadEnvelope(connectorRead: ConnectorReadRequest): PiRuntimeEnvelope {
-  return { direction: "runtime-to-main", connectorRead };
+export function connectorReadEnvelope(connectorRead: ConnectorReadRequest, sessionGeneration = 0, originToken?: RuntimeOriginToken): PiRuntimeEnvelope {
+  return { direction: "runtime-to-main", connectorRead, sessionGeneration, ...(originToken ? { originToken } : {}) };
 }
 
 export function connectorReadResultEnvelope(
   requestId: string,
   connectorReadResult: ConnectorReadResult,
+  sessionGeneration = 0,
 ): PiRuntimeEnvelope {
-  return { direction: "main-to-runtime", requestId, connectorReadResult };
+  return { direction: "main-to-runtime", requestId, connectorReadResult, sessionGeneration };
 }

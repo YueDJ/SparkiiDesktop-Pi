@@ -1,15 +1,30 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
+import { dialog } from 'electron';
 import { existsSync } from 'node:fs';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { listPiSessions } from '@sparkii/agent-host';
+import {
+  ApprovalGate,
+  AuditStore,
+  TaskGrantRegistry,
+  CapabilityGateway,
+  ConnectorExecutor,
+  type Proposal,
+  type SecurityAction,
+  type TaskGrant,
+} from '@sparkii/approval';
+import { Rbac } from '@sparkii/identity';
 import { Keyring } from '../electron/main/keyring.js';
 import { registerIpc } from '../electron/main/ipc.js';
 import { buildAgentSaddle } from '../electron/main/saddle.js';
 import { listUserSkills } from '../electron/main/skill-library.js';
 import { resetGrantedDocumentPaths } from '../electron/main/document-bytes.js';
 import { selectModel } from '../electron/main/workflow.js';
+import { TaskLifecycle } from '../electron/main/security/task-lifecycle.js';
+import { ShellGrantStore } from '../electron/main/security/shell-grant-store.js';
+import { ExtractionScheduler } from '../electron/main/memory/index.js';
 import {
   DEFAULT_TOOL_DESCRIPTORS,
   createActionNormalizer,
@@ -39,6 +54,7 @@ vi.mock('electron', async () => {
     app: {
       getPath: (name: string) => (name === 'documents' ? join(tmpdir(), 'sparkii-test-documents') : ''),
       on: () => {},
+      once: () => {},
       quit: () => {},
     },
     dialog: {
@@ -54,7 +70,7 @@ vi.mock('electron', async () => {
   };
 });
 
-const { supervisorMocks, executeDocumentReadMock } = vi.hoisted(() => ({
+const { supervisorMocks, executeDocumentReadMock, loadSettingsMock, loadSettingsControl } = vi.hoisted(() => ({
   supervisorMocks: {
     failSession: vi.fn(async () => {}),
     subscribe: vi.fn(() => () => {}),
@@ -68,7 +84,16 @@ const { supervisorMocks, executeDocumentReadMock } = vi.hoisted(() => ({
     setErrorReporter: vi.fn(),
   },
   executeDocumentReadMock: vi.fn(async () => ({ ok: true, data: { text: 'x', engine: 'native' } })),
+  loadSettingsMock: vi.fn(),
+  loadSettingsControl: { original: undefined as undefined | ((dataDir: string) => Promise<unknown>) },
 }));
+
+vi.mock('../electron/main/settings.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../electron/main/settings.js')>();
+  loadSettingsControl.original = actual.loadSettings;
+  loadSettingsMock.mockImplementation(actual.loadSettings);
+  return { ...actual, loadSettings: loadSettingsMock };
+});
 
 vi.mock('../electron/main/document-parse-supervisor.js', () => ({
   getDocumentParseSupervisor: () => ({
@@ -90,6 +115,31 @@ vi.mock('../electron/main/document-read.js', async (importOriginal) => {
   return {
     ...actual,
     executeDocumentRead: executeDocumentReadMock,
+  };
+});
+
+const randomUUIDControl = vi.hoisted(() => {
+  const crypto = process.getBuiltinModule('node:crypto');
+  const module = process.getBuiltinModule('node:module');
+  const original = crypto.randomUUID;
+  let implementation = original;
+  crypto.randomUUID = ((...args: Parameters<typeof original>) => implementation(...args)) as typeof original;
+  module.syncBuiltinESMExports();
+  return {
+    set(value: string): void {
+      implementation = () => value;
+      module.syncBuiltinESMExports();
+    },
+    setSequence(values: string[]): void {
+      let index = 0;
+      implementation = () => values[Math.min(index++, values.length - 1)];
+      module.syncBuiltinESMExports();
+    },
+    restore(): void {
+      implementation = original;
+      crypto.randomUUID = original;
+      module.syncBuiltinESMExports();
+    },
   };
 });
 
@@ -116,10 +166,33 @@ async function waitUntil(predicate: () => boolean, timeoutMs = 2000): Promise<vo
   }
 }
 
+/** In-memory Pi transport handle used by runtime IPC regressions; no child process is started. */
+class FakeHandle {
+  private listeners = new Set<(event: any) => void>();
+  readonly send = vi.fn(async (_command: any): Promise<any> => ({ success: true }));
+
+  constructor(send?: (command: any) => Promise<any>) {
+    if (send) this.send.mockImplementation(send);
+  }
+
+  onEvent(callback: (event: any) => void): () => void {
+    this.listeners.add(callback);
+    return () => { this.listeners.delete(callback); };
+  }
+
+  emit(event: any): void {
+    for (const listener of [...this.listeners]) listener(event);
+  }
+}
+
 let dirs: string[] = [];
 afterEach(async () => {
   vi.useRealTimers();
+  randomUUIDControl.restore();
+  vi.mocked(dialog.showSaveDialog).mockReset();
   resetGrantedDocumentPaths();
+  loadSettingsMock.mockReset();
+  loadSettingsMock.mockImplementation(loadSettingsControl.original!);
   supervisorMocks.failSession.mockReset();
   supervisorMocks.failSession.mockResolvedValue(undefined);
   supervisorMocks.setIdleMinutes.mockReset();
@@ -137,7 +210,12 @@ afterEach(async () => {
 async function makeRuntime(opts: {
   dataDir: string;
   piAgentDir: string;
-  client: { send: (command: any) => Promise<any>; onEvent?: (cb: (event: any) => void) => () => void };
+  client: {
+    send: (command: any) => Promise<any>;
+    onEvent?: (cb: (event: any) => void) => () => void;
+    origin?: string;
+    sessionGeneration?: () => number;
+  };
   setKey?: (providerId: string, key: string) => Promise<void>;
   keyFor?: (providerId: string) => Promise<string | null>;
   knowledgeToken?: (backend: string) => Promise<string | null>;
@@ -153,18 +231,43 @@ async function makeRuntime(opts: {
   exitCbs?: Array<(code: number | null) => void>;
   logger?: { export: () => Promise<string>; log: (entry: unknown) => Promise<void> };
   security?: unknown;
+  gate?: unknown;
+  executor?: unknown;
+  memory?: unknown;
+  register?: typeof registerIpc;
 }): Promise<Runtime> {
   // 一根进程一根管子：牌子（活 sessionId）由池子持有，acquire/release/rename 改它。
   let boundSessionId: string | null = null;
+  let bindingLease = 0;
+  let sessionGeneration = 0;
+  let latestOriginToken: string | undefined;
+  const originalSend = opts.client.send;
+  opts.client.send = vi.fn(async (command: any) => {
+    if (typeof command.originToken === 'string') latestOriginToken = command.originToken;
+    return originalSend(command);
+  });
+  Object.assign(opts.client, {
+    origin: opts.client.origin ?? `test-client-${Math.random().toString(36).slice(2)}`,
+    sessionGeneration: () => sessionGeneration,
+  });
+  const requestContext = (cb: (req: any, context: unknown) => unknown) =>
+    (req: any, originToken?: string) => cb(req, {
+      client: opts.client,
+      sessionGeneration,
+      originToken: originToken ?? latestOriginToken,
+    });
   const slot = {
     client: opts.client,
+    get lease() { return bindingLease; },
     supervisor: {
-      onProposal: () => {},
-      onConnectorRead: (cb: (req: unknown) => Promise<unknown>) => {
-        (rt as unknown as { __onConnectorRead?: (req: unknown) => Promise<unknown> }).__onConnectorRead = cb;
+      onProposal: (cb: (req: any, context: unknown) => Promise<unknown>) => {
+        (rt as unknown as { __onProposal?: (req: any, originToken?: string) => Promise<unknown> }).__onProposal = requestContext(cb);
       },
-      onAction: (cb: (req: unknown) => Promise<unknown>) => {
-        (rt as unknown as { __onAction?: (req: unknown) => Promise<unknown> }).__onAction = cb;
+      onConnectorRead: (cb: (req: unknown, context: unknown) => Promise<unknown>) => {
+        (rt as unknown as { __onConnectorRead?: (req: unknown, originToken?: string) => Promise<unknown> }).__onConnectorRead = requestContext(cb);
+      },
+      onAction: (cb: (req: unknown, context: unknown) => Promise<unknown>) => {
+        (rt as unknown as { __onAction?: (req: unknown, originToken?: string) => Promise<unknown> }).__onAction = requestContext(cb);
         return () => {};
       },
       onExit: (cb: (code: number | null) => void) => {
@@ -181,35 +284,46 @@ async function makeRuntime(opts: {
   const keyFor = opts.keyFor ?? (async () => null);
     const rt: any = {
     profiles: new Map(),
-    gate: {},
-    executor: {},
+    gate: opts.gate ?? {},
+    executor: opts.executor ?? {},
     agents: opts.agents ?? new Map(),
     audit: opts.audit ?? { append: vi.fn(async (ev) => ev), query: vi.fn(async () => []) },
     errors: opts.errors ?? { append: vi.fn() },
     pool: {
       acquire: vi.fn(async (sessionId: string, acquireOpts?: { meta?: { internal?: boolean } }) => {
         // 内部探测在真实池子里占的是另一个槽位，不动这条会话的牌子。
-        if (!acquireOpts?.meta?.internal) boundSessionId = sessionId;
-        return slot;
+        if (!acquireOpts?.meta?.internal) {
+          boundSessionId = sessionId;
+          bindingLease += 1;
+        }
+        return { ...slot, lease: bindingLease };
       }),
-      release: vi.fn(async (sessionId: string) => {
-        if (boundSessionId === sessionId) boundSessionId = null;
+      release: vi.fn(async (sessionId: string, expectedLease?: number) => {
+        if (boundSessionId === sessionId && (expectedLease === undefined || expectedLease === bindingLease)) {
+          boundSessionId = null;
+        }
       }),
       renameSession: vi.fn((from: string, to: string) => {
         if (boundSessionId === from) boundSessionId = to;
       }),
       activeCount: vi.fn(() => 0),
       get: () => opts.client,
+      getBinding: (sessionId: string) => boundSessionId === sessionId
+        ? { client: opts.client, lease: bindingLease }
+        : undefined,
       broadcast: vi.fn(async () => {}),
       snapshot: vi.fn(() => ({ maxAgents: 4, active: 0, queued: 0, slots: [], queue: [] })),
       subscribe: vi.fn(() => () => {}),
       cancelPending: vi.fn(() => true),
+      cancelAcquire: vi.fn(() => true),
+      waitForAcquire: vi.fn(async () => {}),
       setMaxAgents: vi.fn(),
       updateMeta: vi.fn(() => true),
     },
     subject: { userId: 'tester', roles: ['admin'] },
     security: opts.security,
-    chatSessions: { get: () => opts.chatSession ?? null, list: vi.fn(() => []), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
+    memory: opts.memory,
+    chatSessions: { get: () => opts.chatSession ?? null, rawPiSessionFile: () => opts.chatSession?.piSessionFile ?? undefined, list: vi.fn(() => []), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
     dataDir: opts.dataDir,
     keyring: null as any,
     piAgentDir: opts.piAgentDir,
@@ -247,7 +361,7 @@ async function makeRuntime(opts: {
     knowledgeToken: opts.knowledgeToken ?? (async (backend: string) => (backend === 'sparkiirag' ? keyFor('sparkiirag') : null)),
     setKnowledgeToken: opts.setKnowledgeToken ?? (async () => {}),
   } as unknown as Runtime;
-  registerIpc(
+  (opts.register ?? registerIpc)(
     rt,
     (opts.getWindow ?? (() => null)) as any,
     (opts.logger ?? { export: async () => '', log: vi.fn(async () => {}) }) as any,
@@ -1383,7 +1497,7 @@ describe('ipc provider handlers', () => {
     const result = await promptSession!(null, null, 'hello', undefined, undefined, { profileId: 'general' });
 
     expect(result).toMatchObject({ ok: true, sessionId: 's-new' });
-    expect(sent).toContainEqual({ type: 'prompt', message: 'hello' });
+    expect(sent).toContainEqual({ type: 'prompt', message: 'hello', promptId: expect.any(String), originToken: expect.any(String) });
     expect(rt.pool.acquire).toHaveBeenCalled();
     expect((rt as any).chatSessions.create).toHaveBeenCalledWith(expect.objectContaining({
       workspaceKind: 'auto',
@@ -1394,6 +1508,202 @@ describe('ipc provider handlers', () => {
     expect(created.workspacePath.startsWith(documentsDir)).toBe(true);
     expect(created.workspacePath.replace(/\\/g, '/')).toMatch(/sparkii-test-documents\/Sparkii\/workspaces\/general\/[a-z]+-[a-z]+-[a-z2-9]{3}$/);
     expect(existsSync(created.workspacePath)).toBe(false);
+  });
+
+  it('R7 reuses one open session for a follow-up after the first prompt', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    let releaseAcquire!: () => void;
+    const acquireGate = new Promise<void>((resolve) => { releaseAcquire = resolve; });
+    const client = { onEvent: () => () => {}, send: async () => ({ success: true, data: { sessionId: 's1', sessionFile: null } }) };
+    const rt = await makeRuntime({
+      dataDir, piAgentDir, client,
+      chatSession: { profileId: 'contract-review', model: null },
+    });
+    const originalAcquire = rt.pool.acquire;
+    rt.pool.acquire = vi.fn(async (...args: Parameters<typeof originalAcquire>) => {
+      await acquireGate;
+      return originalAcquire(...args);
+    });
+    const prompt = (await registeredHandlers()).get('sparkii:promptSession')!;
+    const first = prompt(null, 's1', 'first');
+    await waitUntil(() => vi.mocked(rt.pool.acquire).mock.calls.length > 0);
+    releaseAcquire();
+    await first;
+    const second = prompt(null, 's1', 'second', { behavior: 'followUp' });
+    await second;
+    expect(rt.pool.acquire).toHaveBeenCalledTimes(1);
+  });
+
+  it('R7 promptSession rejects a stale binding while model key lookup is suspended', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    let resolveKey!: (key: string) => void;
+    const keyGate = new Promise<string>((resolve) => { resolveKey = resolve; });
+    const keyFor = vi.fn(async () => keyGate);
+    const sent: any[] = [];
+    const client = {
+      onEvent: () => () => {},
+      send: async (command: any) => {
+        sent.push(command);
+        return { success: true, data: { sessionId: 's1', sessionFile: null } };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir, piAgentDir, client, keyFor,
+      chatSession: { profileId: 'contract-review', model: 'deepseek-chat' },
+    });
+    const prompt = (await registeredHandlers()).get('sparkii:promptSession')!;
+    const pending = prompt(null, 's1', 'stale model prompt');
+    await waitUntil(() => keyFor.mock.calls.length > 0);
+    const oldLease = rt.pool.getBinding('s1')!.lease;
+    await rt.pool.release('s1', oldLease);
+    await rt.pool.acquire('s1');
+    const replacementLease = rt.pool.getBinding('s1')!.lease;
+    resolveKey('sk-test');
+
+    await expect(pending).rejects.toThrow('session s1 is no longer bound');
+    expect(sent.some((command) => command.type === 'set_api_key' || command.type === 'set_model')).toBe(false);
+    expect(sent.some((command) => command.type === 'prompt')).toBe(false);
+    expect(rt.pool.getBinding('s1')?.lease).toBe(replacementLease);
+  });
+
+  it('R7 promptSession rejects a stale binding after deferred get_state before sending', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    let resolveState!: () => void;
+    const stateGate = new Promise<void>((resolve) => { resolveState = resolve; });
+    const sent: any[] = [];
+    const client = {
+      onEvent: () => () => {},
+      send: async (command: any) => {
+        sent.push(command);
+        if (command.type === 'get_state') await stateGate;
+        return { success: true, data: { sessionId: 's1', sessionFile: null, isStreaming: false } };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir, piAgentDir, client,
+      chatSession: { profileId: 'contract-review', model: null },
+    });
+    const prompt = (await registeredHandlers()).get('sparkii:promptSession')!;
+    const pending = prompt(null, 's1', 'stale prompt');
+    await waitUntil(() => sent.some((command) => command.type === 'get_state'));
+    const oldLease = rt.pool.getBinding('s1')!.lease;
+    await rt.pool.release('s1', oldLease);
+    await rt.pool.acquire('s1');
+    const replacementLease = rt.pool.getBinding('s1')!.lease;
+    resolveState();
+
+    await expect(pending).rejects.toThrow('session s1 is no longer bound');
+    expect(sent.some((command) => command.type === 'prompt' || command.type === 'steer' || command.type === 'follow_up')).toBe(false);
+    expect(rt.chatSessions.update).not.toHaveBeenCalled();
+    expect(rt.pool.getBinding('s1')?.lease).toBe(replacementLease);
+  });
+
+  it('R7 stale task admission cannot replace a same-id replacement grant', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const workspacePath = join(dataDir, 'workspace');
+    let releaseAdmission!: () => void;
+    const admissionGate = new Promise<void>((resolve) => { releaseAdmission = resolve; });
+    let admissions = 0;
+    const key = (value: string) => value.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+    const pathProbe = {
+      inspect: async (target: string) => {
+        admissions += 1;
+        if (admissions === 1) await admissionGate;
+        return {
+          displayPath: target, canonicalPath: target, identity: `object:${key(target)}`,
+          nearestExistingAncestor: target, isDirectory: true, isReparsePoint: false, exists: true, linkCount: 1,
+        };
+      },
+      isSameOrDescendant: async (root: string, target: string) => key(target) === key(root) || key(target).startsWith(`${key(root)}/`),
+      isSameObject: async (left: string, right: string) => key(left) === key(right),
+    };
+    const registry = new TaskGrantRegistry();
+    const taskLifecycle = new TaskLifecycle(registry);
+    const sent: any[] = [];
+    const client = {
+      onEvent: () => () => {},
+      send: async (command: any) => {
+        sent.push(command);
+        return { success: true, data: { sessionId: 's1', sessionFile: null, isStreaming: false } };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir, piAgentDir, client,
+      chatSession: { profileId: 'general', model: null },
+      security: {
+        profilePolicies: new Map([['general', { defaultPermissionMode: 'ask', allowedPermissionModes: ['ask'] }]]),
+        taskLifecycle, taskGrants: registry, pathProbe, protectedRoots: [], scratchParent: join(dataDir, 'scratch'),
+        hostShell: { terminate: vi.fn(async () => {}) },
+        reviewer: { cancel: vi.fn(async () => {}) },
+        capabilityGateway: { revokeTask: vi.fn() },
+        shellGrants: { allows: () => false, grant: vi.fn(), revoke: vi.fn(), clear: vi.fn() },
+        hostShellReport: { backend: 'host-git-bash', status: 'available', executionBoundary: 'host', version: 'test', limitations: [] },
+      },
+    });
+    (rt.chatSessions as any).get = () => ({
+      id: 's1', profileId: 'general', workspaceKind: 'auto', workspacePath,
+      model: null, thinkingLevel: null, piSessionFile: null, permissionMode: 'ask', inputs: [],
+    });
+    const prompt = (await registeredHandlers()).get('sparkii:promptSession')!;
+    const stale = prompt(null, 's1', 'stale admission prompt');
+    const staleRejection = expect(stale).rejects.toThrow('session s1 is no longer bound');
+    await waitUntil(() => admissions === 1);
+    const oldLease = rt.pool.getBinding('s1')!.lease;
+    await rt.pool.release('s1', oldLease);
+    releaseAdmission();
+
+    await expect(prompt(null, 's1', 'replacement prompt')).resolves.toMatchObject({ ok: true });
+    const replacementLease = rt.pool.getBinding('s1')!.lease;
+    const replacementTaskId = taskLifecycle.active('s1')?.taskId;
+    expect(replacementTaskId).toBeTruthy();
+
+    await staleRejection;
+    expect(taskLifecycle.active('s1')?.taskId).toBe(replacementTaskId);
+    expect(sent.filter((command) => command.type === 'prompt').map((command) => command.message)).toEqual(['replacement prompt']);
+    expect(rt.pool.getBinding('s1')?.lease).toBe(replacementLease);
+  });
+
+  it('R7 session creation failure cannot release or delete a same-id replacement', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({ defaultModel: 'deepseek-chat' }), 'utf8');
+    let resolveKey!: (key: string) => void;
+    const keyGate = new Promise<string>((resolve) => { resolveKey = resolve; });
+    const client = {
+      onEvent: () => () => {},
+      send: async (command: any) => {
+        if (command.type === 'get_state') return { success: true, data: { sessionId: 'created-race', sessionFile: null } };
+        if (command.type === 'set_api_key') return { success: false, error: 'injected key failure' };
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({ dataDir, piAgentDir, client, keyFor: async () => keyGate });
+    const handlers = await registeredHandlers();
+    const creating = handlers.get('sparkii:createSession')!(null, { profileId: 'general' });
+    await waitUntil(() => Boolean(rt.pool.getBinding('created-race')));
+    const oldLease = rt.pool.getBinding('created-race')!.lease;
+    await rt.pool.release('created-race', oldLease);
+    await rt.pool.acquire('created-race');
+    const replacementLease = rt.pool.getBinding('created-race')!.lease;
+    resolveKey('sk-test');
+    await expect(creating).rejects.toThrow('session created-race is no longer bound');
+    expect(rt.pool.getBinding('created-race')?.lease).toBe(replacementLease);
+    expect(rt.chatSessions.delete).not.toHaveBeenCalled();
+    expect(rt.pool.release).not.toHaveBeenCalledWith('created-race', undefined);
   });
 
   it('createSession binds a workspace WITHOUT sending a prompt (P9, holds slot + 15s idle release)', async () => {
@@ -1435,7 +1745,7 @@ describe('ipc provider handlers', () => {
     // prompt 建立 Grant 后误撤销它）；槽位保持，由更激进的 15s idle 定时器回收。
     expect(rt.pool.release).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(15_000);
-    expect(rt.pool.release).toHaveBeenCalledWith('s-bare');
+    expect(rt.pool.release).toHaveBeenCalledWith('s-bare', 1);
     vi.useRealTimers();
   });
 
@@ -1467,8 +1777,9 @@ describe('ipc provider handlers', () => {
         allowedPermissionModes: ['ask'],
       }]]),
       taskLifecycle: {
-        start: vi.fn(async () => {
+        start: vi.fn(async (_factory: () => Promise<any>, _beforeCommit?: () => void, onStarted?: (created: any) => void) => {
           liveGrant = { taskId: `task-${ended.length + 1}`, sessionId: 's1' };
+          onStarted?.(liveGrant);
           return liveGrant;
         }),
         active: vi.fn(() => liveGrant),
@@ -1511,6 +1822,7 @@ describe('ipc provider handlers', () => {
     });
     expect(liveGrant).toBeTruthy();
     expect(ended).toEqual([]);
+    for (const cb of listeners) cb({ type: 'agent_start' });
 
     // (3) 模拟旧 new_session 的迟到 settled：活跃 Grant 已被下一轮 startSessionTask
     // 换成新 taskId，但 armed 仍是上一轮的 —— taskId 不一致，不得撤销新 Grant。
@@ -1594,7 +1906,7 @@ describe('ipc provider handlers', () => {
     });
 
     expect(sent).not.toContainEqual({ type: 'set_model', provider: 'kimi', modelId: 'kimi-for-coding' });
-    expect(sent).toContainEqual({ type: 'prompt', message: 'hello' });
+    expect(sent).toContainEqual({ type: 'prompt', message: 'hello', promptId: expect.any(String), originToken: expect.any(String) });
     expect((rt as any).chatSessions.create).toHaveBeenCalledWith(
       expect.objectContaining({ model: 'kimi/kimi-for-coding' }),
     );
@@ -1761,7 +2073,7 @@ describe('ipc provider handlers', () => {
 
     expect(rt.pool.release).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(60_000);
-    expect(rt.pool.release).toHaveBeenCalledWith('s1');
+    expect(rt.pool.release).toHaveBeenCalledWith('s1', 1);
     vi.useRealTimers();
   });
 
@@ -1846,7 +2158,7 @@ describe('ipc provider handlers', () => {
     await Promise.resolve();
     expect(sent.some((c) => c.type === 'append_workflow_entry' && c.customType === 'knowledge_turn')).toBe(true);
     await vi.advanceTimersByTimeAsync(60_000);
-    expect(rt.pool.release).toHaveBeenCalledWith('s1');
+    expect(rt.pool.release).toHaveBeenCalledWith('s1', 1);
     vi.useRealTimers();
   });
 
@@ -1942,6 +2254,194 @@ describe('ipc provider handlers', () => {
     expect(sent.some((c) => c.type === 'set_session_name')).toBe(false);
 
     vi.useRealTimers();
+  });
+
+  it('rejects a transient prompt waiter after its slot is rebound instead of forwarding the new session event', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    const listeners = new Set<(event: any) => void>();
+    const windowSent: any[] = [];
+    let promptSent = false;
+    const client = {
+      onEvent: (cb: (event: any) => void) => {
+        listeners.add(cb);
+        return () => { listeners.delete(cb); };
+      },
+      send: async (command: any) => {
+        if (command.type === 'prompt') promptSent = true;
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      getWindow: () => ({ on: () => {}, isDestroyed: () => false, webContents: { send: (...args: unknown[]) => { windowSent.push(args); } } }) as any,
+    });
+    rt.profiles.set('general', rt.profileOf('general'));
+    const handlers = await registeredHandlers();
+    const pending = handlers.get('sparkii:prompt')!(null, '旧提示词');
+    const settled = pending.then(() => null, (error: unknown) => error);
+    for (let i = 0; i < 100 && !promptSent; i += 1) await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(promptSent).toBe(true);
+    const rebound = await rt.pool.acquire('B');
+    expect(rebound.getSessionId()).toBe('B');
+    windowSent.length = 0;
+    for (const cb of listeners) cb({ type: 'agent_end' });
+
+    expect(await settled).toMatchObject({ message: expect.stringMatching(/no longer bound/i) });
+    expect(windowSent).toEqual([]);
+    expect(rebound.getSessionId()).toBe('B');
+  });
+
+  it('R7 rejects a transient prompt waiter after same-id release and reacquire without forwarding the new binding event', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    const listeners = new Set<(event: any) => void>();
+    const windowSent: any[] = [];
+    let promptSent = false;
+    const client = {
+      onEvent: (cb: (event: any) => void) => {
+        listeners.add(cb);
+        return () => { listeners.delete(cb); };
+      },
+      send: async (command: any) => {
+        if (command.type === 'prompt') promptSent = true;
+        return { success: true };
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      getWindow: () => ({ on: () => {}, isDestroyed: () => false, webContents: { send: (...args: unknown[]) => { windowSent.push(args); } } }) as any,
+    });
+    rt.profiles.set('general', rt.profileOf('general'));
+    const handlers = await registeredHandlers();
+    const pending = handlers.get('sparkii:prompt')!(null, '旧提示词');
+    const settled = pending.then(() => null, (error: unknown) => error);
+    for (let i = 0; i < 100 && !promptSent; i += 1) await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(promptSent).toBe(true);
+    const sessionId = vi.mocked(rt.pool.acquire).mock.calls[0][0] as string;
+    const oldLease = rt.pool.getBinding(sessionId)?.lease;
+    expect(oldLease).toBeTypeOf('number');
+    await rt.pool.release(sessionId);
+    const rebound = await rt.pool.acquire(sessionId);
+    expect(rebound.getSessionId()).toBe(sessionId);
+    expect(rt.pool.getBinding(sessionId)?.lease).not.toBe(oldLease);
+    windowSent.length = 0;
+    for (const cb of listeners) cb({ type: 'agent_end' });
+
+    expect(await settled).toMatchObject({ message: expect.stringMatching(/no longer bound/i) });
+    expect(windowSent).toEqual([]);
+    expect(rt.pool.getBinding(sessionId)?.lease).not.toBe(oldLease);
+    expect(rt.pool.release).toHaveBeenLastCalledWith(sessionId, oldLease);
+  });
+
+  it('R7 rejects a transient prompt when a successful send completes after same-id rebinding', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    const listeners = new Set<(event: any) => void>();
+    const windowSent: any[] = [];
+    let promptSent = false;
+    let resolvePrompt!: (response: any) => void;
+    const client = {
+      onEvent: (cb: (event: any) => void) => {
+        listeners.add(cb);
+        return () => { listeners.delete(cb); };
+      },
+      send: async (command: any) => {
+        if (command.type !== 'prompt') return { success: true };
+        promptSent = true;
+        return new Promise((resolve) => { resolvePrompt = resolve; });
+      },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      getWindow: () => ({ on: () => {}, isDestroyed: () => false, webContents: { send: (...args: unknown[]) => { windowSent.push(args); } } }) as any,
+    });
+    rt.profiles.set('general', rt.profileOf('general'));
+    const handlers = await registeredHandlers();
+    const pending = handlers.get('sparkii:prompt')!(null, '旧提示词');
+    const settled = pending.then(() => null, (error: unknown) => error);
+    for (let i = 0; i < 100 && !promptSent; i += 1) await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(promptSent).toBe(true);
+    const sessionId = vi.mocked(rt.pool.acquire).mock.calls[0][0] as string;
+    const oldLease = rt.pool.getBinding(sessionId)?.lease;
+    await rt.pool.release(sessionId);
+    await rt.pool.acquire(sessionId);
+    windowSent.length = 0;
+    resolvePrompt({ success: true });
+    for (let i = 0; i < 4; i += 1) await Promise.resolve();
+    for (const cb of listeners) cb({ type: 'agent_end' });
+
+    expect(await settled).toMatchObject({ message: expect.stringMatching(/no longer bound/i) });
+    expect(windowSent).toEqual([]);
+    expect(rt.pool.getBinding(sessionId)?.lease).not.toBe(oldLease);
+    expect(rt.pool.release).toHaveBeenLastCalledWith(sessionId, oldLease);
+  });
+
+  it('R7 cancels every same-id transient waiter without old completion erasing the replacement', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    const listeners = new Set<(event: any) => void>();
+    const promptResolvers: Array<(response: any) => void> = [];
+    const client = {
+      onEvent: (cb: (event: any) => void) => {
+        listeners.add(cb);
+        return () => { listeners.delete(cb); };
+      },
+      send: async (command: any) => {
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 'R7-OVERLAP-SESSION', sessionFile: null } };
+        }
+        if (command.type !== 'prompt') return { success: true };
+        return new Promise((resolve) => { promptResolvers.push(resolve); });
+      },
+    };
+    const rt = await makeRuntime({ dataDir, piAgentDir, client });
+    rt.profiles.set('general', rt.profileOf('general'));
+    randomUUIDControl.set('R7-OVERLAP-SESSION');
+    const handlers = await registeredHandlers();
+    const prompt = handlers.get('sparkii:prompt')!;
+    const first = prompt(null, '旧提示词').then(() => null, (error: unknown) => error);
+    await waitUntil(() => promptResolvers.length === 1);
+    await rt.pool.release('R7-OVERLAP-SESSION');
+
+    const second = prompt(null, '新提示词').then(() => null, (error: unknown) => error);
+    await waitUntil(() => promptResolvers.length === 2);
+    expect(vi.mocked(rt.pool.acquire).mock.calls.map(([id]) => id)).toEqual(['R7-OVERLAP-SESSION', 'R7-OVERLAP-SESSION']);
+    expect(rt.pool.getBinding('R7-OVERLAP-SESSION')).toBeDefined();
+
+    await expect(handlers.get('sparkii:releaseSessionSlot')!(null, 'R7-OVERLAP-SESSION')).resolves.toMatchObject({ ok: true });
+    const firstOutcome = await Promise.race([
+      first,
+      new Promise<'timeout'>((resolve) => { setTimeout(() => resolve('timeout'), 200); }),
+    ]);
+    try {
+      expect(firstOutcome).not.toBe('timeout');
+      expect(firstOutcome).toMatchObject({ message: expect.stringMatching(/no longer bound/i) });
+      promptResolvers[0]({ success: true });
+      for (let i = 0; i < 4; i += 1) await Promise.resolve();
+      const secondOutcome = await Promise.race([
+        second,
+        new Promise<'timeout'>((resolve) => { setTimeout(() => resolve('timeout'), 200); }),
+      ]);
+      expect(secondOutcome).not.toBe('timeout');
+      expect(secondOutcome).toMatchObject({ message: expect.stringMatching(/no longer bound/i) });
+      expect(rt.pool.getBinding('R7-OVERLAP-SESSION')).toBeUndefined();
+    } finally {
+      promptResolvers[0]({ success: true });
+      promptResolvers[1]({ success: true });
+      for (const cb of listeners) cb({ type: 'agent_end' });
+      await Promise.all([first, second]);
+    }
   });
 
   it('stamps chat-events with the live slot sessionId, not the subscribe-time id', async () => {
@@ -2061,7 +2561,7 @@ describe('ipc provider handlers', () => {
     const handlers = await registeredHandlers();
     await handlers.get('sparkii:updateWorkflowState')!(null, 'A', { action: 'risk_confirmed' });
     await handlers.get('sparkii:releaseSessionSlot')!(null, 'A');
-    expect(rt.pool.release).toHaveBeenCalledWith('A');
+    expect(rt.pool.release).toHaveBeenCalledWith('A', 1);
 
     windowSent.length = 0;
     for (const cb of listeners) cb({ type: 'agent_settled' });
@@ -2174,7 +2674,7 @@ describe('ipc provider handlers', () => {
       ctx: expect.objectContaining({ sessionId: 'A', code: 2 }),
     }));
     expect(windowSent.filter((c) => c[1]?.type === 'session_unbound')).toHaveLength(1);
-    expect(rt.pool.release).toHaveBeenCalledWith('A');
+    expect(rt.pool.release).toHaveBeenCalledWith('A', 1);
 
     // 牌子卸了，管子还在，但不再往窗口盖章。
     windowSent.length = 0;
@@ -2318,8 +2818,10 @@ describe('ipc provider handlers', () => {
     const occupied = new Set<string>();
     const waiters: Array<() => void> = [];
     let bound: string | null = null;
+    let bindingLease = 0;
     const slot = {
       client,
+      get lease() { return bindingLease; },
       supervisor: { onProposal: () => {}, onExit: () => () => {} },
       getSessionId: () => bound,
     };
@@ -2329,15 +2831,20 @@ describe('ipc provider handlers', () => {
       }
       occupied.add(key);
       bound = key;
+      bindingLease += 1;
       return slot;
     });
-    (rt as any).pool.release = vi.fn(async (key: string) => {
+    (rt as any).pool.release = vi.fn(async (key: string, expectedLease?: number) => {
+      if (expectedLease !== undefined && expectedLease !== bindingLease) return;
       occupied.delete(key);
       if (bound === key) bound = null;
       const queued = waiters.splice(0);
       for (const wake of queued) wake();
     });
     (rt as any).pool.get = (key?: string) => (key && occupied.has(key) ? client : undefined);
+    (rt as any).pool.getBinding = (key: string) => occupied.has(key)
+      ? { client, lease: bindingLease }
+      : undefined;
     (rt as any).pool.renameSession = vi.fn((from: string, to: string) => {
       if (occupied.has(from)) {
         occupied.delete(from);
@@ -2350,7 +2857,7 @@ describe('ipc provider handlers', () => {
     const first = await handlers.get('sparkii:runWorkflow')!(null, 'contract-review', { documents: [] });
     expect(first).toEqual({ ok: true, sessionId: 'wf-done' });
     await waitUntil(() => (rt.pool.release as ReturnType<typeof vi.fn>).mock.calls.length > 0);
-    expect(rt.pool.release).toHaveBeenCalledWith('wf-done');
+    expect(rt.pool.release).toHaveBeenCalledWith('wf-done', 1);
 
     await handlers.get('sparkii:updateWorkflowState')!(null, 'wf-done', { action: 'risk_confirmed' });
     expect(occupied.has('wf-done')).toBe(true);
@@ -2602,6 +3109,7 @@ describe('ipc provider handlers', () => {
       'utf8',
     );
 
+    let streaming = false;
     const sent: any[] = [];
     const client = {
       onEvent: (cb: (event: any) => void) => {
@@ -2611,7 +3119,7 @@ describe('ipc provider handlers', () => {
       send: async (command: any) => {
         sent.push(command);
         if (command.type === 'get_state') {
-          return { success: true, data: { isStreaming: true, sessionFile: null } };
+          return { success: true, data: { isStreaming: streaming, sessionFile: null } };
         }
         return { success: true };
       },
@@ -2625,9 +3133,11 @@ describe('ipc provider handlers', () => {
 
     const handlers = await registeredHandlers();
     const promptSession = handlers.get('sparkii:promptSession');
+    await promptSession!(null, 's1', '开始');
+    streaming = true;
     const result = await promptSession!(null, 's1', '继续做');
 
-    expect(sent).toContainEqual({ type: 'follow_up', message: '继续做' });
+    expect(sent).toContainEqual({ type: 'follow_up', message: '继续做', originToken: expect.any(String), promptId: expect.any(String) });
     expect(sent).not.toContainEqual({ type: 'prompt', message: '继续做' });
     expect(result).toMatchObject({ ok: true, behavior: 'followUp' });
   });
@@ -2983,6 +3493,48 @@ describe('ipc provider handlers', () => {
     expect(order.indexOf('fail')).toBeLessThan(order.indexOf('release'));
   });
 
+  it('R7 does not release a same-id replacement while an explicit slot release is awaiting task shutdown', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    let finishEnd!: () => void;
+    const endPromise = new Promise<void>((resolve) => { finishEnd = resolve; });
+    const client = {
+      onEvent: vi.fn(() => () => {}),
+      send: async (command: any) => command.type === 'get_state'
+        ? { success: true, data: { sessionId: 'A', sessionFile: '/tmp/a.jsonl', isStreaming: false } }
+        : { success: true },
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client,
+      chatSession: { profileId: 'general', model: null },
+      getWindow: () => ({ on: () => {}, isDestroyed: () => false, webContents: { send: () => {} } }) as any,
+    });
+    (rt as any).security = { taskLifecycle: { end: vi.fn(() => endPromise) } };
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:updateWorkflowState')!(null, 'A', { action: 'risk_confirmed' });
+    vi.mocked(rt.chatSessions.update).mockClear();
+    const oldLease = rt.pool.getBinding('A')?.lease;
+    expect(oldLease).toBeTypeOf('number');
+
+    const releasing = handlers.get('sparkii:releaseSessionSlot')!(null, 'A');
+    await rt.pool.release('A');
+    await rt.pool.acquire('A');
+    const releaseCalls = vi.mocked(rt.pool.release).mock.calls.length;
+    const newLease = rt.pool.getBinding('A')?.lease;
+    expect(newLease).not.toBe(oldLease);
+    finishEnd();
+    await releasing;
+
+    expect(rt.pool.getBinding('A')?.lease).toBe(newLease);
+    expect(vi.mocked(rt.pool.release).mock.calls).toHaveLength(releaseCalls);
+    expect(supervisorMocks.failSession).not.toHaveBeenCalled();
+    expect(rt.chatSessions.update).not.toHaveBeenCalled();
+  });
+
   it('getDocumentParse handler exists', async () => {
     const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
     dirs.push(dataDir);
@@ -3029,6 +3581,7 @@ describe('ipc provider handlers', () => {
       'utf8',
     );
 
+    let streaming = false;
     const sent: any[] = [];
     const client = {
       onEvent: (cb: (event: any) => void) => {
@@ -3041,7 +3594,7 @@ describe('ipc provider handlers', () => {
           return {
             success: true,
             data: {
-              isStreaming: true,
+              isStreaming: streaming,
               sessionFile: null,
               steering: ['先做这个'],
               followUp: ['做完后整理', '再跑一遍测试'],
@@ -3061,6 +3614,7 @@ describe('ipc provider handlers', () => {
     const handlers = await registeredHandlers();
     const promptSession = handlers.get('sparkii:promptSession');
     await promptSession!(null, 's1', '开始');
+    streaming = true;
 
     const queueMutate = handlers.get('sparkii:queueMutate');
     const result = await queueMutate!(null, 's1', {
@@ -3072,9 +3626,9 @@ describe('ipc provider handlers', () => {
 
     const clearIndex = sent.findIndex((c) => c.type === 'clear_queue');
     const rebuild = sent.slice(clearIndex + 1);
-    expect(rebuild).toContainEqual({ type: 'steer', message: '先做这个' });
-    expect(rebuild).toContainEqual({ type: 'steer', message: '做完后整理' });
-    expect(rebuild).toContainEqual({ type: 'follow_up', message: '再跑一遍测试' });
+    expect(rebuild).toContainEqual({ type: 'steer', message: '先做这个', originToken: expect.any(String) });
+    expect(rebuild).toContainEqual({ type: 'steer', message: '做完后整理', originToken: expect.any(String) });
+    expect(rebuild).toContainEqual({ type: 'follow_up', message: '再跑一遍测试', originToken: expect.any(String), promptId: expect.any(String) });
     expect(result).toEqual({
       ok: true,
       steering: ['先做这个', '做完后整理'],
@@ -3238,11 +3792,19 @@ describe('ipc provider handlers', () => {
       },
     };
     const rt = await makeRuntime({ dataDir, piAgentDir, client });
-    (rt as any).pool.acquire = vi.fn(async (sessionId: string) => ({
-      client,
-      supervisor: { onProposal, onExit: () => () => {} },
-      getSessionId: () => sessionId,
-    }));
+    let boundSessionId: string | undefined;
+    (rt as any).pool.acquire = vi.fn(async (sessionId: string) => {
+      boundSessionId = sessionId;
+      return {
+        client,
+        lease: 1,
+        supervisor: { onProposal, onExit: () => () => {} },
+        getSessionId: () => boundSessionId,
+      };
+    });
+    (rt as any).pool.getBinding = (sessionId: string) => boundSessionId === sessionId ? { client, lease: 1 } : undefined;
+    (rt as any).pool.renameSession = (_from: string, to: string) => { boundSessionId = to; };
+    (rt as any).pool.release = vi.fn(async () => { boundSessionId = undefined; });
     (rt as any).chatSessions.create = vi.fn();
 
     const handlers = await registeredHandlers();
@@ -3666,6 +4228,38 @@ describe('ipc provider handlers', () => {
     expect(opened.streamingMessage).toBeNull();
     expect(opened.streaming).toBe(false);
     expect(sent).toEqual([]);
+  });
+
+  it('R8 final review uses the raw Pi carrier for dead-session reads and runtime acquisition', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const file = join(dataDir, 'raw-carrier.jsonl');
+    const body = {
+      type: 'message', id: 'm1', parentId: null, timestamp: '2026-09-05T00:00:01.000Z',
+      message: { role: 'user', content: 'raw carrier' },
+    };
+    await writeFile(file, [
+      JSON.stringify({ type: 'session', version: 3, id: 'dead', timestamp: '2026-09-05T00:00:00.000Z', cwd: dataDir }),
+      JSON.stringify(body),
+    ].join('\n'), 'utf8');
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir,
+      client: { send: async () => ({ success: true, data: { entries: [], state: {} } }) },
+      chatSession: { profileId: 'contract-review', model: null, piSessionFile: '[已删除]' },
+    });
+    const rawPiSessionFile = vi.fn(() => file);
+    rt.chatSessions.rawPiSessionFile = rawPiSessionFile;
+    const handlers = await registeredHandlers();
+
+    const opened = await handlers.get('sparkii:openChatSession')!(null, 'dead') as { entries: unknown[] };
+    expect.soft(opened.entries).toEqual([body]);
+    expect.soft(rawPiSessionFile).toHaveBeenCalledWith('dead');
+
+    await handlers.get('sparkii:setChatTitle')!(null, 's1', 'raw carrier', 'user');
+    expect.soft(rt.pool.acquire).toHaveBeenCalledWith('s1', expect.objectContaining({ resumeSessionFile: file }));
   });
 
   it('setChatTitle notifies the renderer so the sidebar can show the filename', async () => {
@@ -4356,6 +4950,376 @@ describe('ipc user skill library', () => {
     expect(created[0].workspacePath).toBe(allocated);
     expect(created[0].workspaceKind).toBe('auto');
   });
+
+  it('R8-P0-2 privacy deletion stops the active task, extraction and Pi binding before memory cleanup', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const piAgentDir = join(dataDir, 'pi-agent');
+    await mkdir(piAgentDir, { recursive: true });
+    const order: string[] = [];
+    const end = vi.fn(async () => { order.push('task-end'); });
+    const security = {
+      taskLifecycle: {
+        active: vi.fn(() => ({ taskId: 'task-private', sessionId: 's-private' })),
+        end,
+        registerCancellation: vi.fn(() => () => {}),
+      },
+      hostShellReport: { backend: 'host-git-bash', status: 'available', executionBoundary: 'host', version: 'test', limitations: [] },
+      taskGrants: { onRevoke: vi.fn(() => () => {}) },
+      capabilityGateway: { revokeTask: vi.fn() },
+      shellGrants: { allows: () => false, grant: vi.fn(), revoke: vi.fn(), clear: vi.fn() },
+      reviewer: { cancel: vi.fn(async () => {}) },
+      hostShell: { terminate: vi.fn(async () => {}) },
+    };
+    const memory = {
+      setEmitter: vi.fn(),
+      privacySourceSessionFor: vi.fn(() => 's-private'),
+      deleteMemory: vi.fn(() => { order.push('memory-delete'); return { ok: true, removed: ['m-private'] }; }),
+    };
+    const cancel = vi.spyOn(ExtractionScheduler.prototype, 'cancel').mockImplementation(() => { order.push('extraction-cancel'); });
+    const rt = await makeRuntime({
+      dataDir, piAgentDir,
+      client: { send: async () => ({ success: true, data: { sessionId: 's-private', sessionFile: null } }) },
+      chatSession: { profileId: 'general', model: null },
+      security, memory,
+    });
+    await rt.pool.acquire('s-private');
+    const lease = rt.pool.getBinding('s-private')!.lease;
+    const handlers = await registeredHandlers();
+
+    try {
+      await expect(Promise.resolve(handlers.get('sparkii:deleteMemory')!(null, 'm-private', { mode: 'privacy' }))).resolves.toMatchObject({ ok: true });
+      expect(end).toHaveBeenCalledWith('s-private', 'session-ended');
+      expect(cancel).toHaveBeenCalledWith('s-private');
+      expect(supervisorMocks.failSession).toHaveBeenCalledWith('s-private');
+      expect(rt.pool.release).toHaveBeenCalledWith('s-private', lease);
+      expect(order).toEqual(['task-end', 'extraction-cancel', 'memory-delete']);
+      expect(rt.pool.getBinding('s-private')).toBeUndefined();
+    } finally {
+      cancel.mockRestore();
+    }
+  });
+
+  it('R8 round7 B1 privacy deletion waits for a cancelled opening bind before destructive cleanup', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    let finishBind!: () => void;
+    let rejectBind!: (error: Error) => void;
+    const bindGate = new Promise<void>((resolve) => { finishBind = resolve; });
+    const opening = new Promise<never>((_resolve, reject) => { rejectBind = reject; });
+    const memory = {
+      setEmitter: vi.fn(),
+      buildBlock: vi.fn(() => null),
+      getSettings: vi.fn(() => ({ enabled: false })),
+      privacySourceSessionFor: vi.fn(() => 's-private'),
+      privacyDeletePending: vi.fn(() => false),
+      deleteMemory: vi.fn(() => ({ ok: true, removed: ['m-private'] })),
+    };
+    const rt = await makeRuntime({
+      dataDir, piAgentDir: join(dataDir, 'pi-agent'),
+      client: { send: vi.fn(async () => ({ success: true })) },
+      chatSession: { profileId: 'general', model: null },
+      memory,
+    });
+    rt.pool.acquire = vi.fn(() => opening);
+    rt.pool.waitForAcquire = vi.fn(async () => {
+      await bindGate;
+      await opening.catch(() => undefined);
+    });
+    rt.pool.cancelAcquire = vi.fn(() => true);
+    const handlers = await registeredHandlers();
+    const openingRequest = Promise.resolve(handlers.get('sparkii:queueMutate')!(null, 's-private', { type: 'clear' }));
+    const openingRejected = expect(openingRequest).rejects.toThrow('RUNTIME_ACQUIRE_CANCELLED');
+    await waitUntil(() => rt.pool.acquire.mock.calls.length === 1);
+
+    try {
+      const deleting = Promise.resolve(handlers.get('sparkii:deleteMemory')!(null, 'm-private', { mode: 'privacy' }));
+      await waitUntil(() => rt.pool.cancelAcquire.mock.calls.length === 1);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(rt.pool.waitForAcquire).toHaveBeenCalledWith('s-private');
+      expect(memory.deleteMemory).not.toHaveBeenCalled();
+      expect(rt.chatSessions.delete).not.toHaveBeenCalled();
+
+      finishBind();
+      rejectBind(new Error('RUNTIME_ACQUIRE_CANCELLED'));
+      await openingRejected;
+      await expect(deleting).resolves.toMatchObject({ ok: true });
+      expect(memory.deleteMemory).toHaveBeenCalledTimes(1);
+    } finally {
+      finishBind();
+      rejectBind(new Error('RUNTIME_ACQUIRE_CANCELLED'));
+      await openingRejected;
+    }
+  });
+
+  it('R8-P0-2 stops an active document parser even when no Pi binding exists', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    const order: string[] = [];
+    const memory = {
+      setEmitter: vi.fn(),
+      buildBlock: vi.fn(() => null),
+      getSettings: vi.fn(() => ({ enabled: false })),
+      privacySourceSessionFor: vi.fn(() => 's-private'),
+      deleteMemory: vi.fn(() => { order.push('memory-delete'); return { ok: true, removed: ['m-private'] }; }),
+    };
+    const cancel = vi.spyOn(ExtractionScheduler.prototype, 'cancel').mockImplementation(() => { order.push('extraction-cancel'); });
+    supervisorMocks.failSession.mockImplementationOnce(async () => { order.push('parser-stop'); });
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir: join(dataDir, 'pi-agent'),
+      client: { send: vi.fn(async () => ({ success: true })) },
+      chatSession: { profileId: 'general', model: null },
+      memory,
+    });
+    const handlers = await registeredHandlers();
+
+    try {
+      await expect(Promise.resolve(handlers.get('sparkii:deleteMemory')!(null, 'm-private', { mode: 'privacy' })))
+        .resolves.toMatchObject({ ok: true });
+      expect(rt.pool.getBinding('s-private')).toBeUndefined();
+      expect(supervisorMocks.failSession).toHaveBeenCalledWith('s-private');
+      expect(cancel).toHaveBeenCalledWith('s-private');
+      expect(order).toEqual(['parser-stop', 'extraction-cancel', 'memory-delete']);
+      expect(rt.pool.release).not.toHaveBeenCalled();
+    } finally {
+      cancel.mockRestore();
+    }
+  });
+
+  it('R8-P0-2 does not delete memory or release a same-id replacement while task shutdown is awaiting', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    let finishShutdown!: () => void;
+    const shutdownGate = new Promise<void>((resolve) => { finishShutdown = resolve; });
+    let shutdownStarted!: () => void;
+    const started = new Promise<void>((resolve) => { shutdownStarted = resolve; });
+    const end = vi.fn(async () => {
+      shutdownStarted();
+      await shutdownGate;
+    });
+    const security = {
+      taskLifecycle: { active: vi.fn(() => ({ taskId: 'task-old', sessionId: 's-private' })), end },
+      hostShellReport: { backend: 'host-git-bash', status: 'available', executionBoundary: 'host', version: 'test', limitations: [] },
+      taskGrants: { onRevoke: vi.fn(() => () => {}) },
+      capabilityGateway: { revokeTask: vi.fn() },
+      shellGrants: { allows: () => false, grant: vi.fn(), revoke: vi.fn(), clear: vi.fn() },
+      reviewer: { cancel: vi.fn(async () => {}) },
+      hostShell: { terminate: vi.fn(async () => {}) },
+    };
+    const memory = {
+      setEmitter: vi.fn(),
+      privacySourceSessionFor: vi.fn(() => 's-private'),
+      privacyDeletePending: vi.fn(() => false),
+      deleteMemory: vi.fn(() => ({ ok: true, removed: ['m-private'] })),
+    };
+    const cancel = vi.spyOn(ExtractionScheduler.prototype, 'cancel').mockImplementation(() => {});
+    const oldClient = { send: vi.fn(async () => ({ success: true })) };
+    const replacementClient = { send: vi.fn(async () => ({ success: true })) };
+    const rt = await makeRuntime({ dataDir, piAgentDir: join(dataDir, 'pi-agent'), client: oldClient, security, memory });
+    let binding: { client: unknown; lease: number } | undefined = { client: oldClient, lease: 1 };
+    rt.pool.get = () => binding?.client;
+    rt.pool.getBinding = () => binding;
+    rt.pool.release = vi.fn(async () => {});
+    const handlers = await registeredHandlers();
+
+    try {
+      const deleting = Promise.resolve(handlers.get('sparkii:deleteMemory')!(null, 'm-private', { mode: 'privacy' }));
+      await started;
+      binding = { client: replacementClient, lease: 2 };
+      finishShutdown();
+      await expect(deleting).rejects.toThrow('重新绑定');
+      expect(end).toHaveBeenCalledWith('s-private', 'session-ended');
+      expect(cancel).toHaveBeenCalledWith('s-private');
+      expect(memory.deleteMemory).not.toHaveBeenCalled();
+      expect(rt.pool.release).not.toHaveBeenCalled();
+      expect(supervisorMocks.failSession).not.toHaveBeenCalledWith('s-private');
+      expect(oldClient.send).not.toHaveBeenCalled();
+      expect(replacementClient.send).not.toHaveBeenCalled();
+      expect(rt.pool.getBinding('s-private')).toEqual({ client: replacementClient, lease: 2 });
+    } finally {
+      finishShutdown();
+      cancel.mockRestore();
+    }
+  });
+
+  it('R8-P0-2 cancels a same-id session opening before pool acquisition', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    let finishListing!: (sessions: unknown[]) => void;
+    const listing = new Promise<unknown[]>((resolve) => { finishListing = resolve; });
+    vi.mocked(listPiSessions).mockImplementationOnce(() => listing as ReturnType<typeof listPiSessions>);
+    const memory = {
+      setEmitter: vi.fn(),
+      buildBlock: vi.fn(() => null),
+      getSettings: vi.fn(() => ({ enabled: false })),
+      privacySourceSessionFor: vi.fn(() => 's-private'),
+      privacyDeletePending: vi.fn(() => false),
+      deleteMemory: vi.fn(() => ({ ok: true, removed: ['m-private'] })),
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir: join(dataDir, 'pi-agent'),
+      client: { send: vi.fn(async () => ({ success: true })) },
+      chatSession: { profileId: 'general', model: null },
+      memory,
+    });
+    const handlers = await registeredHandlers();
+    const priorListCalls = vi.mocked(listPiSessions).mock.calls.length;
+
+    try {
+      const opening = Promise.resolve(handlers.get('sparkii:abortChat')!(null, 's-private'));
+      await waitUntil(() => vi.mocked(listPiSessions).mock.calls.length > priorListCalls);
+      await expect(Promise.resolve(handlers.get('sparkii:deleteMemory')!(null, 'm-private', { mode: 'privacy' })))
+        .resolves.toMatchObject({ ok: true });
+      expect(rt.pool.cancelAcquire).toHaveBeenCalledWith('s-private');
+      expect(rt.pool.acquire).not.toHaveBeenCalled();
+      finishListing([]);
+      await expect(opening).rejects.toThrow('opening was cancelled');
+      expect(rt.pool.acquire).not.toHaveBeenCalled();
+      expect(rt.pool.getBinding('s-private')).toBeUndefined();
+      expect(memory.deleteMemory).toHaveBeenCalledTimes(1);
+    } finally {
+      finishListing([]);
+    }
+  });
+
+  it('R8-P0-2 releases a stale acquisition instead of letting it bind after privacy deletion', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    let finishAcquisition!: () => void;
+    const acquisitionGate = new Promise<void>((resolve) => { finishAcquisition = resolve; });
+    const memory = {
+      setEmitter: vi.fn(),
+      buildBlock: vi.fn(() => null),
+      getSettings: vi.fn(() => ({ enabled: false })),
+      privacySourceSessionFor: vi.fn(() => 's-private'),
+      privacyDeletePending: vi.fn(() => false),
+      deleteMemory: vi.fn(() => ({ ok: true, removed: ['m-private'] })),
+    };
+    const client = { send: vi.fn(async () => ({ success: true })) };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir: join(dataDir, 'pi-agent'),
+      client,
+      chatSession: { profileId: 'general', model: null },
+      memory,
+    });
+    const acquire = rt.pool.acquire.getMockImplementation()!;
+    rt.pool.acquire.mockImplementation(async (sessionId, options) => {
+      await acquisitionGate;
+      return acquire(sessionId, options);
+    });
+    const handlers = await registeredHandlers();
+
+    try {
+      const opening = Promise.resolve(handlers.get('sparkii:abortChat')!(null, 's-private'));
+      await waitUntil(() => rt.pool.acquire.mock.calls.length === 1);
+      await expect(Promise.resolve(handlers.get('sparkii:deleteMemory')!(null, 'm-private', { mode: 'privacy' })))
+        .resolves.toMatchObject({ ok: true });
+      expect(rt.pool.cancelAcquire).toHaveBeenCalledWith('s-private');
+      expect(memory.deleteMemory).toHaveBeenCalledTimes(1);
+      finishAcquisition();
+      await expect(opening).rejects.toThrow('opening was cancelled');
+      expect(rt.pool.release).toHaveBeenCalledWith('s-private', 1);
+      expect(rt.pool.getBinding('s-private')).toBeUndefined();
+      expect(client.send).not.toHaveBeenCalled();
+    } finally {
+      finishAcquisition();
+    }
+  });
+
+  it('R8 final review releases a stale setChatTitle acquisition after privacy deletion starts', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    let finishAcquisition!: () => void;
+    const acquisitionGate = new Promise<void>((resolve) => { finishAcquisition = resolve; });
+    const memory = {
+      setEmitter: vi.fn(),
+      buildBlock: vi.fn(() => null),
+      getSettings: vi.fn(() => ({ enabled: false })),
+      privacySourceSessionFor: vi.fn(() => 's-private'),
+      privacyDeletePending: vi.fn(() => false),
+      deleteMemory: vi.fn(() => ({ ok: true, removed: ['m-private'] })),
+    };
+    const client = { send: vi.fn(async () => ({ success: true })) };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir: join(dataDir, 'pi-agent'),
+      client,
+      chatSession: { profileId: 'general', model: null },
+      memory,
+    });
+    const acquire = rt.pool.acquire.getMockImplementation()!;
+    rt.pool.acquire.mockImplementation(async (sessionId, options) => {
+      await acquisitionGate;
+      return acquire(sessionId, options);
+    });
+    const handlers = await registeredHandlers();
+
+    try {
+      const renaming = handlers.get('sparkii:setChatTitle')!(null, 's-private', 'private title', 'user');
+      await waitUntil(() => rt.pool.acquire.mock.calls.length === 1);
+      await expect(Promise.resolve(handlers.get('sparkii:deleteMemory')!(null, 'm-private', { mode: 'privacy' })))
+        .resolves.toMatchObject({ ok: true });
+      expect(rt.pool.cancelAcquire).toHaveBeenCalledWith('s-private');
+      expect(memory.deleteMemory).toHaveBeenCalledTimes(1);
+      finishAcquisition();
+      await expect(renaming).resolves.toEqual({ ok: true });
+      expect(rt.pool.release).toHaveBeenCalledWith('s-private', 1);
+      expect(rt.pool.getBinding('s-private')).toBeUndefined();
+      expect(client.send).not.toHaveBeenCalled();
+    } finally {
+      finishAcquisition();
+    }
+  });
+
+  it('R8-P0-2 never releases a same-client replacement installed while a stale acquisition resumes', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-data-'));
+    dirs.push(dataDir);
+    let finishAcquisition!: () => void;
+    const acquisitionGate = new Promise<void>((resolve) => { finishAcquisition = resolve; });
+    const memory = {
+      setEmitter: vi.fn(),
+      buildBlock: vi.fn(() => null),
+      getSettings: vi.fn(() => ({ enabled: false })),
+      privacySourceSessionFor: vi.fn(() => 's-private'),
+      privacyDeletePending: vi.fn(() => false),
+      deleteMemory: vi.fn(() => ({ ok: true, removed: ['m-private'] })),
+    };
+    const client = { send: vi.fn(async () => ({ success: true })) };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir: join(dataDir, 'pi-agent'),
+      client,
+      chatSession: { profileId: 'general', model: null },
+      memory,
+    });
+    const acquire = rt.pool.acquire.getMockImplementation()!;
+    rt.pool.acquire.mockImplementation(async (sessionId, options) => {
+      await acquisitionGate;
+      const stale = await acquire(sessionId, options);
+      await rt.pool.release(sessionId, stale.lease);
+      await acquire(sessionId, options);
+      return stale;
+    });
+    const handlers = await registeredHandlers();
+
+    try {
+      const opening = Promise.resolve(handlers.get('sparkii:abortChat')!(null, 's-private'));
+      await waitUntil(() => rt.pool.acquire.mock.calls.length === 1);
+      await expect(Promise.resolve(handlers.get('sparkii:deleteMemory')!(null, 'm-private', { mode: 'privacy' })))
+        .resolves.toMatchObject({ ok: true });
+      finishAcquisition();
+      await expect(opening).rejects.toThrow();
+      expect(rt.pool.release).toHaveBeenCalledTimes(1);
+      expect(rt.pool.release).toHaveBeenCalledWith('s-private', 1);
+      expect(rt.pool.getBinding('s-private')).toEqual({ client, lease: 2 });
+      expect(client.send).not.toHaveBeenCalled();
+    } finally {
+      finishAcquisition();
+    }
+  });
 });
 
 describe('retired task capability IPC', () => {
@@ -4475,7 +5439,7 @@ describe('permission mode IPC', () => {
     expect(await handlers.get('sparkii:setChatPermissionMode')!(null, 's1', 'auto_review'))
       .toEqual({ ok: true, mode: 'auto_review' });
     expect(rt.chatSessions.get('s1')?.permissionMode).toBe('auto_review');
-    expect(stub.security.taskLifecycle.end).toHaveBeenCalledWith('s1', 'permission-mode-changed');
+    expect(stub.security.taskLifecycle.end).toHaveBeenCalledWith('s1', 'permission-mode-changed', undefined);
     expect(stub.auditEvents).toContainEqual(expect.objectContaining({
       action: 'permission-mode.changed',
       sessionId: 's1',
@@ -4495,6 +5459,42 @@ describe('permission mode IPC', () => {
     const handlers = await registeredHandlers();
     await handlers.get('sparkii:setChatPermissionMode')!(null, 's1', 'ask');
     expect(stub.security.shellGrants.revoke).toHaveBeenCalledWith('task-9');
+  });
+
+  it('R8 review runtime B8 persists the mode and revokes the original grant before cancellation awaits', async () => {
+    const stub = securityStub();
+    const oldAdmission = { sessionId: 's1', generation: 1 };
+    const replacementAdmission = { sessionId: 's1', generation: 2 };
+    let admission: unknown = oldAdmission;
+    let active: any = { taskId: 'old-task', sessionId: 's1', permissionMode: 'ask' };
+    let release!: () => void;
+    let entered!: () => void;
+    const blocked = new Promise<void>((resolve) => { release = resolve; });
+    const started = new Promise<void>((resolve) => { entered = resolve; });
+    const lifecycle = stub.security.taskLifecycle as any;
+    lifecycle.active = vi.fn(() => active);
+    lifecycle.currentAdmission = vi.fn(() => admission);
+    lifecycle.end = vi.fn(async (_sessionId: string, _reason: string, captured?: unknown) => {
+      entered();
+      await blocked;
+      if (captured === oldAdmission && admission === oldAdmission) active = undefined;
+    });
+    const rt = await permissionRuntime(stub);
+    const handlers = await registeredHandlers();
+    const changing = handlers.get('sparkii:setChatPermissionMode')!(null, 's1', 'auto_review');
+    try {
+      await started;
+      expect((stub.security as any).taskLifecycle.end).toHaveBeenCalledWith('s1', 'permission-mode-changed', oldAdmission);
+      expect(stub.security.shellGrants.revoke).toHaveBeenCalledWith('old-task');
+      expect(rt.chatSessions.get('s1')?.permissionMode).toBe('auto_review');
+      admission = replacementAdmission;
+      active = { taskId: 'replacement-task', sessionId: 's1', permissionMode: 'auto_review' };
+    } finally {
+      release();
+    }
+    await changing;
+    expect(lifecycle.active()).toMatchObject({ taskId: 'replacement-task' });
+    expect(stub.security.shellGrants.revoke).not.toHaveBeenCalledWith('replacement-task');
   });
 
   it('refuses a permission mode the profile does not allow', async () => {
@@ -4601,9 +5601,10 @@ describe('permission mode IPC', () => {
         || (action.capability === 'process.exec'
           && stub.security.hostShellReport.status === 'available'),
       taskLifecycle: {
-        start: vi.fn(async (factory: () => Promise<any>) => {
+        start: vi.fn(async (factory: () => Promise<any>, _beforeCommit?: () => void, onStarted?: (created: any) => void) => {
           const created = await factory();
           liveGrant = created;
+          onStarted?.(created);
           return created;
         }),
         active: vi.fn(() => liveGrant),
@@ -4775,5 +5776,1653 @@ describe('P10 relocateWorkspace IPC', () => {
     expect(records.get('s2').workspacePath.replace(/\\/g, '/')).toBe(target.replace(/\\/g, '/'));
     expect(windowSent.some((c) => c[0] === 'sparkii:event:workspace-relocated')).toBe(true);
   });
+});
+
+describe('R8 runtime binding regressions', () => {
+  function deferred<T = void>() {
+    let resolve!: (value: T | PromiseLike<T>) => void;
+    const promise = new Promise<T>((done) => { resolve = done; });
+    return { promise, resolve };
+  }
+
+  async function bindingRuntime(options: {
+    keyFor?: (providerId: string) => Promise<string | null>;
+    client?: { send: (command: any) => Promise<any>; onEvent?: (cb: (event: any) => void) => () => void };
+    security?: unknown;
+    gate?: unknown;
+    executor?: unknown;
+    shellGrants?: ShellGrantStore;
+    profile?: unknown;
+    getWindow?: () => { webContents: { send: (...args: unknown[]) => void } } | null;
+  } = {}) {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-binding-'));
+    dirs.push(dataDir);
+    const workspacePath = join(dataDir, 'workspace');
+    await mkdir(workspacePath, { recursive: true });
+    await writeFile(join(dataDir, 'settings.json'), JSON.stringify({
+      activeProviderId: 'deepseek', defaultModel: 'deepseek-v4-flash',
+    }), 'utf8');
+    const session = {
+      id: 's1', profileId: 'general', kind: 'chat', workspaceKind: 'auto',
+      workspacePath, model: null, thinkingLevel: null, piSessionFile: null,
+      permissionMode: 'ask', inputs: [],
+    };
+    const client = options.client ?? {
+      onEvent: () => () => {},
+      send: vi.fn(async () => ({ success: true, data: { sessionId: 's1', sessionFile: null, isStreaming: false } })),
+    };
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir: join(dataDir, 'pi-agent'),
+      client,
+      keyFor: options.keyFor,
+      chatSession: session,
+      security: options.security,
+      gate: options.gate,
+      executor: options.executor,
+      profile: options.profile,
+      getWindow: options.getWindow,
+    });
+    (rt as any).chatSessions.get = (id: string) => id === session.id ? { ...session } : null;
+    return { rt, handlers: await registeredHandlers(), dataDir, workspacePath };
+  }
+
+  async function replaceBinding(rt: Runtime) {
+    const sessionId = 's1';
+    const previous = rt.pool.getBinding(sessionId);
+    if (!previous) throw new Error('missing original binding');
+    await rt.pool.release(sessionId, previous.lease);
+    const replacement = await rt.pool.acquire(sessionId);
+    const binding = rt.pool.getBinding(sessionId);
+    if (!binding || binding.client !== previous.client || binding.lease === previous.lease) {
+      throw new Error('replacement binding was not installed');
+    }
+    return { sessionId, client: binding.client, previousLease: previous.lease, replacementLease: binding.lease };
+  }
+
+  it.each(['stop', 'workspace-change'] as const)(
+    'R8 runtime round3 B1 cancels a pending production admission on %s',
+    async (mode) => {
+      const h = await exportRuntime();
+      const admissionGate = deferred();
+      const inspect = h.pathProbe.inspect.getMockImplementation()!;
+      let admissions = 0;
+      h.pathProbe.inspect.mockImplementation(async (target: string) => {
+        admissions += 1;
+        if (admissions === 1) await admissionGate.promise;
+        return inspect(target);
+      });
+      const prompting = Promise.resolve(h.handlers.get('sparkii:promptSession')!(null, 's1', 'pending admission'));
+      const rejected = expect(prompting).rejects.toThrow(/admission.*cancelled/i);
+      await waitUntil(() => admissions === 1);
+      const originalLease = h.rt.pool.getBinding('s1')?.lease;
+
+      if (mode === 'stop') {
+        await expect(h.handlers.get('sparkii:deleteChatSession')!(null, 's1')).resolves.toEqual({ ok: true });
+      } else {
+        await expect(h.handlers.get('sparkii:setChatWorkspace')!(null, 's1', join(h.dataDir, 'next-workspace')))
+          .resolves.toEqual({ ok: true });
+      }
+      admissionGate.resolve();
+
+      await rejected;
+      expect(h.taskLifecycle.active('s1')).toBeUndefined();
+      expect(h.sent.filter((command) => command.type === 'prompt')).toEqual([]);
+      if (mode === 'stop') {
+        expect(h.rt.pool.getBinding('s1')).toBeUndefined();
+      } else {
+        expect(h.sent.filter((command) => command.type === 'configure_session')).toHaveLength(1);
+        expect(h.rt.pool.getBinding('s1')?.lease).toBe(originalLease);
+      }
+    },
+  );
+
+  it.each([
+    { name: 'settings', channel: 'sparkii:prompt', args: ['旧提示词'] },
+    { name: 'key', channel: 'sparkii:prompt', args: ['旧提示词'] },
+    { name: 'model', channel: 'sparkii:setChatModel', args: ['s1', 'deepseek-v4-pro'] },
+    { name: 'complete', channel: 'sparkii:completeText', args: ['s1', '旧补全'] },
+  ])('R8 B1 rejects stale $name commands after a same-client replacement', async ({ name, channel, args }) => {
+    const keyGate = deferred<string>();
+    const settingsGate = deferred<Record<string, unknown>>();
+    const sent: any[] = [];
+    const client = {
+      onEvent: () => () => {},
+      send: vi.fn(async (command: any) => {
+        sent.push(command);
+        if (command.type === 'complete') return { success: true, data: '补全结果' };
+        return { success: true, data: { sessionId: 's1', sessionFile: null, isStreaming: false } };
+      }),
+    };
+    const keyFor = vi.fn(async () => keyGate.promise);
+    const { rt, handlers } = await bindingRuntime({ client, keyFor });
+    rt.profiles.set('general', rt.profileOf('general'));
+    if (name === 'model' || name === 'complete') {
+      keyFor.mockResolvedValue('sk-test');
+      await handlers.get('sparkii:abortChat')!(null, 's1');
+      sent.length = 0;
+    }
+    if (name === 'settings' || name === 'model' || name === 'complete') {
+      let blocked = false;
+      loadSettingsMock.mockImplementation(async () => {
+        if (!blocked) {
+          blocked = true;
+          return settingsGate.promise;
+        }
+        return { activeProviderId: 'deepseek', defaultModel: 'deepseek-v4-flash' };
+      });
+    }
+    let pending: Promise<unknown> | undefined;
+    try {
+      pending = Promise.resolve(handlers.get(channel)!(null, ...args));
+      const entered = name === 'settings' || name === 'model' || name === 'complete'
+        ? waitUntil(() => loadSettingsMock.mock.calls.length > 0)
+        : waitUntil(() => keyFor.mock.calls.length > 0);
+      const enteredResult = await Promise.race([
+        entered.then(() => true),
+        pending.then(() => false, () => false),
+      ]);
+      if (!enteredResult) throw new Error(`stale ${name} request finished before its deferred await`);
+      const sessionId = vi.mocked(rt.pool.acquire).mock.calls[0][0] as string;
+      const oldLease = rt.pool.getBinding(sessionId)?.lease;
+      expect(oldLease).toBeTypeOf('number');
+      await rt.pool.release(sessionId, oldLease);
+      await rt.pool.acquire(sessionId);
+      const replacementLease = rt.pool.getBinding(sessionId)?.lease;
+      expect(replacementLease).not.toBe(oldLease);
+      if (settingsGate) settingsGate.resolve({ activeProviderId: 'deepseek', defaultModel: 'deepseek-v4-flash' });
+      keyGate.resolve('sk-test');
+      await expect(pending).rejects.toThrow('is no longer bound');
+      expect(sent).toEqual([]);
+      expect(rt.pool.getBinding(sessionId)).toEqual({ client, lease: replacementLease });
+      expect(rt.pool.release).toHaveBeenLastCalledWith(sessionId, oldLease);
+      expect(rt.chatSessions.update).not.toHaveBeenCalledWith('s1', expect.objectContaining({ model: expect.any(String) }));
+    } finally {
+      settingsGate?.resolve({ activeProviderId: 'deepseek', defaultModel: 'deepseek-v4-flash' });
+      keyGate.resolve('sk-test');
+      await pending.catch(() => {});
+    }
+  });
+
+  it('R8 B1 rejects a stale key lookup before writing the original prompt', async () => {
+    const keyGate = deferred<string>();
+    const sent: any[] = [];
+    const client = {
+      onEvent: () => () => {},
+      send: vi.fn(async (command: any) => {
+        sent.push(command);
+        return { success: true };
+      }),
+    };
+    const keyFor = vi.fn(async () => keyGate.promise);
+    const { rt, handlers } = await bindingRuntime({ client, keyFor });
+    rt.profiles.set('general', rt.profileOf('general'));
+    randomUUIDControl.set('R8-B1-KEY-SESSION');
+    const pending = Promise.resolve(handlers.get('sparkii:prompt')!(null, '旧提示词'));
+    await waitUntil(() => keyFor.mock.calls.length === 1);
+    const oldLease = rt.pool.getBinding('R8-B1-KEY-SESSION')!.lease;
+    await rt.pool.release('R8-B1-KEY-SESSION', oldLease);
+    await rt.pool.acquire('R8-B1-KEY-SESSION');
+    const replacementLease = rt.pool.getBinding('R8-B1-KEY-SESSION')!.lease;
+    keyGate.resolve('sk-test');
+
+    await expect(pending).rejects.toThrow('session R8-B1-KEY-SESSION is no longer bound');
+    expect(sent).toEqual([]);
+    expect(rt.pool.getBinding('R8-B1-KEY-SESSION')).toEqual({ client, lease: replacementLease });
+    expect(rt.pool.release).toHaveBeenLastCalledWith('R8-B1-KEY-SESSION', oldLease);
+  });
+
+  it('R8 B1 does not overwrite a replacement model while set_model is deferred', async () => {
+    const sent: any[] = [];
+    const windowSent: any[] = [];
+    const client = {
+      onEvent: () => () => {},
+      send: vi.fn(async (command: any) => {
+        sent.push(command);
+        return { success: true };
+      }),
+    };
+    const { rt, handlers } = await bindingRuntime({
+      client,
+      keyFor: async () => 'sk-test',
+      getWindow: () => ({ on: () => {}, isDestroyed: () => false, webContents: { send: (...args: unknown[]) => { windowSent.push(args); } } }) as any,
+    });
+    await handlers.get('sparkii:abortChat')!(null, 's1');
+    sent.length = 0;
+    windowSent.length = 0;
+    let deferModels = false;
+    let resolveModel!: () => void;
+    const modelGate = new Promise<void>((resolve) => { resolveModel = resolve; });
+    client.send.mockImplementation(async (command: any) => {
+      sent.push(command);
+      if (deferModels && command.type === 'set_model') await modelGate;
+      return { success: true };
+    });
+    deferModels = true;
+    const pending = Promise.resolve(handlers.get('sparkii:setChatModel')!(null, 's1', 'deepseek-v4-pro'));
+    const staleRejection = expect(pending).rejects.toThrow('session s1 is no longer bound');
+    await waitUntil(() => sent.some((command) => command.type === 'set_model'));
+    const oldLease = rt.pool.getBinding('s1')!.lease;
+    await rt.pool.release('s1', oldLease);
+    await handlers.get('sparkii:abortChat')!(null, 's1');
+    const replacementLease = rt.pool.getBinding('s1')?.lease;
+    expect(replacementLease).not.toBe(oldLease);
+    expect(rt.chatSessions.get('s1')?.model).toBeNull();
+    deferModels = false;
+    resolveModel();
+    await handlers.get('sparkii:setChatModel')!(null, 's1', 'deepseek-v4-flash');
+
+    await staleRejection;
+    expect(sent.filter((command) => command.type === 'set_model')).toEqual([
+      { type: 'set_model', provider: 'deepseek', modelId: 'deepseek-v4-pro' },
+      { type: 'set_model', provider: 'deepseek', modelId: 'deepseek-v4-flash' },
+    ]);
+    expect(rt.chatSessions.update).not.toHaveBeenCalledWith('s1', { model: 'deepseek/deepseek-v4-pro' });
+    expect(rt.chatSessions.update).toHaveBeenCalledWith('s1', { model: 'deepseek/deepseek-v4-flash' });
+    expect(windowSent.filter(([, event]) => event?.type === 'model_change')).toEqual([
+      ['sparkii:event:chat-event', { type: 'model_change', sessionId: 's1', provider: 'deepseek', modelId: 'deepseek-v4-flash' }],
+    ]);
+    expect(rt.pool.getBinding('s1')).toEqual({ client, lease: replacementLease });
+  });
+
+  it('R8 runtime round3 B4 stale abort cannot revoke or command a same-lease replacement task', async () => {
+    const h = await exportRuntime();
+    await h.handlers.get('sparkii:promptSession')!(null, 's1', 'original task');
+    const originalTask = h.taskLifecycle.active('s1');
+    const originalLease = h.rt.pool.getBinding('s1')?.lease;
+    expect(originalTask).toBeTruthy();
+    const terminateGate = deferred();
+    const terminate = (h.rt as any).security.hostShell.terminate as ReturnType<typeof vi.fn>;
+    terminate.mockImplementationOnce(async () => terminateGate.promise);
+    h.sent.length = 0;
+
+    const aborting = Promise.resolve(h.handlers.get('sparkii:abortChat')!(null, 's1'));
+    await waitUntil(() => terminate.mock.calls.length === 1);
+    // The aborted turn is explicitly terminal before the replacement is armed;
+    // its cancellation hook may still be draining in parallel.
+    h.client.emit({ type: 'agent_settled', aborted: true });
+    await expect(h.handlers.get('sparkii:promptSession')!(null, 's1', 'replacement task'))
+      .resolves.toMatchObject({ ok: true });
+    const replacementTask = h.taskLifecycle.active('s1');
+    expect(replacementTask?.taskId).not.toBe(originalTask?.taskId);
+    const commandsBeforeRelease = h.sent.map((command) => command.type);
+    terminateGate.resolve();
+
+    await expect(aborting).rejects.toThrow(/admission.*no longer current/i);
+    expect(h.taskLifecycle.active('s1')?.taskId).toBe(replacementTask?.taskId);
+    expect(h.rt.pool.getBinding('s1')?.lease).toBe(originalLease);
+    expect(h.sent.map((command) => command.type)).toEqual(commandsBeforeRelease);
+    expect(commandsBeforeRelease.filter((type) => type === 'prompt')).toEqual(['prompt']);
+    expect(commandsBeforeRelease).not.toContain('clear_queue');
+    expect(commandsBeforeRelease).not.toContain('abort');
+    expect(terminate).toHaveBeenCalledWith(originalTask?.taskId);
+  });
+
+  it.each([
+    { name: 'thinking', command: 'set_thinking_level' },
+    { name: 'workspace', command: 'configure_session' },
+  ] as const)('R8 runtime round3 B4 rejects stale %s commands after a same-client rebind', async ({ name, command }) => {
+    const commandGate = deferred();
+    let deferCommand = true;
+    const client = new FakeHandle(async (request: any) => {
+      if (deferCommand && request.type === command) await commandGate.promise;
+      return { success: true, data: { sessionId: 's1', sessionFile: null, isStreaming: false } };
+    });
+    const { rt, handlers, dataDir } = await bindingRuntime({ client });
+    await handlers.get('sparkii:updateWorkflowState')!(null, 's1', { action: 'open-original' });
+    const pending = Promise.resolve(name === 'thinking'
+      ? handlers.get('sparkii:setChatThinkingLevel')!(null, 's1', 'low')
+      : handlers.get('sparkii:setChatWorkspace')!(null, 's1', join(dataDir, 'old-workspace')));
+    await waitUntil(() => client.send.mock.calls.some(([request]) => request.type === command));
+    const oldCommand = client.send.mock.calls.find(([request]) => request.type === command)?.[0];
+    expect(oldCommand).toBeTruthy();
+
+    deferCommand = false;
+    await replaceBinding(rt);
+    await handlers.get('sparkii:updateWorkflowState')!(null, 's1', { action: 'open-replacement' });
+    const replacementLease = rt.pool.getBinding('s1')?.lease;
+    client.send.mockClear();
+    if (name === 'thinking') {
+      await expect(handlers.get('sparkii:setChatThinkingLevel')!(null, 's1', 'high')).resolves.toEqual({ ok: true });
+    } else {
+      await expect(handlers.get('sparkii:setChatWorkspace')!(null, 's1', join(dataDir, 'replacement-workspace')))
+        .resolves.toEqual({ ok: true });
+    }
+    const replacementCommands = client.send.mock.calls.map(([request]) => request);
+    expect(replacementCommands.map((request) => request.type)).toEqual([command]);
+    commandGate.resolve();
+
+    await expect(pending).rejects.toThrow('session s1 is no longer bound');
+    expect(client.send.mock.calls.map(([request]) => request)).toEqual(replacementCommands);
+    expect(rt.pool.getBinding('s1')?.lease).toBe(replacementLease);
+    if (name === 'thinking') {
+      const settings = JSON.parse(await readFile(join(dataDir, 'settings.json'), 'utf8'));
+      expect(settings.modelThinkingLevels['deepseek/deepseek-v4-flash']).toBe('high');
+      expect(rt.chatSessions.update).toHaveBeenLastCalledWith('s1', { thinkingLevel: 'high' });
+    } else {
+      expect(rt.chatSessions.update).toHaveBeenLastCalledWith('s1', {
+        workspaceKind: 'user', workspacePath: join(dataDir, 'replacement-workspace'),
+      });
+    }
+  });
+
+  it('R8 runtime round3 B4 rejects a stale workflow journal after its append await', async () => {
+    const journalGate = deferred();
+    let deferJournal = true;
+    const client = new FakeHandle(async (command: any) => {
+      if (deferJournal && command.type === 'append_workflow_entry') await journalGate.promise;
+      return { success: true };
+    });
+    const { rt, handlers } = await bindingRuntime({ client });
+    const stale = Promise.resolve(handlers.get('sparkii:updateWorkflowState')!(null, 's1', { action: 'stale' }));
+    await waitUntil(() => client.send.mock.calls.some(([command]) => command.type === 'append_workflow_entry'));
+    const staleCommand = client.send.mock.calls[0][0];
+    expect(staleCommand).toEqual({
+      type: 'append_workflow_entry', customType: 'workflow_state', data: { action: 'stale' },
+    });
+
+    deferJournal = false;
+    await replaceBinding(rt);
+    await handlers.get('sparkii:updateWorkflowState')!(null, 's1', { action: 'replacement' });
+    const finalLease = rt.pool.getBinding('s1')?.lease;
+    const commands = client.send.mock.calls.map(([command]) => command);
+    expect(commands).toEqual([
+      { type: 'append_workflow_entry', customType: 'workflow_state', data: { action: 'stale' } },
+      { type: 'append_workflow_entry', customType: 'workflow_state', data: { action: 'replacement' } },
+    ]);
+    journalGate.resolve();
+
+    await expect(stale).rejects.toThrow('session s1 is no longer bound');
+    expect(client.send.mock.calls.map(([command]) => command)).toEqual(commands);
+    expect(rt.pool.getBinding('s1')).toEqual({ client, lease: finalLease });
+  });
+
+  it('R8 runtime round3 B4 relocation cannot configure a replacement binding', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-round3-relocate-'));
+    dirs.push(dataDir);
+    const source = join(dataDir, 'ws-old');
+    const target = join(dataDir, 'ws-new');
+    await mkdir(join(source, 'input'), { recursive: true });
+    await mkdir(target, { recursive: true });
+    await writeFile(join(source, 'input', 'a.txt'), 'hello', 'utf8');
+    const configureGate = deferred();
+    let deferConfigure = true;
+    const client = new FakeHandle(async (command: any) => {
+      if (deferConfigure && command.type === 'configure_session') await configureGate.promise;
+      return { success: true };
+    });
+    const key = (value: string) => value.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+    const pathProbe = {
+      inspect: async (value: string) => ({
+        displayPath: value, canonicalPath: value, identity: `object:${key(value)}`,
+        nearestExistingAncestor: value, isDirectory: true, isReparsePoint: false, exists: true, linkCount: 1,
+      }),
+      isSameOrDescendant: async (root: string, value: string) => {
+        const r = key(root); const v = key(value);
+        return v === r || v.startsWith(`${r}/`);
+      },
+      isSameObject: async (left: string, right: string) => key(left) === key(right),
+    };
+    const records = new Map<string, any>([
+      ['s1', { id: 's1', profileId: 'general', workspacePath: source }],
+    ]);
+    const rt = await makeRuntime({
+      dataDir, piAgentDir: join(dataDir, 'pi-agent'), client,
+      chatSession: { profileId: 'general', model: null },
+      security: {
+        profilePolicies: new Map(), taskGrants: { onRevoke: () => () => {} },
+        hostShellReport: { version: 'v1', status: 'available', backend: 'host', executionBoundary: 'host', limitations: [] },
+        taskLifecycle: { active: vi.fn(() => undefined), end: vi.fn(async () => {}) },
+        pathProbe, protectedRoots: [],
+      },
+      audit: { append: vi.fn(async (event) => event) },
+    });
+    (rt as any).chatSessions.get = (id: string) => records.get(id);
+    (rt as any).chatSessions.list = () => [...records.values()];
+    (rt as any).chatSessions.updateWorkspacePathInTransaction = (oldPath: string, nextPath: string) => {
+      for (const record of records.values()) if (record.workspacePath === oldPath) record.workspacePath = nextPath;
+    };
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:updateWorkflowState')!(null, 's1', { action: 'open-original' });
+    client.send.mockClear();
+    const relocating = Promise.resolve(handlers.get('sparkii:relocateWorkspace')!(null, 's1', target));
+    await waitUntil(() => client.send.mock.calls.some(([command]) => command.type === 'configure_session'));
+    expect(client.send.mock.calls.map(([command]) => command.type)).toEqual(['configure_session']);
+
+    deferConfigure = false;
+    const replacement = await replaceBinding(rt);
+    await handlers.get('sparkii:updateWorkflowState')!(null, 's1', { action: 'replacement' });
+    const replacementLease = rt.pool.getBinding('s1')?.lease;
+    const commands = client.send.mock.calls.map(([command]) => command.type);
+    expect(commands).toEqual(['configure_session', 'append_workflow_entry']);
+    configureGate.resolve();
+
+    await expect(relocating).resolves.toMatchObject({ ok: false, code: 'REBIND_FAILED', keptBothCopies: true });
+    expect(client.send.mock.calls.map(([command]) => command.type)).toEqual(commands);
+    expect(existsSync(source)).toBe(true);
+    expect(existsSync(join(target, 'input', 'a.txt'))).toBe(true);
+    expect(rt.pool.getBinding('s1')?.lease).toBe(replacementLease);
+    expect(replacement.replacementLease).not.toBe(replacement.previousLease);
+  });
+
+  async function exportRuntime(clientOverride?: any, shellGrants?: ShellGrantStore) {
+    const registry = new TaskGrantRegistry();
+    const taskLifecycle = new TaskLifecycle(registry);
+    const gate = new ApprovalGate({
+      audit: {
+        append: vi.fn(async (event: any) => event),
+        query: vi.fn(async () => []),
+        redactValue: vi.fn((value: unknown) => ({ value, redacted: false })),
+        containsValue: vi.fn(() => false),
+        redactText: vi.fn((value: string) => value),
+        contains: vi.fn(() => false),
+      } as any,
+      policy: { requireApproval: ['report.export'], timeoutMs: 60_000, highRiskDoubleConfirm: true },
+      rbac: new Rbac([{ name: 'admin', pages: [], tools: [], canApprove: ['write', 'high-risk'] }]),
+    });
+    const approvalEvents: Proposal[] = [];
+    const sent: any[] = [];
+    const client = clientOverride ?? new FakeHandle(async (command: any) => {
+      sent.push(command);
+      return { success: true };
+    });
+    const workspacePath = join(tmpdir(), `ipc-export-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    await mkdir(workspacePath, { recursive: true });
+    dirs.push(workspacePath);
+    const scratchParent = join(tmpdir(), `ipc-export-scratch-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    dirs.push(scratchParent);
+    const key = (value: string) => value.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+    const pathProbe = {
+      inspect: vi.fn(async (target: string) => ({
+        displayPath: target, canonicalPath: target, identity: `object:${key(target)}`,
+        nearestExistingAncestor: target, isDirectory: true, isReparsePoint: false, exists: true, linkCount: 1,
+      })),
+      isSameOrDescendant: async (root: string, target: string) => key(target) === key(root) || key(target).startsWith(`${key(root)}/`),
+      isSameObject: async (left: string, right: string) => key(left) === key(right),
+    };
+    const executor = { execute: vi.fn(async (proposal: Proposal) => ({ ...proposal, status: 'executed', execution: { ok: true } })) };
+    const h = await bindingRuntime({
+      client,
+      gate,
+      executor,
+      shellGrants,
+      security: {
+        profilePolicies: new Map([['general', { defaultPermissionMode: 'ask', allowedPermissionModes: ['ask'] }]]),
+        taskLifecycle, taskGrants: registry, pathProbe, protectedRoots: [], scratchParent,
+        actionNormalizer: createActionNormalizer({ descriptors: DEFAULT_TOOL_DESCRIPTORS, protectedRoots: [], probe: pathProbe }),
+        workspaceExecutor: {
+          execute: vi.fn(async () => ({ result: { ok: true } })),
+          ensureWorkspace: vi.fn(async () => ({
+            displayPath: workspacePath, canonicalPath: workspacePath, identity: `object:${key(workspacePath)}`,
+            nearestExistingAncestor: workspacePath, isDirectory: true, isReparsePoint: false, exists: true, linkCount: 1,
+          })),
+          liveWorkspaceIdentity: () => `object:${key(workspacePath)}`,
+        },
+        platformReadyFor: () => true,
+        hostShell: { terminate: vi.fn(async () => {}) },
+        reviewer: { cancel: vi.fn(async () => {}) },
+        capabilityGateway: { issue: vi.fn(() => ({ id: 'lease', fingerprint: 'fingerprint' })), execute: vi.fn(async (_action, _lease, _grant, handler) => handler()), revokeTask: vi.fn() },
+        shellGrants: shellGrants ?? { allows: () => false, grant: vi.fn(), revoke: vi.fn(), clear: vi.fn() },
+        hostShellReport: { backend: 'host-git-bash', status: 'available', executionBoundary: 'host', version: 'test', limitations: [] },
+      },
+      profile: {
+        dir: join(tmpdir(), 'ipc-export-profile'),
+        profile: {
+          manifest: { name: 'general' },
+          security: { approval: { requireApproval: ['report.export'], timeoutMs: 60_000, highRiskDoubleConfirm: true } },
+          agent: { tools: [], prompts: { system: 'test' } },
+        },
+        router: { resolve: () => undefined },
+      } as any,
+      getWindow: () => ({
+        on: () => {}, isDestroyed: () => false,
+        webContents: { send: (channel: string, payload: Proposal) => {
+          if (channel === 'sparkii:event:approval') approvalEvents.push(payload);
+        } },
+      }) as any,
+    });
+    const currentSession = h.rt.chatSessions.get('s1');
+    (h.rt as any).chatSessions.get = () => ({ ...currentSession, workspacePath });
+    return { ...h, registry, taskLifecycle, gate, pathProbe, approvalEvents, sent, client, executor, shellGrants };
+  }
+
+  it('R8 B1 serializes workflow A behind prompt B and denies late A envelopes after follow-up C', async () => {
+    const shellGrants = new ShellGrantStore();
+    const grantSpy = vi.spyOn(shellGrants, 'grant');
+    const allowsSpy = vi.spyOn(shellGrants, 'allows');
+    const client = new FakeHandle(async (command: any) => command.type === 'get_state'
+      ? { success: true, data: { sessionId: 's-abc-origin', sessionFile: null, isStreaming: false } }
+      : { success: true });
+    const h = await exportRuntime(client, shellGrants);
+    const profile = {
+      dir: join(tmpdir(), 'ipc-origin-profile'),
+      profile: {
+        manifest: { name: 'general', displayName: '通用' },
+        security: { approval: { timeoutMs: 60_000 } },
+        agent: {
+          tools: ['bash'], prompts: { system: 'test' },
+          workflow: {
+            version: 1, engine: 'linear',
+            steps: [
+              { id: 'draft', type: 'llm', template: 'WORKFLOW_A', inputs: {} },
+              { id: 'review', type: 'human', inputs: {} },
+            ],
+          },
+        },
+      },
+      router: { resolve: () => undefined },
+    } as any;
+    (h.rt as any).profileOf = () => profile;
+    const handlers = await registeredHandlers();
+    const prompt = handlers.get('sparkii:promptSession')!;
+    const started = await handlers.get('sparkii:runWorkflow')!(null, 'general', {
+      documents: [], workspacePath: join(tmpdir(), 'ipc-origin-workspace'),
+    }) as { sessionId: string };
+    const sessionId = started.sessionId;
+    await waitUntil(() => client.send.mock.calls.some(([command]) => command.type === 'prompt'));
+    const commands = () => client.send.mock.calls.map(([command]) => command as any);
+    const promptA = commands().find((command) => command.type === 'prompt');
+    expect(promptA.message).toBe('/skill:WORKFLOW_A {}');
+    expect(promptA.promptId).toBeTypeOf('string');
+    expect(promptA.originToken).toBeTypeOf('string');
+    const originalAdmission = h.taskLifecycle.currentAdmission(sessionId);
+    const originalTaskId = h.taskLifecycle.active(sessionId)?.taskId;
+    const originalLease = h.rt.pool.getBinding(sessionId)?.lease;
+
+    // B enters the same Main lane while A is live. It cannot replace A until
+    // A's correlated terminal releases the queue.
+    const pendingB = prompt(null, sessionId, 'PROMPT_B');
+    await waitUntil(() => commands().filter((command) => command.type === 'get_state').length >= 3);
+    expect(commands().some((command) => command.type === 'prompt' && command.message === 'PROMPT_B')).toBe(false);
+    expect(h.taskLifecycle.currentAdmission(sessionId)).toBe(originalAdmission);
+    client.emit({ type: 'agent_start' });
+    client.emit({ type: 'agent_settled', aborted: false });
+    await expect(pendingB).resolves.toMatchObject({ ok: true });
+    await waitUntil(() => commands().some((command) => command.type === 'prompt' && command.message === 'PROMPT_B'));
+    const promptB = commands().find((command) => command.type === 'prompt' && command.message === 'PROMPT_B');
+    expect(promptB.promptId).not.toBe(promptA.promptId);
+    expect(promptB.originToken).not.toBe(promptA.originToken);
+    const taskBC = h.taskLifecycle.active(sessionId)?.taskId;
+    expect(taskBC).toBeTruthy();
+    expect(taskBC).not.toBe(originalTaskId);
+
+    // C is a follow-up on B, never a replacement Task. Give B/C a real shell
+    // grant so an attribution bug would be observable as execution, not just
+    // as a different denial message.
+    shellGrants.grant(taskBC!, Date.now() + 60_000);
+    const bindingBeforeC = h.rt.pool.getBinding(sessionId);
+    await expect(prompt(null, sessionId, 'PROMPT_C', { behavior: 'followUp' }))
+      .resolves.toMatchObject({ ok: true, behavior: 'followUp' });
+    const followUpC = commands().find((command) => command.type === 'follow_up' && command.message === 'PROMPT_C');
+    expect(followUpC).toMatchObject({ promptId: promptB.promptId, originToken: promptB.originToken });
+    expect(commands().some((command) => command.type === 'prompt' && command.message === 'PROMPT_C')).toBe(false);
+    expect(h.taskLifecycle.active(sessionId)?.taskId).toBe(taskBC);
+    expect(h.taskLifecycle.currentAdmission(sessionId)).not.toBe(originalAdmission);
+    expect(h.rt.pool.getBinding(sessionId)).toEqual(bindingBeforeC);
+    expect(h.rt.pool.getBinding(sessionId)?.lease).toBe(originalLease);
+    expect((client as any).sessionGeneration()).toBe(0);
+
+    const submitSpy = vi.spyOn(h.gate, 'submit');
+    const approvalCount = h.approvalEvents.length;
+    const grantCount = grantSpy.mock.calls.length;
+    const allowsCount = allowsSpy.mock.calls.length;
+    const lateAction = await (h.rt as any).__onAction({
+      requestId: 'late-a-action', toolName: 'bash', args: { command: 'echo MUST_NOT_EXECUTE' },
+    }, promptA.originToken);
+    const lateProposal = await (h.rt as any).__onProposal({
+      requestId: 'late-a-proposal', toolName: 'memory_forget', targetSystem: 'memory',
+      summary: 'forget', payload: {}, risk: 'high-risk', executionMode: 'caller',
+    }, promptA.originToken).then((value: unknown) => value, (error: unknown) => error);
+    const lateConnector = await (h.rt as any).__onConnectorRead({
+      requestId: 'late-a-connector', toolName: 'document.read', args: { documents: [join(tmpdir(), 'a.docx')] },
+    }, promptA.originToken);
+
+    expect(lateAction).toMatchObject({ status: 'denied', error: { code: 'ORIGIN_REQUIRED' } });
+    expect(lateProposal).toBeInstanceOf(Error);
+    expect((lateProposal as Error).message).toMatch(/origin.*not executable/i);
+    expect(lateConnector).toMatchObject({ ok: false, error: { code: 'ORIGIN_REQUIRED' } });
+    expect(h.executor.execute).not.toHaveBeenCalled();
+    expect((h.rt.security as any).workspaceExecutor.execute).not.toHaveBeenCalled();
+    expect(executeDocumentReadMock).not.toHaveBeenCalled();
+    expect(submitSpy).not.toHaveBeenCalled();
+    expect(h.approvalEvents).toHaveLength(approvalCount);
+    expect(grantSpy).toHaveBeenCalledTimes(grantCount);
+    expect(allowsSpy).toHaveBeenCalledTimes(allowsCount);
+    expect(shellGrants.allows(taskBC!)).toBe(true);
+    expect(h.taskLifecycle.active(sessionId)?.taskId).toBe(taskBC);
+    expect(h.registry.get(sessionId)?.taskId).toBe(taskBC);
+    expect(h.rt.pool.getBinding(sessionId)).toEqual(bindingBeforeC);
+  });
+
+
+  it('R8 round5 blocker1 keeps the workflow proposal dispatcher bound to its original admission', async () => {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-workflow-proposal-'));
+    dirs.push(dataDir);
+    const workspacePath = join(dataDir, 'workspace');
+    await mkdir(workspacePath, { recursive: true });
+    const registry = new TaskGrantRegistry();
+    const taskLifecycle = new TaskLifecycle(registry);
+    const key = (value: string) => value.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+    const pathProbe = {
+      inspect: vi.fn(async (target: string) => ({
+        displayPath: target, canonicalPath: target, identity: `object:${key(target)}`,
+        nearestExistingAncestor: target, isDirectory: true, isReparsePoint: false, exists: true, linkCount: 1,
+      })),
+      isSameOrDescendant: async (root: string, target: string) => {
+        const r = key(root); const t = key(target); return t === r || t.startsWith(`${r}/`);
+      },
+      isSameObject: async (left: string, right: string) => key(left) === key(right),
+    };
+    const proposals: any[] = [];
+    let invalidate: ((proposal: any) => void) | undefined;
+    const gate = {
+      submit: vi.fn(async (request: any, meta: any) => {
+        const proposal = { id: `proposal-${proposals.length + 1}`, ...request, ...meta, status: 'pending', payloadHash: 'h', createdAt: Date.now() };
+        proposals.push(proposal);
+        return proposal;
+      }),
+      expire: vi.fn(async (id: string) => proposals.find((proposal) => proposal.id === id)),
+      get: (id: string) => proposals.find((proposal) => proposal.id === id),
+      onProposalInvalidated: (listener: (proposal: any) => void) => { invalidate = listener; return () => {}; },
+    };
+    const client = new FakeHandle(async (command: any) => command.type === 'get_state'
+      ? { success: true, data: { sessionId: 'wf-r8-proposal', sessionFile: null, isStreaming: false } }
+      : { success: true });
+    const profile = {
+      dir: join(dataDir, 'profiles', 'general'),
+      profile: {
+        manifest: { name: 'general', displayName: '通用' },
+        security: { approval: { timeoutMs: 60_000 } },
+        agent: { tools: ['read'], prompts: { system: 'test' }, workflow: { version: 1, engine: 'linear', steps: [{ id: 'wait', type: 'human', inputs: {} }] } },
+      },
+      router: { resolve: () => undefined },
+    } as any;
+    const rt = await makeRuntime({
+      dataDir, piAgentDir: join(dataDir, 'pi-agent'), client, profile, gate,
+      security: {
+        profilePolicies: new Map([['general', { defaultPermissionMode: 'ask', allowedPermissionModes: ['ask'] }]]),
+        taskLifecycle, taskGrants: registry, pathProbe, protectedRoots: [], scratchParent: dataDir,
+        hostShell: { terminate: vi.fn(async () => {}) },
+        reviewer: { cancel: vi.fn(async () => {}) },
+        capabilityGateway: { issue: vi.fn(() => ({ id: 'lease', fingerprint: 'fingerprint' })), execute: vi.fn(async (_action, _lease, _grant, handler) => handler()), revokeTask: vi.fn() },
+        shellGrants: { allows: () => false, grant: vi.fn(), revoke: vi.fn(), clear: vi.fn() },
+        hostShellReport: { backend: 'host-git-bash', status: 'available', executionBoundary: 'host', version: 'test', limitations: [] },
+      },
+      getWindow: () => ({ on: () => {}, isDestroyed: () => false, webContents: { send: vi.fn() } }) as any,
+    });
+    const sessions = new Map<string, any>();
+    (rt as any).chatSessions.create = (record: any) => sessions.set(record.id, record);
+    (rt as any).chatSessions.get = (id: string) => sessions.get(id) ?? null;
+    const handlers = await registeredHandlers();
+    const started = await handlers.get('sparkii:runWorkflow')!(null, 'general', { documents: [], workspacePath });
+    const sessionId = (started as any).sessionId as string;
+    await waitUntil(() => proposals.length === 1 && taskLifecycle.active(sessionId) !== undefined);
+    const originalTaskId = taskLifecycle.active(sessionId)?.taskId;
+    await taskLifecycle.start(async () => ({
+      taskId: 'replacement-task', sessionId, agentId: 'general', profileId: 'general', actorId: 'tester', unattended: false,
+      planMode: 'execute', permissionMode: 'ask', workspaceRoot: workspacePath, workspaceIdentity: `object:${key(workspacePath)}`,
+      inputRoots: [], scratchRoot: join(dataDir, 'replacement-scratch'), networkDomains: [], externalCapabilities: [],
+      createdAt: Date.now(), expiresAt: Date.now() + 60_000,
+    }), undefined, undefined, sessionId);
+    const onProposal = (rt as any).__onProposal as (request: unknown) => Promise<unknown>;
+    let proposalSettled = false;
+    const lateProposal = onProposal({
+      requestId: 'late-original-proposal', toolName: 'memory_forget', targetSystem: 'memory',
+      summary: 'forget', payload: {}, risk: 'high-risk', executionMode: 'caller',
+    }).then((decision) => { proposalSettled = true; return { decision }; }, (error: unknown) => { proposalSettled = true; return { error }; });
+    await waitUntil(() => proposals.length === 2 || proposalSettled);
+    for (const proposal of [...proposals]) invalidate?.(proposal);
+    const outcome = await lateProposal;
+
+    expect(outcome).toHaveProperty('error');
+    expect((outcome as any).error).toMatchObject({ message: expect.stringMatching(/origin.*not executable/i) });
+    expect(proposals).toHaveLength(1);
+    expect(proposals[0].taskId).toBe(originalTaskId);
+    expect(taskLifecycle.active(sessionId)?.taskId).toBe('replacement-task');
+    client.emit({ type: 'agent_settled', aborted: false });
+  });
+
+  async function workflowCleanupRuntime(sessionId: string) {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-workflow-cleanup-'));
+    dirs.push(dataDir);
+    const workspacePath = join(dataDir, 'workspace');
+    await mkdir(workspacePath, { recursive: true });
+    const registry = new TaskGrantRegistry();
+    const taskLifecycle = new TaskLifecycle(registry);
+    const key = (value: string) => value.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+    const pathProbe = {
+      inspect: vi.fn(async (target: string) => ({
+        displayPath: target, canonicalPath: target, identity: `object:${key(target)}`,
+        nearestExistingAncestor: target, isDirectory: true, isReparsePoint: false, exists: true, linkCount: 1,
+      })),
+      isSameOrDescendant: async (root: string, target: string) => {
+        const r = key(root); const t = key(target); return t === r || t.startsWith(`${r}/`);
+      },
+      isSameObject: async (left: string, right: string) => key(left) === key(right),
+    };
+    const proposals: any[] = [];
+    let invalidate: ((proposal: any) => void) | undefined;
+    const gate = {
+      submit: vi.fn(async (request: any, meta: any) => {
+        const proposal = { id: `proposal-${proposals.length + 1}`, ...request, ...meta, status: 'pending', payloadHash: 'h', createdAt: Date.now() };
+        proposals.push(proposal);
+        return proposal;
+      }),
+      expire: vi.fn(async (id: string) => proposals.find((proposal) => proposal.id === id)),
+      get: (id: string) => proposals.find((proposal) => proposal.id === id),
+      onProposalInvalidated: (listener: (proposal: any) => void) => { invalidate = listener; return () => {}; },
+    };
+    const client = new FakeHandle(async (command: any) => command.type === 'get_state'
+      ? { success: true, data: { sessionId, sessionFile: null, isStreaming: false } }
+      : { success: true });
+    const profile = {
+      dir: join(dataDir, 'profiles', 'general'),
+      profile: {
+        manifest: { name: 'general', displayName: '通用' },
+        security: { approval: { timeoutMs: 60_000 } },
+        agent: { tools: ['read'], prompts: { system: 'test' }, workflow: { version: 1, engine: 'linear', steps: [{ id: 'wait', type: 'human', inputs: {} }] } },
+      },
+      router: { resolve: () => undefined },
+    } as any;
+    const events: any[] = [];
+    const rt = await makeRuntime({
+      dataDir, piAgentDir: join(dataDir, 'pi-agent'), client, profile, gate,
+      security: {
+        profilePolicies: new Map([['general', { defaultPermissionMode: 'ask', allowedPermissionModes: ['ask'] }]]),
+        taskLifecycle, taskGrants: registry, pathProbe, protectedRoots: [], scratchParent: dataDir,
+        hostShell: { terminate: vi.fn(async () => {}) },
+        reviewer: { cancel: vi.fn(async () => {}) },
+        capabilityGateway: { issue: vi.fn(() => ({ id: 'lease', fingerprint: 'fingerprint' })), execute: vi.fn(async (_action, _lease, _grant, handler) => handler()), revokeTask: vi.fn() },
+        shellGrants: { allows: () => false, grant: vi.fn(), revoke: vi.fn(), clear: vi.fn() },
+        hostShellReport: { backend: 'host-git-bash', status: 'available', executionBoundary: 'host', version: 'test', limitations: [] },
+      },
+      getWindow: () => ({ on: () => {}, isDestroyed: () => false, webContents: { send: (channel: string, payload: any) => {
+        if (channel === 'sparkii:event:chat-event') events.push(payload);
+      } } }) as any,
+    });
+    const sessions = new Map<string, any>();
+    (rt as any).chatSessions.create = (record: any) => sessions.set(record.id, record);
+    (rt as any).chatSessions.get = (id: string) => sessions.get(id) ?? null;
+    const handlers = await registeredHandlers();
+    return { rt, handlers, client, registry, taskLifecycle, pathProbe, proposals, events, workspacePath, dataDir,
+      invalidate: (proposal: any) => invalidate?.(proposal) };
+  }
+
+  it('R8 round5 r2 cleans workflow bookkeeping when onReady fails before an admission', async () => {
+    const sessionId = 'wf-r8-r2-cleanup';
+    const h = await workflowCleanupRuntime(sessionId);
+    h.pathProbe.inspect.mockRejectedValueOnce(new Error('grant factory failed'));
+    const end = vi.spyOn(h.taskLifecycle, 'end');
+    const running = h.handlers.get('sparkii:runWorkflow')!(null, 'general', { documents: [], workspacePath: h.workspacePath });
+
+    await expect(running).rejects.toThrow('无法解析工作区的真实对象身份');
+    expect(end).not.toHaveBeenCalled();
+    expect(h.rt.pool.release).toHaveBeenCalledWith(sessionId, 1);
+    expect(h.events).toContainEqual({ type: 'session_unbound', sessionId });
+    expect(h.taskLifecycle.currentAdmission(sessionId)).toBeUndefined();
+  });
+
+  it('R8 round5 r2 does not end a replacement when onReady fails before returning its admission', async () => {
+    const sessionId = 'wf-r8-r2-no-fallback';
+    const h = await workflowCleanupRuntime(sessionId);
+    const factoryGate = deferred();
+    const inspect = h.pathProbe.inspect.getMockImplementation()!;
+    let blockFirstInspect = true;
+    h.pathProbe.inspect.mockImplementation(async (target: string) => {
+      if (blockFirstInspect) {
+        blockFirstInspect = false;
+        await factoryGate.promise;
+      }
+      return inspect(target);
+    });
+    const end = vi.spyOn(h.taskLifecycle, 'end');
+    const running = h.handlers.get('sparkii:runWorkflow')!(null, 'general', { documents: [], workspacePath: h.workspacePath });
+    await waitUntil(() => !blockFirstInspect);
+    await expect(h.handlers.get('sparkii:promptSession')!(null, sessionId, 'REPLACEMENT_B')).resolves.toMatchObject({ ok: true });
+    const replacementTaskId = h.taskLifecycle.active(sessionId)?.taskId;
+    expect(replacementTaskId).toBeTruthy();
+    factoryGate.resolve();
+
+    await expect(running).rejects.toThrow(/admission cancelled/i);
+    expect(end).not.toHaveBeenCalled();
+    expect(h.taskLifecycle.active(sessionId)?.taskId).toBe(replacementTaskId);
+    expect(h.rt.pool.getBinding(sessionId)).toEqual({ client: h.client, lease: 1 });
+    expect(h.rt.pool.release).not.toHaveBeenCalled();
+    expect(h.events).not.toContainEqual({ type: 'session_unbound', sessionId });
+    h.client.emit({ type: 'agent_start' });
+    h.client.emit({ type: 'agent_settled', aborted: false });
+    await waitUntil(() => h.taskLifecycle.active(sessionId) === undefined);
+  });
+
+  it('R8 round5 r2 preserves replacement bookkeeping when workflow cleanup awaits', async () => {
+    const sessionId = 'wf-r8-r2-replacement';
+    const h = await workflowCleanupRuntime(sessionId);
+    const started = await h.handlers.get('sparkii:runWorkflow')!(null, 'general', { documents: [], workspacePath: h.workspacePath });
+    expect(started).toMatchObject({ ok: true, sessionId });
+    await waitUntil(() => h.proposals.length === 1 && h.taskLifecycle.active(sessionId) !== undefined);
+    const originalTaskId = h.taskLifecycle.active(sessionId)!.taskId;
+    const cleanupStarted = deferred();
+    const cleanupGate = deferred();
+    h.taskLifecycle.registerCancellation(originalTaskId, 'hold-workflow-cleanup', async () => {
+      cleanupStarted.resolve();
+      await cleanupGate.promise;
+    });
+    const end = vi.spyOn(h.taskLifecycle, 'end');
+    h.invalidate(h.proposals[0]);
+    await cleanupStarted.promise;
+    await expect(h.handlers.get('sparkii:promptSession')!(null, sessionId, 'REPLACEMENT_B')).resolves.toMatchObject({ ok: true });
+    const replacementTaskId = h.taskLifecycle.active(sessionId)?.taskId;
+    expect(replacementTaskId).toBeTruthy();
+    expect(replacementTaskId).not.toBe(originalTaskId);
+    const originalEnd = end.mock.results[0].value as Promise<void>;
+    cleanupGate.resolve();
+    await originalEnd;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(end).toHaveBeenCalledTimes(1);
+    expect(end).toHaveBeenCalledWith(sessionId, 'session-ended', expect.anything());
+    expect(h.taskLifecycle.active(sessionId)?.taskId).toBe(replacementTaskId);
+    expect(h.rt.pool.getBinding(sessionId)).toEqual({ client: h.client, lease: 1 });
+    expect(h.rt.pool.release).not.toHaveBeenCalled();
+    expect(h.events).not.toContainEqual({ type: 'session_unbound', sessionId });
+    h.client.emit({ type: 'agent_start' });
+    h.client.emit({ type: 'agent_settled', aborted: false });
+    await waitUntil(() => h.taskLifecycle.active(sessionId) === undefined);
+  });
+
+  it('R8 round5 blocker5 waits for prior prompt turns to settle before arming queued replacements', async () => {
+    const client = new FakeHandle(async (command: any) => {
+      if (command.type === 'get_state') {
+        return { success: true, data: { sessionId: 's1', sessionFile: null, isStreaming: false } };
+      }
+      return { success: true };
+    });
+    const h = await exportRuntime(client);
+    const prompt = h.handlers.get('sparkii:promptSession')!;
+    await prompt(null, 's1', 'PROMPT_A');
+    const originalTaskId = h.taskLifecycle.active('s1')?.taskId;
+    client.emit({ type: 'agent_start' });
+    const replacing = Promise.resolve(prompt(null, 's1', 'PROMPT_B'));
+    const queuedReplacement = Promise.resolve(prompt(null, 's1', 'PROMPT_C'));
+    await waitUntil(() => client.send.mock.calls.filter(([command]) => command.type === 'get_state').length >= 3);
+    const promptsBeforeSettled = client.send.mock.calls
+      .map(([command]) => command)
+      .filter((command) => command.type === 'prompt')
+      .map((command) => command.message);
+
+    client.emit({ type: 'agent_settled', aborted: false });
+    await expect(replacing).resolves.toMatchObject({ ok: true });
+    await waitUntil(() => client.send.mock.calls.some(
+      ([command]) => command.type === 'prompt' && command.message === 'PROMPT_B',
+    ));
+    expect(client.send.mock.calls
+      .map(([command]) => command)
+      .filter((command) => command.type === 'prompt')
+      .map((command) => command.message)).toEqual(['PROMPT_A', 'PROMPT_B']);
+
+    client.emit({ type: 'agent_start' });
+    client.emit({ type: 'agent_settled', aborted: false });
+    await expect(queuedReplacement).resolves.toMatchObject({ ok: true });
+    const promptsAfterSettled = client.send.mock.calls
+      .map(([command]) => command)
+      .filter((command) => command.type === 'prompt')
+      .map((command) => command.message);
+
+    expect(promptsBeforeSettled).toEqual(['PROMPT_A']);
+    expect(promptsAfterSettled).toEqual(['PROMPT_A', 'PROMPT_B', 'PROMPT_C']);
+    expect(h.taskLifecycle.active('s1')?.taskId).toBeTruthy();
+    expect(h.taskLifecycle.active('s1')?.taskId).not.toBe(originalTaskId);
+  });
+
+  it('R8 round6 keeps a delivered prompt barrier after post-send get_state rejects and ignores an unstarted late settled', async () => {
+    let rejectPostSend!: (error: Error) => void;
+    const postSendStarted = deferred();
+    const postSend = new Promise<any>((_resolve, reject) => { rejectPostSend = reject; });
+    let stateReads = 0;
+    const client = new FakeHandle(async (command: any) => {
+      if (command.type === 'get_state') {
+        stateReads += 1;
+        if (stateReads === 2) {
+          postSendStarted.resolve();
+          return postSend;
+        }
+        return { success: true, data: { sessionId: 's1', sessionFile: null, isStreaming: false } };
+      }
+      return { success: true };
+    });
+    const h = await exportRuntime(client);
+    const prompt = h.handlers.get('sparkii:promptSession')!;
+    const prompts = () => client.send.mock.calls
+      .map(([command]) => command)
+      .filter((command) => command.type === 'prompt')
+      .map((command) => command.message);
+
+    const first = prompt(null, 's1', 'PROMPT_A');
+    const firstRejected = expect(first).rejects.toThrow('post-send get_state failed');
+    await postSendStarted.promise;
+    const originalTaskId = h.taskLifecycle.active('s1')?.taskId;
+    expect(originalTaskId).toBeTruthy();
+    expect(prompts()).toEqual(['PROMPT_A']);
+    client.emit({ type: 'agent_start' });
+
+    const replacing = Promise.resolve(prompt(null, 's1', 'PROMPT_B'));
+    await waitUntil(() => stateReads >= 3);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(prompts()).toEqual(['PROMPT_A']);
+
+    rejectPostSend(new Error('post-send get_state failed'));
+    await firstRejected;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(prompts()).toEqual(['PROMPT_A']);
+    expect(h.taskLifecycle.active('s1')?.taskId).toBe(originalTaskId);
+
+    client.emit({ type: 'agent_settled', aborted: false });
+    // The replacement is still queued here. A stale start must not count as
+    // the replacement's start once it is armed below.
+    client.emit({ type: 'agent_start' });
+    await expect(replacing).resolves.toMatchObject({ ok: true, behavior: 'prompt' });
+    const replacementTaskId = h.taskLifecycle.active('s1')?.taskId;
+    const replacementAdmission = h.taskLifecycle.currentAdmission('s1');
+    expect(replacementTaskId).toBeTruthy();
+    expect(replacementTaskId).not.toBe(originalTaskId);
+    expect(replacementAdmission).toBeDefined();
+    expect(prompts()).toEqual(['PROMPT_A', 'PROMPT_B']);
+
+    const end = vi.spyOn(h.taskLifecycle, 'end');
+    client.emit({ type: 'agent_settled', aborted: false });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(end).not.toHaveBeenCalled();
+    expect(h.taskLifecycle.active('s1')?.taskId).toBe(replacementTaskId);
+    expect(h.taskLifecycle.currentAdmission('s1')).toBe(replacementAdmission);
+
+    client.emit({ type: 'agent_start' });
+    client.emit({ type: 'agent_settled', aborted: false });
+    await waitUntil(() => h.taskLifecycle.active('s1') === undefined);
+    expect(end).toHaveBeenCalledWith('s1', 'session-ended', replacementAdmission);
+  });
+
+  it('R8 round7 B2 completes a deterministic prompt failure and lets the next prompt run', async () => {
+    let client!: FakeHandle;
+    client = new FakeHandle(async (command: any) => {
+      if (command.type === 'get_state') {
+        return { success: true, data: { sessionId: 's1', sessionFile: null, isStreaming: false } };
+      }
+      if (command.type === 'prompt' && command.message === 'PROMPT_A') {
+        queueMicrotask(() => client.emit({
+          type: 'prompt_error', command: 'prompt', promptId: command.promptId,
+          terminal: true, message: 'No model selected',
+        }));
+      }
+      return { success: true };
+    });
+    const h = await exportRuntime(client);
+    const prompt = h.handlers.get('sparkii:promptSession')!;
+
+    await expect(prompt(null, 's1', 'PROMPT_A')).resolves.toMatchObject({ ok: true });
+    await waitUntil(() => h.taskLifecycle.active('s1') === undefined);
+    expect(h.registry.get('s1')).toBeUndefined();
+
+    await expect(prompt(null, 's1', 'PROMPT_B')).resolves.toMatchObject({ ok: true });
+    const replacementTaskId = h.taskLifecycle.active('s1')?.taskId;
+    const replacementAdmission = h.taskLifecycle.currentAdmission('s1');
+    expect(replacementTaskId).toBeTruthy();
+    client.emit({ type: 'agent_start' });
+    client.emit({ type: 'agent_settled', aborted: false });
+    await waitUntil(() => h.taskLifecycle.active('s1') === undefined);
+    expect(h.registry.get('s1')).toBeUndefined();
+    expect(replacementAdmission).toBeDefined();
+  });
+
+  it('R8 round7 B2 ignores late correlated and generic errors after abort without ending replacement B', async () => {
+    let client!: FakeHandle;
+    let lateError: (() => void) | undefined;
+    client = new FakeHandle(async (command: any) => {
+      if (command.type === 'get_state') {
+        return { success: true, data: { sessionId: 's1', sessionFile: null, isStreaming: false } };
+      }
+      if (command.type === 'prompt' && command.message === 'PROMPT_A') {
+        lateError = () => client.emit({
+          type: 'prompt_error', command: 'prompt', promptId: command.promptId,
+          terminal: true, message: 'late prepare rejection',
+        });
+      }
+      return { success: true };
+    });
+    const h = await exportRuntime(client);
+    const prompt = h.handlers.get('sparkii:promptSession')!;
+    const abort = h.handlers.get('sparkii:abortChat')!;
+
+    await prompt(null, 's1', 'PROMPT_A');
+    await abort(null, 's1');
+    await expect(prompt(null, 's1', 'PROMPT_B')).resolves.toMatchObject({ ok: true });
+    const replacementTaskId = h.taskLifecycle.active('s1')?.taskId;
+    const replacementAdmission = h.taskLifecycle.currentAdmission('s1');
+    const replacementPromptId = client.send.mock.calls
+      .map(([command]) => command)
+      .filter((command) => command.type === 'prompt' && command.message === 'PROMPT_B')[0]?.promptId;
+    expect(replacementTaskId).toBeTruthy();
+    expect(replacementPromptId).toBeTypeOf('string');
+
+    lateError?.();
+    client.emit({ type: 'runtime_error', command: 'prompt', promptId: replacementPromptId, message: 'generic' });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(h.taskLifecycle.active('s1')?.taskId).toBe(replacementTaskId);
+    expect(h.taskLifecycle.currentAdmission('s1')).toBe(replacementAdmission);
+    expect(h.registry.get('s1')?.taskId).toBe(replacementTaskId);
+
+    client.emit({ type: 'agent_start' });
+    client.emit({ type: 'agent_settled', aborted: false });
+    await waitUntil(() => h.taskLifecycle.active('s1') === undefined);
+    expect(h.registry.get('s1')).toBeUndefined();
+  });
+
+  it('R8 round5 blocker3 rejects steer, follow-up and runtime actions while replacement ownership is pending', async () => {
+    const h = await exportRuntime();
+    const prompt = h.handlers.get('sparkii:promptSession')!;
+    await prompt(null, 's1', 'PROMPT_A');
+    const originalAdmission = h.taskLifecycle.currentAdmission('s1');
+    const originalTaskId = h.taskLifecycle.active('s1')?.taskId;
+    const factoryGate = deferred();
+    const inspect = h.pathProbe.inspect.getMockImplementation()!;
+    let blockNextInspect = true;
+    h.pathProbe.inspect.mockImplementation(async (target: string) => {
+      if (blockNextInspect) {
+        blockNextInspect = false;
+        await factoryGate.promise;
+      }
+      return inspect(target);
+    });
+    const replacing = Promise.resolve(prompt(null, 's1', 'PROMPT_B'));
+    await waitUntil(() => h.sent.filter((command) => command.type === 'get_state').length >= 3);
+    // Replacement prompts wait for the prior turn's terminal confirmation before
+    // publishing their admission. Drive the old turn to completion, then hold B
+    // inside its grant factory so its pending ownership can be inspected.
+    h.client.emit({ type: 'agent_start' });
+    h.client.emit({ type: 'agent_settled', aborted: false });
+    await waitUntil(() => h.taskLifecycle.currentAdmission('s1') !== originalAdmission && !blockNextInspect);
+
+    const steer = await prompt(null, 's1', 'STEER', { behavior: 'steer' }).then(() => null, (error: unknown) => error);
+    const followUp = await prompt(null, 's1', 'FOLLOW_UP', { behavior: 'followUp' }).then(() => null, (error: unknown) => error);
+    let actionDone = false;
+    const actionPending = (h.rt as any).__onAction({
+      requestId: 'pending-owner-action', toolName: 'read', args: { path: h.workspacePath },
+    }).then((result: unknown) => { actionDone = true; return result; });
+    await waitUntil(() => actionDone || h.approvalEvents.length > 0);
+    if (!actionDone && h.approvalEvents.length > 0) {
+      await h.handlers.get('sparkii:decideApproval')!(null, h.approvalEvents[0].id, false);
+    }
+    const action = await actionPending;
+    const workspaceExecute = (h.rt.security as any).workspaceExecutor.execute as ReturnType<typeof vi.fn>;
+    const pendingActiveTaskId = h.taskLifecycle.active('s1')?.taskId;
+    factoryGate.resolve();
+    await expect(replacing).resolves.toMatchObject({ ok: true });
+
+    expect(pendingActiveTaskId).toBeUndefined();
+    expect(h.taskLifecycle.active('s1')?.taskId).not.toBe(originalTaskId);
+    expect(steer).toBeInstanceOf(Error);
+    expect(followUp).toBeInstanceOf(Error);
+    expect(action).toMatchObject({ status: 'denied', error: { code: 'ORIGIN_REQUIRED' } });
+    expect(workspaceExecute).not.toHaveBeenCalled();
+    expect(h.sent.some((command) => command.type === 'steer' || command.type === 'follow_up')).toBe(false);
+  });
+
+  it.each([false, true])('R8 review runtime B7 rejects an out-of-order prompt after send (reuseTaskId=%s)', async (reuseTaskId) => {
+    const promptGate = deferred();
+    const promptStarted = deferred();
+    const listeners = new Set<(event: any) => void>();
+    const sent: any[] = [];
+    let statePrompt = '';
+    const client = {
+      onEvent: (listener: (event: any) => void) => {
+        listeners.add(listener);
+        return () => listeners.delete(listener);
+      },
+      send: vi.fn(async (command: any) => {
+        sent.push(command);
+        if (command.type === 'prompt') {
+          statePrompt = command.message;
+          if (command.message === 'PROMPT_A') {
+            promptStarted.resolve();
+            await promptGate.promise;
+          }
+        }
+        if (command.type === 'get_state') {
+          return { success: true, data: { sessionId: 's1', sessionFile: statePrompt ? `file-${statePrompt}` : null, isStreaming: false } };
+        }
+        return { success: true };
+      }),
+    };
+    const h = await exportRuntime(client);
+    let starts = 0;
+    const lifecycleStart = h.taskLifecycle.start.bind(h.taskLifecycle);
+    vi.spyOn(h.taskLifecycle, 'start').mockImplementation((factory, beforeCommit, onStarted, targetSessionId) =>
+      lifecycleStart(async () => {
+        const grant = await factory();
+        starts += 1;
+        return { ...grant, taskId: reuseTaskId ? 'shared-task' : `task-${starts}` };
+      }, beforeCommit, onStarted, targetSessionId));
+    const update = vi.spyOn(h.rt.chatSessions, 'update');
+    const prompt = h.handlers.get('sparkii:promptSession')!;
+    const first = prompt(null, 's1', 'PROMPT_A');
+    const rejected = expect(first).rejects.toThrow(/admission.*no longer current/i);
+    await promptStarted.promise;
+    const end = vi.spyOn(h.taskLifecycle, 'end');
+    // A's terminal event is observed before B may be armed. Its send completion
+    // is deliberately held until after the replacement attempt.
+    for (const listener of listeners) listener({ type: 'agent_start' });
+    for (const listener of listeners) listener({ type: 'agent_settled' });
+    await waitUntil(() => h.taskLifecycle.active('s1') === undefined);
+
+    if (reuseTaskId) {
+      await expect(prompt(null, 's1', 'PROMPT_B')).rejects.toThrow(/task id.*reuse/i);
+      expect(sent.filter((command) => command.type === 'prompt').map((command) => command.message)).toEqual(['PROMPT_A']);
+      promptGate.resolve();
+      await rejected;
+      expect(update.mock.calls.some(([, patch]) => patch.piSessionFile === 'file-PROMPT_A')).toBe(false);
+      expect(update.mock.calls.some(([, patch]) => patch.piSessionFile === 'file-PROMPT_B')).toBe(false);
+      expect(listeners.size).toBeGreaterThan(0);
+      expect(h.rt.pool.getBinding('s1')).toBeDefined();
+      expect(h.taskLifecycle.active('s1')).toBeUndefined();
+      expect(h.taskLifecycle.currentAdmission('s1')).toBeUndefined();
+      return;
+    }
+
+    await expect(prompt(null, 's1', 'PROMPT_B')).resolves.toMatchObject({ ok: true });
+    const replacementTaskId = h.taskLifecycle.active('s1')?.taskId;
+    promptGate.resolve();
+    await rejected;
+
+    expect(update.mock.calls.some(([, patch]) => patch.piSessionFile === 'file-PROMPT_A')).toBe(false);
+    expect(update.mock.calls.some(([, patch]) => patch.piSessionFile === 'file-PROMPT_B')).toBe(true);
+    expect(listeners.size).toBeGreaterThan(0);
+    expect(h.rt.pool.getBinding('s1')).toBeDefined();
+    expect(h.taskLifecycle.active('s1')?.taskId).toBe(replacementTaskId);
+    const admission = h.taskLifecycle.currentAdmission('s1');
+    expect(admission).toBeDefined();
+    for (const listener of listeners) listener({ type: 'agent_start' });
+    for (const listener of listeners) listener({ type: 'agent_settled' });
+    expect(end).toHaveBeenCalledWith('s1', 'session-ended', admission);
+    await waitUntil(() => h.taskLifecycle.active('s1') === undefined);
+    expect(replacementTaskId).toBeTruthy();
+  });
+
+  it('R8 B2 stale export admission cannot replace or revoke a replacement task', async () => {
+    const h = await exportRuntime();
+    const admissionGate = deferred();
+    const inspect = h.pathProbe.inspect.getMockImplementation()!;
+    let admissions = 0;
+    h.pathProbe.inspect.mockImplementation(async (target: string) => {
+      admissions += 1;
+      if (admissions === 1) await admissionGate.promise;
+      return inspect(target);
+    });
+    const stale = Promise.resolve(h.handlers.get('sparkii:requestExportReport')!(null, 's1', { title: '旧导出' }));
+    await waitUntil(() => admissions === 1);
+    await replaceBinding(h.rt);
+    const replacing = Promise.resolve(h.handlers.get('sparkii:requestExportReport')!(null, 's1', { title: '替代导出' }));
+    await waitUntil(() => h.approvalEvents.length === 1);
+    const replacementProposal = h.approvalEvents[0];
+    const replacementTask = h.taskLifecycle.active('s1');
+    const replacementLease = h.rt.pool.getBinding('s1')?.lease;
+    expect(replacementProposal.payload).toEqual({ title: '替代导出' });
+    expect(replacementTask).toBeTruthy();
+    admissionGate.resolve();
+
+    await expect(stale).rejects.toThrow('session s1 is no longer bound');
+    expect(h.taskLifecycle.active('s1')?.taskId).toBe(replacementTask?.taskId);
+    expect(h.registry.get('s1')?.taskId).toBe(replacementTask?.taskId);
+    expect(h.gate.listPending().map((proposal) => proposal.payload)).toEqual([{ title: '替代导出' }]);
+    expect(h.sent.filter((command) => command.type === 'append_workflow_entry')).toEqual([]);
+    expect(h.rt.pool.getBinding('s1')).toEqual({ client: h.client, lease: replacementLease });
+    await h.handlers.get('sparkii:decideApproval')!(null, replacementProposal.id, false);
+    await expect(replacing).resolves.toMatchObject({ ok: true, approved: false });
+  });
+
+  it('R8 B2 approval cannot append a journal after a same-client rebind', async () => {
+    const h = await exportRuntime();
+    const stale = Promise.resolve(h.handlers.get('sparkii:requestExportReport')!(null, 's1', {
+      title: '旧导出', path: join(h.dataDir, 'old-export.docx'),
+    }));
+    await waitUntil(() => h.approvalEvents.length === 1);
+    const oldProposal = h.approvalEvents[0];
+    expect(h.gate.get(oldProposal.id)?.status).toBe('pending');
+    const oldTask = h.taskLifecycle.active('s1');
+    expect(oldTask).toBeTruthy();
+    const replacement = await replaceBinding(h.rt);
+    expect(h.gate.get(oldProposal.id)?.status).toBe('pending');
+
+    const decided = await h.handlers.get('sparkii:decideApproval')!(null, oldProposal.id, true) as Proposal;
+    await expect(stale).rejects.toThrow('session s1 is no longer bound');
+    expect(decided.execution).toMatchObject({ ok: false, error: expect.stringContaining('owner is no longer active') });
+    expect(h.taskLifecycle.active('s1')).toBeUndefined();
+    expect(h.sent.filter((command) => command.type === 'append_workflow_entry')).toEqual([]);
+    expect(h.rt.pool.getBinding('s1')).toEqual({ client: h.client, lease: replacement.replacementLease });
+  });
+  it.each([
+    { name: 'rejection', response: () => Promise.reject(new Error('journal transport rejected')) },
+    { name: 'success false', response: () => Promise.resolve({ success: false, error: 'journal refused' }) },
+  ])('R8 runtime round3 B5 export propagates journal $name and revokes only its grant', async ({ name, response }) => {
+    const h = await exportRuntime();
+    const journal = vi.fn(response);
+    h.client.send.mockImplementation(async (command: any) => {
+      h.sent.push(command);
+      if (command.type === 'append_workflow_entry') return journal();
+      return { success: true };
+    });
+    const exporting = Promise.resolve(h.handlers.get('sparkii:requestExportReport')!(null, 's1', {
+      title: 'journal failure', path: join(h.dataDir, 'report.docx'),
+    }));
+    await waitUntil(() => h.approvalEvents.length === 1);
+    const proposal = h.approvalEvents[0];
+    const exportingTask = h.taskLifecycle.active('s1');
+    expect(exportingTask).toBeTruthy();
+
+    await h.handlers.get('sparkii:decideApproval')!(null, proposal.id, true);
+    await expect(exporting).rejects.toThrow(name === 'rejection' ? 'journal transport rejected' : 'journal refused');
+    expect(journal).toHaveBeenCalledTimes(1);
+    expect(h.taskLifecycle.active('s1')).toBeUndefined();
+    expect(h.registry.get('s1')).toBeUndefined();
+    expect(h.sent.map((command) => command.type)).toEqual(['append_workflow_entry']);
+    expect(h.sent[0]).toMatchObject({
+      type: 'append_workflow_entry', customType: 'workflow_state',
+      data: { stepId: 'report', action: 'report_exported', title: 'journal failure', path: join(h.dataDir, 'report.docx') },
+    });
+  });
+
+  it('R8 runtime round3 B5 stale export journal failure cannot revoke a replacement task', async () => {
+    const h = await exportRuntime();
+    randomUUIDControl.setSequence(['R8-B5-SAME-TASK', 'R8-B5-OLD-PROPOSAL']);
+    const stale = Promise.resolve(h.handlers.get('sparkii:requestExportReport')!(null, 's1', {
+      title: '旧导出', path: join(h.dataDir, 'old-same-task.docx'),
+    }));
+    await waitUntil(() => h.approvalEvents.length === 1);
+    const oldProposal = h.approvalEvents[0];
+    const oldTask = h.taskLifecycle.active('s1');
+    expect(oldTask?.taskId).toBe('task-R8-B5-SAME-TASK');
+    const journalGate = deferred();
+    h.client.send.mockImplementation(async (command: any) => {
+      h.sent.push(command);
+      if (command.type === 'append_workflow_entry') {
+        await journalGate.promise;
+        throw new Error('stale journal rejected');
+      }
+      return { success: true };
+    });
+    await h.handlers.get('sparkii:decideApproval')!(null, oldProposal.id, true);
+    await waitUntil(() => h.sent.some((command) => command.type === 'append_workflow_entry'));
+
+    randomUUIDControl.setSequence(['R8-B5-REPLACEMENT-TASK', 'R8-B5-REPLACEMENT-PROPOSAL']);
+    const replacing = Promise.resolve(h.handlers.get('sparkii:requestExportReport')!(null, 's1', { title: '替代导出' }));
+    await waitUntil(() => h.approvalEvents.some((proposal) => proposal.id === 'R8-B5-REPLACEMENT-PROPOSAL'));
+    const replacementProposal = h.approvalEvents.find((proposal) => proposal.id === 'R8-B5-REPLACEMENT-PROPOSAL')!;
+    const replacementTask = h.taskLifecycle.active('s1');
+    expect(replacementTask?.taskId).not.toBe(oldTask?.taskId);
+    const replacementLease = h.rt.pool.getBinding('s1')?.lease;
+    const commands = h.sent.map((command) => command.type);
+    expect(commands).toEqual(['append_workflow_entry']);
+    journalGate.resolve();
+
+    await expect(stale).rejects.toThrow('stale journal rejected');
+    expect(h.taskLifecycle.active('s1')?.taskId).toBe(replacementTask?.taskId);
+    expect(h.registry.get('s1')?.taskId).toBe(replacementTask?.taskId);
+    expect(h.sent.map((command) => command.type)).toEqual(commands);
+    expect(h.rt.pool.getBinding('s1')?.lease).toBe(replacementLease);
+    await h.handlers.get('sparkii:decideApproval')!(null, replacementProposal.id, false);
+    await expect(replacing).resolves.toEqual({ ok: true, approved: false });
+  });
+
+  it('R8 runtime round3 B5 export rejects when its binding changes during the journal await', async () => {
+    const h = await exportRuntime();
+    const journalGate = deferred();
+    let deferJournal = true;
+    h.client.send.mockImplementation(async (command: any) => {
+      h.sent.push(command);
+      if (deferJournal && command.type === 'append_workflow_entry') await journalGate.promise;
+      return { success: true };
+    });
+    const exporting = Promise.resolve(h.handlers.get('sparkii:requestExportReport')!(null, 's1', {
+      title: 'rebound export', path: join(h.dataDir, 'rebound.docx'),
+    }));
+    await waitUntil(() => h.approvalEvents.length === 1);
+    await h.handlers.get('sparkii:decideApproval')!(null, h.approvalEvents[0].id, true);
+    await waitUntil(() => h.sent.some((command) => command.type === 'append_workflow_entry'));
+    deferJournal = false;
+    const replacement = await replaceBinding(h.rt);
+    const commands = h.sent.map((command) => command.type);
+    expect(commands).toEqual(['append_workflow_entry']);
+    journalGate.resolve();
+
+    await expect(exporting).rejects.toThrow('session s1 is no longer bound');
+    expect(h.taskLifecycle.active('s1')).toBeUndefined();
+    expect(h.sent.map((command) => command.type)).toEqual(commands);
+    expect(h.rt.pool.getBinding('s1')).toEqual({ client: h.client, lease: replacement.replacementLease });
+  });
+});
+
+describe('approval execution canonical race regressions', () => {
+  const secret = 'round7-approval-race-secret';
+
+  function deferred() {
+    let resolve!: () => void;
+    const promise = new Promise<void>((done) => { resolve = done; });
+    return { promise, resolve };
+  }
+
+  async function raceRuntime() {
+    const dataDir = await mkdtemp(join(tmpdir(), 'ipc-approval-race-'));
+    dirs.push(dataDir);
+    const auditStore = new AuditStore(':memory:');
+    const append = auditStore.append.bind(auditStore);
+    const query = auditStore.query.bind(auditStore);
+    const audit = {
+      append: vi.fn(async (event: any) => append(event)),
+      query: vi.fn(async (filter: any) => query(filter)),
+      redactValue: vi.fn(auditStore.redactValue.bind(auditStore)),
+      containsValue: vi.fn(auditStore.containsValue.bind(auditStore)),
+      redactText: vi.fn(auditStore.redactText.bind(auditStore)),
+      contains: vi.fn(auditStore.contains.bind(auditStore)),
+      redactTexts: vi.fn(auditStore.redactTexts.bind(auditStore)),
+    };
+    const gate = new ApprovalGate({
+      audit: audit as any,
+      policy: { requireApproval: ['report.export'], timeoutMs: 60_000, highRiskDoubleConfirm: true },
+      rbac: new Rbac([{ name: 'admin', pages: [], tools: [], canApprove: ['write', 'high-risk'] }]),
+    });
+    const executor = new ConnectorExecutor(audit as any);
+    const connectorHandler = vi.fn(async () => ({ ok: true, data: { exported: true } }));
+    executor.register('report.export', connectorHandler);
+    const gateway = new CapabilityGateway();
+    const key = (value: string) => value.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+    const pathProbe = {
+      inspect: vi.fn(async (target: string) => ({
+        displayPath: target,
+        canonicalPath: target,
+        identity: `object:${key(target)}`,
+        nearestExistingAncestor: target,
+        isDirectory: true,
+        isReparsePoint: false,
+        exists: true,
+        linkCount: 1,
+      })),
+      isSameOrDescendant: async (root: string, target: string) => {
+        const r = key(root);
+        const t = key(target);
+        return t === r || t.startsWith(`${r}/`);
+      },
+      isSameObject: async (left: string, right: string) => key(left) === key(right),
+    };
+    const liveGrant: TaskGrant = {
+      taskId: 'task-race',
+      sessionId: 's-race',
+      agentId: 'general',
+      profileId: 'general',
+      actorId: 'tester',
+      unattended: false,
+      planMode: 'execute',
+      permissionMode: 'ask',
+      workspaceRoot: 'C:/ws',
+      workspaceIdentity: 'object:c:/ws',
+      inputRoots: [],
+      scratchRoot: 'C:/scratch/task-race',
+      networkDomains: [],
+      externalCapabilities: [],
+      createdAt: 1,
+      expiresAt: Date.now() + 60_000,
+    };
+    const workspaceHandler = vi.fn(async (_action: SecurityAction) => ({
+      path: 'C:/ws/report.docx',
+      changes: [],
+    }));
+    const taskRegistry = new TaskGrantRegistry();
+    const taskLifecycle = new TaskLifecycle(taskRegistry);
+    const security = {
+      profilePolicies: new Map([['general', {
+        defaultPermissionMode: 'ask',
+        allowedPermissionModes: ['ask'],
+        requireApproval: ['fs.write', 'process.exec', 'connector.invoke'],
+      }]]),
+      hostShellReport: {
+        backend: 'host-git-bash',
+        status: 'available',
+        executionBoundary: 'host',
+        version: 'host-job-v1',
+        limitations: [],
+      },
+      reviewerModel: 'test-reviewer',
+      reviewerPolicyVersion: 'shell-review-v1',
+      taskLifecycle,
+      taskGrants: taskRegistry,
+      scratchParent: 'C:/scratch',
+      hostShell: { terminate: vi.fn(async () => {}) },
+      actionNormalizer: createActionNormalizer({
+        descriptors: DEFAULT_TOOL_DESCRIPTORS,
+        protectedRoots: [],
+        probe: pathProbe,
+      }),
+      pathProbe,
+      protectedRoots: [],
+      scratchParent: 'C:/scratch',
+      workspaceExecutor: {
+        execute: workspaceHandler,
+        ensureWorkspace: vi.fn(async () => ({
+          displayPath: liveGrant.workspaceRoot,
+          canonicalPath: liveGrant.workspaceRoot,
+          identity: liveGrant.workspaceIdentity,
+          nearestExistingAncestor: liveGrant.workspaceRoot,
+          isDirectory: true,
+          isReparsePoint: false,
+          exists: true,
+        })),
+        liveWorkspaceIdentity: () => liveGrant.workspaceIdentity,
+      },
+      capabilityGateway: gateway,
+      platformReadyFor: () => true,
+      reviewer: { review: vi.fn(), cancel: vi.fn(async () => {}), dispose: vi.fn(async () => {}) },
+    };
+    const approvalEvents: Proposal[] = [];
+    const rt = await makeRuntime({
+      dataDir,
+      piAgentDir: join(dataDir, 'pi-agent'),
+      client: {
+        onEvent: () => () => {},
+        send: async (command: any) => command.type === 'get_state'
+          ? { success: true, data: { sessionId: 's-race', sessionFile: join(dataDir, 's-race.jsonl'), isStreaming: false } }
+          : { success: true },
+      },
+      audit,
+      security,
+      gate,
+      executor,
+      profile: {
+        dir: join(dataDir, 'profiles', 'general'),
+        profile: {
+          manifest: { name: 'general' },
+          security: {
+            approval: {
+              requireApproval: ['report.export'],
+              timeoutMs: 60_000,
+              highRiskDoubleConfirm: true,
+              defaultPermissionMode: 'ask',
+              allowedPermissionModes: ['ask'],
+            },
+          },
+          agent: { tools: [], prompts: { system: 'test' } },
+        },
+        router: { resolve: () => undefined },
+      } as any,
+      getWindow: () => ({
+        on: () => {},
+        isDestroyed: () => false,
+        webContents: {
+          send: (channel: string, payload: Proposal) => {
+            if (channel === 'sparkii:event:approval') approvalEvents.push(payload);
+          },
+        },
+      }) as any,
+    });
+    const records = new Map<string, any>();
+    (rt as any).chatSessions.create = (record: any) => records.set(record.id, record);
+    (rt as any).chatSessions.get = (id: string) => records.get(id) ?? null;
+    const handlers = await registeredHandlers();
+    await handlers.get('sparkii:createSession')!(null, {
+      profileId: 'general',
+      workspaceKind: 'user',
+      workspacePath: 'C:/ws',
+    });
+    await handlers.get('sparkii:promptSession')!(null, 's-race', 'start');
+    return {
+      rt, handlers, gate, executor, audit, gateway, pathProbe,
+      connectorHandler, workspaceHandler, approvalEvents, taskLifecycle,
+    };
+  }
+
+  async function submitProposal(
+    h: Awaited<ReturnType<typeof raceRuntime>>,
+    withSuggestedPath = true,
+  ) {
+    return h.gate.submit({
+      requestId: 'proposal-race-request',
+      toolName: 'report.export',
+      targetSystem: 'report',
+      summary: `export ${secret}`,
+      payload: {
+        title: 'report',
+        body: secret,
+        ...(withSuggestedPath ? { path: 'C:/ws/export.txt' } : {}),
+      },
+      risk: 'write',
+      executionMode: 'proposal',
+    }, { profileId: 'general', sessionId: 's-race', actor: 'tester', taskId: h.taskLifecycle.active('s-race')!.taskId });
+  }
+
+  it.each(['dialog', 'audit', 'gateway'] as const)(
+    'blocks proposal-mode connector execution when privacy redaction wins during the %s await',
+    async (window) => {
+      const h = await raceRuntime();
+      const proposal = await submitProposal(h, window !== 'dialog');
+      const entered = deferred();
+      const release = deferred();
+      if (window === 'dialog') {
+        vi.mocked(dialog.showSaveDialog).mockImplementationOnce(async () => {
+          entered.resolve();
+          await release.promise;
+          return { canceled: false, filePath: 'C:/ws/export.txt' };
+        });
+      } else if (window === 'audit') {
+        const append = h.audit.append.getMockImplementation()!;
+        h.audit.append.mockImplementation(async (event: any) => {
+          if (event.action === 'gateway.lease-issued') {
+            entered.resolve();
+            await release.promise;
+          }
+          return append(event);
+        });
+      } else {
+        const execute = h.gateway.execute.bind(h.gateway);
+        vi.spyOn(h.gateway, 'execute').mockImplementation((async (
+          action: SecurityAction,
+          leaseId: string,
+          grant: TaskGrant,
+          handler: (signal: AbortSignal) => Promise<unknown>,
+        ) => {
+          entered.resolve();
+          await release.promise;
+          return execute(action, leaseId, grant, handler);
+        }) as typeof h.gateway.execute);
+      }
+
+      const deciding = h.handlers.get('sparkii:decideApproval')!(null, proposal.id, true);
+      await entered.promise;
+      expect(h.gate.get(proposal.id)?.privacyRedacted).not.toBe(true);
+      expect(h.gate.redactTexts([secret])).toBe(1);
+      expect(h.connectorHandler).not.toHaveBeenCalled();
+      release.resolve();
+      const out = await deciding as Proposal;
+      expect(out).toMatchObject({ id: proposal.id, privacyRedacted: true });
+      expect(h.connectorHandler).not.toHaveBeenCalled();
+    },
+  );
+
+  it('commits the chosen export path to the canonical proposal before connector execution', async () => {
+    const h = await raceRuntime();
+    const proposal = await submitProposal(h, false);
+    vi.mocked(dialog.showSaveDialog).mockResolvedValueOnce({
+      canceled: false,
+      filePath: 'C:/ws/export.txt',
+    });
+    h.connectorHandler.mockImplementationOnce(async (payload: Record<string, unknown>) => {
+      expect(payload.path).toBe('C:/ws/export.txt');
+      expect(h.gate.get(proposal.id)?.payload).toBe(payload);
+      expect(h.gate.get(proposal.id)?.payloadHash).toBe(
+        (await import('@sparkii/approval')).hashPayload(payload),
+      );
+      return { ok: true, data: { exported: true } };
+    });
+
+    const out = await h.handlers.get('sparkii:decideApproval')!(null, proposal.id, true) as Proposal;
+    expect(out).toMatchObject({ status: 'executed', execution: { ok: true } });
+    expect(h.connectorHandler).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['revalidation', 'audit'] as const)(
+    'blocks caller-mode workspace execution when privacy redaction wins during the %s await',
+    async (window) => {
+      const h = await raceRuntime();
+      const release = deferred();
+      let approvalDecided = false;
+      let paused = false;
+      if (window === 'revalidation') {
+        const inspect = h.pathProbe.inspect.getMockImplementation()!;
+        h.pathProbe.inspect.mockImplementation(async (target: string) => {
+          if (approvalDecided) {
+            paused = true;
+            await release.promise;
+          }
+          return inspect(target);
+        });
+      } else {
+        const append = h.audit.append.getMockImplementation()!;
+        h.audit.append.mockImplementation(async (event: any) => {
+          if (event.action === 'action.allowed') {
+            paused = true;
+            await release.promise;
+          }
+          return append(event);
+        });
+      }
+
+      const onAction = (h.rt as any).__onAction as (request: unknown) => Promise<any>;
+      const routing = onAction({
+        requestId: 'caller-race-request',
+        toolName: 'report.export',
+        args: { path: 'C:/ws/report.docx', content: secret },
+      });
+      try {
+        await waitUntil(() => h.approvalEvents.length === 1);
+      } catch (error) {
+        throw new Error(`caller approval was not requested: ${JSON.stringify(
+          h.audit.append.mock.calls.map(([event]) => event.action),
+        )}`, { cause: error });
+      }
+      const proposal = h.approvalEvents[0];
+      const deciding = h.handlers.get('sparkii:decideApproval')!(null, proposal.id, true);
+      approvalDecided = true;
+      await deciding;
+      try {
+        await waitUntil(() => paused);
+      } catch (error) {
+        throw new Error(`caller ${window} window was not reached: ${JSON.stringify(
+          h.audit.append.mock.calls.map(([event]) => event.action),
+        )}`, { cause: error });
+      }
+      expect(h.gate.get(proposal.id)?.privacyRedacted).not.toBe(true);
+      expect(h.gate.redactTexts([secret])).toBe(1);
+      expect(h.workspaceHandler).not.toHaveBeenCalled();
+      release.resolve();
+      const result = await routing;
+      expect(result).toMatchObject({ status: 'denied', error: { code: 'APPROVAL_INVALIDATED' } });
+      expect(h.workspaceHandler).not.toHaveBeenCalled();
+    },
+  );
 });
 

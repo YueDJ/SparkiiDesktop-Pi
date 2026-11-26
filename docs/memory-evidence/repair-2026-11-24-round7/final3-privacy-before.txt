@@ -1,0 +1,175 @@
+(node:31288) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:40716) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:42128) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-round7-regression.test.ts (23 tests | 4 failed | 19 skipped) 3017ms
+     ↓ R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files
+     ↓ R7 privacy retry recovers an empty episode topic after restart and completes chat cleanup
+     ↓ R7 privacy deletion discovers secrets nested only in pending operation extensions
+     × R7 privacy deletion scrubs an invalid structural targetId field 703ms
+     × R7 privacy deletion scrubs an invalid structural projectId field 645ms
+     × R7 privacy deletion scrubs an invalid structural mergeIds field 682ms
+     × R7 privacy deletion ignores whitespace-only episode topics without corrupting retained content 986ms
+     ↓ R7 privacy deletion preserves pending UPDATE control fields when deleted text equals the op
+     ↓ R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds
+     ↓ R7 privacy deletion includes superseded episode records in the global redaction corpus
+     ↓ R7 caller-mode memory deletion rechecks canonical approval after privacy redaction
+     ↓ R7 production privacy retry succeeds in the same process after truth rows are gone
+     ↓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body
+     ↓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes
+     ↓ R7-P1-2 replacement preflight sees an indexed project after its registry entry is removed
+     ↓ R7-P1-2 replacement preflight derives zero-entry project identity from scope_files
+     ↓ R7-P1-3 source deletion detects indexed unregistered conflicts without an explicit workspace
+     ↓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes
+     ↓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file
+     ↓ R7-P1-3 valid source deletion updates unregistered project truth without reindexing it
+     ↓ R7-P1-4 privacy deletion discovers indexed unregistered truth before reconciliation
+     ↓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion
+     ↓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7 privacy deletion scrubs an invalid structural targetId field
+AssertionError: expected '{\n  "version": 1,\n  "entries": [\n …' not to contain 'STRUCTURAL_TARGET_SECRET_51D8'
+
+- Expected
++ Received
+
+- STRUCTURAL_TARGET_SECRET_51D8
++ {
++   "version": 1,
++   "entries": [
++     {
++       "id": "mem_fc845e8d-22d8-44f0-bb39-68471ff67734",
++       "text": "surviving STRUCTURAL_TARGET_SECRET_51D8",
++       "status": "active",
++       "pinned": false,
++       "importance": 2,
++       "createdAt": 1795536402588,
++       "updatedAt": 1795536402588,
++       "source": {
++         "sessionId": "other-session",
++         "excerpt": "surviving STRUCTURAL_TARGET_SECRET_51D8",
++         "kind": "explicit"
++       },
++       "supersededBy": null,
++       "pendingOp": null
++     }
++   ]
++ }
++
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:265:63
+    263|     service.privacyDeleteBySession('private-session');
+    264|
+    265|     expect(readFileSync(userMemoryFile(dataDir), 'utf8')).not.toContai…
+       |                                                               ^
+    266|     expect(JSON.stringify(service.list())).not.toContain(secret);
+    267|     expect(sessions.get('other-session')?.inputs).not.toContain(secret…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7 privacy deletion scrubs an invalid structural projectId field
+AssertionError: expected '{\n  "version": 1,\n  "entries": [\n …' not to contain 'STRUCTURAL_PROJECT_SECRET_51D8'
+
+- Expected
++ Received
+
+- STRUCTURAL_PROJECT_SECRET_51D8
++ {
++   "version": 1,
++   "entries": [
++     {
++       "id": "mem_75200b7a-0ed4-4a89-a23e-6b8c11620a5a",
++       "text": "surviving STRUCTURAL_PROJECT_SECRET_51D8",
++       "status": "active",
++       "pinned": false,
++       "importance": 2,
++       "createdAt": 1795536403222,
++       "updatedAt": 1795536403222,
++       "source": {
++         "sessionId": "other-session",
++         "excerpt": "surviving STRUCTURAL_PROJECT_SECRET_51D8",
++         "kind": "explicit"
++       },
++       "supersededBy": null,
++       "pendingOp": null
++     }
++   ]
++ }
++
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:265:63
+    263|     service.privacyDeleteBySession('private-session');
+    264|
+    265|     expect(readFileSync(userMemoryFile(dataDir), 'utf8')).not.toContai…
+       |                                                               ^
+    266|     expect(JSON.stringify(service.list())).not.toContain(secret);
+    267|     expect(sessions.get('other-session')?.inputs).not.toContain(secret…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7 privacy deletion scrubs an invalid structural mergeIds field
+AssertionError: expected '{\n  "version": 1,\n  "entries": [\n …' not to contain 'STRUCTURAL_MERGE_SECRET_51D8'
+
+- Expected
++ Received
+
+- STRUCTURAL_MERGE_SECRET_51D8
++ {
++   "version": 1,
++   "entries": [
++     {
++       "id": "mem_f85ca0d7-8e6c-4d16-92b2-0ef66c11c8b4",
++       "text": "surviving STRUCTURAL_MERGE_SECRET_51D8",
++       "status": "active",
++       "pinned": false,
++       "importance": 2,
++       "createdAt": 1795536403917,
++       "updatedAt": 1795536403917,
++       "source": {
++         "sessionId": "other-session",
++         "excerpt": "surviving STRUCTURAL_MERGE_SECRET_51D8",
++         "kind": "explicit"
++       },
++       "supersededBy": null,
++       "pendingOp": null
++     }
++   ]
++ }
++
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:265:63
+    263|     service.privacyDeleteBySession('private-session');
+    264|
+    265|     expect(readFileSync(userMemoryFile(dataDir), 'utf8')).not.toContai…
+       |                                                               ^
+    266|     expect(JSON.stringify(service.list())).not.toContain(secret);
+    267|     expect(sessions.get('other-session')?.inputs).not.toContain(secret…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7 privacy deletion ignores whitespace-only episode topics without corrupting retained content
+TypeError: Cannot read properties of undefined (reading 'find')
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:289:27
+    287|
+    288|     expect(service.store.rowFor(target.id)).toBeUndefined();
+    289|     expect(service.list().entries.find((entry) => entry.text === retai…
+       |                           ^
+    290|     expect(sessions.get('other-session')?.inputs).toBe(retainedText);
+    291|     expect((await audit.query({})).find((entry) => entry.action === 'w…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 19 skipped (23)
+   Start at  00:06:40
+   Duration  4.84s (transform 262ms, setup 30ms, import 824ms, tests 3.02s, environment 792ms)
+

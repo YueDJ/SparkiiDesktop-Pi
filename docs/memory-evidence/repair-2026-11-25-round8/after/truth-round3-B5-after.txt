@@ -1,0 +1,22 @@
+(node:9244) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:25752) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:21680) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-truth-batch.test.ts (34 tests | 28 skipped) 3529ms
+     ✓ R8 truth round3 B5 rejects a hard-linked main database without changing external SQLite  314ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -wal sidecar before SQLite opens  814ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -shm sidecar before SQLite opens  877ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -journal sidecar before SQLite opens  893ms
+     ✓ R8 truth round3 B5 refuses corrupt-database isolation and fallback while a sidecar is hard-linked  560ms
+
+ Test Files  1 passed (1)
+      Tests  6 passed | 28 skipped (34)
+   Start at  23:47:06
+   Duration  5.06s (transform 192ms, setup 31ms, import 504ms, tests 3.53s, environment 819ms)
+

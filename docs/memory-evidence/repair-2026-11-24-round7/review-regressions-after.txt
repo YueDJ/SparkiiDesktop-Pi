@@ -1,0 +1,48 @@
+(node:39548) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:8148) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:39580) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime-pool.test.ts (33 tests) 218ms
+(node:2396) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime.test.ts (10 tests) 160ms
+(node:26664) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-round7-regression.test.ts (9 tests) 10951ms
+     ✓ R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files  1013ms
+     ✓ R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds  1064ms
+     ✓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body  650ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes  1294ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes  1260ms
+     ✓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file  1432ms
+     ✓ R7-P1-3 valid source deletion updates unregistered project truth without reindexing it  1524ms
+     ✓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion  1314ms
+     ✓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution  1397ms
+(node:17904) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-truth-batch.test.ts (16 tests) 10542ms
+     ✓ restores every prior truth file and removes new files when a later write fails  804ms
+     ✓ recovers an interrupted batch at startup before truth files are opened  809ms
+     ✓ recovers a new project batch from the registry committed before its truth file  788ms
+     ✓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing  871ms
+     ✓ rollback never recreates a missing project parent before path revalidation  850ms
+     ✓ quarantines a malformed journal and reports a warning instead of blocking startup  535ms
+     ✓ rejects journal paths outside memory truth and backup locations  789ms
+     ✓ rejects a truthy non-boolean committed marker without deleting uncommitted truth  529ms
+     ✓ rejects a committed journal that still contains rollback file items  540ms
+     ✓ rejects an unregistered outside project truth target during commit and recovery  820ms
+     ✓ keeps the only recovery evidence when the write-block marker cannot be persisted  519ms
+     ✓ keeps a committed batch and removes its recovery journal  840ms
+     ✓ rolls back the project registry when a later truth write fails  1300ms
+
+ Test Files  4 passed (4)
+      Tests  68 passed (68)
+   Start at  20:45:01
+   Duration  25.51s (transform 395ms, setup 31ms, import 1.26s, tests 21.87s, environment 1.64s)
+

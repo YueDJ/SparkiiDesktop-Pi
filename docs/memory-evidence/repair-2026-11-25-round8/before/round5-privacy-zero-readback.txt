@@ -1,0 +1,71 @@
+(node:34620) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:29188) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8 review privacy B5 zeroes a plaintext journal temp file before a failed removal
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8 final review fences same-process and restarted reads when the privacy journal cannot be persisted
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 resumes from journal context after the chat row and Pi file are already gone
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8 review B3 registers chat secrets before sink cleanup and protects later chat writes after failure
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 restores privacy sink fences before truth recovery can restore plaintext
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8 review B3 cleans Pi and chat carriers before a safe-root truth write-block aborts startup
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8 review B5 rejects dangling privacy journal directory and file links without reading targets
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8 review B5 refuses to clear a privacy journal whose identity changed during cleanup
+ [31m×[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-REPAIR-MEMORY refuses to delete a journal when the zero-write readback contains a nonzero byte[33m 2826[2mms[22m[39m
+[31m   → expected [Function] to throw error matching /清零回读校验失败/ but got '隐私删除恢复日志无法持久化，记忆读取已阻断：无法保存隐私删除恢复日志；临时…'[39m
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-REPAIR-MEMORY digest-mismatch startup temp evidence persists a privacy write-block without deleting context
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-REPAIR-MEMORY session-mismatch startup temp evidence persists a privacy write-block without deleting context
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-REPAIR-MEMORY malformed startup temp evidence persists a privacy write-block without deleting context
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-REPAIR-MEMORY promotes a valid startup temp journal and automatically resumes its privacy deletion
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-REPAIR-MEMORY fences Windows non-symlink reparse attributes on the privacy directory before temp reads and cleanup
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-REPAIR-MEMORY fences Windows non-symlink reparse attributes on the privacy file before temp reads and cleanup
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-REPAIR-MEMORY continues Gate Audit Error Logger cleanup when store privacy registration fails
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8 review B4 rotates memory markers when the deleted text collides with %s
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 truth write-block regressions[2m > [22mR8-P1-3 refuses to construct MemoryService through an unsafe memory-root junction
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 truth write-block regressions[2m > [22mR8-P1-3 fences project repair before registry or truth reads
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 truth write-block regressions[2m > [22mR8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 truth write-block regressions[2m > [22mR8 privacy review reads the raw Pi path before chat redaction can alter it
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 truth write-block regressions[2m > [22mR8 privacy review resumes a secret-named Pi carrier after restart
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 truth write-block regressions[2m > [22mR8 privacy review retries independent carriers after a same-process truth rollback block
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 truth write-block regressions[2m > [22mR8 privacy review removes a plaintext journal temp file left before rename
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy preflight regressions[2m > [22mR8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy preflight regressions[2m > [22mR8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy preflight regressions[2m > [22mR8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-REPAIR-MEMORY refuses to delete a journal when the zero-write readback contains a nonzero byte
+[31m[1mAssertionError[22m: expected [Function] to throw error matching /清零回读校验失败/ but got '隐私删除恢复日志无法持久化，记忆读取已阻断：无法保存隐私删除恢复日志；临时…'[39m
+
+[32m- Expected:[39m
+/清零回读校验失败/
+
+[31m+ Received:[39m
+"隐私删除恢复日志无法持久化，记忆读取已阻断：无法保存隐私删除恢复日志；临时文件清零清理失败：隐私删除恢复文件清理失败，记忆读取已阻断：injected privacy temp removal failure"
+
+[36m [2m❯[22m apps/desktop/test/memory-r8-regression.test.ts:[2m388:69[22m[39m
+    [90m386|[39m     }[33m;[39m
+    [90m387|[39m
+    [90m388|[39m     expect(() => service.privacyDeleteBySession('private-session')).to…
+    [90m   |[39m                                                                     [31m^[39m
+    [90m389|[39m
+    [90m390|[39m     [34mexpect[39m(injected)[33m.[39m[34mtoBe[39m([34m1[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[33m33 skipped[39m[90m (34)[39m
+[2m   Start at [22m 05:12:21
+[2m   Duration [22m 4.78s[2m (transform 286ms, setup 30ms, import 938ms, tests 2.83s, environment 801ms)[22m
+

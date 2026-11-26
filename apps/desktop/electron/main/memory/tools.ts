@@ -1,5 +1,6 @@
+import { createHash } from 'node:crypto';
 import type { ActionExecutionResult, ProposalDecision, RuntimeActionRequest } from '@sparkii/agent-host';
-import type { ProposalRequest } from '@sparkii/approval';
+import type { ProposalRequest, Proposal } from '@sparkii/approval';
 import type { MemoryService } from './service.js';
 
 export interface MemoryToolDeps {
@@ -16,10 +17,16 @@ export interface MemoryToolDeps {
   workspacePath?: string;
   workspaceKind?: 'auto' | 'user';
   propose(request: ProposalRequest & { requestId: string }): Promise<ProposalDecision>;
+  proposalOf(proposalId: string): Proposal | undefined;
+  assertOwner(): void;
 }
 
 const ALLOW = { decision: 'allow' as const, ruleId: 'memory.trusted-branch', reason: '平台可信分支' };
 const DENY = { decision: 'deny' as const, ruleId: 'memory.trusted-branch', reason: '记忆工具不可用' };
+
+function querySummary(query: string): string {
+  return JSON.stringify({ length: query.length, sha256: createHash('sha256').update(query).digest('hex') });
+}
 
 function result(request: RuntimeActionRequest, value: unknown): ActionExecutionResult {
   return { requestId: request.requestId, status: 'executed', decision: ALLOW, result: value };
@@ -31,6 +38,7 @@ function result(request: RuntimeActionRequest, value: unknown): ActionExecutionR
  */
 export async function handleMemoryToolAction(request: RuntimeActionRequest, deps: MemoryToolDeps): Promise<ActionExecutionResult> {
   const args = request.args ?? {};
+  deps.assertOwner();
   const settings = deps.service.getSettings();
   if (!settings.enabled) {
     return { requestId: request.requestId, status: 'denied', decision: DENY, error: { code: 'MEMORY_DISABLED', message: '记忆功能已关闭' } };
@@ -53,7 +61,8 @@ export async function handleMemoryToolAction(request: RuntimeActionRequest, deps
       if (!text) throw new Error('请说明要记住的内容');
       const scope = String(args.scope ?? 'user');
       const entry = deps.service.addMemory({
-        scope,
+        scope: scope === 'agent' ? `agent:${deps.profileId}` : scope,
+        agentId: deps.profileId,
         text,
         pinned: args.pinned === true,
         sessionId: deps.sessionId,
@@ -61,8 +70,8 @@ export async function handleMemoryToolAction(request: RuntimeActionRequest, deps
         workspacePath: deps.workspacePath,
         workspaceKind: deps.workspaceKind,
       });
-      await record('memory.remember', 'allowed', `${scope}:${entry.id}`);
-      return result(request, { ok: true, id: entry.id, text: entry.text });
+      deps.assertOwner();
+      await record('memory.remember', 'allowed', `${scope}:${entry.id}`);      return result(request, { ok: true, id: entry.id, text: entry.text });
     }
     if (request.toolName === 'memory_forget') {
       const query = String(args.query ?? args.text ?? '').trim();
@@ -75,23 +84,31 @@ export async function handleMemoryToolAction(request: RuntimeActionRequest, deps
         requestId: request.requestId,
         toolName: 'memory_forget',
         targetSystem: 'memory',
-        summary: `删除 ${hits.length} 条记忆：${query}`,
+        summary: `删除 ${hits.length} 条记忆`,
         preview: { kind: 'text', lines },
-        payload: { ids: hits.map((h) => h.id), query, sessionId: deps.sessionId },
+        payload: { ids: hits.map((h) => h.id), sessionId: deps.sessionId },
         risk: 'high-risk',
         executionMode: 'caller',
       });
+      deps.assertOwner();
       if (!decision.approved) {
-        await record('memory.forget', 'denied', query);
+        await record('memory.forget', 'denied', querySummary(query));
         return result(request, { ok: false, reason: '用户未批准删除' });
+      }
+      const proposal = deps.proposalOf(decision.proposalId);
+      if (!proposal || proposal.status !== 'approved' || proposal.privacyRedacted) {
+        await record('memory.forget', 'denied', JSON.stringify({ proposalId: decision.proposalId }));
+        return result(request, { ok: false, reason: '审批已失效' });
       }
       let removed = 0;
       for (const hit of hits) {
+        deps.assertOwner();
         if (!deps.service.store.rowFor(hit.id)) continue;
         deps.service.deleteMemory(hit.id, { mode: 'normal' });
         removed += 1;
       }
-      await record('memory.forget', 'allowed', `${query}:${removed}`);
+      deps.assertOwner();
+      await record('memory.forget', 'allowed', JSON.stringify({ removed }));
       return result(request, { ok: true, removed });
     }
     if (request.toolName === 'memory_search') {
@@ -99,7 +116,8 @@ export async function handleMemoryToolAction(request: RuntimeActionRequest, deps
         limit: Math.min(20, Math.max(1, Number(args.limit ?? 10))),
         includeHistory: args.includeHistory === true,
       });
-      await record('memory.search', 'allowed', String(args.query ?? ''));
+      deps.assertOwner();
+      await record('memory.search', 'allowed', querySummary(String(args.query ?? '')));
       return result(request, { ok: true, hits });
     }
     return {
@@ -109,13 +127,12 @@ export async function handleMemoryToolAction(request: RuntimeActionRequest, deps
       error: { code: 'UNKNOWN_MEMORY_TOOL', message: `未知记忆工具：${request.toolName}` },
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    await record(request.toolName, 'failed', message);
+    await record(request.toolName, 'failed', 'memory-tool-error');
     return {
       requestId: request.requestId,
       status: 'failed',
       decision: DENY,
-      error: { code: 'MEMORY_TOOL_FAILED', message },
+      error: { code: 'MEMORY_TOOL_FAILED', message: '记忆工具执行失败' },
     };
   }
 }

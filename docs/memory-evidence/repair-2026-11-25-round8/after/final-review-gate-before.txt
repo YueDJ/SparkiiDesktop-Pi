@@ -1,0 +1,133 @@
+(node:30328) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:9048) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:33836) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |0| packages/approval/test/gate.test.ts (16 tests | 3 failed | 13 skipped) 58ms
+     ↓ approves by an authorized actor and audits both events
+     ↓ denies unauthorized approver
+     ↓ refuses to decide or execute a privacy-redacted proposal
+     ↓ atomically updates only the current approved payload and rejects stale or redacted objects
+     ↓ persistently fences submit, note and approved payload ingress (restart=false)
+     ↓ persistently fences submit, note and approved payload ingress (restart=true)
+     ↓ invalidates proposals by registered pattern hits for 已删除
+     ↓ invalidates proposals by registered pattern hits for [已删除]
+     ↓ invalidates proposals by registered pattern hits for marker
+     ↓ R8 round3 fences physical-newline fragments in existing and future proposals (restart=false)
+     ↓ R8 round3 fences physical-newline fragments in existing and future proposals (restart=true)
+     ↓ R8 round3 submit returns the canonical proposal after invalidation during a pending audit append
+     × R8 final review expire returns the canonical proposal after privacy invalidation during audit 27ms
+     × R8 final review cancelSession returns the canonical proposal after privacy invalidation during audit 15ms
+     × R8 final review fences pending reads when audit cleanup fails after registry persistence 15ms
+     ↓ cancels only the pending proposals for one session
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |0| packages/approval/test/gate.test.ts > ApprovalGate > R8 final review expire returns the canonical proposal after privacy invalidation during audit
+AssertionError: expected { …(14) } to be { …(15) } // Object.is equality
+
+- Expected
++ Received
+
+@@ -2,18 +2,17 @@
+    "createdAt": 1795625979857,
+    "decidedAt": 1795625979858,
+    "executionMode": "proposal",
+    "id": "8c9e9ab3-3726-4bd5-8d28-ff13f507b937",
+    "payload": {
+-     "body": "[已删除]",
++     "body": "R8_GATE_FINAL_RACE_SECRET_71C",
+    },
+-   "payloadHash": "c469d5860d1a4b931b9da87c2f2d50cf69e93a62b3211b4b21c33c48e0548f50",
+-   "privacyRedacted": true,
++   "payloadHash": "a8c3064018afb4e6400cb3cc77f34fca1fd1c8a18ee8af90bfcf48ba35f6419a",
+    "profileId": "p",
+    "requestId": "expire",
+    "risk": "write",
+    "sessionId": "s",
+    "status": "expired",
+-   "summary": "[已删除]",
++   "summary": "R8_GATE_FINAL_RACE_SECRET_71C",
+    "targetSystem": "report",
+    "toolName": "report.export",
+  }
+
+ ❯ packages/approval/test/gate.test.ts:299:22
+    297|     spy.mockRestore();
+    298|
+    299|     expect(returned).toBe(gate.get(pending.id));
+       |                      ^
+    300|     expect(returned.privacyRedacted).toBe(true);
+    301|     expect(JSON.stringify(returned)).not.toContain(secret);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  |0| packages/approval/test/gate.test.ts > ApprovalGate > R8 final review cancelSession returns the canonical proposal after privacy invalidation during audit
+AssertionError: expected { …(16) } to be { …(17) } // Object.is equality
+
+- Expected
++ Received
+
+@@ -4,18 +4,17 @@
+    "decisionBy": "system:task-revoked",
+    "decisionNote": "revoked",
+    "executionMode": "proposal",
+    "id": "70cb217f-54c6-45c7-8585-443d1a1f5727",
+    "payload": {
+-     "body": "[已删除]",
++     "body": "R8_GATE_FINAL_RACE_SECRET_71C",
+    },
+-   "payloadHash": "c469d5860d1a4b931b9da87c2f2d50cf69e93a62b3211b4b21c33c48e0548f50",
+-   "privacyRedacted": true,
++   "payloadHash": "a8c3064018afb4e6400cb3cc77f34fca1fd1c8a18ee8af90bfcf48ba35f6419a",
+    "profileId": "p",
+    "requestId": "cancelSession",
+    "risk": "write",
+    "sessionId": "s",
+    "status": "denied",
+-   "summary": "[已删除]",
++   "summary": "R8_GATE_FINAL_RACE_SECRET_71C",
+    "targetSystem": "report",
+    "toolName": "report.export",
+  }
+
+ ❯ packages/approval/test/gate.test.ts:299:22
+    297|     spy.mockRestore();
+    298|
+    299|     expect(returned).toBe(gate.get(pending.id));
+       |                      ^
+    300|     expect(returned.privacyRedacted).toBe(true);
+    301|     expect(JSON.stringify(returned)).not.toContain(secret);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  |0| packages/approval/test/gate.test.ts > ApprovalGate > R8 final review fences pending reads when audit cleanup fails after registry persistence
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ packages/approval/test/gate.test.ts:320:38
+    318|
+    319|     expect(() => gate.redactTexts([secret])).toThrow('injected compact…
+    320|     expect(() => gate.listPending()).toThrow(/privacy cleanup incomple…
+       |                                      ^
+    321|     expect(() => gate.get(pending.id)).toThrow(/privacy cleanup incomp…
+    322|     expect(JSON.stringify(await audit.query({}))).not.toContain(secret…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 13 skipped (16)
+   Start at  00:59:39
+   Duration  407ms (transform 81ms, setup 0ms, import 172ms, tests 58ms, environment 0ms)
+

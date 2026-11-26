@@ -1,0 +1,38 @@
+(node:36080) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:39400) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:2644) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-tools.test.ts (6 tests) 3262ms
+     ✓ memory_remember 直接写入 active 并审计  588ms
+     ✓ memory_forget 先弹审批；拒绝不删，批准才三处真删  585ms
+     ✓ memory_search 只读命中并强化（不重置其他记忆）  568ms
+     ✓ 总开关关闭时三工具均被拒，无写入无检索  328ms
+     ✓ memory_remember(scope: agent) 使用当前 profileId 并校验智能体存在  848ms
+     ✓ 工具名与鞍附加同源：签名 agent 清单不变，平台统一追加  343ms
+(node:42480) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-round7-regression.test.ts (12 tests) 12390ms
+     ✓ R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files  997ms
+     ✓ R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds  982ms
+     ✓ R7 privacy deletion includes superseded episode records in the global redaction corpus  1036ms
+     ✓ R7 caller-mode memory deletion rechecks canonical approval after privacy redaction  660ms
+     ✓ R7 production privacy retry succeeds in the same process after truth rows are gone  1010ms
+     ✓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body  629ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes  1139ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes  1096ms
+     ✓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file  1117ms
+     ✓ R7-P1-3 valid source deletion updates unregistered project truth without reindexing it  1422ms
+     ✓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion  1129ms
+     ✓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution  1173ms
+
+ Test Files  2 passed (2)
+      Tests  18 passed (18)
+   Start at  21:33:21
+   Duration  18.83s (transform 315ms, setup 43ms, import 989ms, tests 15.65s, environment 1.78s)
+

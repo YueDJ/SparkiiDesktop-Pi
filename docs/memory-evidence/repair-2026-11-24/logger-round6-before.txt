@@ -1,0 +1,52 @@
+(node:33804) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+npm notice run npx
+npm notice run vitest run apps/desktop/test/logger.test.ts
+(node:30192) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:34804) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[90mstdout[2m | apps/desktop/test/logger.test.ts[2m > [22m[2mLogger[2m > [22m[2mappends structured jsonl and exports
+[22m[39mstart {"profile":"contract-review"}
+
+[90mstderr[2m | apps/desktop/test/logger.test.ts[2m > [22m[2mLogger[2m > [22m[2mdrops entries below the configured level
+[22m[39mkept ""
+
+ [31m❯[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts [2m([22m[2m7 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 57[2mms[22m[39m
+     [32m✓[39m appends structured jsonl and exports[32m 13[2mms[22m[39m
+     [32m✓[39m drops entries below the configured level[32m 14[2mms[22m[39m
+     [32m✓[39m echoes to console with level mapping[32m 3[2mms[22m[39m
+     [32m✓[39m does not echo to console when echo is disabled[32m 2[2mms[22m[39m
+     [32m✓[39m constructor and logging stay non-blocking when the log file path is a directory[32m 3[2mms[22m[39m
+     [32m✓[39m circular console context cannot reject logging or lose the message[32m 14[2mms[22m[39m
+[31m     [31m×[31m serializes context once so a stateful toJSON cannot lose the basic message[39m[32m 5[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts[2m > [22mLogger[2m > [22mserializes context once so a stateful toJSON cannot lose the basic message
+[31m[1mAssertionError[22m: promise rejected "Error: second serialization" instead of resolving[39m
+[36m [2m❯[22m apps/desktop/test/logger.test.ts:[2m83:73[22m[39m
+    [90m 81|[39m     }[33m;[39m
+    [90m 82|[39m     [35mtry[39m {
+    [90m 83|[39m       await expect(logger.log({ level: 'info', msg: '单次序列化仍应记录', ctx }…
+    [90m   |[39m                                                                         [31m^[39m
+    [90m 84|[39m       [34mexpect[39m(serializationCalls)[33m.[39m[34mtoBe[39m([34m1[39m)[33m;[39m
+    [90m 85|[39m       expect(logSpy).toHaveBeenCalledWith('单次序列化仍应记录', '{"profile":"on…
+
+[31m[1mCaused by: Error[22m: second serialization[39m
+[36m [2m❯[22m Object.toJSON apps/desktop/test/logger.test.ts:[2m78:43[22m[39m
+[90m [2m❯[22m Logger.log apps/desktop/electron/main/logger.ts:[2m71:44[22m[39m
+[90m [2m❯[22m apps/desktop/test/logger.test.ts:[2m83:27[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m6 passed[39m[22m[90m (7)[39m
+[2m   Start at [22m 17:14:12
+[2m   Duration [22m 1.33s[2m (transform 53ms, setup 39ms, import 75ms, tests 57ms, environment 966ms)[22m
+

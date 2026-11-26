@@ -1,0 +1,20 @@
+(node:4592) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:15808) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:3792) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-round7-regression.test.ts (19 tests | 16 skipped) 2291ms
+     ✓ R7 privacy retry recovers an empty episode topic after restart and completes chat cleanup  980ms
+     ✓ R7 privacy deletion discovers secrets nested only in pending operation extensions  624ms
+     ✓ R7 privacy deletion preserves pending UPDATE control fields when deleted text equals the op  685ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed | 16 skipped (19)
+   Start at  23:48:15
+   Duration  4.10s (transform 254ms, setup 30ms, import 835ms, tests 2.29s, environment 776ms)
+

@@ -83,6 +83,48 @@ describe("createPiRuntime", () => {
     dispose();
   });
 
+  it("tags events and reset responses with a monotonic session generation", async () => {
+    const session = fakeSession();
+    const host: PiRuntimeSessionHost = {
+      current: () => session,
+      newSession: vi.fn(async () => {}),
+      switchSession: vi.fn(async () => {}),
+      configureSaddle: vi.fn(async () => {}),
+    };
+    const sent: PiRuntimeEnvelope[] = [];
+    const transport = {
+      postMessage: (env: PiRuntimeEnvelope) => sent.push(env),
+      onMessage: (cb: (env: PiRuntimeEnvelope) => void) => {
+        transport.emit = cb;
+        return () => {};
+      },
+      emit: (_env: PiRuntimeEnvelope) => {},
+    };
+    const dispose = createPiRuntime({ host, transport });
+
+    session.emit({ type: "agent_start" });
+    expect(sent).toContainEqual({
+      direction: "runtime-to-main",
+      event: { type: "agent_start" },
+      sessionGeneration: 0,
+    });
+
+    transport.emit(commandEnvelope("reset", { type: "new_session" }));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(sent).toContainEqual(responseEnvelope("reset", {
+      id: "reset", type: "response", command: "new_session", success: true,
+      data: { sessionGeneration: 1 },
+    }));
+
+    session.emit({ type: "agent_end" });
+    expect(sent).toContainEqual({
+      direction: "runtime-to-main",
+      event: { type: "agent_end" },
+      sessionGeneration: 1,
+    });
+    dispose();
+  });
+
   it("forwards runtime errors through the event transport", async () => {
     let runtimeErrorCb: ((error: any) => void) | undefined;
     const session = fakeSession();
@@ -324,15 +366,15 @@ describe("createPiRuntime", () => {
     createPiRuntime({ host, transport });
     const images = [{ type: "image", mimeType: "image/png", data: "aGVsbG8=" }];
 
-    transport.emit(commandEnvelope("p1", { type: "prompt", message: "看这个", images }));
+    transport.emit(commandEnvelope("p1", { type: "prompt", message: "看这个", originToken: "origin-p1", images }));
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(session.prompt).toHaveBeenCalledWith("看这个", { streamingBehavior: undefined, images });
+    expect(session.prompt).toHaveBeenCalledWith("看这个", { streamingBehavior: undefined, originToken: "origin-p1", images });
 
-    transport.emit(commandEnvelope("p2", { type: "steer", message: "再改", images }));
+    transport.emit(commandEnvelope("p2", { type: "steer", message: "再改", originToken: "origin-p1", images }));
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(session.steer).toHaveBeenCalledWith("再改", images);
 
-    transport.emit(commandEnvelope("p3", { type: "follow_up", message: "收尾", images }));
+    transport.emit(commandEnvelope("p3", { type: "follow_up", message: "收尾", originToken: "origin-p1", images }));
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(session.followUp).toHaveBeenCalledWith("收尾", images);
   });

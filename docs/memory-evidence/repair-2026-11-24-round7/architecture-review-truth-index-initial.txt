@@ -1,0 +1,21 @@
+## Review findings — R7-REVIEW-TRUTH-INDEX
+
+### Blocking finding
+
+R7-P1-3: Valid ordinary source deletion fails for unregistered/recoverable project truth.
+
+- `apps/desktop/electron/main/memory/store.ts:1012-1014` includes registered, supplied-workspace, and recoverable project truth in the deletion scan.
+- `store.ts:1023-1032` stages source-metadata changes and removes pending entries from those project files.
+- `store.ts:1034` calls `commitTruthBatch` without `projectFiles`; staged unregistered project targets are rejected by `apps/desktop/electron/main/memory/truth-batch.ts:200-210,233-237`.
+- Privacy deletion already supplies discovered project files at `store.ts:1104-1106`.
+- Required repair: pass the preflighted project-file allowlist to `commitTruthBatch` in `markSourcesDeleted`; add a regression proving valid unregistered project truth updates active source metadata, removes pending entries, and reconciles its index.
+
+### Verified behavior
+
+- R7-P1-2 candidate-internal/existing identity preflight passes; corrupt bytes and success-event suppression are tested; empty/valid replacement works.
+- R7-P1-3 conflict safety passes before staging/commit; service emits success only afterward; IPC propagates failure before chat deletion.
+- R7-P1-4 conflict eviction/hash invalidation/reindex and non-searchable privacy recovery pass; deleted-truth cleanup remains covered.
+
+No files were modified.
+
+**CHANGES_REQUIRED — R7-REVIEW-TRUTH-INDEX**

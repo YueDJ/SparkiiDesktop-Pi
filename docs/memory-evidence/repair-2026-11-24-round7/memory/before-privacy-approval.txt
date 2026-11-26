@@ -1,0 +1,43 @@
+(node:28660) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36032) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:25560) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-round7-regression.test.ts (7 tests | 1 failed | 6 skipped) 1887ms
+     × R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files 1886ms
+     ↓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body
+     ↓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes
+     ↓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes
+     ↓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file
+     ↓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion
+     ↓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files
+AssertionError: expected '[{"id":"69f59b1a-a0af-4ec8-8349-25e92…' not to contain 'PRIVATE_MEMORY_92F3C'
+
+Expected: "PRIVATE_MEMORY_92F3C"
+Received: "[{"id":"69f59b1a-a0af-4ec8-8349-25e921e0c330","ts":1795519033819,"actor":"agent","action":"proposal.created","resource":"memory_forget","payloadSummary":"{\"ids\":[\"mem_55405798-17a3-4d45-976e-47a8e09984ab\"],\"query\":\"PRIVATE_MEMORY_92F3C\",\"sessionId\":\"private-session\"}","decision":null,"sessionId":"private-session"},{"id":"eb549151-e9e6-4519-bb5f-aaf336d3d9d5","ts":1795519033819,"actor":"agent","action":"memory.forget","resource":"memory","payloadSummary":"PRIVATE_MEMORY_92F3C","decision":"denied","sessionId":"private-session","ruleId":"memory.trusted-branch"},{"id":"9fad34f8-b90d-4fa7-b866-fd3026f443ae","ts":1795519033803,"actor":"other-actor","action":"cross.session","resource":"memory","payloadSummary":"PRIVATE_MEMORY_92F3C PRIVATE_PROPOSED_B47D2","decision":null,"sessionId":"other-session"},{"id":"081fe02e-185f-4255-92d8-9694b1e77325","ts":1795519033802,"actor":"agent","action":"proposal.created","resource":"memory_forget","payloadSummary":"{\"ids\":[\"mem_55405798-17a3-4d45-976e-47a8e09984ab\"],\"nested\":{\"excerpt\":\"PRIVATE_EXCERPT_6E21A\"},\"query\":\"PRIVATE_MEMORY_92F3C\"}","decision":null,"sessionId":"private-session"},{"id":"effc30e1-61f1-4963-beb9-375435ba1707","ts":1795519033802,"actor":"agent","action":"proposal.created","resource":"memory_forget","payloadSummary":"{\"ids\":[\"mem_55405798-17a3-4d45-976e-47a8e09984ab\"],\"nested\":{\"excerpt\":\"PRIVATE_EXCERPT_6E21A\"},\"query\":\"PRIVATE_MEMORY_92F3C\"}","decision":null,"sessionId":"private-session"},{"id":"8eeba2fd-f6dc-49ca-bc12-67ffc4f5ad0f","ts":1795519033802,"actor":"agent","action":"proposal.created","resource":"memory_forget","payloadSummary":"{\"ids\":[\"mem_55405798-17a3-4d45-976e-47a8e09984ab\"],\"nested\":{\"excerpt\":\"PRIVATE_EXCERPT_6E21A\"},\"query\":\"PRIVATE_MEMORY_92F3C\"}","decision":null,"sessionId":"private-session"},{"id":"7d4261b9-bb93-4ba0-8142-663e94ba711e","ts":1795519033801,"actor":"agent","action":"proposal.created","resource":"memory_forget","payloadSummary":"{\"ids\":[\"mem_55405798-17a3-4d45-976e-47a8e09984ab\"],\"nested\":{\"excerpt\":\"PRIVATE_EXCERPT_6E21A\"},\"query\":\"PRIVATE_MEMORY_92F3C\"}","decision":null,"sessionId":"other-session"},{"id":"7e30c537-cddc-41e2-8495-0a9991fc34a0","ts":1795519033801,"actor":"agent","action":"proposal.created","resource":"memory_forget","payloadSummary":"{\"ids\":[\"mem_55405798-17a3-4d45-976e-47a8e09984ab\"],\"nested\":{\"excerpt\":\"PRIVATE_EXCERPT_6E21A\"},\"query\":\"PRIVATE_MEMORY_92F3C\"}","decision":null,"sessionId":"private-session"},{"id":"e4ebe115-f8e3-41b0-8380-72eccaf2d176","ts":1795519033801,"actor":"agent","action":"proposal.created","resource":"memory_forget","payloadSummary":"{\"ids\":[\"mem_55405798-17a3-4d45-976e-47a8e09984ab\"],\"nested\":{\"excerpt\":\"PRIVATE_EXCERPT_6E21A\"},\"query\":\"PRIVATE_MEMORY_92F3C\"}","decision":null,"sessionId":"private-session"}]"
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:132:43
+    130|     const auditRows = await audit.query({});
+    131|     expect(auditRows.length).toBeGreaterThan(0);
+    132|     expect(JSON.stringify(auditRows)).not.toContain(queryText);
+       |                                           ^
+    133|     expect(await audit.exportJsonl()).not.toContain(proposedText);
+    134|     for (const proposal of proposals) {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 skipped (7)
+   Start at  19:17:10
+   Duration  3.90s (transform 262ms, setup 32ms, import 915ms, tests 1.89s, environment 878ms)
+

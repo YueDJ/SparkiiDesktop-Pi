@@ -1,0 +1,67 @@
+(node:32668) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:41072) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:41300) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/workflow-broker.test.ts (28 tests | 1 failed | 27 skipped) 34ms
+   ↓ settles a caller waiter as denied when privacy redaction invalidates its proposal
+   ↓ canonicalizes a stale approved broker completion against privacy-redacted gate state
+   ↓ acquires the workflow slot with the agent display name, not the session id
+   ↓ uses the runtime session id for the workflow session record
+   ↓ keeps only workflow tool-step tools plus read on the runtime saddle
+   ↓ persists the caller workspace and model on the workflow session
+   ↓ resolves skill ref and llm template to prompt content
+   ↓ resolves the two visible business skills plus hidden tools
+     ↓ rejects forged legacy coding proposals before they reach ApprovalGate
+     ↓ completes the human step when the shared broker decides approval
+     ↓ runs the workflow for the requested profile instead of contract-review
+     ↓ returns the session id before the runner finishes
+     ↓ persists step output on workflow_step_end and does not write a report-named result blob
+     ↓ persists workflow_step_end failed status when a step throws
+     ↓ stops the workflow and reports when a step_end append fails
+     ↓ stops the workflow when even the small failed end cannot be appended
+     ↓ does not swallow start/end append failures with empty catch
+     ↓ does not let a rebound session consume the previous workflow prompt
+     × does not let a same-client same-id rebinding consume the previous workflow prompt 33ms
+     ↓ stores full assistant text from message_update/message_end in step output
+     ↓ does not revive proposal-first edit/write semantics from Runtime requests
+     ↓ does not scan payload.diff to invent preview for other tools
+     ↓ does not resolve an approved write as 操作未执行:approved when the timeout elapses mid-execution
+     ↓ still resolves an untouched pending proposal as expired after the timeout
+     ↓ pushes the expired proposal to the renderer only when truly expired
+     ↓ does not push expired while an approved write is still executing
+     ↓ carries the approval scope back to the awaiting action router
+     ↓ cancels pending broker waits for one session
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/workflow-broker.test.ts > runWorkflow session id and JSONL > does not let a same-client same-id rebinding consume the previous workflow prompt
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ apps/desktop/test/workflow-broker.test.ts:746:101
+    744|     await running;
+    745|
+    746|     expect(appends.some((a) => a.customType === 'workflow_step_end' &&…
+       |                                                                                                     ^
+    747|     expect(JSON.stringify(appends)).not.toContain('NEW-BINDING-OUTPUT'…
+    748|     expect(beforeRelease).not.toHaveBeenCalled();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 27 skipped (28)
+   Start at  22:42:53
+   Duration  4.07s (transform 562ms, setup 29ms, import 2.98s, tests 34ms, environment 852ms)
+

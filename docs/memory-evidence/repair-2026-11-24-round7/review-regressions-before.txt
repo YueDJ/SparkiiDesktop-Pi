@@ -1,0 +1,153 @@
+(node:35796) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:33908) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:9344) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |0| packages/agent-host/test/pi-runtime-pool.test.ts (33 tests | 1 failed | 32 skipped) 38ms
+     ↓ P1-7 reserves cold-start capacity before supervisor startup
+     ↓ reuses a free slot across release
+     ↓ queues beyond maxAgents and wakes on release
+     ↓ wakes queued sessions when maxAgents increases
+     ↓ sends new_session on release
+     ↓ retires a slot whose new_session fails instead of reusing it
+     ↓ R7 keeps a resetting slot unavailable and queues a concurrent acquire until reset succeeds
+     × R7 drops pre-reset events after rebind and accepts new-generation events 37ms
+     ↓ R7 clears a concurrent binding on reset failure and gives the waiter a healthy new client
+     ↓ R7 retires the slot when new_session rejects and does not resolve a waiter with its killed client
+     ↓ reports the live session id through getSessionId
+     ↓ clears sessionId before sending new_session on release
+     ↓ stamps the next session on the same slot after release
+     ↓ renames a session id while keeping the same client
+     ↓ renameSession is a no-op when the source id is unknown
+     ↓ broadcasts a command to every live runtime process
+     ↓ emits a snapshot after acquire, release and rename
+     ↓ wakes a queued session with its original saddle and meta
+     ↓ reuses one process and sends the next session's skillsDir on configure_session
+     ↓ updateMeta patches a live slot label and emits a snapshot
+     ↓ updateMeta patches a queued session without waking it
+     ↓ snapshot uses 新会话 when acquire has no label, not the session id
+     ↓ updateMeta follows renameSession so a temp key can receive the real title
+     ↓ updateMeta is a no-op for an unknown session
+     ↓ hides internal probe slots and queue items from the snapshot
+     ↓ drops a crashed slot instead of handing it to the next acquire
+     ↓ m9：await start() 期间池被 stopAll ⇒ acquire 复检 stopped、停掉新 supervisor 并拒绝
+     ↓ stopAll waits for every cold-start supervisor and repeated calls share the same shutdown
+     ↓ releases cold-start capacity when supervisor creation fails
+     ↓ stopAll during a queued bind rejects the request instead of returning a stopped slot
+     ↓ continues queued binds after configure_session fails without rebinding the failed request
+     ↓ stopAll rejects when a child never confirms process exit
+     ↓ M3：stopAll 等到子进程 exit 才 resolve（kill 不自动退出时由超时兜底）
+(node:19472) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |0| packages/agent-host/test/pi-runtime.test.ts (10 tests | 1 failed | 9 skipped) 10ms
+     ↓ routes commands and emits events
+     × tags events and reset responses with a monotonic session generation 8ms
+     ↓ forwards runtime errors through the event transport
+     ↓ re-subscribes after switchSession
+     ↓ routes new session/model commands
+     ↓ routes a complete with a fixed system prompt
+     ↓ routes list_providers to the session and returns provider info
+     ↓ routes thinking level commands to the session
+     ↓ routes queue commands and returns cleared queue data
+     ↓ forwards images on prompt, steer, and follow_up
+(node:15204) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-round7-regression.test.ts (8 tests | 1 failed | 7 skipped) 2118ms
+     ↓ R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files
+     ↓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body
+     ↓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes
+     ↓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes
+     ↓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file
+     × R7-P1-3 valid source deletion updates unregistered project truth without reindexing it 2115ms
+     ↓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion
+     ↓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7-P1-3 valid source deletion updates unregistered project truth without reindexing it
+AssertionError: expected [Function] to not throw an error but 'Error: journal 目标不是允许的记忆真相文件' was thrown
+
+- Expected:
+undefined
+
++ Received:
+"Error: journal 目标不是允许的记忆真相文件"
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:251:79
+    249|     removeProjectRef(dataDir, workspace);
+    250|
+    251|     expect(() => service.markSourcesDeleted('delete-session', workspac…
+       |                                                                               ^
+    252|     const parsed = parseProjectMemoryFile(
+    253|       readFileSync(projectMemoryFile(workspace), 'utf8'),
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  |0| packages/agent-host/test/pi-runtime-pool.test.ts > PiRuntimePool > R7 drops pre-reset events after rebind and accepts new-generation events
+AssertionError: expected [ 'agent_start' ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "agent_start",
++ ]
+
+ ❯ packages/agent-host/test/pi-runtime-pool.test.ts:229:18
+    227|       sessionGeneration: 0,
+    228|     } as unknown as PiRuntimeEnvelope);
+    229|     expect(seen).toEqual([]);
+       |                  ^
+    230|     expect(pool.snapshot().slots[0]?.status).toBe("occupied-idle");
+    231|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  |0| packages/agent-host/test/pi-runtime.test.ts > createPiRuntime > tags events and reset responses with a monotonic session generation
+AssertionError: expected [ { …(2) }, { …(2) } ] to deep equally contain { direction: 'runtime-to-main', …(2) }
+
+- Expected:
+{
+  "direction": "runtime-to-main",
+  "event": {
+    "type": "agent_start",
+  },
+  "sessionGeneration": 0,
+}
+
++ Received:
+[
+  {
+    "direction": "runtime-to-main",
+    "ready": true,
+  },
+  {
+    "direction": "runtime-to-main",
+    "event": {
+      "type": "agent_start",
+    },
+  },
+]
+
+ ❯ packages/agent-host/test/pi-runtime.test.ts:106:18
+    104|
+    105|     session.emit({ type: "agent_start" });
+    106|     expect(sent).toContainEqual({
+       |                  ^
+    107|       direction: "runtime-to-main",
+    108|       event: { type: "agent_start" },
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  3 failed | 48 skipped (51)
+   Start at  20:29:06
+   Duration  41.54s (transform 624ms, setup 93ms, import 1.96s, tests 2.17s, environment 35.69s)
+

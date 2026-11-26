@@ -1,0 +1,136 @@
+(node:41816) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:11492) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:19440) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/gate.test.ts (13 tests) 253ms
+(node:14740) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/audit.test.ts (10 tests) 329ms
+(node:18784) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-truth-batch.test.ts (35 tests) 23572ms
+     ✓ restores every prior truth file and removes new files when a later write fails  762ms
+     ✓ R8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth  512ms
+     ✓ R8-P1-4 preserves rollback backups when the unverified journal cannot be removed  526ms
+     ✓ recovers an interrupted batch at startup before truth files are opened  757ms
+     ✓ recovers a new project batch from the registry committed before its truth file  785ms
+     ✓ R8 final review resumes a partially rolled-back new project with startup-injected authorization  794ms
+     ✓ R8 final review keeps rollback backups when journal removal fails after truth restoration  811ms
+     ✓ R8 final review does not roll back committed truth when post-commit backup cleanup fails  534ms
+     ✓ R8 final review retries orphan backup cleanup without quarantining restored truth  517ms
+     ✓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing  821ms
+     ✓ rollback never recreates a missing project parent before path revalidation  770ms
+     ✓ R8 final review rejects an empty uncommitted journal without deleting the only original backup  765ms
+     ✓ quarantines a malformed journal and reports a warning instead of blocking startup  561ms
+     ✓ rejects journal paths outside memory truth and backup locations  788ms
+     ✓ rejects a truthy non-boolean committed marker without deleting uncommitted truth  541ms
+     ✓ rejects a committed journal that still contains rollback file items  515ms
+     ✓ rejects an unregistered outside project truth target during commit and recovery  784ms
+     ✓ keeps the only recovery evidence when the write-block marker cannot be persisted  534ms
+     ✓ keeps a committed batch and removes its recovery journal  765ms
+     ✓ rolls back the project registry when a later truth write fails  1744ms
+     ✓ R8 truth round3 B1 merges canonical project aliases into one truth and index bucket  1238ms
+     ✓ R8 truth round3 B2 ignores journal projectFiles as recovery authorization  790ms
+     ✓ R8 truth round3 B3 rebuild fails closed when truth changes before index commit and then indexes one snapshot  903ms
+     ✓ R8 truth round3 B3 reconcile fails closed when truth changes before index commit and then indexes one snapshot  886ms
+     ✓ R8 truth round3 B3 replaceScopeIndex fails closed when truth changes before index commit and then indexes one snapshot  875ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -wal sidecar before SQLite opens  855ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -shm sidecar before SQLite opens  876ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -journal sidecar before SQLite opens  844ms
+     ✓ R8 truth round3 B5 refuses corrupt-database isolation and fallback while a sidecar is hard-linked  544ms
+(node:440) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-r8-regression.test.ts (26 tests) 79186ms
+     ✓ R8 final review fences same-process and restarted reads when the privacy journal cannot be persisted  2184ms
+     ✓ R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext  3746ms
+     ✓ R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext  3688ms
+     ✓ R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext  3928ms
+     ✓ R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext  3829ms
+     ✓ R8-P0-1 resumes from journal context after the chat row and Pi file are already gone  3225ms
+     ✓ R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers  5429ms
+     ✓ R8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent  3352ms
+     ✓ R8 review B3 registers chat secrets before sink cleanup and protects later chat writes after failure  3111ms
+     ✓ R8-P0-1 restores privacy sink fences before truth recovery can restore plaintext  3780ms
+     ✓ R8 review B3 cleans Pi and chat carriers before a safe-root truth write-block aborts startup  1935ms
+     ✓ R8 review B5 rejects dangling privacy journal directory and file links without reading targets  1201ms
+     ✓ R8 review B5 refuses to clear a privacy journal whose identity changed during cleanup  3397ms
+     ✓ R8 review B4 rotates memory markers when the deleted text collides with 已删除  2026ms
+     ✓ R8 review B4 rotates memory markers when the deleted text collides with [已删除]  1875ms
+     ✓ R8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret  3313ms
+     ✓ R8-P1-3 refuses to construct MemoryService through an unsafe memory-root junction  1058ms
+     ✓ R8-P1-3 fences project repair before registry or truth reads  2041ms
+     ✓ R8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker  3390ms
+     ✓ R8 privacy review reads the raw Pi path before chat redaction can alter it  3634ms
+     ✓ R8 privacy review resumes a secret-named Pi carrier after restart  4980ms
+     ✓ R8 privacy review retries independent carriers after a same-process truth rollback block  4006ms
+     ✓ R8 privacy review removes a plaintext journal temp file left before rename  2586ms
+     ✓ R8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state  2482ms
+     ✓ R8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state  2576ms
+     ✓ R8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state  2412ms
+(node:27368) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/ipc.test.ts (155 tests) 3174ms
+(node:42608) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | apps/desktop/test/logger.test.ts > Logger > appends structured jsonl and exports
+start {"profile":"contract-review"}
+
+stderr | apps/desktop/test/logger.test.ts > Logger > drops entries below the configured level
+kept ""
+
+ ✓ |1| apps/desktop/test/logger.test.ts (38 tests) 1314ms
+(node:18208) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/workflow-broker.test.ts (34 tests) 595ms
+(node:17540) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/chat-session-store.test.ts (12 tests) 258ms
+(node:16836) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/task-lifecycle.test.ts (12 tests | 1 failed) 13ms
+     ✓ starts a live grant and rejects actions after end 3ms
+     ✓ runs process, network, and gateway cancellation hooks once and waits for them 1ms
+     ✓ revokes the previous task when a replacement grant starts 0ms
+     × checks ownership and admission generation at the grant commit point before replacing a live task 4ms
+     ✓ cancels an uncommitted admission synchronously when the session ends with session-ended 0ms
+     ✓ cancels an uncommitted admission synchronously when the session ends with workspace-changed 0ms
+     ✓ cancels an uncommitted admission synchronously when the session ends with runtime-released 0ms
+     ✓ cancels a future grant revoked by task id while its factory is awaiting 0ms
+     ✓ allows only the latest concurrent admission to commit when factories resolve out of order 1ms
+     ✓ rechecks admission after commit and revokes the grant invalidated by onStarted 1ms
+     ✓ registers cancellation hooks at grant commit before revocation can overtake startup 0ms
+     ✓ keeps one task isolated from another session 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/task-lifecycle.test.ts > TaskLifecycle > checks ownership and admission generation at the grant commit point before replacing a live task
+AssertionError: expected [Function] to throw error matching /admission.*cancelled/i but got 'stale binding'
+
+- Expected:
+/admission.*cancelled/i
+
++ Received:
+"stale binding"
+
+ ❯ apps/desktop/test/task-lifecycle.test.ts:91:38
+     89|     await Promise.resolve();
+     90|     await lifecycle.start(async () => grant({ taskId: 'replacement-tas…
+     91|     const rejected = expect(oldStart).rejects.toThrow(/admission.*canc…
+       |                                      ^
+     92|     releaseOld();
+     93|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 8 passed (9)
+      Tests  1 failed | 334 passed (335)
+   Start at  00:41:33
+   Duration  235.30s (transform 5.73s, setup 162ms, import 68.21s, tests 108.69s, environment 53.03s)
+

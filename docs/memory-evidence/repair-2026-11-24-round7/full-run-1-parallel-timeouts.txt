@@ -1,0 +1,277 @@
+(node:2276) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:17664) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:24396) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:7204) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:13548) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:33832) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24008) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:6944) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:35456) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:5000) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:30384) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21968) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:19844) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37872) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21480) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:19664) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:35540) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime-pool.test.ts (32 tests) 237ms
+(node:32220) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime-supervisor.test.ts (15 tests) 574ms
+(node:36664) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/windows-platform.test.ts (9 tests) 562ms
+     ✓ reads the reparse attribute through the default Windows API path  502ms
+(node:38500) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/coding-tools.test.ts (10 tests) 306ms
+(node:35736) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/tool-registry.test.ts (32 tests) 2649ms
+       ✓ grep excludes root and nested .sparkii content before formatting output  397ms
+       ✓ find excludes retained directories while returning ordinary workspace files  930ms
+(node:17444) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | apps/desktop/test/logger.test.ts > Logger > appends structured jsonl and exports
+start {"profile":"contract-review"}
+
+stderr | apps/desktop/test/logger.test.ts > Logger > drops entries below the configured level
+kept ""
+
+ ✓ |1| apps/desktop/test/memory-index-fallback.test.ts (2 tests) 5388ms
+     ✓ keeps truth writes and reads working after disk open failure  2657ms
+     ✓ keeps truth writes and reads working after disk query failure  2728ms
+ ✓ |1| apps/desktop/test/logger.test.ts (13 tests) 567ms
+(node:2520) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:35544) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/workspace-executor.test.ts (11 tests) 302ms
+ ✓ |1| apps/desktop/test/memory-fence-canonical.test.ts (11 tests) 362ms
+(node:30128) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36200) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/runtime-action-router.test.ts (37 tests) 425ms
+(node:18572) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/workspace-relocation.test.ts (11 tests) 165ms
+ ✓ |1| apps/desktop/test/memory-scoring.test.ts (6 tests) 25ms
+ ✓ |1| apps/desktop/test/memory-tools.test.ts (6 tests) 15235ms
+     ✓ memory_remember 直接写入 active 并审计  2565ms
+     ✓ memory_forget 先弹审批；拒绝不删，批准才三处真删  3685ms
+     ✓ memory_search 只读命中并强化（不重置其他记忆）  2857ms
+     ✓ 总开关关闭时三工具均被拒，无写入无检索  1264ms
+     ✓ memory_remember(scope: agent) 使用当前 profileId 并校验智能体存在  3931ms
+     ✓ 工具名与鞍附加同源：签名 agent 清单不变，平台统一追加  930ms
+ ✓ |1| apps/desktop/test/workspace-file-service.test.ts (7 tests) 113ms
+ ✓ |1| apps/desktop/test/action-normalizer.test.ts (12 tests) 48ms
+ ✓ |1| apps/desktop/test/memory-fence.test.ts (4 tests) 67ms
+ ✓ |1| apps/desktop/test/workspace.test.ts (5 tests) 23ms
+ ✓ |1| apps/desktop/test/workspace-file-service.integration.test.ts (6 tests | 1 skipped) 12359ms
+     ✓ allows a normal in-workspace write/read and audits sessionId→projectPath  4612ms
+     ✓ lists the workspace root with path "." (P1 rejects an empty path)  1287ms
+     ✓ writes and reads back binary bytes through the fenced workspace  4713ms
+     ✓ rejects .. escape with the REAL probe and records a failed audit  432ms
+     ✓ rejects a REAL hard-link alias (nlink > 1) inside the workspace  1307ms
+ ✓ |1| apps/desktop/test/memory-settings-pane.test.tsx (3 tests) 973ms
+     ✓ 导航有「记忆」；显示隐私明示；手动新增走 IPC  523ms
+     ✓ 损坏项目的修复草稿、空重建和覆盖修复按各自工作区隔离且需确认  363ms
+ ✓ |1| apps/desktop/test/memory-truth-batch.test.ts (16 tests) 29603ms
+     ✓ restores every prior truth file and removes new files when a later write fails  2418ms
+     ✓ recovers an interrupted batch at startup before truth files are opened  2567ms
+     ✓ recovers a new project batch from the registry committed before its truth file  2645ms
+     ✓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing  3135ms
+     ✓ rollback never recreates a missing project parent before path revalidation  3002ms
+     ✓ quarantines a malformed journal and reports a warning instead of blocking startup  1580ms
+     ✓ rejects journal paths outside memory truth and backup locations  2312ms
+     ✓ rejects a truthy non-boolean committed marker without deleting uncommitted truth  1228ms
+     ✓ rejects a committed journal that still contains rollback file items  1207ms
+     ✓ rejects an unregistered outside project truth target during commit and recovery  1931ms
+     ✓ rejects a project truth target reached through a junction even when its workspace is registered  582ms
+     ✓ treats a dangling write-block junction as a persistent block  583ms
+     ✓ keeps the only recovery evidence when the write-block marker cannot be persisted  1258ms
+     ✓ keeps a committed batch and removes its recovery journal  1991ms
+     ✓ rolls back the project registry when a later truth write fails  3120ms
+ ❯ |1| apps/desktop/test/memory-round7-regression.test.ts (7 tests | 2 failed) 32756ms
+     × R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files 6426ms
+     ✓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body  3507ms
+     × R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes 7349ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes  3924ms
+     ✓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file  3993ms
+     ✓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion  3843ms
+     ✓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution  3710ms
+ ✓ |1| apps/desktop/test/memory-extraction.test.ts (18 tests) 26945ms
+     ✓ JSON 协议 fail closed：畸形/越界/非法 op 整批抛错  1264ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":{},"topics":[],"ops":[]}  1044ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":["ADD"],"scope":"user","text":"事实"}]}  1309ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":["user"],"text":"事实"}]}  1144ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":"user","text":{},"excerpt":{}}]}  1085ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":"user","text":"事实","importance":"2"}]}  1126ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"UPDATE","targetId":["mem_x"],"text":{}}]}  904ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"SUPERSEDE","targetId":"mem_x","replacementText":{},"reason":{}}]}  872ms
+     ✓ 端到端：对话增量 → pending（含来源 excerpt）→ 批准 → 下一条会话注入  3063ms
+     ✓ 驳回后进黑名单，同候选不再提案  3412ms
+     ✓ 同 scope 高相似 ADD 降级为 UPDATE 候选  2581ms
+     ✓ 畸形输出：整批丢弃 + errors.db 有记录 + 真相源无半批写入  866ms
+     ✓ 对象字段被拒绝时不写 pending、episode、真相文件或提取位点  705ms
+     ✓ auto 工作区的项目候选只落用户层  1850ms
+     ✓ user 工作区的首条项目候选：项目文件尚不存在也能落 pending 并生成 projectId  2360ms
+     ✓ 同一候选重复提炼：已有高相似 pending 时不再重复提案  2298ms
+     ✓ 开关关闭：零模型调用  565ms
+     ✓ 槽位礼让：池满跳过、无排队；交互 acquire 不受影响  490ms
+ ❯ |1| apps/desktop/test/memory-consolidation.test.ts (14 tests | 2 failed) 36850ms
+     ✓ 相似记忆只产出 pending 提案，绝不自动改 active  4489ms
+     × 批准合并提案后：保留条作废、被合并条作废、新条生效 6302ms
+     ✓ 一次整合的模型调用不超过 3 次  3942ms
+     × 三个阶段全都有活时仍然 ≤3 次调用，第四件事顺延 7849ms
+     ✓ 拒绝合并阶段的对象字段而不是字符串化  2606ms
+     ✓ 拒绝压缩阶段的对象字段而不是字符串化  836ms
+     ✓ 拒绝复核阶段的对象字段而不是字符串化  2466ms
+     ✓ P2 情景压缩混合越界输出时整阶段丢弃，不留下部分提案  753ms
+     ✓ 空闲不足或距上次整合不足：不调用模型  628ms
+     ✓ 开关关闭或有交互会话在跑：不整合  659ms
+     ✓ 没有空闲槽：跳过并顺延，不排队、不做任何写入  2329ms
+     ✓ 整合输出畸形：该阶段整批丢弃 + errors.db 记录 + 不产生提案  1776ms
+     ✓ 没有可用模型，或确实无事可做：不调模型、不写库，各自返回对应出口  541ms
+     ✓ 模型给不存在的 targetId 或越界文本：忽略该条，不落提案  1669ms
+ ❯ |1| apps/desktop/test/memory-service.test.ts (11 tests | 1 failed) 39120ms
+     ✓ M1 step 0: FTS5 trigram 运行时可用  833ms
+     ✓ 手动新增用户记忆 → 注入块真的含 <memory> 与文本；注入不重置时钟  2650ms
+     ✓ 跨项目模糊回忆：情景摘要命中并带项目线索，同一检索两次命中与增量一致  1172ms
+     ✓ 检索命中才重置时钟，且同一检索连跑两次命中与增量一致  2707ms
+     × 项目记忆只建在 user 工作区；auto 不建；归档停注入 6794ms
+     ✓ 项目搬迁：文件移动后按 projectId 自愈重索引  3336ms
+     ✓ 损坏文件停止该 scope 注入并出修复入口；修复后恢复  5217ms
+     ✓ 置顶、编辑、删除、重建索引全通  3278ms
+     ✓ 普通删除保留历史版本，includeHistory 才真删  4828ms
+     ✓ 索引重建不丢 pending；隐私删除清黑名单；普通删除会话标记来源已删除  3214ms
+     ✓ pending 出口：批准 ADD / 驳回进黑名单 / target 已删降级 ADD / 源会话删除失效  5087ms
+ ✓ |1| apps/desktop/test/memory-audit-regression.test.ts (31 tests) 52067ms
+     ✓ P1-2 LIKE fallback supports CRUD, search and rebuild  5976ms
+     ✓ P1-2 corrupt SQLite is quarantined and rebuilt from truth without blocking startup  2794ms
+     ✓ P1-3 copied workspace with the same projectId fails closed and preserves the first truth source  2962ms
+     ✓ P1-4 default search and includeHistory never expose pending memories  2039ms
+     ✓ P2 external truth edits reconcile list, injection and search  1905ms
+     ✓ P2 master switch rejects manual add while disabled  695ms
+     ✓ P2 project archived state survives derived index rebuild  3952ms
+     ✓ P1-6 a missing cursor is rejected and truncation advances only through included messages  778ms
+     ✓ P1-6 rejects an intra-entry cursor beyond the actual entry text  698ms
+     ✓ P1-5 one invalid project UPDATE rejects the whole extraction batch  686ms
+     ✓ P1-1 privacy deletion wins over an in-flight model response and redacts diagnostics  1150ms
+     ✓ P1-1 privacy deletion while target resolution is pending prevents the model send  1137ms
+     ✓ P1-1 corrupt project registry makes privacy deletion fail closed  2060ms
+     ✓ P1-1 duplicate ids corrupt the whole truth file instead of exposing both rows  1288ms
+     ✓ P1-1 privacy deletion discovers the indexed workspace even when the registry omits it  2367ms
+     ✓ P1-3 privacy deletion fails closed when a copied project duplicates identity  1432ms
+     ✓ P1-1 privacy deletion redacts retained diagnostic messages  1336ms
+     ✓ P1-1 model and parse failures do not copy session content into diagnostics  387ms
+     ✓ P1-1 old prompt-log cleanup failures surface as repair warnings  692ms
+     ✓ P1-8 consolidation is single-flight across the first await  1294ms
+     ✓ P1-8 a malformed consolidation element rejects the entire merge phase  1263ms
+     ✓ truth parser rejects object-valued id instead of stringifying it  344ms
+     ✓ truth parser rejects object-valued text instead of stringifying it  352ms
+     ✓ cross-file duplicate ids are excluded from listing and injection until repaired  1646ms
+     ✓ batch writes fail closed while a cross-file duplicate identity exists  1753ms
+     ✓ removing a project truth file and registry reference clears its searchable index  1345ms
+     ✓ episode approval rejects malformed mergeIds before changing episode or proposal state  1272ms
+     ✓ privacy deletion removes both current and legacy episode proposals  2605ms
+     ✓ ordinary source deletion removes legacy pending episode proposals and repairs active source metadata  2589ms
+     ✓ malformed mergeIds are rejected before any pending or target mutation  1632ms
+     ✓ P1-8 mergeIds approval is all-or-nothing  1623ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-consolidation.test.ts > idle consolidation > 批准合并提案后：保留条作废、被合并条作废、新条生效
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-consolidation.test.ts:76:3
+     74|   });
+     75|
+     76|   it('批准合并提案后：保留条作废、被合并条作废、新条生效', async () => {
+       |   ^
+     77|     const a = service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正…
+     78|     const b = service.addMemory({ scope: 'user', text: '用户要求所有汇报先给结论，正…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  |1| apps/desktop/test/memory-consolidation.test.ts > idle consolidation > 三个阶段全都有活时仍然 ≤3 次调用，第四件事顺延
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-consolidation.test.ts:107:3
+    105|   });
+    106|
+    107|   it('三个阶段全都有活时仍然 ≤3 次调用，第四件事顺延', async () => {
+       |   ^
+    108|     const project = service.addMemory({
+    109|       scope: 'project', text: '本项目报价为 2024 年报价单口径',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:71:3
+     69|
+     70| describe('R7 memory regressions', () => {
+     71|   it('R7-P1-1 privacy deletion scrubs every retained approval state, c…
+       |   ^
+     72|     const memoryText = 'PRIVATE_MEMORY_92F3C';
+     73|     const excerptText = 'PRIVATE_EXCERPT_6E21A';
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:179:3
+    177|   });
+    178|
+    179|   it('R7-P1-2 replacement repair rejects a duplicate memory id before …
+       |   ^
+    180|     const workspace = join(root, 'repair-duplicate-id');
+    181|     project(workspace, 'original project fact');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  |1| apps/desktop/test/memory-service.test.ts > memory foundation > 项目记忆只建在 user 工作区；auto 不建；归档停注入
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-service.test.ts:116:3
+    114|   });
+    115|
+    116|   it('项目记忆只建在 user 工作区；auto 不建；归档停注入', () => {
+       |   ^
+    117|     const workspace = join(root, 'project');
+    118|     const added = service.addMemory({
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  3 failed | 22 passed (25)
+      Tests  5 failed | 323 passed | 1 skipped (329)
+   Start at  19:37:35
+   Duration  63.40s (transform 12.59s, setup 1.43s, import 112.35s, tests 257.72s, environment 58.65s)
+

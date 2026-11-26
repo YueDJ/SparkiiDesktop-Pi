@@ -1,0 +1,30 @@
+COMMAND=NO_COLOR=1 pnpm exec vitest run apps/desktop/test/memory-round7-regression.test.ts apps/desktop/test/memory-extraction.test.ts -t "R8 round7" --maxWorkers=1 --no-file-parallelism
+(node:35676) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:14392) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:25492) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-extraction.test.ts (21 tests | 20 skipped) 1297ms
+     ✓ R8 round7 redacts a registered secret reintroduced by production extraction episode output  1294ms
+(node:5556) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-round7-regression.test.ts (34 tests | 28 skipped) 6996ms
+     ✓ scrubs legal-looking nested structural fields in survivor and future pending operations  1162ms
+     ✓ registers deleted-only top-level structural IDs and scrubs the same value in survivor text  959ms
+     ✓ fails closed when a retained or future top-level structural ID matches a registered secret  803ms
+     ✓ rejects a future top-level structural ID that matches an already registered secret  1092ms
+     ✓ redacts addMemoriesBatch episode truth, index, FTS, search and restart reads  1467ms
+     ✓ redacts direct appendEpisode and updateEpisodeSummary ingress after privacy deletion  1510ms
+
+ Test Files  2 passed (2)
+      Tests  7 passed | 48 skipped (55)
+   Start at  08:12:48
+   Duration  14.20s (transform 748ms, setup 76ms, import 3.48s, tests 8.29s, environment 1.95s)
+
+
+EXIT_CODE=0

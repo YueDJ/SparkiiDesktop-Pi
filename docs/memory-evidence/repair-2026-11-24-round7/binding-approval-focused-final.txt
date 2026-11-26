@@ -1,0 +1,230 @@
+(node:18140) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:7404) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:28388) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime-pool.test.ts (50 tests) 262ms
+(node:40060) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/gate.test.ts (5 tests) 53ms
+(node:32284) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/workflow-broker.test.ts (28 tests) 588ms
+(node:41968) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/runtime-action-router.test.ts (39 tests) 32ms
+(node:41192) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/ipc.test.ts (123 tests | 3 failed | 1 skipped) 792ms
+     ✓ lists builtin whitelist plus custom providers through a probe slot 10ms
+     ✓ saveSettings writes only custom providers to models.json and stores the per-provider key 10ms
+     ✓ getApiKey returns the per-provider key and getSettings includes the active provider key 6ms
+     ✓ getSettings reports hasApiKey without returning the secret 2ms
+     ✓ getApiKey(sparkiirag) returns null even when keyring has the secret 2ms
+     ✓ getApiKey also hides sparkiionto and both knowledge keyring names 2ms
+     ✓ saveSettings rejects a custom provider whose id collides with a knowledge credential id 6ms
+     ✓ testKnowledgeConnection probes healthz → info → datasets with the onto settings and token 7ms
+     ✓ testKnowledgeConnection honours an unsaved override 2ms
+     ✓ listKnowledgeDatasets tells 401 (credential) from 403 (permission) and flags an /info mismatch 19ms
+     ✓ keeps testRagConnection as a thin sparkiirag wrapper 3ms
+     ✓ testRagConnection keeps the legacy "no key" wording 2ms
+     ✓ empty saveRagSettings apiKey keeps the keyring value 3ms
+     ✓ saveSettings does not wipe rag 6ms
+     ✓ saveSettings does not wipe documentParse 5ms
+     ✓ download huggingface URL is rejected 2ms
+     ✓ promptSession refuses sparkiirag profiles when RAG is unconfigured 3ms
+     ✓ promptSession does not create a session when sparkiirag is unconfigured 2ms
+     ✓ promptSession opens the session when allowDegradedKnowledge is set (product §15) 7ms
+     ✓ setSessionKnowledge stores selection and promptSession migrates draft key before prompt 23ms
+     ✓ empty retrieval returns first then aborts and appends refused knowledge_turn 18ms
+     ✓ does not copy leftover draft selection onto an existing session 9ms
+     ✓ aborts when the session dataset is no longer visible 22ms
+     ✓ empty search after a sealed hit aborts a new turn 33ms
+     ✓ openRagDocument with an Onto backend still fetches through the ontology client cache segment 9ms
+     ✓ openRagDocument defaults to sparkiirag and returns a bounded error when the credential is missing 2ms
+     ✓ setSessionKnowledge rejects invalid payload 1ms
+     ✓ getRuntimePool returns the pool snapshot 2ms
+     ✓ listModels uses the caller-provided key instead of the stored keyring key 3ms
+     ✓ promptSession routes to settings active provider and default model when the session has no model 4ms
+     ✓ promptSession creates a session and sends the first prompt 5ms
+     × createSession binds a workspace WITHOUT sending a prompt (P9, holds slot + 15s idle release) 14ms
+     ✓ B1: a late agent_settled never revokes a Grant that is not this prompt's 4ms
+     ✓ setChatWorkspace(null) allocates a new Documents auto path 2ms
+     ✓ promptSession does not duplicate model application when the model is already in the saddle 24ms
+     ✓ listChatSessions excludes empty sessions from the local store 2ms
+     ✓ listChatSessions includes DB-only P9 sessions when includeEmpty is true 2ms
+     ✓ listChatSessions falls back to project.json.name through the fenced service 6ms
+     ✓ getChatState does not acquire when a session has no lease 2ms
+     × schedules idle release after agent_settled and releases after timeout 6ms
+     × does not idle-release a knowledge session on agent_end before agent_settled 13ms
+     ✓ does not idle-release or title a workflow session after agent_settled 4ms
+     ✓ rejects a transient prompt waiter after its slot is rebound instead of forwarding the new session event 19ms
+     ✓ R7 rejects a transient prompt waiter after same-id release and reacquire without forwarding the new binding event 3ms
+     ✓ R7 rejects a transient prompt when a successful send completes after same-id rebinding 5ms
+     ✓ stamps chat-events with the live slot sessionId, not the subscribe-time id 3ms
+     ✓ stamps over an inner sessionId carried by the event 3ms
+     ✓ drops events while the slot has no session bound 3ms
+     ✓ sends session_unbound before releasing the slot so the spinner stops 2ms
+     ✓ logs and stops stamping when the pi child exits 3ms
+     ✓ stops forwarding client events after the workflow slot is released 27ms
+     ✓ idle-releases a post-run workflow slot so a later runWorkflow is not blocked 19ms
+     ✓ workflow selectModel routes to settings active provider and default model 5ms
+     ✓ workflow selectModel prefers the session-selected model 3ms
+     ✓ listThinkingLevels probes a model and returns available thinking levels 2ms
+     ✓ setChatThinkingLevel stores the session level and remembers it per model 22ms
+     ✓ promptSession applies the session thinking level before prompt 4ms
+     ✓ setChatModel applies the selected model to the open Pi session 4ms
+     ✓ setChatThinkingLevel applies the selected level to the open Pi session 4ms
+     ✓ queues a follow_up by default while the Pi session is streaming 3ms
+     ✓ abortChat clears the queue before aborting and returns the cleared items 4ms
+     ✓ connector_read document.read is handled by executeDocumentRead 3ms
+     ✓ connector_read rejects an ontology tool name outside the whitelist 2ms
+     ✓ connector_read writes exactly one audit per ontology tool call and records the query text 4ms
+     ✓ reports document-parse spawn failures to the error center as 文档解析 2ms
+     ✓ abortChat calls failSession before Pi abort 3ms
+     ✓ releaseSessionSlot calls failSession before unbind 5ms
+     ✓ R7 does not release a same-id replacement while an explicit slot release is awaiting task shutdown 2ms
+     ✓ getDocumentParse handler exists 2ms
+     ✓ downloadDocumentParseModule without production hashes fails with offline import hint 2ms
+     ✓ queueMutate rebuilds both queues from the current Pi snapshot 5ms
+     ✓ promptSession stages attachments into the session workspace before prompting 25ms
+     ✓ promptSession sends images directly and stages only non-image attachments 11ms
+     ✓ promptSession creates a session and stages attachments into the chosen workspace 9ms
+     ✓ promptSession registers the proposal broker when creating a session 4ms
+     ✓ getModelOptions without agentId uses generic chat requirements instead of a default agent 2ms
+     ✓ classifies current DeepSeek models with orthogonal capabilities 3ms
+     ✓ promptSession refuses to create a session without profileId 2ms
+     ✓ ensureSessionRecord does not invent profileId general when pinning a Pi-only session 2ms
+     ✓ chooseDocument grants the selected path for readDocumentBytes 4ms
+     ✓ openChatSession ENOENT still returns session inputs 2ms
+     ✓ opens a live session from getBranch + streamingMessage, not get_messages 2ms
+     ✓ recovers the micro-gap assistant from get_messages only while streaming without a slot message 2ms
+     ✓ skips the micro-gap when the last assistant is already on the branch 2ms
+     ✓ does not read get_messages when the live session is idle 2ms
+     ✓ dead session reads JSONL entries only (no preview) 21ms
+     ✓ setChatTitle notifies the renderer so the sidebar can show the filename 2ms
+     ✓ setChatTitle updates the runtime pool label instead of leaving the session id 3ms
+     ✓ reopening a session acquires the pool with displayName and Pi title, not the uuid prefix 3ms
+     ✓ reopening a nameless workflow session uses 新会话, not the skill body 3ms
+     ✓ reopening still acquires display meta when listing Pi sessions fails 2ms
+     ✓ setChatTitle rejects empty titles and agent writes after a user lock 2ms
+     ✓ listChatSessions does not put firstMessage into title 1ms
+     ✓ completeText forwards text to complete without renaming the session 24ms
+     ✓ does not auto-title a chat session on agent_end 3ms
+     ✓ imports, lists, audits, and uninstalls a user skill 16ms
+     ✓ returns no-user-library when no skillLibrary user agent is assembled 2ms
+     ✓ prefers SPARKII_E2E_SKILL_DIR for chooseSkillFolder 2ms
+     ✓ opens the user skills dir after creating it 3ms
+     ✓ lists skills for an agent id from that agent skillsDir only 27ms
+     ✓ allocateAutoWorkspace returns a Documents path and does not create it 1ms
+     ✓ allocateAutoWorkspace rejects unknown agent 1ms
+     ✓ chooseWorkspace mkdirs an absolute defaultPath and forwards it 2ms
+     ✓ chooseWorkspace ignores a relative defaultPath without mkdir 1ms
+     ✓ openWorkspace mkdirs an absolute path and opens it 2ms
+     ✓ openWorkspace ignores a relative path without mkdir 1ms
+     ✓ runWorkflow without workspacePath allocates Documents path and does not mkdir 2ms
+     ✓ runWorkflow with an allocated path keeps workspaceKind auto 2ms
+     ✓ does not expose task capability or user revocation handlers 1ms
+     ✓ reads the session permission mode and host semantics without leaking credentials 2ms
+     ✓ writes the mode, ends the running task and audits the change 2ms
+     ✓ revokes the shell task grant when the mode changes 1ms
+     ✓ refuses a permission mode the profile does not allow 1ms
+     ✓ reports the reviewer as unavailable when Main has no worker 1ms
+     ✓ does not expose the Reviewer worker in the user runtime pool 1ms
+     ↓ runs an approved shell command through the host adapter and reports host semantics
+     ✓ registers the channel, moves files, updates all session records and broadcasts 9ms
+     ✓ blocks proposal-mode connector execution when privacy redaction wins during the dialog await 6ms
+     ✓ blocks proposal-mode connector execution when privacy redaction wins during the audit await 5ms
+     ✓ blocks proposal-mode connector execution when privacy redaction wins during the gateway await 4ms
+     ✓ commits the chosen export path to the canonical proposal before connector execution 4ms
+     ✓ blocks caller-mode workspace execution when privacy redaction wins during the revalidation await 34ms
+     ✓ blocks caller-mode workspace execution when privacy redaction wins during the audit await 48ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/ipc.test.ts > ipc provider handlers > createSession binds a workspace WITHOUT sending a prompt (P9, holds slot + 15s idle release)
+AssertionError: expected "vi.fn()" to be called with arguments: [ 's-bare' ]
+
+Received:
+
+  1st vi.fn() call:
+
+  [
+    "s-bare",
++   1,
+  ]
+
+
+Number of calls: 1
+
+ ❯ apps/desktop/test/ipc.test.ts:1460:29
+    1458|     expect(rt.pool.release).not.toHaveBeenCalled();
+    1459|     await vi.advanceTimersByTimeAsync(15_000);
+    1460|     expect(rt.pool.release).toHaveBeenCalledWith('s-bare');
+       |                             ^
+    1461|     vi.useRealTimers();
+    1462|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  |1| apps/desktop/test/ipc.test.ts > ipc provider handlers > schedules idle release after agent_settled and releases after timeout
+AssertionError: expected "vi.fn()" to be called with arguments: [ 's1' ]
+
+Received:
+
+  1st vi.fn() call:
+
+  [
+    "s1",
++   1,
+  ]
+
+
+Number of calls: 1
+
+ ❯ apps/desktop/test/ipc.test.ts:1786:29
+    1784|     expect(rt.pool.release).not.toHaveBeenCalled();
+    1785|     await vi.advanceTimersByTimeAsync(60_000);
+    1786|     expect(rt.pool.release).toHaveBeenCalledWith('s1');
+       |                             ^
+    1787|     vi.useRealTimers();
+    1788|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  |1| apps/desktop/test/ipc.test.ts > ipc provider handlers > does not idle-release a knowledge session on agent_end before agent_settled
+AssertionError: expected "vi.fn()" to be called with arguments: [ 's1' ]
+
+Received:
+
+  1st vi.fn() call:
+
+  [
+    "s1",
++   1,
+  ]
+
+
+Number of calls: 1
+
+ ❯ apps/desktop/test/ipc.test.ts:1871:29
+    1869|     expect(sent.some((c) => c.type === 'append_workflow_entry' && c.cu…
+    1870|     await vi.advanceTimersByTimeAsync(60_000);
+    1871|     expect(rt.pool.release).toHaveBeenCalledWith('s1');
+       |                             ^
+    1872|     vi.useRealTimers();
+    1873|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed | 4 passed (5)
+      Tests  3 failed | 241 passed | 1 skipped (245)
+   Start at  22:18:56
+   Duration  12.13s (transform 1.39s, setup 39ms, import 7.20s, tests 1.73s, environment 2.33s)
+

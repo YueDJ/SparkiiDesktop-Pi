@@ -1,0 +1,20 @@
+(node:26236) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21332) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:13968) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-r8-regression.test.ts (59 tests | 50 skipped) 3068ms
+     ✓ fences the journal read source identity before accepting parsed privacy content  400ms
+     ✓ freshly probes and validates journal content after rename before privacy truth cleanup  698ms
+     ✓ rejects a post-rename reparse journal before privacy truth cleanup  713ms
+
+ Test Files  1 passed (1)
+      Tests  9 passed | 50 skipped (59)
+   Start at  08:57:12
+   Duration  5.19s (transform 369ms, setup 43ms, import 1.10s, tests 3.07s, environment 807ms)
+

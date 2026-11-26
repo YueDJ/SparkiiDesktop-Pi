@@ -1,0 +1,68 @@
+(node:14292) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:33832) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:25560) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36372) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:38284) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/privacy-redactions.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 43[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-round7-regression.test.ts [2m([22m[2m23 tests[22m[2m)[22m[33m 25972[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files [33m 1188[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy retry recovers an empty episode topic after restart and completes chat cleanup [33m 1230[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion discovers secrets nested only in pending operation extensions [33m 785[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion scrubs an invalid structural targetId field [33m 846[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion scrubs an invalid structural projectId field [33m 846[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion scrubs an invalid structural mergeIds field [33m 855[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion ignores whitespace-only episode topics without corrupting retained content [33m 1021[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion preserves pending UPDATE control fields when deleted text equals the op [33m 819[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds [33m 1159[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion includes superseded episode records in the global redaction corpus [33m 1148[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 caller-mode memory deletion rechecks canonical approval after privacy redaction [33m 650[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 production privacy retry succeeds in the same process after truth rows are gone [33m 1191[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-1 future memory-tool audit summaries contain no raw query or memory body [33m 638[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes [33m 1554[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-2 replacement preflight sees an indexed project after its registry entry is removed [33m 1215[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-2 replacement preflight derives zero-entry project identity from scope_files [33m 1242[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-3 source deletion detects indexed unregistered conflicts without an explicit workspace [33m 1249[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes [33m 1191[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file [33m 1273[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-3 valid source deletion updates unregistered project truth without reindexing it [33m 1710[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-4 privacy deletion discovers indexed unregistered truth before reconciliation [33m 1348[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion [33m 1369[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution [33m 1443[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts [2m([22m[2m20 tests[22m[2m)[22m[33m 32314[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 final review fences same-process and restarted reads when the privacy journal cannot be persisted [33m 1322[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext [33m 2367[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext [33m 2380[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext [33m 2249[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext [33m 2101[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes from journal context after the chat row and Pi file are already gone [33m 1834[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers [33m 1971[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent [33m 1732[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 review B3 registers chat secrets before sink cleanup and protects later chat writes after failure [33m 1782[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 review B3 cleans Pi and chat carriers before a safe-root truth write-block aborts startup [33m 1566[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 review B5 rejects dangling privacy journal directory and file links without reading targets [33m 627[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 review B5 refuses to clear a privacy journal whose identity changed during cleanup [33m 1864[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 review B4 rotates memory markers when the deleted text collides with the default marker [33m 879[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret [33m 1842[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-3 refuses to construct MemoryService through an unsafe memory-root junction [33m 391[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-3 fences project repair before registry or truth reads [33m 1223[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker [33m 1448[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state [33m 1632[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state [33m 1583[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state [33m 1520[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m3 passed[39m[22m[90m (3)[39m
+[2m      Tests [22m [1m[32m50 passed[39m[22m[90m (50)[39m
+[2m   Start at [22m 22:52:05
+[2m   Duration [22m 34.22s[2m (transform 580ms, setup 170ms, import 1.79s, tests 58.33s, environment 2.48s)[22m
+
+
+exit=0

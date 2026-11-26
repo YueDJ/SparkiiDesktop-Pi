@@ -1,0 +1,103 @@
+(node:8544) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:27872) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:16320) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:5012) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:33996) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:5416) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:8728) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:39580) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:28056) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[43m 0 [49m[39m packages/approval/test/audit.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 324[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/approval/test/gate.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 299[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/privacy-redactions.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 55[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/ipc.test.ts [2m([22m[2m145 tests[22m[2m)[22m[33m 2075[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts [2m([22m[2m23 tests[22m[2m)[22m[33m 20414[2mms[22m[39m
+     [33m[2m✓[22m[39m restores every prior truth file and removes new files when a later write fails [33m 1061[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth [33m 631[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-4 preserves rollback backups when the unverified journal cannot be removed [33m 607[2mms[22m[39m
+     [33m[2m✓[22m[39m recovers an interrupted batch at startup before truth files are opened [33m 897[2mms[22m[39m
+     [33m[2m✓[22m[39m recovers a new project batch from the registry committed before its truth file [33m 939[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 final review resumes a partially rolled-back new project after the registry was already restored [33m 920[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 final review keeps rollback backups when journal removal fails after truth restoration [33m 929[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 final review does not roll back committed truth when post-commit backup cleanup fails [33m 611[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 final review retries orphan backup cleanup without quarantining restored truth [33m 714[2mms[22m[39m
+     [33m[2m✓[22m[39m quarantines an unrecoverable journal without deleting partial truth when a backup is missing [33m 1216[2mms[22m[39m
+     [33m[2m✓[22m[39m rollback never recreates a missing project parent before path revalidation [33m 1171[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 final review rejects an empty uncommitted journal without deleting the only original backup [33m 1232[2mms[22m[39m
+     [33m[2m✓[22m[39m quarantines a malformed journal and reports a warning instead of blocking startup [33m 773[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects journal paths outside memory truth and backup locations [33m 1242[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects a truthy non-boolean committed marker without deleting uncommitted truth [33m 803[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects a committed journal that still contains rollback file items [33m 774[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects an unregistered outside project truth target during commit and recovery [33m 1206[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects a project truth target reached through a junction even when its workspace is registered [33m 401[2mms[22m[39m
+     [33m[2m✓[22m[39m treats a dangling write-block junction as a persistent block [33m 368[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps the only recovery evidence when the write-block marker cannot be persisted [33m 783[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps a committed batch and removes its recovery journal [33m 1122[2mms[22m[39m
+     [33m[2m✓[22m[39m rolls back the project registry when a later truth write fails [33m 1986[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-round7-regression.test.ts [2m([22m[2m23 tests[22m[2m)[22m[33m 33691[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files [33m 1644[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy retry recovers an empty episode topic after restart and completes chat cleanup [33m 1291[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion discovers secrets nested only in pending operation extensions [33m 849[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion scrubs an invalid structural targetId field [33m 891[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion scrubs an invalid structural projectId field [33m 898[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion scrubs an invalid structural mergeIds field [33m 905[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion ignores whitespace-only episode topics without corrupting retained content [33m 1462[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion preserves pending UPDATE control fields when deleted text equals the op [33m 1281[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds [33m 1739[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion includes superseded episode records in the global redaction corpus [33m 1672[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 caller-mode memory deletion rechecks canonical approval after privacy redaction [33m 953[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 production privacy retry succeeds in the same process after truth rows are gone [33m 1728[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-1 future memory-tool audit summaries contain no raw query or memory body [33m 970[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes [33m 2248[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-2 replacement preflight sees an indexed project after its registry entry is removed [33m 1993[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-2 replacement preflight derives zero-entry project identity from scope_files [33m 1823[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-3 source deletion detects indexed unregistered conflicts without an explicit workspace [33m 1635[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes [33m 1595[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file [33m 1483[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-3 valid source deletion updates unregistered project truth without reindexing it [33m 1740[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-4 privacy deletion discovers indexed unregistered truth before reconciliation [33m 1479[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion [33m 1801[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution [33m 1607[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts [2m([22m[2m21 tests[22m[2m)[22m[33m 41514[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 final review fences same-process and restarted reads when the privacy journal cannot be persisted [33m 1675[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext [33m 2320[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext [33m 2369[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext [33m 3421[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext [33m 3528[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes from journal context after the chat row and Pi file are already gone [33m 2778[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers [33m 2876[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent [33m 2733[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 review B3 registers chat secrets before sink cleanup and protects later chat writes after failure [33m 2344[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 review B3 cleans Pi and chat carriers before a safe-root truth write-block aborts startup [33m 2095[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 review B5 rejects dangling privacy journal directory and file links without reading targets [33m 742[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 review B5 refuses to clear a privacy journal whose identity changed during cleanup [33m 1929[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 review B4 rotates memory markers when the deleted text collides with 已删除 [33m 919[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 review B4 rotates memory markers when the deleted text collides with [已删除] [33m 1047[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret [33m 2237[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-3 refuses to construct MemoryService through an unsafe memory-root junction [33m 401[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-3 fences project repair before registry or truth reads [33m 1336[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker [33m 1463[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state [33m 1866[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state [33m 1697[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state [33m 1732[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m7 passed[39m[22m[90m (7)[39m
+[2m      Tests [22m [1m[32m238 passed[39m[22m[90m (238)[39m
+[2m   Start at [22m 22:56:02
+[2m   Duration [22m 43.74s[2m (transform 2.81s, setup 302ms, import 7.24s, tests 98.37s, environment 6.16s)[22m
+
+
+exit=0

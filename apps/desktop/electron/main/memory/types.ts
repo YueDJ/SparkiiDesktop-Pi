@@ -11,13 +11,33 @@ export interface MemorySource {
 }
 
 export interface PendingOperation {
-  op: Exclude<MemoryOp, 'NOOP'>;
+  op: Exclude<MemoryOp, 'NOOP'> | 'EPISODE_UPDATE';
   targetId?: string;
   proposedText?: string;
   projectId?: string;
   /** 目标已失效后从 UPDATE/SUPERSEDE 降级而来。 */
   degradedFrom?: Exclude<MemoryOp, 'NOOP'>;
   [key: string]: unknown;
+}
+
+export function isPendingSchemaKey(key: string): boolean {
+  return key === 'op' || key === 'degradedFrom' || key === 'targetId'
+    || key === 'projectId' || key === 'mergeIds' || key === 'proposedText'
+    || key === 'idempotencyKey';
+}
+
+export function isPendingStructuralFieldValid(key: string, value: unknown): boolean {
+  if (key === 'op') return value === 'ADD' || value === 'UPDATE' || value === 'SUPERSEDE'
+    || value === 'NOOP' || value === 'EPISODE_UPDATE';
+  if (key === 'degradedFrom') return value === 'ADD' || value === 'UPDATE'
+    || value === 'SUPERSEDE' || value === 'NOOP';
+  if (key === 'targetId' || key === 'projectId') {
+    return typeof value === 'string' && value.trim().length > 0;
+  }
+  if (key === 'mergeIds') {
+    return Array.isArray(value) && value.every((id) => typeof id === 'string' && id.trim().length > 0);
+  }
+  return false;
 }
 
 /** 真相源中的一张记忆卡。使用统计（lastAccessedAt/accessCount）只在 db。 */
@@ -110,6 +130,7 @@ export interface ProjectRef {
   projectId: string;
   workspacePath: string;
   name?: string;
+  archived?: boolean;
 }
 
 export interface MemoryListResult {

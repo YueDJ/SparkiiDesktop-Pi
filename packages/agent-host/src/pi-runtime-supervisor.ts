@@ -7,7 +7,9 @@ import {
   type ConnectorReadResult,
   type PiRuntimeClient,
   type PiRuntimeEnvelope,
+  type PiRuntimeEventContext,
   type PiRuntimeHostHandle,
+  type PiRuntimeRequestContext,
   type ProposalDecision,
 } from "./pi-runtime-transport.js";
 import type {
@@ -20,15 +22,41 @@ import type { NormalizedEvent, RpcCommand, RpcResponse } from "./types.js";
 
 type ProposalHandler = (
   request: ProposalRequest & { requestId: string },
+  context: PiRuntimeRequestContext,
 ) => Promise<ProposalDecision>;
 
-type ConnectorReadHandler = (request: ConnectorReadRequest) => Promise<ConnectorReadResult>;
-type ActionHandler = (request: RuntimeActionRequest) => Promise<ActionExecutionResult>;
+type ConnectorReadHandler = (
+  request: ConnectorReadRequest,
+  context: PiRuntimeRequestContext,
+) => Promise<ConnectorReadResult>;
+type ActionHandler = (
+  request: RuntimeActionRequest,
+  context: PiRuntimeRequestContext,
+) => Promise<ActionExecutionResult>;
+
+const ORIGIN_REQUIRED = "Runtime request has no prompt-turn origin";
 
 const UNHANDLED_READ: ConnectorReadResult = {
   ok: false,
   error: { code: "CONNECTOR_DENIED", message: "unhandled" },
 };
+
+function hasOrigin(envelope: { originToken?: unknown }): boolean {
+  return typeof envelope.originToken === "string" && envelope.originToken.trim().length > 0;
+}
+
+function staleAction(request: RuntimeActionRequest): ActionExecutionResult {
+  return {
+    requestId: request.requestId,
+    status: "denied",
+    decision: {
+      decision: "deny",
+      ruleId: "platform.stale-runtime-request",
+      reason: "Runtime request belongs to a replaced session or prompt turn",
+    },
+    error: { code: "STALE_RUNTIME_REQUEST", message: "Runtime request origin is no longer valid" },
+  };
+}
 
 const UNHANDLED_ACTION = (request: RuntimeActionRequest): ActionExecutionResult => ({
   requestId: request.requestId,
@@ -41,12 +69,14 @@ const UNHANDLED_ACTION = (request: RuntimeActionRequest): ActionExecutionResult 
 });
 
 class PiRuntimeClientImpl implements PiRuntimeClient {
+  readonly origin = randomUUID();
+  private generation = 0;
   private pending = new Map<string, {
     resolve: (r: RpcResponse) => void;
     reject: (e: Error) => void;
     timer: ReturnType<typeof setTimeout>;
   }>();
-  private listeners = new Set<(event: NormalizedEvent) => void>();
+  private listeners = new Set<(event: NormalizedEvent, context: PiRuntimeEventContext) => void>();
   private readyPromise: Promise<void>;
   private resolveReady!: () => void;
   private rejectReady!: (e: Error) => void;
@@ -71,8 +101,7 @@ class PiRuntimeClientImpl implements PiRuntimeClient {
   }
 
   async send(command: RpcCommand): Promise<RpcResponse> {
-    if (this.closed) throw this.closed;
-    await Promise.race([
+    if (this.closed) throw this.closed;    await Promise.race([
       this.readyPromise,
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`runtime not ready after ${this.readinessTimeoutMs}ms`)), this.readinessTimeoutMs)),
     ]);
@@ -92,7 +121,11 @@ class PiRuntimeClientImpl implements PiRuntimeClient {
     });
   }
 
-  onEvent(callback: (event: NormalizedEvent) => void): () => void {
+  sessionGeneration(): number {
+    return this.generation;
+  }
+
+  onEvent(callback: (event: NormalizedEvent, context: PiRuntimeEventContext) => void): () => void {
     this.listeners.add(callback);
     return () => this.listeners.delete(callback);
   }
@@ -114,57 +147,104 @@ class PiRuntimeClientImpl implements PiRuntimeClient {
     if ("response" in envelope) {
       const key = envelope.response.id ?? envelope.id;
       const entry = this.pending.get(key);
-      if (entry) { this.pending.delete(key); clearTimeout(entry.timer); entry.resolve(envelope.response); }
+      if (entry) {
+        if (envelope.response.command === "new_session" || envelope.response.command === "switch_session") {
+          const data = envelope.response.data as { sessionGeneration?: unknown } | undefined;
+          if (envelope.response.success && typeof data?.sessionGeneration === "number") {
+            this.generation = data.sessionGeneration;
+          }
+        }
+        this.pending.delete(key); clearTimeout(entry.timer); entry.resolve(envelope.response);
+      }
       return;
     }
     if ("event" in envelope) {
-      for (const listener of this.listeners) listener(envelope.event);
+      const sessionGeneration = envelope.sessionGeneration ?? 0;
+      if (sessionGeneration !== this.generation) return;
+      const context = { sessionGeneration };
+      for (const listener of this.listeners) listener(envelope.event, context);
       return;
     }
     if ("proposal" in envelope) {
+      const sessionGeneration = envelope.sessionGeneration ?? 0;
+      const request = envelope.proposal;
+      const deny = () => this.handle?.postMessage(proposalDecisionEnvelope(request.requestId, {
+        approved: false,
+        proposalId: request.requestId,
+        status: "denied",
+      }, sessionGeneration));
+      if (!hasOrigin(envelope) || sessionGeneration !== this.generation) {
+        deny();
+        return;
+      }
+      const originToken = envelope.originToken;
+      const context: PiRuntimeRequestContext = { client: this, sessionGeneration, originToken };
       try {
-        const decision = await this.onProposal(envelope.proposal);
-        this.handle.postMessage(proposalDecisionEnvelope(envelope.proposal.requestId, decision));
+        const decision = await this.onProposal(request, context);
+        if (!hasOrigin(envelope) || sessionGeneration !== this.generation) {
+          deny();
+          return;
+        }
+        this.handle?.postMessage(proposalDecisionEnvelope(request.requestId, decision, sessionGeneration));
       } catch {
-        this.handle.postMessage(proposalDecisionEnvelope(envelope.proposal.requestId, {
-          approved: false,
-          proposalId: envelope.proposal.requestId,
-          status: "denied",
-        }));
+        deny();
       }
       return;
     }
     if ("action" in envelope) {
+      const sessionGeneration = envelope.sessionGeneration ?? 0;
+      const request = envelope.action;
       let result: ActionExecutionResult;
-      try {
-        result = await this.onAction(envelope.action);
-      } catch (error) {
-        result = {
-          requestId: envelope.action.requestId,
-          status: "failed",
-          decision: {
-            decision: "deny",
-            ruleId: "platform.action-handler-failed",
-            reason: error instanceof Error ? error.message : String(error),
-          },
-          error: {
-            code: "ACTION_HANDLER_FAILED",
-            message: error instanceof Error ? error.message : String(error),
-          },
-        };
+      if (!hasOrigin(envelope)) {
+        result = { ...staleAction(request), error: { code: "ORIGIN_REQUIRED", message: ORIGIN_REQUIRED } };
+      } else if (sessionGeneration !== this.generation) {
+        result = staleAction(request);
+      } else {
+        const originToken = envelope.originToken;
+        try {
+          result = await this.onAction(request, { client: this, sessionGeneration, originToken });
+          if (!hasOrigin(envelope) || sessionGeneration !== this.generation) result = staleAction(request);
+        } catch (error) {
+          result = {
+            requestId: request.requestId,
+            status: "failed",
+            decision: {
+              decision: "deny",
+              ruleId: "platform.action-handler-failed",
+              reason: error instanceof Error ? error.message : String(error),
+            },
+            error: {
+              code: "ACTION_HANDLER_FAILED",
+              message: error instanceof Error ? error.message : String(error),
+            },
+          };
+        }
       }
-      this.handle.postMessage(actionResultEnvelope(
-        envelope.action.requestId,
-        result,
-      ));
+      this.handle?.postMessage(actionResultEnvelope(request.requestId, result, sessionGeneration));
       return;
     }
     if ("connectorRead" in envelope) {
+      const sessionGeneration = envelope.sessionGeneration ?? 0;
+      const request = envelope.connectorRead;
+      const reply = (result: ConnectorReadResult) => this.handle?.postMessage(
+        connectorReadResultEnvelope(request.requestId, result, sessionGeneration),
+      );
+      if (!hasOrigin(envelope)) {
+        reply({ ok: false, error: { code: "ORIGIN_REQUIRED", message: ORIGIN_REQUIRED } });
+        return;
+      }
+      if (sessionGeneration !== this.generation) {
+        reply({ ok: false, error: { code: "STALE_RUNTIME_REQUEST", message: "Runtime request belongs to a replaced session" } });
+        return;
+      }
+      const originToken = envelope.originToken;
       try {
-        const result = await this.onConnectorRead(envelope.connectorRead);
-        this.handle.postMessage(connectorReadResultEnvelope(envelope.connectorRead.requestId, result));
+        const result = await this.onConnectorRead(request, { client: this, sessionGeneration, originToken });
+        reply(!hasOrigin(envelope) || sessionGeneration !== this.generation
+          ? { ok: false, error: { code: "STALE_RUNTIME_REQUEST", message: "Runtime request origin is no longer valid" } }
+          : result);
       } catch {
-        this.handle.postMessage(connectorReadResultEnvelope(envelope.connectorRead.requestId, UNHANDLED_READ));
+        reply(UNHANDLED_READ);
       }
     }
   }
@@ -177,7 +257,7 @@ export interface PiRuntimeSupervisorOptions {
    * stop() 等待子进程退出的上限（每个句柄）。
    * ⚠ 这与「主进程 3s 未退出则 app.exit(0)」是两件事：那个兜底作用于 app.quit()，
    * 这里等的是 pi 子进程的 exit 事件。pool.stopAll 会并行 stop 所有槽位，
-   * 因此整池的等待上限也是这个值（不随槽位数线性增长）。
+   * 因此整池的等待上限也是这个值的两倍（强杀后再等一次，不随槽位数线性增长）。
    */
   stopTimeoutMs?: number;
   logger?: { warn(message: string): void };
@@ -185,7 +265,7 @@ export interface PiRuntimeSupervisorOptions {
 
 /**
  * stop() 的默认等待上限：关机序列要求「停进程」这一步在快照/退出前完成（设计 §7.7 步骤 3）。
- * 超时仍不退 ⇒ 再 kill 一次并记录，绝不让关机永久挂起。
+ * 超时后强杀并再等一个相同上限；仍未确认 exit 必须 reject，不能假称停机完成。
  */
 export const DEFAULT_STOP_TIMEOUT_MS = 3_000;
 
@@ -195,6 +275,7 @@ export class PiRuntimeSupervisor {
   private exitCbs = new Set<(code: number | null) => void>();
   /** stop() 等待者：按句柄区分，旧句柄的迟到 exit 不会唤醒等待新句柄的人。 */
   private exitWaiters = new Map<PiRuntimeHostHandle, Set<() => void>>();
+  private exitedHandles = new WeakSet<PiRuntimeHostHandle>();
   private proposalCb: ProposalHandler = async () => ({
     approved: false,
     proposalId: "unhandled",
@@ -214,13 +295,14 @@ export class PiRuntimeSupervisor {
     this.handle = handle;
     this.client = new PiRuntimeClientImpl(
       handle,
-      (request) => this.proposalCb(request),
-      (request) => this.connectorReadCb(request),
-      (request) => this.actionCb(request),
+      (request, context) => this.proposalCb(request, context),
+      (request, context) => this.connectorReadCb(request, context),
+      (request, context) => this.actionCb(request, context),
       this.opts.sendTimeoutMs,
       this.opts.readinessTimeoutMs,
     );
     handle.onExit((code) => {
+      this.exitedHandles.add(handle);
       // 先唤醒 stop() 的等待者（按句柄匹配，见 waitForExit）。
       this.notifyExit(handle);
       // 句柄同一性守卫（防御性）：同一实例被 start→stop→start 复用时，旧句柄的迟到 exit
@@ -238,7 +320,7 @@ export class PiRuntimeSupervisor {
   /**
    * 停子进程并**等待它真的退出**（M3）。原先 kill 即返回，关机序列可能在子进程仍持有
    * 文件句柄 / 未 flush 的会话 JSONL 时就走到快照与 app.exit（违反 §7.7 步骤 3）。
-   * 超时兜底：再 kill 一次并记录 —— 不无限等，也不静默放行。
+   * 超时兜底：再 kill 一次并继续等待；仍未退出就抛错，绝不静默放行。
    */
   async stop(): Promise<void> {
     const handle = this.handle;
@@ -270,12 +352,19 @@ export class PiRuntimeSupervisor {
       try {
         handle.kill();
       } catch { /* 已经死掉的句柄再 kill 失败无害 */ }
+      const stillRunning = await this.waitForExit(handle, timeoutMs);
+      if (this.handle === handle) this.handle = undefined;
+      if (stillRunning) {
+        throw new Error(`pi runtime did not exit after forced kill within ${timeoutMs}ms`);
+      }
+      return;
     }
     if (this.handle === handle) this.handle = undefined;
   }
 
   /** 等一次 exit；返回 true 表示超时（未退出）。等待者按句柄匹配，见 notifyExit。 */
   private waitForExit(handle: PiRuntimeHostHandle, timeoutMs: number): Promise<boolean> {
+    if (this.exitedHandles.has(handle)) return Promise.resolve(false);
     return new Promise<boolean>((resolve) => {
       let settled = false;
       const timeoutRef: { id?: ReturnType<typeof setTimeout> } = {};

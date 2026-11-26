@@ -1,0 +1,64 @@
+(node:6540) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:19344) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:4760) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-audit-regression.test.ts (31 tests | 1 failed | 30 skipped) 12565ms
+     ↓ P1-2 LIKE fallback supports CRUD, search and rebuild
+     ↓ P1-2 corrupt SQLite is quarantined and rebuilt from truth without blocking startup
+     ↓ P1-3 copied workspace with the same projectId fails closed and preserves the first truth source
+     ↓ P1-4 default search and includeHistory never expose pending memories
+     ↓ P2 external truth edits reconcile list, injection and search
+     ↓ P2 master switch rejects manual add while disabled
+     ↓ P2 project archived state survives derived index rebuild
+     ↓ P1-6 a missing cursor is rejected and truncation advances only through included messages
+     ↓ P1-6 rejects an intra-entry cursor beyond the actual entry text
+     ↓ P1-5 one invalid project UPDATE rejects the whole extraction batch
+     ↓ P1-1 privacy deletion wins over an in-flight model response and redacts diagnostics
+     ↓ P1-1 privacy deletion while target resolution is pending prevents the model send
+     ↓ P1-1 corrupt project registry makes privacy deletion fail closed
+     ↓ P1-1 duplicate ids corrupt the whole truth file instead of exposing both rows
+     ↓ P1-1 privacy deletion discovers the indexed workspace even when the registry omits it
+     ↓ P1-3 privacy deletion fails closed when a copied project duplicates identity
+     ↓ P1-1 privacy deletion redacts retained diagnostic messages
+     ↓ P1-1 model and parse failures do not copy session content into diagnostics
+     ↓ P1-1 old prompt-log cleanup failures surface as repair warnings
+     ↓ P1-8 consolidation is single-flight across the first await
+     ↓ P1-8 a malformed consolidation element rejects the entire merge phase
+     ↓ truth parser rejects object-valued id instead of stringifying it
+     ↓ truth parser rejects object-valued text instead of stringifying it
+     ↓ cross-file duplicate ids are excluded from listing and injection until repaired
+     ↓ batch writes fail closed while a cross-file duplicate identity exists
+     ↓ removing a project truth file and registry reference clears its searchable index
+     ↓ episode approval rejects malformed mergeIds before changing episode or proposal state
+     × privacy deletion removes both current and legacy episode proposals 12562ms
+     ↓ ordinary source deletion removes legacy pending episode proposals and repairs active source metadata
+     ↓ malformed mergeIds are rejected before any pending or target mutation
+     ↓ P1-8 mergeIds approval is all-or-nothing
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > privacy deletion removes both current and legacy episode proposals
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:439:3
+    437|   });
+    438|
+    439|   it('privacy deletion removes both current and legacy episode proposa…
+       |   ^
+    440|     const current = service!.addEpisodeProposal('sess-current-episode'…
+    441|     const legacy = service!.addEpisodeProposal('sess-legacy-episode', …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 30 skipped (31)
+   Start at  11:09:10
+   Duration  16.68s (transform 625ms, setup 34ms, import 3.09s, tests 12.57s, environment 809ms)
+

@@ -1,0 +1,136 @@
+(node:27676) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37548) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:41756) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/audit.test.ts (10 tests) 215ms
+(node:27796) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/gate.test.ts (16 tests) 294ms
+(node:2108) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/executor.test.ts (2 tests) 26ms
+(node:17728) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/proposal.test.ts (7 tests) 12ms
+(node:32392) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-round7-regression.test.ts (23 tests) 51351ms
+     ✓ R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files  2357ms
+     ✓ R7 privacy retry recovers an empty episode topic after restart and completes chat cleanup  2653ms
+     ✓ R7 privacy deletion discovers secrets nested only in pending operation extensions  1792ms
+     ✓ R7 privacy deletion scrubs an invalid structural targetId field  1778ms
+     ✓ R7 privacy deletion scrubs an invalid structural projectId field  1791ms
+     ✓ R7 privacy deletion scrubs an invalid structural mergeIds field  1766ms
+     ✓ R7 privacy deletion ignores whitespace-only episode topics without corrupting retained content  2090ms
+     ✓ R7 privacy deletion preserves pending UPDATE control fields when deleted text equals the op  1811ms
+     ✓ R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds  2330ms
+     ✓ R7 privacy deletion includes superseded episode records in the global redaction corpus  2041ms
+     ✓ R7 caller-mode memory deletion rechecks canonical approval after privacy redaction  1143ms
+     ✓ R7 production privacy retry succeeds in the same process after truth rows are gone  2559ms
+     ✓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body  1119ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes  2235ms
+     ✓ R7-P1-2 replacement preflight sees an indexed project after its registry entry is removed  2660ms
+     ✓ R7-P1-2 replacement preflight derives zero-entry project identity from scope_files  2934ms
+     ✓ R7-P1-3 source deletion detects indexed unregistered conflicts without an explicit workspace  2640ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes  2678ms
+     ✓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file  2667ms
+     ✓ R7-P1-3 valid source deletion updates unregistered project truth without reindexing it  2191ms
+     ✓ R7-P1-4 privacy deletion discovers indexed unregistered truth before reconciliation  2701ms
+     ✓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion  2703ms
+     ✓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution  2709ms
+(node:1864) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-truth-batch.test.ts (37 tests) 27996ms
+     ✓ restores every prior truth file and removes new files when a later write fails  774ms
+     ✓ R8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth  500ms
+     ✓ R8-P1-4 preserves rollback backups when the unverified journal cannot be removed  504ms
+     ✓ recovers an interrupted batch at startup before truth files are opened  761ms
+     ✓ recovers a new project batch from the registry committed before its truth file  765ms
+     ✓ R8 final review resumes a partially rolled-back new project with startup-injected authorization  766ms
+     ✓ R8 final review keeps rollback backups when journal removal fails after truth restoration  764ms
+     ✓ R8 final review does not roll back committed truth when post-commit backup cleanup fails  515ms
+     ✓ R8 final review retries orphan backup cleanup without quarantining restored truth  501ms
+     ✓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing  764ms
+     ✓ rollback never recreates a missing project parent before path revalidation  738ms
+     ✓ R8 final review rejects an empty uncommitted journal without deleting the only original backup  746ms
+     ✓ quarantines a malformed journal and reports a warning instead of blocking startup  502ms
+     ✓ rejects journal paths outside memory truth and backup locations  771ms
+     ✓ rejects a truthy non-boolean committed marker without deleting uncommitted truth  492ms
+     ✓ rejects a committed journal that still contains rollback file items  502ms
+     ✓ rejects an unregistered outside project truth target during commit and recovery  775ms
+     ✓ keeps the only recovery evidence when the write-block marker cannot be persisted  501ms
+     ✓ keeps a committed batch and removes its recovery journal  746ms
+     ✓ rolls back the project registry when a later truth write fails  2093ms
+     ✓ R8 truth round3 B1 merges canonical project aliases into one truth and index bucket  1829ms
+     ✓ R8 final review fences registered project reads and self-healing through an ancestor junction  1374ms
+     ✓ R8 final review rejects unregistered duplicate project identity before single or batch commits  1144ms
+     ✓ R8 truth round3 B2 ignores journal projectFiles as recovery authorization  757ms
+     ✓ R8 truth round3 B3 rebuild fails closed when truth changes before index commit and then indexes one snapshot  1352ms
+     ✓ R8 truth round3 B3 reconcile fails closed when truth changes before index commit and then indexes one snapshot  1549ms
+     ✓ R8 truth round3 B3 replaceScopeIndex fails closed when truth changes before index commit and then indexes one snapshot  1326ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -wal sidecar before SQLite opens  829ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -shm sidecar before SQLite opens  858ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -journal sidecar before SQLite opens  836ms
+     ✓ R8 truth round3 B5 refuses corrupt-database isolation and fallback while a sidecar is hard-linked  528ms
+(node:14324) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-r8-regression.test.ts (26 tests) 77933ms
+     ✓ R8 final review fences same-process and restarted reads when the privacy journal cannot be persisted  2408ms
+     ✓ R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext  4054ms
+     ✓ R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext  3761ms
+     ✓ R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext  3848ms
+     ✓ R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext  4004ms
+     ✓ R8-P0-1 resumes from journal context after the chat row and Pi file are already gone  3435ms
+     ✓ R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers  5127ms
+     ✓ R8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent  3450ms
+     ✓ R8 review B3 registers chat secrets before sink cleanup and protects later chat writes after failure  3433ms
+     ✓ R8-P0-1 restores privacy sink fences before truth recovery can restore plaintext  3781ms
+     ✓ R8 review B3 cleans Pi and chat carriers before a safe-root truth write-block aborts startup  2335ms
+     ✓ R8 review B5 rejects dangling privacy journal directory and file links without reading targets  1125ms
+     ✓ R8 review B5 refuses to clear a privacy journal whose identity changed during cleanup  3406ms
+     ✓ R8 review B4 rotates memory markers when the deleted text collides with 已删除  1802ms
+     ✓ R8 review B4 rotates memory markers when the deleted text collides with [已删除]  1797ms
+     ✓ R8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret  3472ms
+     ✓ R8-P1-3 refuses to construct MemoryService through an unsafe memory-root junction  886ms
+     ✓ R8-P1-3 fences project repair before registry or truth reads  2092ms
+     ✓ R8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker  3164ms
+     ✓ R8 privacy review reads the raw Pi path before chat redaction can alter it  2863ms
+     ✓ R8 privacy review resumes a secret-named Pi carrier after restart  3450ms
+     ✓ R8 privacy review retries independent carriers after a same-process truth rollback block  2792ms
+     ✓ R8 privacy review removes a plaintext journal temp file left before rename  2526ms
+     ✓ R8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state  2954ms
+     ✓ R8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state  3044ms
+     ✓ R8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state  2922ms
+(node:17956) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | apps/desktop/test/logger.test.ts > Logger > appends structured jsonl and exports
+start {"profile":"contract-review"}
+
+stderr | apps/desktop/test/logger.test.ts > Logger > drops entries below the configured level
+kept ""
+
+ ✓ |1| apps/desktop/test/logger.test.ts (38 tests) 1107ms
+(node:26704) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/workflow-broker.test.ts (34 tests) 712ms
+(node:13008) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/chat-session-store.test.ts (13 tests) 240ms
+(node:36872) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/ipc.test.ts (156 tests) 3029ms
+(node:10212) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/task-lifecycle.test.ts (12 tests) 9ms
+
+ Test Files  12 passed (12)
+      Tests  374 passed (374)
+   Start at  01:12:10
+   Duration  179.06s (transform 2.29s, setup 93ms, import 7.80s, tests 162.92s, environment 6.24s)
+

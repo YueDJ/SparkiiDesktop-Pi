@@ -1,0 +1,240 @@
+(node:35096) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:35012) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:18852) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime-supervisor.test.ts (15 tests) 552ms
+(node:31112) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |0| packages/agent-host/test/pi-runtime-pool.test.ts (38 tests | 4 failed) 5292ms
+     ✓ P1-7 reserves cold-start capacity before supervisor startup 13ms
+     ✓ reuses a free slot across release 1ms
+     ✓ queues beyond maxAgents and wakes on release 13ms
+     ✓ wakes queued sessions when maxAgents increases 2ms
+     ✓ sends new_session on release 0ms
+     ✓ retires a slot whose new_session fails instead of reusing it 1ms
+     ✓ R7 keeps a resetting slot unavailable and queues a concurrent acquire until reset succeeds 31ms
+     ✓ R7 drops pre-reset events after rebind and accepts new-generation events 28ms
+     × R7 retires a slot when a successful new_session returns a missing generation 10ms
+     × R7 retires a slot when a successful new_session returns a equal generation 1ms
+     × R7 rejects an equal switch_session generation and retires the uncertain slot 6ms
+     × R7 does not validate generation data on an unsuccessful switch_session response 5016ms
+     ✓ R7 drops stale events throughout switch_session and accepts only the confirmed generation 12ms
+     ✓ R7 clears a concurrent binding on reset failure and gives the waiter a healthy new client 17ms
+     ✓ R7 retires the slot when new_session rejects and does not resolve a waiter with its killed client 31ms
+     ✓ reports the live session id through getSessionId 1ms
+     ✓ clears sessionId before sending new_session on release 1ms
+     ✓ stamps the next session on the same slot after release 1ms
+     ✓ renames a session id while keeping the same client 1ms
+     ✓ renameSession is a no-op when the source id is unknown 0ms
+     ✓ broadcasts a command to every live runtime process 0ms
+     ✓ emits a snapshot after acquire, release and rename 1ms
+     ✓ wakes a queued session with its original saddle and meta 1ms
+     ✓ reuses one process and sends the next session's skillsDir on configure_session 1ms
+     ✓ updateMeta patches a live slot label and emits a snapshot 1ms
+     ✓ updateMeta patches a queued session without waking it 1ms
+     ✓ snapshot uses 新会话 when acquire has no label, not the session id 0ms
+     ✓ updateMeta follows renameSession so a temp key can receive the real title 1ms
+     ✓ updateMeta is a no-op for an unknown session 1ms
+     ✓ hides internal probe slots and queue items from the snapshot 2ms
+     ✓ drops a crashed slot instead of handing it to the next acquire 17ms
+     ✓ m9：await start() 期间池被 stopAll ⇒ acquire 复检 stopped、停掉新 supervisor 并拒绝 2ms
+     ✓ stopAll waits for every cold-start supervisor and repeated calls share the same shutdown 30ms
+     ✓ releases cold-start capacity when supervisor creation fails 1ms
+     ✓ stopAll during a queued bind rejects the request instead of returning a stopped slot 1ms
+     ✓ continues queued binds after configure_session fails without rebinding the failed request 13ms
+     ✓ stopAll rejects when a child never confirms process exit 3ms
+     ✓ M3：stopAll 等到子进程 exit 才 resolve（kill 不自动退出时由超时兜底） 28ms
+(node:7836) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-round7-regression.test.ts (10 tests | 2 failed) 12759ms
+     ✓ R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files  1194ms
+     × R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds 1152ms
+     × R7 privacy deletion includes superseded episode records in the global redaction corpus 1106ms
+     ✓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body  669ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes  1373ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes  1271ms
+     ✓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file  1462ms
+     ✓ R7-P1-3 valid source deletion updates unregistered project truth without reindexing it  1669ms
+     ✓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion  1445ms
+     ✓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution  1415ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:222:8
+    220|     service = makeService();
+    221|     expect(() => service.addMemory({ scope: 'user', text: 'must stay b…
+    222|       .toThrow('来源会话已删除，不能写入记忆');
+       |        ^
+    223|     expect(service.deleteMemory(target.id, { mode: 'privacy' })).toMat…
+    224|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7 privacy deletion includes superseded episode records in the global redaction corpus
+AssertionError: expected '{"id":"6d046804-cded-489a-a493-6af226…' not to contain 'PRIVATE_OLD_EPISODE_64A2F'
+
+Expected: "PRIVATE_OLD_EPISODE_64A2F"
+Received: "{"id":"6d046804-cded-489a-a493-6af22619e563","requestId":"old-episode-proposal","profileId":"general","sessionId":"carrier-session","toolName":"memory_forget","targetSystem":"memory","summary":"PRIVATE_OLD_EPISODE_64A2F","payloadHash":"a701ec539524e6699dfed75f250e0bf5fd4c34ca17b518ee90259970a98fc60b","payload":{"ids":["mem_6f04ae57-ecc2-44c6-9426-46d4bc89d690"],"nested":{"text":"PRIVATE_OLD_EPISODE_64A2F"}},"risk":"high-risk","executionMode":"caller","status":"pending","createdAt":1795524965341,"preview":{"kind":"text","lines":["PRIVATE_OLD_TOPIC_38B7D"]}}"
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:262:55
+    260|     service.deleteMemory(target.id, { mode: 'privacy' });
+    261|
+    262|     expect(JSON.stringify(gate.get(proposal.id))).not.toContain(oldSec…
+       |                                                       ^
+    263|     expect(JSON.stringify(gate.get(proposal.id))).not.toContain(oldTop…
+    264|     expect(JSON.stringify(await audit.query({}))).not.toContain(oldSec…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  |0| packages/agent-host/test/pi-runtime-pool.test.ts > PiRuntimePool > R7 retires a slot when a successful new_session returns a missing generation
+ FAIL  |0| packages/agent-host/test/pi-runtime-pool.test.ts > PiRuntimePool > R7 retires a slot when a successful new_session returns a equal generation
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ packages/agent-host/test/pi-runtime-pool.test.ts:279:31
+    277|     await pool.release("a");
+    278|
+    279|     expect(handles[0].killed).toBe(true);
+       |                               ^
+    280|     const next = await pool.acquire("b");
+    281|     expect(handles).toHaveLength(2);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  |0| packages/agent-host/test/pi-runtime-pool.test.ts > PiRuntimePool > R7 rejects an equal switch_session generation and retires the uncertain slot
+AssertionError: promise resolved "{ client: { …(3) }, …(2) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "client": {
++     "close": [Function close],
++     "onEvent": [Function onEvent],
++     "send": [Function send],
++   },
++   "getSessionId": [Function getSessionId],
++   "supervisor": PiRuntimeSupervisor {
++     "actionCb": [Function actionCb],
++     "client": PiRuntimeClientImpl {
++       "closed": null,
++       "handle": EqualSwitchHandle {
++         "exitCb": [Function anonymous],
++         "killed": false,
++         "messageCb": [Function anonymous],
++         "sent": [
++           {
++             "command": {
++               "type": "new_session",
++             },
++             "direction": "main-to-runtime",
++             "id": "53ff58a1-3309-495e-bb71-d4a37ad26ed6",
++           },
++           {
++             "command": {
++               "sessionPath": "/tmp/b.jsonl",
++               "type": "switch_session",
++             },
++             "direction": "main-to-runtime",
++             "id": "19569e62-f836-438f-8fff-8def5b647775",
++           },
++         ],
++         "sessionGeneration": 1,
++       },
++       "listeners": Set {
++         [Function anonymous],
++       },
++       "onAction": [Function anonymous],
++       "onConnectorRead": [Function anonymous],
++       "onProposal": [Function anonymous],
++       "pending": Map {},
++       "readinessTimeoutMs": 60000,
++       "readyPromise": Promise {},
++       "rejectReady": [Function anonymous],
++       "resolveReady": [Function anonymous],
++       "sendTimeoutMs": 300000,
++     },
++     "connectorReadCb": [Function connectorReadCb],
++     "exitCbs": Set {},
++     "exitWaiters": Map {},
++     "exitedHandles": WeakSet {},
++     "handle": EqualSwitchHandle {
++       "exitCb": [Function anonymous],
++       "killed": false,
++       "messageCb": [Function anonymous],
++       "sent": [
++         {
++           "command": {
++             "type": "new_session",
++           },
++           "direction": "main-to-runtime",
++           "id": "53ff58a1-3309-495e-bb71-d4a37ad26ed6",
++         },
++         {
++           "command": {
++             "sessionPath": "/tmp/b.jsonl",
++             "type": "switch_session",
++           },
++           "direction": "main-to-runtime",
++           "id": "19569e62-f836-438f-8fff-8def5b647775",
++         },
++       ],
++       "sessionGeneration": 1,
++     },
++     "makeHandle": [Function makeSupervisor],
++     "opts": {},
++     "proposalCb": [Function proposalCb],
++   },
+  }
+
+ ❯ packages/agent-host/test/pi-runtime-pool.test.ts:311:75
+    309|     await pool.release("a");
+    310|
+    311|     await expect(pool.acquire("b", { resumeSessionFile: "/tmp/b.jsonl"…
+       |                                                                           ^
+    312|     expect(handles[0].killed).toBe(true);
+    313|     const next = await pool.acquire("c");
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  |0| packages/agent-host/test/pi-runtime-pool.test.ts > PiRuntimePool > R7 does not validate generation data on an unsuccessful switch_session response
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ packages/agent-host/test/pi-runtime-pool.test.ts:319:3
+    317|   });
+    318|
+    319|   it("R7 does not validate generation data on an unsuccessful switch_s…
+       |   ^
+    320|     class UnsuccessfulSwitchHandle extends FakeHandle {
+    321|       postMessage(e: PiRuntimeEnvelope) {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+
+ Test Files  2 failed | 1 passed (3)
+      Tests  6 failed | 57 passed (63)
+   Start at  20:55:53
+   Duration  21.37s (transform 475ms, setup 63ms, import 1.10s, tests 18.60s, environment 994ms)
+

@@ -1,0 +1,46 @@
+(node:2116) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:42360) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:42632) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-truth-batch.test.ts (35 tests) 22703ms
+     ✓ restores every prior truth file and removes new files when a later write fails  766ms
+     ✓ R8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth  514ms
+     ✓ R8-P1-4 preserves rollback backups when the unverified journal cannot be removed  507ms
+     ✓ recovers an interrupted batch at startup before truth files are opened  777ms
+     ✓ recovers a new project batch from the registry committed before its truth file  778ms
+     ✓ R8 final review resumes a partially rolled-back new project with startup-injected authorization  762ms
+     ✓ R8 final review keeps rollback backups when journal removal fails after truth restoration  757ms
+     ✓ R8 final review does not roll back committed truth when post-commit backup cleanup fails  517ms
+     ✓ R8 final review retries orphan backup cleanup without quarantining restored truth  511ms
+     ✓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing  769ms
+     ✓ rollback never recreates a missing project parent before path revalidation  754ms
+     ✓ R8 final review rejects an empty uncommitted journal without deleting the only original backup  753ms
+     ✓ quarantines a malformed journal and reports a warning instead of blocking startup  497ms
+     ✓ rejects journal paths outside memory truth and backup locations  758ms
+     ✓ rejects a truthy non-boolean committed marker without deleting uncommitted truth  496ms
+     ✓ rejects a committed journal that still contains rollback file items  498ms
+     ✓ rejects an unregistered outside project truth target during commit and recovery  739ms
+     ✓ keeps the only recovery evidence when the write-block marker cannot be persisted  491ms
+     ✓ keeps a committed batch and removes its recovery journal  748ms
+     ✓ rolls back the project registry when a later truth write fails  1679ms
+     ✓ R8 truth round3 B1 merges canonical project aliases into one truth and index bucket  1143ms
+     ✓ R8 truth round3 B2 ignores journal projectFiles as recovery authorization  759ms
+     ✓ R8 truth round3 B3 rebuild fails closed when truth changes before index commit and then indexes one snapshot  835ms
+     ✓ R8 truth round3 B3 reconcile fails closed when truth changes before index commit and then indexes one snapshot  842ms
+     ✓ R8 truth round3 B3 replaceScopeIndex fails closed when truth changes before index commit and then indexes one snapshot  843ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -wal sidecar before SQLite opens  830ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -shm sidecar before SQLite opens  844ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -journal sidecar before SQLite opens  845ms
+     ✓ R8 truth round3 B5 refuses corrupt-database isolation and fallback while a sidecar is hard-linked  534ms
+
+ Test Files  1 passed (1)
+      Tests  35 passed (35)
+   Start at  00:38:15
+   Duration  24.26s (transform 189ms, setup 30ms, import 565ms, tests 22.70s, environment 792ms)
+

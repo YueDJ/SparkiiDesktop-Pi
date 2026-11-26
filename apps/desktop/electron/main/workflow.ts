@@ -8,6 +8,7 @@ import type { ProposalSubmission } from '@sparkii/approval';
 import type { ModelTask } from '@sparkii/model-router';
 import type { Runtime } from './runtime.js';
 import type { Logger } from './logger.js';
+import type { TaskAdmissionToken } from './security/task-lifecycle.js';
 import { buildAgentSaddle } from './saddle.js';
 import { allocateAutoWorkspace } from './workspace.js';
 import { loadSettings, type AppSettings } from './settings.js';
@@ -22,18 +23,68 @@ const allTools = new Map<string, ToolDef>(
   [documentConnector, knowledgeConnector, reportConnector, sparkiiOntoConnector].flatMap((c) => c.tools.map((t) => [t.name, t] as const)),
 );
 
+type BrokerMeta = {
+  sessionId: string;
+  profileId: string;
+  taskId?: string;
+  admission?: TaskAdmissionToken;
+};
+
 export function createBroker(rt: Runtime, getWindow: () => BrowserWindow | null) {
   const resolvers = new Map<string, {
     resolve: (d: ProposalDecision) => void;
     timer: ReturnType<typeof setTimeout>;
-    sessionId: string;
+    meta: BrokerMeta;
+    assertBinding?: () => void;
   }>();
+  const settle = (id: string, decision: Omit<ProposalDecision, 'proposalId'>) => {
+    const entry = resolvers.get(id);
+    if (!entry) return;
+    clearTimeout(entry.timer);
+    if (!ownerActive(entry.meta, entry.assertBinding)) {
+      entry.resolve({ approved: false, proposalId: id, status: 'denied' });
+      resolvers.delete(id);
+      return;
+    }
+    entry.resolve({ ...decision, proposalId: id });
+    resolvers.delete(id);
+  };
+  if (typeof rt.gate.onProposalInvalidated === 'function') {
+    rt.gate.onProposalInvalidated((proposal) => {
+      settle(proposal.id, { approved: false, status: 'denied' });
+    });
+  }
+  const bindingActive = (assertBinding?: () => void): boolean => {
+    if (!assertBinding) return true;
+    try { assertBinding(); return true; } catch { return false; }
+  };
+  const ownerActive = (meta: BrokerMeta, assertBinding?: () => void): boolean => {
+    if (!bindingActive(assertBinding)) return false;
+    const lifecycle = rt.security?.taskLifecycle;
+    if (lifecycle && typeof lifecycle.owner === 'function') {
+      const owner = lifecycle.owner(meta.sessionId);
+      if (!owner) return false;
+      if (meta.taskId && owner.taskId !== meta.taskId) return false;
+      if (meta.admission && owner.admission !== meta.admission) return false;
+      return true;
+    }
+    if (meta.taskId && rt.security?.taskLifecycle.active(meta.sessionId)?.taskId !== meta.taskId) return false;
+    if (meta.admission && rt.security?.taskLifecycle.currentAdmission?.(meta.sessionId) !== meta.admission) return false;
+    return true;
+  };
   return {
-    async request(req: ProposalSubmission, meta: { sessionId: string; profileId: string }): Promise<ProposalDecision> {
-      const p = await rt.gate.submit(req, { profileId: meta.profileId, sessionId: meta.sessionId, actor: rt.subject?.userId ?? 'agent' });
+    async request(req: ProposalSubmission, meta: BrokerMeta, assertBinding?: () => void): Promise<ProposalDecision> {
+      assertBinding?.();
+      const p = await rt.gate.submit(req, { profileId: meta.profileId, sessionId: meta.sessionId, actor: rt.subject?.userId ?? 'agent', taskId: meta.taskId });
+      if (!ownerActive(meta, assertBinding)) throw new Error(`session ${meta.sessionId} proposal owner is no longer active`);
       getWindow()?.webContents.send('sparkii:event:approval', p);
       return new Promise<ProposalDecision>((resolve) => {
         const timer = setTimeout(() => {
+          if (!ownerActive(meta, assertBinding)) {
+            resolvers.delete(p.id);
+            resolve({ approved: false, proposalId: p.id, status: 'denied' });
+            return;
+          }
           // 只把「仍处于 pending、用户一直没处理」的提案判为超时拒绝。
           // 提案一旦已被批准并进入执行（status 已离开 pending），超时回调绝不能
           // 抢先回「未执行」——否则长命令（docker compose pull / git clone 等）
@@ -41,6 +92,11 @@ export function createBroker(rt: Runtime, getWindow: () => BrowserWindow | null)
           // 子进程据此打印「操作未执行:approved」。此时应继续等 decideApproval
           // 执行完毕由 broker.decide 回真实结果。
           void rt.gate.expire(p.id).then((expired) => {
+            if (!ownerActive(meta, assertBinding)) {
+              resolvers.delete(p.id);
+              resolve({ approved: false, proposalId: p.id, status: 'denied' });
+              return;
+            }
             if (!expired) {
               resolvers.delete(p.id);
               resolve({ approved: false, proposalId: p.id, status: 'expired' });
@@ -56,10 +112,11 @@ export function createBroker(rt: Runtime, getWindow: () => BrowserWindow | null)
             // 等 decideApproval 完成由 broker.decide 回真实结果。
           });
         }, rt.profileOf(meta.profileId).profile.security.approval.timeoutMs);
-        resolvers.set(p.id, { resolve, timer, sessionId: meta.sessionId });
+        resolvers.set(p.id, { resolve, timer, meta, assertBinding });
       });
     },
-    route(req: ProposalSubmission, meta: { sessionId: string; profileId: string }): Promise<ProposalDecision> {
+    route(req: ProposalSubmission, meta: BrokerMeta, assertBinding?: () => void): Promise<ProposalDecision> {
+      assertBinding?.();
       if (['bash', 'edit', 'write', 'delete', 'move'].includes(req.toolName)) {
         void rt.audit?.append({
           actor: rt.subject?.userId ?? 'agent',
@@ -74,11 +131,36 @@ export function createBroker(rt: Runtime, getWindow: () => BrowserWindow | null)
           status: 'denied',
         });
       }
-      return this.request(req, meta);
+      return this.request(req, meta, assertBinding);
+    },
+    ownerTaskId(id: string): string | undefined {
+      return resolvers.get(id)?.meta.taskId ?? rt.gate.get?.(id)?.taskId;
+    },
+    assertOwner(id: string): void {
+      const entry = resolvers.get(id);
+      if (entry) {
+        if (ownerActive(entry.meta, entry.assertBinding)) return;
+      } else {
+        const proposal = rt.gate.get?.(id);
+        const taskId = proposal?.taskId;
+        const lifecycle = rt.security?.taskLifecycle;
+        if (proposal && taskId) {
+          if (lifecycle && typeof lifecycle.owner === 'function') {
+            if (lifecycle.owner(proposal.sessionId)?.taskId === taskId) return;
+          } else if (lifecycle?.active(proposal.sessionId)?.taskId === taskId) return;
+        }
+      }
+      throw new Error(`approval ${id} owner is no longer active`);
     },
     decide(id: string, decision: Omit<ProposalDecision, 'proposalId'>) {
-      const entry = resolvers.get(id);
-      if (entry) { clearTimeout(entry.timer); entry.resolve({ ...decision, proposalId: id }); resolvers.delete(id); }
+      if (decision.approved && typeof rt.gate.get === 'function') {
+        const proposal = rt.gate.get(id);
+        if (!proposal || proposal.privacyRedacted || (proposal.status !== 'approved' && proposal.status !== 'executed')) {
+          settle(id, { approved: false, status: 'denied' });
+          return;
+        }
+      }
+      settle(id, decision);
     },
     async cancelSession(sessionId: string, reason: string): Promise<void> {
       const cancelled = typeof rt.gate.cancelSession === 'function'
@@ -88,7 +170,19 @@ export function createBroker(rt: Runtime, getWindow: () => BrowserWindow | null)
         getWindow()?.webContents.send('sparkii:event:approval', proposal);
       }
       for (const [id, entry] of [...resolvers.entries()]) {
-        if (entry.sessionId !== sessionId) continue;
+        if (entry.meta.sessionId !== sessionId) continue;
+        clearTimeout(entry.timer);
+        entry.resolve({ approved: false, proposalId: id, status: 'denied' });
+        resolvers.delete(id);
+      }
+    },
+    async cancelTask(taskId: string, reason: string): Promise<void> {
+      const cancelled = await rt.gate.cancelTask(taskId, reason);
+      for (const proposal of cancelled) {
+        getWindow()?.webContents.send('sparkii:event:approval', proposal);
+      }
+      for (const [id, entry] of [...resolvers.entries()]) {
+        if (entry.meta.taskId !== taskId) continue;
         clearTimeout(entry.timer);
         entry.resolve({ approved: false, proposalId: id, status: 'denied' });
         resolvers.delete(id);
@@ -142,9 +236,12 @@ export function resolveThinkingLevel(
 export async function applyThinkingLevel(
   client: { send: (command: any) => Promise<{ success: boolean; error?: string }> },
   level: string | null,
+  assertBinding?: () => void,
 ): Promise<void> {
   if (!level) return;
+  assertBinding?.();
   const resp = await client.send({ type: 'set_thinking_level', level });
+  assertBinding?.();
   if (!resp.success) throw new Error(`cannot set thinking level ${level}: ${resp.error ?? 'unknown'}`);
 }
 
@@ -153,10 +250,13 @@ export async function selectModel(
   task: ModelTask,
   sessionId: string,
   override?: string | null,
+  assertBinding?: () => void,
 ): Promise<{ provider: string; modelId: string } | null> {
+  assertBinding?.();
   const client = rt.pool.get(sessionId);
   if (!client) throw new Error(`unknown session ${sessionId}`);
   const settings = await loadSettings(rt.dataDir);
+  assertBinding?.();
   const chosen = override ?? rt.chatSessions?.get?.(sessionId)?.model ?? null;
   let provider: string;
   let modelId: string;
@@ -176,11 +276,16 @@ export async function selectModel(
     modelId = target.modelId;
   }
   const apiKey = await rt.keyFor(provider);
+  assertBinding?.();
   if (apiKey) {
+    assertBinding?.();
     const keyResp = await client.send({ type: 'set_api_key', provider, apiKey });
+    assertBinding?.();
     if (!keyResp.success) throw new Error(`cannot set api key for ${provider}: ${keyResp.error ?? 'unknown'}`);
   }
+  assertBinding?.();
   const resp = await client.send({ type: 'set_model', provider, modelId });
+  assertBinding?.();
   if (!resp.success) throw new Error(`cannot select model ${provider}/${modelId}: ${resp.error ?? 'unknown'}`);
   return { provider, modelId };
 }
@@ -200,23 +305,46 @@ function assistantTextFromMessage(message: unknown): string {
   return typeof rec.text === 'string' ? rec.text : '';
 }
 
-async function sendPrompt(rt: Runtime, text: string, task: ModelTask, sessionId: string): Promise<string> {
-  const client = rt.pool.get(sessionId);
-  if (!client) throw new Error(`unknown session ${sessionId}`);
+async function sendPrompt(
+  rt: Runtime,
+  text: string,
+  task: ModelTask,
+  sessionId: string,
+  assertOriginalBinding?: () => void,
+  onPromptSend?: () => void,
+  expectedAdmission?: TaskAdmissionToken,
+): Promise<string> {
+  assertOriginalBinding?.();
+  const binding = rt.pool.getBinding(sessionId);
+  if (!binding) throw new Error(`unknown session ${sessionId}`);
+  const client = binding.client;
+  const lease = binding.lease;
+  const assertBinding = (): void => {
+    assertOriginalBinding?.();
+    const current = rt.pool.getBinding(sessionId);
+    if (rt.pool.get(sessionId) !== client || current?.client !== client || current.lease !== lease) {
+      throw new Error(`session ${sessionId} is no longer bound`);
+    }
+  };
   const rec = rt.chatSessions?.get?.(sessionId);
-  const target = await selectModel(rt, task, sessionId, rec?.model);
+  const target = await selectModel(rt, task, sessionId, rec?.model, assertBinding);
+  assertBinding();
   if (target) {
     const settings = await loadSettings(rt.dataDir);
-    await applyThinkingLevel(client, resolveThinkingLevel(settings, rec, target));
+    assertBinding();
+    await applyThinkingLevel(client, resolveThinkingLevel(settings, rec, target), assertBinding);
   }
+  assertBinding();
 
   let acc = '';
   let off = () => {};
   let settled = false;
+  let terminalError: Error | undefined;
   let finish!: (err?: Error) => void;
   let timer!: ReturnType<typeof setTimeout>;
   const done = new Promise<void>((resolve, reject) => {
     finish = (err) => {
+      if (err) terminalError ??= err;
       if (settled) return;
       settled = true;
       clearTimeout(timer);
@@ -226,17 +354,40 @@ async function sendPrompt(rt: Runtime, text: string, task: ModelTask, sessionId:
     };
     timer = setTimeout(() => finish(new Error('prompt timeout')), 300_000);
   });
+  assertBinding();
   off = client.onEvent((e) => {
+    try {
+      assertBinding();
+    } catch (error) {
+      finish(error instanceof Error ? error : new Error(String(error)));
+      return;
+    }
     if ((e.type === 'message_update' || e.type === 'message_end') && e.message) {
       acc = assistantTextFromMessage(e.message);
     }
-    if (e.type === 'agent_end') finish();
+    if (e.type === 'agent_settled') finish();
   });
 
-  const resp = await client.send({ type: 'prompt', message: text });
-  if (!resp.success) finish(new Error(resp.error ?? 'prompt failed'));
+  try {
+    assertBinding();
+    if (!rt.promptTurn) throw new Error('Main prompt-turn lane is unavailable');
+    await rt.promptTurn({
+      sessionId,
+      text,
+      expectedAdmission,
+      retainTask: true,
+      onPromptSend,
+    });
+    assertBinding();
+  } catch (error) {
+    finish(error instanceof Error ? error : new Error(String(error)));
+  }
 
   await done;
+  // An event can settle before send() completes. Keep a later binding failure
+  // fatal instead of letting the already-resolved done promise hide it.
+  if (terminalError) throw terminalError;
+  assertBinding();
   return acc;
 }
 
@@ -247,18 +398,23 @@ export async function runTool(
   args: unknown,
   sessionId: string,
   profileId: string,
+  assertBinding?: () => void,
+  owner?: { taskId?: string; admission?: TaskAdmissionToken },
 ) {
+  assertBinding?.();
   const tool = allTools.get(toolName);
   if (!tool) return { ok: false, error: { code: 'UNKNOWN_TOOL', message: toolName } };
   if (tool.sideEffect === 'read') {
     if (toolName === 'document.read') {
       const displayName = rt.profileOf(profileId)?.profile?.manifest?.displayName ?? profileId;
-      return executeDocumentRead(args as Record<string, unknown>, {
+      const result = await executeDocumentRead(args as Record<string, unknown>, {
         profileId,
         sessionId,
         actor: rt.subject?.userId ?? 'agent',
         agentDisplayName: displayName,
       });
+      assertBinding?.();
+      return result;
     }
     if (toolName === 'knowledge.search') {
       const knowledge = knowledgeFromManifest(rt.profileOf(profileId).profile.manifest);
@@ -266,7 +422,10 @@ export async function runTool(
       if (knowledge.backend !== 'bm25') {
         const backend = remoteKnowledgeBackend(knowledge.backend);
         const rag = knowledgeBackendSettings(backend, await loadSettings(rt.dataDir));
-        return runMainKnowledgeSearch({
+        assertBinding?.();
+        const apiKey = await rt.knowledgeToken(backend);
+        assertBinding?.();
+        const result = await runMainKnowledgeSearch({
           args: (args ?? {}) as Record<string, unknown>,
           profileId,
           sessionId,
@@ -274,34 +433,54 @@ export async function runTool(
           selection: null,
           knowledge,
           rag,
-          apiKey: await rt.knowledgeToken(backend),
+          apiKey,
           bm25: async () => { throw new Error('no bm25'); },
           persistDefault: async (id) => {
+            assertBinding?.();
             const current = knowledgeBackendSettings(backend, await loadSettings(rt.dataDir));
+            assertBinding?.();
             const next = current.bindings.filter((b) => b.agentId !== profileId);
             next.push({ agentId: profileId, defaultDatasetId: id });
             await patchKnowledgeSettings(rt.dataDir, backend, { bindings: next });
+            assertBinding?.();
           },
         });
+        assertBinding?.();
+        return result;
       }
     }
     if (toolName.startsWith('ontology.')) {
-      return executeOntologyTool({
+      const settings = await loadSettings(rt.dataDir);
+      assertBinding?.();
+      const credential = await rt.knowledgeToken('sparkiionto');
+      assertBinding?.();
+      const result = await executeOntologyTool({
         toolName,
         args: (args ?? {}) as Record<string, unknown>,
         profileId,
-        settings: await loadSettings(rt.dataDir),
-        credential: await rt.knowledgeToken('sparkiionto'),
+        settings,
+        credential,
       });
+      assertBinding?.();
+      return result;
     }
-    return tool.handler(args as Record<string, unknown>, {
+    const result = await tool.handler(args as Record<string, unknown>, {
       profileId: rt.profileOf(profileId).profile.manifest.name, sessionId, actor: rt.subject?.userId ?? 'agent', requestId: randomUUID(),
     });
+    assertBinding?.();
+    return result;
   }
+  const routeOwner = owner ?? rt.security?.taskLifecycle.owner?.(sessionId);
   const d = await broker.route(connectorWriteProposal(toolName, args, {
     requestId: randomUUID(),
     risk: tool.sideEffect,
-  }), { sessionId, profileId });
+  }), {
+    sessionId,
+    profileId,
+    taskId: routeOwner?.taskId,
+    admission: routeOwner?.admission,
+  }, assertBinding);
+  assertBinding?.();
   return { ok: d.approved, data: d.result };
 }
 
@@ -330,8 +509,13 @@ export interface WorkflowRunHooks {
   onReady?: (
     sessionId: string,
     slot: Awaited<ReturnType<Runtime['pool']['acquire']>>,
-  ) => void | Promise<void>;
-  beforeRelease?: (sessionId: string) => void | Promise<void>;
+    bindingLease: number,
+  ) => TaskAdmissionToken | undefined | void | Promise<TaskAdmissionToken | undefined | void>;
+  beforeRelease?: (
+    sessionId: string,
+    bindingLease: number,
+    admission?: TaskAdmissionToken,
+  ) => boolean | void | Promise<boolean | void>;
   logger?: Pick<Logger, 'log'>;
 }
 
@@ -371,17 +555,49 @@ export async function runWorkflow(
     meta: profilePoolMeta(rt, profileId),
   });
 
+  const binding = rt.pool.getBinding(tempKey);
+  if (!binding) {
+    await rt.pool.release(tempKey);
+    throw new Error(`unknown session ${tempKey}`);
+  }
+  const bindingLease = binding.lease;
+  const ownsBinding = (sessionId: string): boolean => {
+    const current = rt.pool.getBinding(sessionId);
+    return rt.pool.get(sessionId) === slot.client
+      && current?.lease === bindingLease;
+  };
+  const assertBinding = (sessionId: string): void => {
+    if (!ownsBinding(sessionId)) throw new Error(`session ${sessionId} is no longer bound`);
+  };
+  const workflowOwnsAdmission = (): boolean => {
+    if (!sessionId || !ownsBinding(sessionId)) return false;
+    const current = rt.security?.taskLifecycle.currentAdmission?.(sessionId);
+    return workflowAdmission ? current === workflowAdmission : current === undefined;
+  };
+  const admissionSafeAfterCleanup = (): boolean => {
+    if (!sessionId || !ownsBinding(sessionId)) return false;
+    const current = rt.security?.taskLifecycle.currentAdmission?.(sessionId);
+    return workflowAdmission
+      ? current === workflowAdmission || current === undefined
+      : current === undefined;
+  };
   let sessionId: string | undefined;
   let sessionFile: string | undefined;
+  let workflowAdmission: TaskAdmissionToken | undefined;
+  let workflowTaskId: string | undefined;
   try {
+    assertBinding(tempKey);
     const freshResp = await slot.client.send({ type: 'new_session' });
+    assertBinding(tempKey);
     if (!freshResp.success) throw new Error(freshResp.error ?? 'new_session failed');
     const stateResp = await slot.client.send({ type: 'get_state' });
+    assertBinding(tempKey);
     if (!stateResp.success) throw new Error(stateResp.error ?? 'get_state failed');
     sessionId = (stateResp.data as { sessionId?: string } | undefined)?.sessionId;
     sessionFile = (stateResp.data as { sessionFile?: string } | undefined)?.sessionFile;
     if (!sessionId) throw new Error('runtime did not provide a session id');
     rt.pool.renameSession(tempKey, sessionId);
+    assertBinding(sessionId);
 
     const inputFiles = Array.isArray(input?.documents) ? JSON.stringify(input.documents) : null;
     rt.chatSessions?.create?.({
@@ -396,16 +612,55 @@ export async function runWorkflow(
       inputs: inputFiles,
       piSessionFile: sessionFile ?? null,
     });
-    slot.supervisor.onProposal((req) => broker.route(req, { sessionId: sessionId!, profileId }));
-    await opts?.onReady?.(sessionId, slot);
+    slot.supervisor.onProposal(async (req, context) => {
+      assertBinding(sessionId!);
+      const owner = rt.resolveRuntimeOrigin?.(sessionId!, context?.originToken, slot.client, bindingLease);
+      if (!owner) throw new Error(`session ${sessionId} workflow proposal origin is not executable`);
+      const taskId = owner.taskId;
+      const admission = owner.admission;
+      const assertOwner = (): void => {
+        assertBinding(sessionId!);
+        if (opts?.onReady && (!taskId || !admission)) {
+          throw new Error(`session ${sessionId} workflow task admission is not ready`);
+        }
+        if (taskId && admission && rt.security?.taskLifecycle.assertOwner) {
+          try {
+            rt.security.taskLifecycle.assertOwner(sessionId!, { taskId, admission });
+          } catch {
+            throw new Error(`session ${sessionId} proposal owner is no longer active`);
+          }
+        } else {
+          if (taskId && rt.security?.taskLifecycle.active(sessionId!)?.taskId !== taskId) {
+            throw new Error(`session ${sessionId} proposal task is no longer active`);
+          }
+          if (admission && rt.security?.taskLifecycle.currentAdmission?.(sessionId!) !== admission) {
+            throw new Error(`session ${sessionId} proposal admission is no longer current`);
+          }
+        }
+      };
+      const decision = await broker.route(req, { sessionId: sessionId!, profileId, taskId, admission }, assertOwner);
+      assertOwner();
+      return decision;
+    });
+    workflowAdmission = (await opts?.onReady?.(sessionId, slot, bindingLease)) ?? undefined;
+    assertBinding(sessionId);
+    if (workflowAdmission) rt.security?.taskLifecycle.assertCurrentAdmission?.(sessionId, workflowAdmission);
   } catch (err) {
-    if (sessionId) await opts?.beforeRelease?.(sessionId);
-    await rt.pool.release(sessionId ?? tempKey);
+    let mayRelease = sessionId ? workflowOwnsAdmission() : ownsBinding(tempKey);
+    if (sessionId && mayRelease) {
+      const released = await opts?.beforeRelease?.(sessionId, bindingLease, workflowAdmission);
+      mayRelease = released !== false && admissionSafeAfterCleanup();
+    }
+    if (!mayRelease) throw err;
+    await rt.pool.release(sessionId ?? tempKey, bindingLease);
     throw err;
   }
 
   const readySessionId = sessionId;
-  void runWorkflowLoop(rt, getWindow, slot, broker, pr, readySessionId, profileId, input, opts).catch((error) => {
+  workflowTaskId = rt.security?.taskLifecycle.active(readySessionId)?.taskId;
+  assertBinding(readySessionId);
+  void runWorkflowLoop(rt, getWindow, slot, broker, pr, readySessionId, profileId, input, opts, bindingLease, workflowAdmission, workflowTaskId).catch((error) => {
+    if (!ownsBinding(readySessionId)) return;
     void opts?.logger?.log({
       level: 'error',
       msg: 'workflow loop crashed',
@@ -440,10 +695,20 @@ function createStepJournal(
   slot: Awaited<ReturnType<Runtime['pool']['acquire']>>,
   pr: ReturnType<Runtime['profileOf']>,
   sessionId: string,
+  bindingLease: number,
   logger?: Pick<Logger, 'log'>,
+  admission?: TaskAdmissionToken,
 ) {
+  const ownsBinding = (): boolean => {
+    const current = rt.pool.getBinding(sessionId);
+    return rt.pool.get(sessionId) === slot.client
+      && current?.lease === bindingLease
+      && (!admission || rt.security?.taskLifecycle.currentAdmission?.(sessionId) === admission);
+  };
   const append = async (customType: string, data: Record<string, unknown>): Promise<void> => {
+    if (!ownsBinding()) throw new Error(`session ${sessionId} is no longer bound`);
     const resp = await slot.client?.send?.({ type: 'append_workflow_entry', customType, data });
+    if (!ownsBinding()) throw new Error(`session ${sessionId} is no longer bound`);
     if (!resp?.success) throw new Error(resp?.error ?? 'append_workflow_entry failed');
     void logger?.log({
       level: 'debug',
@@ -453,6 +718,7 @@ function createStepJournal(
   };
 
   const report = (customType: string, data: Record<string, unknown>, error: unknown): void => {
+    if (!ownsBinding()) return;
     const message = error instanceof Error ? error.message : String(error);
     void logger?.log({
       level: 'error',
@@ -498,11 +764,13 @@ function createStepJournal(
               finishedAt: new Date().toISOString(),
             });
           } catch {
-            void logger?.log({
-              level: 'error',
-              msg: 'workflow failed-end append also failed',
-              ctx: { sessionId, stepId: String(data.stepId ?? '') },
-            });
+            if (ownsBinding()) {
+              void logger?.log({
+                level: 'error',
+                msg: 'workflow failed-end append also failed',
+                ctx: { sessionId, stepId: String(data.stepId ?? '') },
+              });
+            }
           }
         }
         return false;
@@ -520,23 +788,54 @@ async function runWorkflowLoop(
   sessionId: string,
   profileId: string,
   input: Record<string, unknown>,
-  hooks?: WorkflowRunHooks,
+  hooks: WorkflowRunHooks | undefined,
+  bindingLease: number,
+  workflowAdmission?: TaskAdmissionToken,
+  workflowTaskId?: string,
 ): Promise<void> {
-  const journal = createStepJournal(rt, getWindow, slot, pr, sessionId, hooks?.logger);
+  const ownsBinding = (): boolean => {
+    const current = rt.pool.getBinding(sessionId);
+    return rt.pool.get(sessionId) === slot.client
+      && current?.lease === bindingLease;
+  };
+  const assertBinding = (): void => {
+    if (!ownsBinding()) throw new Error(`session ${sessionId} is no longer bound`);
+    if (workflowAdmission) rt.security?.taskLifecycle.assertCurrentAdmission?.(sessionId, workflowAdmission);
+  };
+  const ownsWorkflow = (): boolean => ownsBinding()
+    && (!workflowAdmission || rt.security?.taskLifecycle.currentAdmission?.(sessionId) === workflowAdmission);
+  const journal = createStepJournal(rt, getWindow, slot, pr, sessionId, bindingLease, hooks?.logger, workflowAdmission);
+  let promptSent = false;
   try {
     const rawDef = pr.profile.agent.workflow as unknown as WorkflowDef;
     const def = resolveWorkflowTemplates(rawDef);
     const ctx: RunContext = {
       profileId: pr.profile.manifest.name, sessionId, actor: rt.subject?.userId ?? 'agent', input,
-      sendPrompt: (text, task) => sendPrompt(rt, text, (task as ModelTask) ?? 'default', sessionId),
-      runTool: (name, args) => runTool(rt, broker, name, args, sessionId, profileId),
+      sendPrompt: (text, task) => sendPrompt(
+        rt, text, (task as ModelTask) ?? 'default', sessionId, assertBinding,
+        () => { promptSent = true; },
+        workflowAdmission,
+      ),
+      runTool: (name, args) => runTool(rt, broker, name, args, sessionId, profileId, assertBinding, {
+        taskId: workflowTaskId,
+        admission: workflowAdmission,
+      }),
       requestApproval: async (req) => {
-        const d = await broker.route({ ...req, requestId: randomUUID() }, { sessionId, profileId });
+        assertBinding();
+        const d = await broker.route({ ...req, requestId: randomUUID() }, {
+          sessionId,
+          profileId,
+          taskId: workflowTaskId,
+          admission: workflowAdmission,
+        }, assertBinding);
+        assertBinding();
         return { id: d.proposalId, status: d.approved ? 'approved' : 'denied' } as any;
       },
     };
     for await (const e of new LinearRunner().run(def, ctx)) {
+      if (!ownsWorkflow()) break;
       if (e.type === 'step_started') {
+        if (!ownsWorkflow()) break;
         rt.chatSessions?.update?.(sessionId, { currentStep: e.stepId });
         const recorded = await journal.record('workflow_step_start', {
           stepId: e.stepId,
@@ -564,7 +863,21 @@ async function runWorkflowLoop(
       }
     }
   } finally {
-    await hooks?.beforeRelease?.(sessionId);
-    await rt.pool.release(sessionId);
+    const currentAdmission = rt.security?.taskLifecycle.currentAdmission?.(sessionId);
+    const ownsAdmission = workflowAdmission
+      ? currentAdmission === workflowAdmission
+      : currentAdmission === undefined;
+    if (!ownsAdmission) return;
+    if (!ownsBinding()) {
+      if (promptSent) await rt.pool.release(sessionId, bindingLease);
+      return;
+    }
+    const released = await hooks?.beforeRelease?.(sessionId, bindingLease, workflowAdmission);
+    const afterAdmission = rt.security?.taskLifecycle.currentAdmission?.(sessionId);
+    if (released === false || !ownsBinding()) return;
+    if (workflowAdmission
+      ? afterAdmission !== workflowAdmission && afterAdmission !== undefined
+      : afterAdmission !== undefined) return;
+    await rt.pool.release(sessionId, bindingLease);
   }
 }

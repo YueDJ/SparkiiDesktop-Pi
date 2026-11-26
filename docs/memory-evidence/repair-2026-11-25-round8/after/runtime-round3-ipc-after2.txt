@@ -1,0 +1,234 @@
+(node:41276) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:20820) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:11684) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | apps/desktop/test/ipc.test.ts > R8 runtime binding regressions > R8 B1 does not overwrite a replacement model while set_model is deferred
+Promise returned by `expect(actual).rejects.toThrow(expected)` was not awaited. Vitest currently auto-awaits hanging assertions at the end of the test, but this will cause the test to fail in the next Vitest major. Please remember to await the assertion.
+    at C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/test/ipc.test.ts:5843:43
+
+ ❯ |1| apps/desktop/test/ipc.test.ts (155 tests | 3 failed) 2584ms
+     ✓ lists builtin whitelist plus custom providers through a probe slot 20ms
+     ✓ saveSettings writes only custom providers to models.json and stores the per-provider key 16ms
+     ✓ getApiKey returns the per-provider key and getSettings includes the active provider key 8ms
+     ✓ getSettings reports hasApiKey without returning the secret 8ms
+     ✓ getApiKey(sparkiirag) returns null even when keyring has the secret 3ms
+     ✓ getApiKey also hides sparkiionto and both knowledge keyring names 3ms
+     ✓ saveSettings rejects a custom provider whose id collides with a knowledge credential id 9ms
+     ✓ testKnowledgeConnection probes healthz → info → datasets with the onto settings and token 13ms
+     ✓ testKnowledgeConnection honours an unsaved override 6ms
+     ✓ listKnowledgeDatasets tells 401 (credential) from 403 (permission) and flags an /info mismatch 15ms
+     ✓ keeps testRagConnection as a thin sparkiirag wrapper 6ms
+     ✓ testRagConnection keeps the legacy "no key" wording 3ms
+     ✓ empty saveRagSettings apiKey keeps the keyring value 5ms
+     ✓ saveSettings does not wipe rag 10ms
+     ✓ saveSettings does not wipe documentParse 24ms
+     ✓ download huggingface URL is rejected 3ms
+     ✓ promptSession refuses sparkiirag profiles when RAG is unconfigured 3ms
+     ✓ promptSession does not create a session when sparkiirag is unconfigured 3ms
+     ✓ promptSession opens the session when allowDegradedKnowledge is set (product §15) 7ms
+     ✓ setSessionKnowledge stores selection and promptSession migrates draft key before prompt 13ms
+     ✓ empty retrieval returns first then aborts and appends refused knowledge_turn 22ms
+     ✓ does not copy leftover draft selection onto an existing session 8ms
+     ✓ aborts when the session dataset is no longer visible 23ms
+     ✓ empty search after a sealed hit aborts a new turn 65ms
+     ✓ openRagDocument with an Onto backend still fetches through the ontology client cache segment 14ms
+     ✓ openRagDocument defaults to sparkiirag and returns a bounded error when the credential is missing 4ms
+     ✓ setSessionKnowledge rejects invalid payload 3ms
+     ✓ getRuntimePool returns the pool snapshot 4ms
+     ✓ listModels uses the caller-provided key instead of the stored keyring key 5ms
+     ✓ promptSession routes to settings active provider and default model when the session has no model 6ms
+     ✓ promptSession creates a session and sends the first prompt 11ms
+     ✓ R7 coalesces concurrent promptSession opens for one existing session id 24ms
+     ✓ R7 promptSession rejects a stale binding while model key lookup is suspended 19ms
+     ✓ R7 promptSession rejects a stale binding after deferred get_state before sending 31ms
+     ✓ R7 stale task admission cannot replace a same-id replacement grant 32ms
+     ✓ R7 session creation failure cannot release or delete a same-id replacement 27ms
+     ✓ createSession binds a workspace WITHOUT sending a prompt (P9, holds slot + 15s idle release) 11ms
+     ✓ B1: a late agent_settled never revokes a Grant that is not this prompt's 7ms
+     ✓ setChatWorkspace(null) allocates a new Documents auto path 2ms
+     ✓ promptSession does not duplicate model application when the model is already in the saddle 7ms
+     ✓ listChatSessions excludes empty sessions from the local store 3ms
+     ✓ listChatSessions includes DB-only P9 sessions when includeEmpty is true 4ms
+     ✓ listChatSessions falls back to project.json.name through the fenced service 6ms
+     ✓ getChatState does not acquire when a session has no lease 4ms
+     ✓ schedules idle release after agent_settled and releases after timeout 6ms
+     ✓ does not idle-release a knowledge session on agent_end before agent_settled 13ms
+     ✓ does not idle-release or title a workflow session after agent_settled 8ms
+     ✓ rejects a transient prompt waiter after its slot is rebound instead of forwarding the new session event 20ms
+     ✓ R7 rejects a transient prompt waiter after same-id release and reacquire without forwarding the new binding event 4ms
+     ✓ R7 rejects a transient prompt when a successful send completes after same-id rebinding 11ms
+     ✓ R7 cancels every same-id transient waiter without old completion erasing the replacement 36ms
+     ✓ stamps chat-events with the live slot sessionId, not the subscribe-time id 5ms
+     ✓ stamps over an inner sessionId carried by the event 4ms
+     ✓ drops events while the slot has no session bound 2ms
+     ✓ sends session_unbound before releasing the slot so the spinner stops 2ms
+     ✓ logs and stops stamping when the pi child exits 3ms
+     ✓ stops forwarding client events after the workflow slot is released 24ms
+     ✓ idle-releases a post-run workflow slot so a later runWorkflow is not blocked 16ms
+     ✓ workflow selectModel routes to settings active provider and default model 4ms
+     ✓ workflow selectModel prefers the session-selected model 3ms
+     ✓ listThinkingLevels probes a model and returns available thinking levels 3ms
+     ✓ setChatThinkingLevel stores the session level and remembers it per model 28ms
+     ✓ promptSession applies the session thinking level before prompt 8ms
+     ✓ setChatModel applies the selected model to the open Pi session 6ms
+     ✓ setChatThinkingLevel applies the selected level to the open Pi session 4ms
+     ✓ queues a follow_up by default while the Pi session is streaming 4ms
+     ✓ abortChat clears the queue before aborting and returns the cleared items 5ms
+     ✓ connector_read document.read is handled by executeDocumentRead 5ms
+     ✓ connector_read rejects an ontology tool name outside the whitelist 3ms
+     ✓ connector_read writes exactly one audit per ontology tool call and records the query text 5ms
+     ✓ reports document-parse spawn failures to the error center as 文档解析 5ms
+     ✓ abortChat calls failSession before Pi abort 6ms
+     ✓ releaseSessionSlot calls failSession before unbind 4ms
+     ✓ R7 does not release a same-id replacement while an explicit slot release is awaiting task shutdown 3ms
+     ✓ getDocumentParse handler exists 3ms
+     ✓ downloadDocumentParseModule without production hashes fails with offline import hint 3ms
+     ✓ queueMutate rebuilds both queues from the current Pi snapshot 5ms
+     ✓ promptSession stages attachments into the session workspace before prompting 13ms
+     ✓ promptSession sends images directly and stages only non-image attachments 12ms
+     ✓ promptSession creates a session and stages attachments into the chosen workspace 12ms
+     ✓ promptSession registers the proposal broker when creating a session 7ms
+     ✓ getModelOptions without agentId uses generic chat requirements instead of a default agent 4ms
+     ✓ classifies current DeepSeek models with orthogonal capabilities 4ms
+     ✓ promptSession refuses to create a session without profileId 3ms
+     ✓ ensureSessionRecord does not invent profileId general when pinning a Pi-only session 4ms
+     ✓ chooseDocument grants the selected path for readDocumentBytes 8ms
+     ✓ openChatSession ENOENT still returns session inputs 4ms
+     ✓ opens a live session from getBranch + streamingMessage, not get_messages 4ms
+     ✓ recovers the micro-gap assistant from get_messages only while streaming without a slot message 4ms
+     ✓ skips the micro-gap when the last assistant is already on the branch 4ms
+     ✓ does not read get_messages when the live session is idle 4ms
+     ✓ dead session reads JSONL entries only (no preview) 27ms
+     ✓ setChatTitle notifies the renderer so the sidebar can show the filename 5ms
+     ✓ setChatTitle updates the runtime pool label instead of leaving the session id 3ms
+     ✓ reopening a session acquires the pool with displayName and Pi title, not the uuid prefix 3ms
+     ✓ reopening a nameless workflow session uses 新会话, not the skill body 4ms
+     ✓ reopening still acquires display meta when listing Pi sessions fails 4ms
+     ✓ setChatTitle rejects empty titles and agent writes after a user lock 43ms
+     ✓ listChatSessions does not put firstMessage into title 4ms
+     ✓ completeText forwards text to complete without renaming the session 42ms
+     ✓ does not auto-title a chat session on agent_end 6ms
+     ✓ imports, lists, audits, and uninstalls a user skill 35ms
+     ✓ returns no-user-library when no skillLibrary user agent is assembled 4ms
+     ✓ prefers SPARKII_E2E_SKILL_DIR for chooseSkillFolder 4ms
+     ✓ opens the user skills dir after creating it 6ms
+     ✓ lists skills for an agent id from that agent skillsDir only 24ms
+     ✓ allocateAutoWorkspace returns a Documents path and does not create it 3ms
+     ✓ allocateAutoWorkspace rejects unknown agent 2ms
+     ✓ chooseWorkspace mkdirs an absolute defaultPath and forwards it 3ms
+     ✓ chooseWorkspace ignores a relative defaultPath without mkdir 2ms
+     ✓ openWorkspace mkdirs an absolute path and opens it 3ms
+     ✓ openWorkspace ignores a relative path without mkdir 2ms
+     ✓ runWorkflow without workspacePath allocates Documents path and does not mkdir 3ms
+     ✓ runWorkflow with an allocated path keeps workspaceKind auto 3ms
+     ✓ R8-P0-2 privacy deletion stops the active task, extraction and Pi binding before memory cleanup 6ms
+     ✓ R8-P0-2 stops an active document parser even when no Pi binding exists 2ms
+     ✓ R8-P0-2 does not delete memory or release a same-id replacement while task shutdown is awaiting 3ms
+     ✓ R8-P0-2 cancels a same-id session opening before pool acquisition 24ms
+     ✓ R8-P0-2 releases a stale acquisition instead of letting it bind after privacy deletion 33ms
+     ✓ R8 final review releases a stale setChatTitle acquisition after privacy deletion starts 35ms
+     ✓ R8-P0-2 never releases a same-client replacement installed while a stale acquisition resumes 37ms
+     ✓ does not expose task capability or user revocation handlers 7ms
+     ✓ reads the session permission mode and host semantics without leaking credentials 6ms
+     ✓ writes the mode, ends the running task and audits the change 5ms
+     ✓ revokes the shell task grant when the mode changes 4ms
+     ✓ refuses a permission mode the profile does not allow 4ms
+     ✓ reports the reviewer as unavailable when Main has no worker 3ms
+     ✓ does not expose the Reviewer worker in the user runtime pool 2ms
+     ✓ runs an approved shell command through the host adapter and reports host semantics 12ms
+     ✓ registers the channel, moves files, updates all session records and broadcasts 11ms
+     × R8 runtime round3 B1 cancels a pending production admission on stop 112ms
+     × R8 runtime round3 B1 cancels a pending production admission on workspace-change 50ms
+     ✓ R8 B1 rejects stale 'settings' commands after a same-client replacement 6ms
+     ✓ R8 B1 rejects stale 'key' commands after a same-client replacement 28ms
+     ✓ R8 B1 rejects stale 'model' commands after a same-client replacement 45ms
+     ✓ R8 B1 rejects stale 'complete' commands after a same-client replacement 40ms
+     ✓ R8 B1 rejects a stale key lookup before writing the original prompt 21ms
+     × R8 B1 does not overwrite a replacement model while set_model is deferred 53ms
+     ✓ R8 runtime round3 B4 stale abort cannot revoke or command a same-lease replacement task 40ms
+     ✓ R8 runtime round3 B4 rejects stale { name: 'thinking', command: 'set_thinking_level' } commands after a same-client rebind 75ms
+     ✓ R8 runtime round3 B4 rejects stale { name: 'workspace', command: 'configure_session' } commands after a same-client rebind 76ms
+     ✓ R8 runtime round3 B4 rejects a stale workflow journal after its append await 98ms
+     ✓ R8 runtime round3 B4 relocation cannot configure a replacement binding 74ms
+     ✓ R8 B2 stale export admission cannot replace or revoke a replacement task 98ms
+     ✓ R8 B2 approval cannot append a journal after a same-client rebind 44ms
+     ✓ R8 runtime round3 B5 export propagates journal 'rejection' and revokes only its grant 67ms
+     ✓ R8 runtime round3 B5 export propagates journal 'success false' and revokes only its grant 57ms
+     ✓ R8 runtime round3 B5 stale export journal failure cannot revoke a same-task-ID replacement 95ms
+     ✓ R8 runtime round3 B5 export rejects when its binding changes during the journal await 59ms
+     ✓ blocks proposal-mode connector execution when privacy redaction wins during the dialog await 23ms
+     ✓ blocks proposal-mode connector execution when privacy redaction wins during the audit await 10ms
+     ✓ blocks proposal-mode connector execution when privacy redaction wins during the gateway await 12ms
+     ✓ commits the chosen export path to the canonical proposal before connector execution 7ms
+     ✓ blocks caller-mode workspace execution when privacy redaction wins during the revalidation await 49ms
+     ✓ blocks caller-mode workspace execution when privacy redaction wins during the audit await 42ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/ipc.test.ts > R8 runtime binding regressions > R8 runtime round3 B1 cancels a pending production admission on stop
+AssertionError: expected [Function] to throw error matching /admission.*cancelled/i but got 'session s1 is no longer bound'
+
+- Expected:
+/admission.*cancelled/i
+
++ Received:
+"session s1 is no longer bound"
+
+ ❯ apps/desktop/test/ipc.test.ts:5696:41
+    5694|       });
+    5695|       const prompting = Promise.resolve(h.handlers.get('sparkii:prompt…
+    5696|       const rejected = expect(prompting).rejects.toThrow(/admission.*c…
+       |                                         ^
+    5697|       await waitUntil(() => admissions === 1);
+    5698|       const originalLease = h.rt.pool.getBinding('s1')?.lease;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  |1| apps/desktop/test/ipc.test.ts > R8 runtime binding regressions > R8 runtime round3 B1 cancels a pending production admission on workspace-change
+AssertionError: expected [Function] to throw error matching /admission.*cancelled/i but got 'session s1 admission is no longer cur…'
+
+- Expected:
+/admission.*cancelled/i
+
++ Received:
+"session s1 admission is no longer current"
+
+ ❯ apps/desktop/test/ipc.test.ts:5696:41
+    5694|       });
+    5695|       const prompting = Promise.resolve(h.handlers.get('sparkii:prompt…
+    5696|       const rejected = expect(prompting).rejects.toThrow(/admission.*c…
+       |                                         ^
+    5697|       await waitUntil(() => admissions === 1);
+    5698|       const originalLease = h.rt.pool.getBinding('s1')?.lease;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  |1| apps/desktop/test/ipc.test.ts > R8 runtime binding regressions > R8 B1 does not overwrite a replacement model while set_model is deferred
+Error: session s1 is no longer bound
+ ❯ assertOpenBinding apps/desktop/electron/main/ipc.ts:1003:13
+    1001|       || binding?.client !== open.slot.client
+    1002|       || binding.lease !== open.lease) {
+    1003|       throw new Error(`session ${sessionId} is no longer bound`);
+       |             ^
+    1004|     }
+    1005|   }
+ ❯ assertCapturedBinding apps/desktop/electron/main/ipc.ts:1015:7
+ ❯ apps/desktop/electron/main/ipc.ts:1935:5
+ ❯ apps/desktop/test/ipc.test.ts:5847:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 152 passed (155)
+   Start at  00:29:43
+   Duration  9.22s (transform 1.71s, setup 32ms, import 5.63s, tests 2.58s, environment 791ms)
+
+
+exit=1

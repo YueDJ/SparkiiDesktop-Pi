@@ -1,0 +1,82 @@
+(node:38228) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:23128) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:884) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31904) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/gate.test.ts (4 tests) 125ms
+ ❯ |1| apps/desktop/test/memory-round7-regression.test.ts (7 tests | 4 failed) 43100ms
+     × R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files 6924ms
+     ✓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body  2907ms
+     × R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes 7945ms
+     × R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes 6554ms
+     ✓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file  6339ms
+     ✓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion  5866ms
+     × R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution 6561ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:71:3
+     69|
+     70| describe('R7 memory regressions', () => {
+     71|   it('R7-P1-1 privacy deletion scrubs every retained approval state, c…
+       |   ^
+     72|     const memoryText = 'PRIVATE_MEMORY_92F3C';
+     73|     const excerptText = 'PRIVATE_EXCERPT_6E21A';
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:179:3
+    177|   });
+    178|
+    179|   it('R7-P1-2 replacement repair rejects a duplicate memory id before …
+       |   ^
+    180|     const workspace = join(root, 'repair-duplicate-id');
+    181|     project(workspace, 'original project fact');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:202:3
+    200|   });
+    201|
+    202|   it('R7-P1-2 replacement repair rejects a duplicate project identity …
+       |   ^
+    203|     const workspaceA = join(root, 'repair-identity-a');
+    204|     const workspaceB = join(root, 'repair-identity-b');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:251:3
+    249|   });
+    250|
+    251|   it('R7-P1-4 conflict eviction invalidates the hash and unchanged tru…
+       |   ^
+    252|     const workspaceA = join(root, 'conflict-index-a');
+    253|     const workspaceB = join(root, 'conflict-index-b');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  4 failed | 7 passed (11)
+   Start at  19:35:14
+   Duration  47.33s (transform 1.03s, setup 88ms, import 1.85s, tests 43.22s, environment 2.16s)
+

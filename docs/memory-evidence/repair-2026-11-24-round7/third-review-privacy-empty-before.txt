@@ -1,0 +1,51 @@
+(node:6596) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:34204) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:42736) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-round7-regression.test.ts (19 tests | 1 failed | 18 skipped) 939ms
+     ↓ R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files
+     × R7 privacy retry recovers an empty episode topic after restart and completes chat cleanup 938ms
+     ↓ R7 privacy deletion discovers secrets nested only in pending operation extensions
+     ↓ R7 privacy deletion preserves pending UPDATE control fields when deleted text equals the op
+     ↓ R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds
+     ↓ R7 privacy deletion includes superseded episode records in the global redaction corpus
+     ↓ R7 caller-mode memory deletion rechecks canonical approval after privacy redaction
+     ↓ R7 production privacy retry succeeds in the same process after truth rows are gone
+     ↓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body
+     ↓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes
+     ↓ R7-P1-2 replacement preflight sees an indexed project after its registry entry is removed
+     ↓ R7-P1-2 replacement preflight derives zero-entry project identity from scope_files
+     ↓ R7-P1-3 source deletion detects indexed unregistered conflicts without an explicit workspace
+     ↓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes
+     ↓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file
+     ↓ R7-P1-3 valid source deletion updates unregistered project truth without reindexing it
+     ↓ R7-P1-4 privacy deletion discovers indexed unregistered truth before reconciliation
+     ↓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion
+     ↓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7 privacy retry recovers an empty episode topic after restart and completes chat cleanup
+AssertionError: expected [Function] to throw an error
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:218:103
+    216|       emit: (type, payload) => events.push({ type, payload }),
+    217|     });
+    218|     expect(() => service.addMemory({ scope: 'user', text: 'blocked', s…
+       |                                                                                                       ^
+    219|     expect(() => service.deleteMemory(target.id, { mode: 'privacy' }))…
+    220|     expect(sessions.get('private-session')).toBeUndefined();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 18 skipped (19)
+   Start at  23:41:11
+   Duration  2.89s (transform 286ms, setup 32ms, import 958ms, tests 939ms, environment 785ms)
+

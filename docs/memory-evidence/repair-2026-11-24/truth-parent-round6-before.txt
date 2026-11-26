@@ -1,0 +1,55 @@
+(node:35100) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:18904) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:35908) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-truth-batch.test.ts (16 tests | 1 failed) 10953ms
+     ✓ restores every prior truth file and removes new files when a later write fails  1023ms
+     ✓ recovers an interrupted batch at startup before truth files are opened  753ms
+     ✓ recovers a new project batch from the registry committed before its truth file  766ms
+     ✓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing  765ms
+     × rollback never recreates a missing project parent before path revalidation 1043ms
+     ✓ does not write or quarantine outside a junctioned memory root during failed recovery 12ms
+     ✓ quarantines a malformed journal and reports a warning instead of blocking startup  522ms
+     ✓ rejects journal paths outside memory truth and backup locations  769ms
+     ✓ rejects a truthy non-boolean committed marker without deleting uncommitted truth  510ms
+     ✓ rejects a committed journal that still contains rollback file items  523ms
+     ✓ rejects an unregistered outside project truth target during commit and recovery  782ms
+     ✓ rejects a project truth target reached through a junction even when its workspace is registered 271ms
+     ✓ treats a dangling write-block junction as a persistent block 251ms
+     ✓ keeps the only recovery evidence when the write-block marker cannot be persisted  504ms
+     ✓ keeps a committed batch and removes its recovery journal  758ms
+     ✓ rolls back the project registry when a later truth write fails  1696ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > truth batch journal > rollback never recreates a missing project parent before path revalidation
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ apps/desktop/test/memory-truth-batch.test.ts:160:35
+    158|
+    159|     expect(recoverTruthBatch(dataDir)).toEqual([]);
+    160|     expect(existsSync(workspace)).toBe(false);
+       |                                   ^
+    161|     expect(existsSync(target)).toBe(false);
+    162|     expect(existsSync(journalPath)).toBe(false);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 15 passed (16)
+   Start at  17:20:55
+   Duration  12.37s (transform 151ms, setup 30ms, import 411ms, tests 10.95s, environment 796ms)
+

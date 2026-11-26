@@ -1,0 +1,27 @@
+(node:25960) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:18796) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:3864) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:38520) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/gate.test.ts (4 tests) 61ms
+ ✓ |1| apps/desktop/test/memory-round7-regression.test.ts (7 tests) 15827ms
+     ✓ R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files  2824ms
+     ✓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body  1101ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes  3762ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes  1875ms
+     ✓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file  2053ms
+     ✓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion  2117ms
+     ✓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution  2093ms
+
+ Test Files  2 passed (2)
+      Tests  11 passed (11)
+   Start at  19:37:07
+   Duration  18.41s (transform 545ms, setup 45ms, import 1.35s, tests 15.89s, environment 1.16s)
+

@@ -12,7 +12,7 @@ import {
   type TaskGrant,
   type WorkspacePathProbe,
 } from '@sparkii/approval';
-import type { RuntimeActionRequest } from '@sparkii/agent-host';
+import { isPlatformReservedPath, type RuntimeActionRequest } from '@sparkii/agent-host';
 
 export interface NormalizedToolDescriptor {
   toolName: string;
@@ -223,6 +223,12 @@ async function classifyPath(
 
   const canonical = inspected.canonicalPath;
   const parent = await options.probe.inspect(dirname(canonical));
+  if (inspected.isReparsePoint || parent.isReparsePoint) {
+    throw new ActionNormalizationError('INVALID_TARGET', 'reparse-point paths are not allowed');
+  }
+  if (isPlatformReservedPath(canonical)) {
+    throw new ActionNormalizationError('INVALID_TARGET', '.sparkii 是平台保留目录');
+  }
   let critical = isSameOrParent(canonical, grant.workspaceRoot);
   if (!critical) {
     for (const root of options.protectedRoots) {

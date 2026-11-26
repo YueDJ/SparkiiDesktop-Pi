@@ -1,0 +1,62 @@
+(node:19380) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:17288) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:1556) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [31m❯[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-tools.test.ts [2m([22m[2m7 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 7704[2mms[22m[39m
+     [33m[2m✓[22m[39m memory_remember 直接写入 active 并审计 [33m 1103[2mms[22m[39m
+     [33m[2m✓[22m[39m memory_forget 先弹审批；拒绝不删，批准才三处真删 [33m 1215[2mms[22m[39m
+[31m     [31m×[31m R8 memory_forget 不删除审批等待期间被同 ID 替换 admission 拥有的记忆[39m[33m 1242[2mms[22m[39m
+     [33m[2m✓[22m[39m memory_search 只读命中并强化（不重置其他记忆） [33m 1142[2mms[22m[39m
+     [33m[2m✓[22m[39m 总开关关闭时三工具均被拒，无写入无检索 [33m 827[2mms[22m[39m
+     [33m[2m✓[22m[39m memory_remember(scope: agent) 使用当前 profileId 并校验智能体存在 [33m 1346[2mms[22m[39m
+     [33m[2m✓[22m[39m 工具名与鞍附加同源：签名 agent 清单不变，平台统一追加 [33m 827[2mms[22m[39m
+(node:35172) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/runtime-action-router.test.ts [2m([22m[2m43 tests[22m[2m)[22m[32m 66[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-tools.test.ts[2m > [22mmemory tools — platform trusted branch[2m > [22mR8 memory_forget 不删除审批等待期间被同 ID 替换 admission 拥有的记忆
+[31m[1mAssertionError[22m: promise resolved "{ requestId: 'forget-stale', …(3) }" instead of rejecting[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Error {[39m
+[32m-   "message": "rejected promise",[39m
+[31m+ {[39m
+[31m+   "decision": {[39m
+[31m+     "decision": "deny",[39m
+[31m+     "reason": "记忆工具不可用",[39m
+[31m+     "ruleId": "memory.trusted-branch",[39m
+[31m+   },[39m
+[31m+   "error": {[39m
+[31m+     "code": "MEMORY_TOOL_FAILED",[39m
+[31m+     "message": "记忆工具执行失败",[39m
+[31m+   },[39m
+[31m+   "requestId": "forget-stale",[39m
+[31m+   "status": "failed",[39m
+[2m  }[22m
+
+[36m [2m❯[22m apps/desktop/test/memory-tools.test.ts:[2m92:27[22m[39m
+    [90m 90|[39m     replaced [33m=[39m [35mtrue[39m[33m;[39m
+    [90m 91|[39m     [34mapprove[39m({ approved[33m:[39m [35mtrue[39m[33m,[39m proposalId[33m:[39m [32m'p1'[39m[33m,[39m status[33m:[39m [32m'approved'[39m })[33m;[39m
+    [90m 92|[39m     [35mawait[39m [34mexpect[39m(deleting)[33m.[39mrejects[33m.[39m[34mtoThrow[39m([32m'runtime owner replaced'[39m)[33m;[39m
+    [90m   |[39m                           [31m^[39m
+    [90m 93|[39m     [34mexpect[39m(service[33m.[39mstore[33m.[39m[34mrowFor[39m(added[33m.[39mid))[33m.[39m[34mtoBeTruthy[39m()[33m;[39m
+    [90m 94|[39m   })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m1 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m49 passed[39m[22m[90m (50)[39m
+[2m   Start at [22m 02:37:46
+[2m   Duration [22m 12.68s[2m (transform 733ms, setup 43ms, import 2.96s, tests 7.77s, environment 1.56s)[22m
+

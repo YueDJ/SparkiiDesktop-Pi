@@ -1,5 +1,8 @@
 import type { PolicyDecision, PolicyOutcome } from '@sparkii/approval';
 
+/** Opaque provenance issued by Main for one admitted prompt turn. */
+export type RuntimeOriginToken = string;
+
 export interface RuntimeActionRequest {
   requestId: string;
   toolCallId?: string;
@@ -28,31 +31,37 @@ export interface ActionExecutionResult {
 export type RuntimeActionEnvelope = {
   direction: 'runtime-to-main';
   action: RuntimeActionRequest;
+  sessionGeneration?: number;
+  originToken?: RuntimeOriginToken;
 };
 
 export type ActionResultEnvelope = {
   direction: 'main-to-runtime';
   requestId: string;
   actionResult: ActionExecutionResult;
+  sessionGeneration?: number;
 };
 
 export function runtimeActionEnvelope(
   action: RuntimeActionRequest,
+  sessionGeneration = 0,
+  originToken?: RuntimeOriginToken,
 ): RuntimeActionEnvelope {
   if (!action.requestId.trim()) throw new Error('requestId is required');
   if (!action.toolName.trim()) throw new Error('toolName is required');
-  return { direction: 'runtime-to-main', action };
+  return { direction: 'runtime-to-main', action, sessionGeneration, ...(originToken ? { originToken } : {}) };
 }
 
 export function actionResultEnvelope(
   requestId: string,
   actionResult: ActionExecutionResult,
+  sessionGeneration = 0,
 ): ActionResultEnvelope {
   if (!requestId.trim()) throw new Error('requestId is required');
   if (actionResult.requestId !== requestId) {
     throw new Error('action result requestId does not match correlation id');
   }
-  return { direction: 'main-to-runtime', requestId, actionResult };
+  return { direction: 'main-to-runtime', requestId, actionResult, sessionGeneration };
 }
 
 export function decisionStatus(

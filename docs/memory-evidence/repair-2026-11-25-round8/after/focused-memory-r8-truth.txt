@@ -1,0 +1,47 @@
+(node:20464) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24264) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:21708) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-truth-batch.test.ts (18 tests) 11031ms
+     ✓ restores every prior truth file and removes new files when a later write fails  774ms
+     ✓ R8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth  513ms
+     ✓ R8-P1-4 preserves rollback backups when the unverified journal cannot be removed  524ms
+     ✓ recovers an interrupted batch at startup before truth files are opened  801ms
+     ✓ recovers a new project batch from the registry committed before its truth file  783ms
+     ✓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing  777ms
+     ✓ rollback never recreates a missing project parent before path revalidation  754ms
+     ✓ quarantines a malformed journal and reports a warning instead of blocking startup  515ms
+     ✓ rejects journal paths outside memory truth and backup locations  771ms
+     ✓ rejects a truthy non-boolean committed marker without deleting uncommitted truth  558ms
+     ✓ rejects a committed journal that still contains rollback file items  519ms
+     ✓ rejects an unregistered outside project truth target during commit and recovery  785ms
+     ✓ keeps the only recovery evidence when the write-block marker cannot be persisted  493ms
+     ✓ keeps a committed batch and removes its recovery journal  760ms
+     ✓ rolls back the project registry when a later truth write fails  1182ms
+(node:38360) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-r8-regression.test.ts (12 tests) 19844ms
+     ✓ R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext  1940ms
+     ✓ R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext  2047ms
+     ✓ R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext  2032ms
+     ✓ R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext  2031ms
+     ✓ R8-P0-1 resumes from journal context after the chat row and Pi file are already gone  1523ms
+     ✓ R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers  1625ms
+     ✓ R8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent  1486ms
+     ✓ R8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret  1498ms
+     ✓ R8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker  1473ms
+     ✓ R8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state  1397ms
+     ✓ R8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state  1427ms
+     ✓ R8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state  1362ms
+
+ Test Files  2 passed (2)
+      Tests  30 passed (30)
+   Start at  13:24:03
+   Duration  33.71s (transform 381ms, setup 44ms, import 907ms, tests 30.88s, environment 1.54s)
+

@@ -1,0 +1,148 @@
+(node:7388) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:38564) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:35004) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [31m❯[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-pool.test.ts [2m([22m[2m47 tests[22m[2m | [22m[31m7 failed[39m[2m | [22m[33m38 skipped[39m[2m)[22m[32m 18[2mms[22m[39m
+     [2m[90m↓[39m[22m P1-7 reserves cold-start capacity before supervisor startup
+     [2m[90m↓[39m[22m reuses a free slot across release
+     [2m[90m↓[39m[22m queues beyond maxAgents and wakes on release
+     [2m[90m↓[39m[22m wakes queued sessions when maxAgents increases
+     [2m[90m↓[39m[22m sends new_session on release
+     [2m[90m↓[39m[22m retires a slot whose new_session fails instead of reusing it
+     [2m[90m↓[39m[22m R7 keeps a resetting slot unavailable and queues a concurrent acquire until reset succeeds
+     [2m[90m↓[39m[22m R7 drops pre-reset events after rebind and accepts new-generation events
+     [2m[90m↓[39m[22m R7 retires a slot when a successful new_session returns a missing generation
+     [2m[90m↓[39m[22m R7 retires a slot when a successful new_session returns a equal generation
+[31m     [31m×[31m R7 retires a bound slot when the exposed facade sends new_session with a missing generation[39m[32m 8[2mms[22m[39m
+[31m     [31m×[31m R7 retires a bound slot when the exposed facade sends new_session with a equal generation[39m[32m 1[2mms[22m[39m
+[31m     [31m×[31m R7 retires a bound slot when the exposed facade sends switch_session with a missing generation[39m[32m 1[2mms[22m[39m
+[31m     [31m×[31m R7 retires a bound slot when the exposed facade sends switch_session with a equal generation[39m[32m 1[2mms[22m[39m
+[31m     [31m×[31m R7 retires an uncertain slot once for concurrent exposed facade sends[39m[32m 2[2mms[22m[39m
+     [32m✓[39m R7 does not validate generation data on an unsuccessful exposed facade new_session response[32m 2[2mms[22m[39m
+     [32m✓[39m R7 does not validate generation data on an unsuccessful exposed facade switch_session response[32m 0[2mms[22m[39m
+[31m     [31m×[31m R7 rejects session-changing new_session broadcasts without sending them[39m[32m 1[2mms[22m[39m
+[31m     [31m×[31m R7 rejects session-changing switch_session broadcasts without sending them[39m[32m 1[2mms[22m[39m
+     [2m[90m↓[39m[22m R7 rejects an equal switch_session generation and retires the uncertain slot
+     [2m[90m↓[39m[22m R7 does not validate generation data on an unsuccessful switch_session response
+     [2m[90m↓[39m[22m R7 drops stale events throughout switch_session and accepts only the confirmed generation
+     [2m[90m↓[39m[22m R7 clears a concurrent binding on reset failure and gives the waiter a healthy new client
+     [2m[90m↓[39m[22m R7 retires the slot when new_session rejects and does not resolve a waiter with its killed client
+     [2m[90m↓[39m[22m reports the live session id through getSessionId
+     [2m[90m↓[39m[22m clears sessionId before sending new_session on release
+     [2m[90m↓[39m[22m stamps the next session on the same slot after release
+     [2m[90m↓[39m[22m renames a session id while keeping the same client
+     [2m[90m↓[39m[22m renameSession is a no-op when the source id is unknown
+     [2m[90m↓[39m[22m broadcasts a command to every live runtime process
+     [2m[90m↓[39m[22m emits a snapshot after acquire, release and rename
+     [2m[90m↓[39m[22m wakes a queued session with its original saddle and meta
+     [2m[90m↓[39m[22m reuses one process and sends the next session's skillsDir on configure_session
+     [2m[90m↓[39m[22m updateMeta patches a live slot label and emits a snapshot
+     [2m[90m↓[39m[22m updateMeta patches a queued session without waking it
+     [2m[90m↓[39m[22m snapshot uses 新会话 when acquire has no label, not the session id
+     [2m[90m↓[39m[22m updateMeta follows renameSession so a temp key can receive the real title
+     [2m[90m↓[39m[22m updateMeta is a no-op for an unknown session
+     [2m[90m↓[39m[22m hides internal probe slots and queue items from the snapshot
+     [2m[90m↓[39m[22m drops a crashed slot instead of handing it to the next acquire
+     [2m[90m↓[39m[22m m9：await start() 期间池被 stopAll ⇒ acquire 复检 stopped、停掉新 supervisor 并拒绝
+     [2m[90m↓[39m[22m stopAll waits for every cold-start supervisor and repeated calls share the same shutdown
+     [2m[90m↓[39m[22m releases cold-start capacity when supervisor creation fails
+     [2m[90m↓[39m[22m stopAll during a queued bind rejects the request instead of returning a stopped slot
+     [2m[90m↓[39m[22m continues queued binds after configure_session fails without rebinding the failed request
+     [2m[90m↓[39m[22m stopAll rejects when a child never confirms process exit
+     [2m[90m↓[39m[22m M3：stopAll 等到子进程 exit 才 resolve（kill 不自动退出时由超时兜底）
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 7 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-pool.test.ts[2m > [22mPiRuntimePool[2m > [22mR7 retires a bound slot when the exposed facade sends new_session with a missing generation
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-pool.test.ts[2m > [22mPiRuntimePool[2m > [22mR7 retires a bound slot when the exposed facade sends new_session with a equal generation
+[31m[1mAssertionError[22m: expected 'renamed' to be null[39m
+
+[32m- Expected:[39m
+null
+
+[31m+ Received:[39m
+"renamed"
+
+[36m [2m❯[22m packages/agent-host/test/pi-runtime-pool.test.ts:[2m328:36[22m[39m
+    [90m326|[39m
+    [90m327|[39m       // Retirement is observable before the rejected facade send sett…
+    [90m328|[39m       [34mexpect[39m(first[33m.[39m[34mgetSessionId[39m())[33m.[39m[34mtoBeNull[39m()[33m;[39m
+    [90m   |[39m                                    [31m^[39m
+    [90m329|[39m       [34mexpect[39m(pool[33m.[39m[35mget[39m([32m"a"[39m))[33m.[39m[34mtoBeUndefined[39m()[33m;[39m
+    [90m330|[39m       [34mexpect[39m(pool[33m.[39m[35mget[39m([32m"renamed"[39m))[33m.[39m[34mtoBeUndefined[39m()[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-pool.test.ts[2m > [22mPiRuntimePool[2m > [22mR7 retires a bound slot when the exposed facade sends switch_session with a missing generation
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-pool.test.ts[2m > [22mPiRuntimePool[2m > [22mR7 retires a bound slot when the exposed facade sends switch_session with a equal generation
+[31m[1mAssertionError[22m: expected 'a' to be null[39m
+
+[32m- Expected:[39m
+null
+
+[31m+ Received:[39m
+"a"
+
+[36m [2m❯[22m packages/agent-host/test/pi-runtime-pool.test.ts:[2m378:36[22m[39m
+    [90m376|[39m       await expect(first.client.send({ type: "switch_session", session…
+    [90m377|[39m
+    [90m378|[39m       [34mexpect[39m(first[33m.[39m[34mgetSessionId[39m())[33m.[39m[34mtoBeNull[39m()[33m;[39m
+    [90m   |[39m                                    [31m^[39m
+    [90m379|[39m       [34mexpect[39m(pool[33m.[39m[35mget[39m([32m"a"[39m))[33m.[39m[34mtoBeUndefined[39m()[33m;[39m
+    [90m380|[39m       [34mexpect[39m(pool[33m.[39m[34mactiveCount[39m())[33m.[39m[34mtoBe[39m([34m0[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-pool.test.ts[2m > [22mPiRuntimePool[2m > [22mR7 retires an uncertain slot once for concurrent exposed facade sends
+[31m[1mAssertionError[22m: expected +0 to be 1 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 1[39m
+[31m+ 0[39m
+
+[36m [2m❯[22m packages/agent-host/test/pi-runtime-pool.test.ts:[2m412:28[22m[39m
+    [90m410|[39m
+    [90m411|[39m       expect(outcomes.map((outcome) => outcome.status)).toEqual(["reje…
+    [90m412|[39m       [34mexpect[39m(handle[33m.[39mkills)[33m.[39m[34mtoBe[39m([34m1[39m)[33m;[39m
+    [90m   |[39m                            [31m^[39m
+    [90m413|[39m       [34mexpect[39m(handle[33m.[39mkilled)[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m414|[39m       [34mexpect[39m(pool[33m.[39m[35mget[39m([32m"a"[39m))[33m.[39m[34mtoBeUndefined[39m()[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-pool.test.ts[2m > [22mPiRuntimePool[2m > [22mR7 rejects session-changing new_session broadcasts without sending them
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-pool.test.ts[2m > [22mPiRuntimePool[2m > [22mR7 rejects session-changing switch_session broadcasts without sending them
+[31m[1mAssertionError[22m: promise resolved "undefined" instead of rejecting[39m
+
+[32m- Expected:[39m
+Error {
+  "message": "rejected promise",
+}
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m packages/agent-host/test/pi-runtime-pool.test.ts:[2m465:44[22m[39m
+    [90m463|[39m         [33m:[39m { type[33m,[39m sessionPath[33m:[39m [32m"/tmp/broadcast.jsonl"[39m } [35mas[39m [35mconst[39m[33m;[39m
+    [90m464|[39m
+    [90m465|[39m       await expect(pool.broadcast(command)).rejects.toThrow(/broadcast…
+    [90m   |[39m                                            [31m^[39m
+    [90m466|[39m       [34mexpect[39m(handle[33m.[39msent)[33m.[39m[34mtoHaveLength[39m(sentBefore)[33m;[39m
+    [90m467|[39m       [34mexpect[39m(handle[33m.[39mkilled)[33m.[39m[34mtoBe[39m([35mfalse[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m7 failed[39m[22m[2m | [22m[1m[32m2 passed[39m[22m[2m | [22m[33m38 skipped[39m[90m (47)[39m
+[2m   Start at [22m 21:15:37
+[2m   Duration [22m 385ms[2m (transform 84ms, setup 0ms, import 177ms, tests 18ms, environment 0ms)[22m
+

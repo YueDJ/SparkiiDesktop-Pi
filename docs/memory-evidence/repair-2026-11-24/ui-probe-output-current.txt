@@ -1,0 +1,42 @@
+(node:36272) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+{
+  "url": "http://127.0.0.1:62455/",
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "warnings": 2,
+  "repairCallsAfterReplaceDismiss": [],
+  "repairCalls": [
+    [
+      "/ws/a",
+      "replace",
+      "A 项目的修复草稿"
+    ]
+  ],
+  "callsAfterDismiss": [
+    [
+      "/ws/a",
+      "replace",
+      "A 项目的修复草稿"
+    ]
+  ],
+  "repairValues": [
+    "A 项目的修复草稿",
+    "B 项目的修复内容"
+  ],
+  "replacementDialogs": [
+    "按提供内容修复会覆盖该项目的现有记忆文件，且不可恢复。确认继续？",
+    "按提供内容修复会覆盖该项目的现有记忆文件，且不可恢复。确认继续？"
+  ],
+  "destructiveDialogs": [
+    "重新整理会清空该项目的现有记忆，且不可恢复。确认继续？"
+  ],
+  "replacementConfirmationDismissed": true,
+  "replacementConfirmationAccepted": true,
+  "destructiveConfirmationDismissed": true,
+  "projectDraftsIsolated": true,
+  "consoleMessages": [],
+  "badNetwork": []
+}

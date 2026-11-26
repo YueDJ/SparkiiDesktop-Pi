@@ -1,0 +1,89 @@
+(node:37928) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:34244) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:40640) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |0| packages/agent-host/test/pi-runtime-pool.test.ts (50 tests | 1 failed | 49 skipped) 39ms
+     ↓ P1-7 reserves cold-start capacity before supervisor startup
+     ↓ reuses a free slot across release
+     ↓ queues beyond maxAgents and wakes on release
+     ↓ wakes queued sessions when maxAgents increases
+     ↓ sends new_session on release
+     ↓ retires a slot whose new_session fails instead of reusing it
+     ↓ R7 keeps a resetting slot unavailable and queues a concurrent acquire until reset succeeds
+     × R7 ignores a stale lease release after the same session id is reacquired 37ms
+     ↓ R7 drops pre-reset events after rebind and accepts new-generation events
+     ↓ R7 retires a slot when a successful new_session returns a missing generation
+     ↓ R7 retires a slot when a successful new_session returns a equal generation
+     ↓ R7 retires a bound slot when the exposed facade sends new_session with a missing generation
+     ↓ R7 retires a bound slot when the exposed facade sends new_session with a equal generation
+     ↓ R7 retires a bound slot when the exposed facade sends switch_session with a missing generation
+     ↓ R7 retires a bound slot when the exposed facade sends switch_session with a equal generation
+     ↓ R7 retires an uncertain slot once for concurrent exposed facade sends
+     ↓ R7 does not validate generation data on an unsuccessful exposed facade new_session response
+     ↓ R7 does not validate generation data on an unsuccessful exposed facade switch_session response
+     ↓ R7 rejects session-changing new_session broadcasts without sending them
+     ↓ R7 rejects session-changing switch_session broadcasts without sending them
+     ↓ R7 rejects an equal switch_session generation and retires the uncertain slot
+     ↓ R7 does not validate generation data on an unsuccessful switch_session response
+     ↓ R7 drops stale events throughout switch_session and accepts only the confirmed generation
+     ↓ R7 clears a concurrent binding on reset failure and gives the waiter a healthy new client
+     ↓ R7 retires the slot when new_session rejects and does not resolve a waiter with its killed client
+     ↓ reports the live session id through getSessionId
+     ↓ clears sessionId before sending new_session on release
+     ↓ R7 rotates the binding lease when the same session id reacquires a reused client
+     ↓ stamps the next session on the same slot after release
+     ↓ renames a session id while keeping the same client
+     ↓ renameSession is a no-op when the source id is unknown
+     ↓ broadcasts a command to every live runtime process
+     ↓ emits a snapshot after acquire, release and rename
+     ↓ wakes a queued session with its original saddle and meta
+     ↓ reuses one process and sends the next session's skillsDir on configure_session
+     ↓ updateMeta patches a live slot label and emits a snapshot
+     ↓ updateMeta patches a queued session without waking it
+     ↓ snapshot uses 新会话 when acquire has no label, not the session id
+     ↓ updateMeta follows renameSession so a temp key can receive the real title
+     ↓ updateMeta is a no-op for an unknown session
+     ↓ hides internal probe slots and queue items from the snapshot
+     ↓ drops a crashed slot instead of handing it to the next acquire
+     ↓ m9：await start() 期间池被 stopAll ⇒ acquire 复检 stopped、停掉新 supervisor 并拒绝
+     ↓ stopAll waits for every cold-start supervisor and repeated calls share the same shutdown
+     ↓ releases cold-start capacity when supervisor creation fails
+     ↓ R7 rejects a switch binding retired before its continuation and serves the next acquire
+     ↓ stopAll during a queued bind rejects the request instead of returning a stopped slot
+     ↓ continues queued binds after configure_session fails without rebinding the failed request
+     ↓ stopAll rejects when a child never confirms process exit
+     ↓ M3：stopAll 等到子进程 exit 才 resolve（kill 不自动退出时由超时兜底）
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |0| packages/agent-host/test/pi-runtime-pool.test.ts > PiRuntimePool > R7 ignores a stale lease release after the same session id is reacquired
+AssertionError: expected 2 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ packages/agent-host/test/pi-runtime-pool.test.ts:241:26
+    239|     const staleRelease = pool.release("same", oldLease);
+    240|     await new Promise((resolve) => setTimeout(resolve, 0));
+    241|     expect(resetCount()).toBe(1);
+       |                          ^
+    242|     await staleRelease;
+    243|     expect(pool.get("same")).toBe(second.client);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 49 skipped (50)
+   Start at  22:10:07
+   Duration  390ms (transform 82ms, setup 0ms, import 180ms, tests 39ms, environment 0ms)
+

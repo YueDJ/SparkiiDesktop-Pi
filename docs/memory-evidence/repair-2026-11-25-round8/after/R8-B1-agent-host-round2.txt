@@ -1,0 +1,42 @@
+(node:39052) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12624) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:13648) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:9956) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mstarts idempotently and sends commands[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mrejects send when no response arrives[32m 107[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mrejects pending sends when the child exits[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mrejects later sends immediately after the child has exited[32m 1[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mstreams events and routes proposals[32m 16[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mdenies a proposal when the approval handler rejects[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mroutes connector_read to the handler and replies[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mroutes raw Runtime actions to Main and returns the correlated result[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mR8 final review rejects late runtime requests and events from a replaced session[32m 30[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mR8 B1 fails closed for same-generation action, proposal and connector envelopes without origin[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mfails closed when no Runtime action handler is registered[32m 0[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mdenies connector_read when no handler is registered[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mclears the client and reports exit[32m 0[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mM3：stop() 等待子进程真正退出[2m > [22mkill 不阻塞 stop：exit 到达后 stop 才 resolve[32m 31[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mM3：stop() 等待子进程真正退出[2m > [22m超时后强杀仍无 exit 确认：stop 必须拒绝，不得假报关机成功[32m 124[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mM3：stop() 等待子进程真正退出[2m > [22m强杀宽限期内出现 exit：stop 等待确认后成功返回[32m 60[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mM3：stop() 等待子进程真正退出[2m > [22m句柄同一性守卫（防御性）：旧句柄迟到 exit 不清理新句柄、不通知 onExit[32m 150[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-runtime-queue.test.ts[2m > [22mpi-sdk-runtime queue adapters[2m > [22mreads the native steering and follow-up message getters[32m 2[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-runtime-queue.test.ts[2m > [22mpi-sdk-runtime queue adapters[2m > [22mclears queues through the native clearQueue method[32m 0[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-runtime-queue.test.ts[2m > [22mpi-sdk-runtime queue adapters[2m > [22mstarts a prompt without waiting for the full agent turn to finish[32m 2[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-runtime-queue.test.ts[2m > [22mpi-sdk-runtime queue adapters[2m > [22mR8 B1 keeps overlapping SDK prompt origins isolated across awaits and queued follow-up work[32m 1[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-runtime-queue.test.ts[2m > [22mpi-sdk-runtime queue adapters[2m > [22mR8 round7 B2 marks a deterministic pre-run rejection as a correlated terminal prompt error[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-runtime-queue.test.ts[2m > [22mpi-sdk-runtime queue adapters[2m > [22mR8 round7 B2 keeps a started prompt rejection correlated to its own terminal signal[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-runtime-queue.test.ts[2m > [22mpi-sdk-runtime queue adapters[2m > [22mroutes late prompt rejections to the runtime error handler[32m 15[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[32m24 passed[39m[22m[90m (24)[39m
+[2m   Start at [22m 11:19:53
+[2m   Duration [22m 2.06s[2m (transform 355ms, setup 0ms, import 1.98s, tests 674ms, environment 0ms)[22m
+

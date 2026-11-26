@@ -31,6 +31,13 @@ function textOf(content: unknown): string {
     .trim();
 }
 
+function entryText(entry: MaterialEntry): string {
+  const message = (entry as unknown as { message?: { role?: string; content?: unknown } }).message;
+  const role = entry.role ?? message?.role;
+  if (role !== 'user' && role !== 'assistant') return '';
+  return textOf(entry.text ?? message?.content ?? message);
+}
+
 /** JSONL 是树（parentId/分支）+ compaction 条目；位点用 entry-id，不用字节偏移。 */
 export function readSessionMaterial(
   piSessionFile: string,
@@ -49,25 +56,48 @@ export function readSessionMaterial(
   }
   branch.reverse();
 
-  const cursorIndex = cursorId ? branch.findIndex((e) => e.id === cursorId) : -1;
-  const fresh = cursorIndex >= 0 ? branch.slice(cursorIndex + 1) : branch;
+  const offsetMarker = cursorId.lastIndexOf('@');
+  const cursorEntryId = offsetMarker > 0 ? cursorId.slice(0, offsetMarker) : cursorId;
+  const cursorOffset = offsetMarker > 0 ? Number(cursorId.slice(offsetMarker + 1)) : 0;
+  const cursorIndex = cursorEntryId ? branch.findIndex((e) => e.id === cursorEntryId) : -1;
+  if (cursorEntryId && cursorIndex < 0) {
+    throw new Error(`material-unreadable: stale-cursor ${cursorEntryId}`);
+  }
+  if (!Number.isInteger(cursorOffset) || cursorOffset < 0) {
+    throw new Error(`material-unreadable: stale-cursor ${cursorId}`);
+  }
+  if (cursorIndex >= 0 && cursorOffset > 0) {
+    const text = entryText(branch[cursorIndex]);
+    if (!text || cursorOffset > text.length) {
+      throw new Error(`material-unreadable: stale-cursor ${cursorId}`);
+    }
+  }
+  const fresh = cursorIndex >= 0 ? branch.slice(cursorIndex + (cursorOffset > 0 ? 0 : 1)) : branch;
   const lines: string[] = [];
   let userTurns = 0;
   let used = 0;
+  let lastEntryId = cursorId;
+  let consumed = false;
   for (const entry of fresh) {
     if (entry.type !== 'message') continue;
-    const message = (entry as unknown as { message?: { role?: string; content?: unknown } }).message;
-    const role = entry.role ?? message?.role;
+    const role = entry.role ?? (entry as unknown as { message?: { role?: string } }).message?.role;
     if (role !== 'user' && role !== 'assistant') continue;
-    const text = textOf(entry.text ?? message?.content ?? message);
+    const text = entryText(entry);
     if (!text) continue;
+    const start = !consumed && entry.id === cursorEntryId ? cursorOffset : 0;
+    const prefix = `${role === 'user' ? '用户' : '助手'}：`;
+    const remaining = Math.max(0, maxChars - used - prefix.length);
+    if (remaining <= 0) break;
+    const part = text.slice(start, start + remaining);
+    if (!part) continue;
     if (role === 'user') userTurns += 1;
-    const line = `${role === 'user' ? '用户' : '助手'}：${text.slice(0, 800)}`;
-    if (used + line.length > maxChars) break;
-    lines.push(line);
-    used += line.length;
+    lines.push(`${prefix}${part}`);
+    used += prefix.length + part.length;
+    consumed = true;
+    const absoluteOffset = start + part.length;
+    lastEntryId = absoluteOffset < text.length ? `${entry.id}@${absoluteOffset}` : entry.id;
+    if (absoluteOffset < text.length) break;
   }
-  const lastEntryId = fresh.length ? fresh[fresh.length - 1].id : cursorId;
   return { branch, fresh, text: lines.join('\n'), userTurns, lastEntryId };
 }
 

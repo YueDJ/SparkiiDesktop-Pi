@@ -1,0 +1,262 @@
+(node:26040) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:14208) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:41856) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-round7-regression.test.ts (16 tests | 1 failed | 15 skipped) 1044ms
+     × R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files 1043ms
+     ↓ R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds
+     ↓ R7 privacy deletion includes superseded episode records in the global redaction corpus
+     ↓ R7 caller-mode memory deletion rechecks canonical approval after privacy redaction
+     ↓ R7 production privacy retry succeeds in the same process after truth rows are gone
+     ↓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body
+     ↓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes
+     ↓ R7-P1-2 replacement preflight sees an indexed project after its registry entry is removed
+     ↓ R7-P1-2 replacement preflight derives zero-entry project identity from scope_files
+     ↓ R7-P1-3 source deletion detects indexed unregistered conflicts without an explicit workspace
+     ↓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes
+     ↓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file
+     ↓ R7-P1-3 valid source deletion updates unregistered project truth without reindexing it
+     ↓ R7-P1-4 privacy deletion discovers indexed unregistered truth before reconciliation
+     ↓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion
+     ↓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution
+(node:32488) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/ipc.test.ts (124 tests | 2 failed | 122 skipped) 66ms
+     ↓ lists builtin whitelist plus custom providers through a probe slot
+     ↓ saveSettings writes only custom providers to models.json and stores the per-provider key
+     ↓ getApiKey returns the per-provider key and getSettings includes the active provider key
+     ↓ getSettings reports hasApiKey without returning the secret
+     ↓ getApiKey(sparkiirag) returns null even when keyring has the secret
+     ↓ getApiKey also hides sparkiionto and both knowledge keyring names
+     ↓ saveSettings rejects a custom provider whose id collides with a knowledge credential id
+     ↓ testKnowledgeConnection probes healthz → info → datasets with the onto settings and token
+     ↓ testKnowledgeConnection honours an unsaved override
+     ↓ listKnowledgeDatasets tells 401 (credential) from 403 (permission) and flags an /info mismatch
+     ↓ keeps testRagConnection as a thin sparkiirag wrapper
+     ↓ testRagConnection keeps the legacy "no key" wording
+     ↓ empty saveRagSettings apiKey keeps the keyring value
+     ↓ saveSettings does not wipe rag
+     ↓ saveSettings does not wipe documentParse
+     ↓ download huggingface URL is rejected
+     ↓ promptSession refuses sparkiirag profiles when RAG is unconfigured
+     ↓ promptSession does not create a session when sparkiirag is unconfigured
+     ↓ promptSession opens the session when allowDegradedKnowledge is set (product §15)
+     ↓ setSessionKnowledge stores selection and promptSession migrates draft key before prompt
+     ↓ empty retrieval returns first then aborts and appends refused knowledge_turn
+     ↓ does not copy leftover draft selection onto an existing session
+     ↓ aborts when the session dataset is no longer visible
+     ↓ empty search after a sealed hit aborts a new turn
+     ↓ openRagDocument with an Onto backend still fetches through the ontology client cache segment
+     ↓ openRagDocument defaults to sparkiirag and returns a bounded error when the credential is missing
+     ↓ setSessionKnowledge rejects invalid payload
+     ↓ getRuntimePool returns the pool snapshot
+     ↓ listModels uses the caller-provided key instead of the stored keyring key
+     ↓ promptSession routes to settings active provider and default model when the session has no model
+     ↓ promptSession creates a session and sends the first prompt
+     ↓ createSession binds a workspace WITHOUT sending a prompt (P9, holds slot + 15s idle release)
+     ↓ B1: a late agent_settled never revokes a Grant that is not this prompt's
+     ↓ setChatWorkspace(null) allocates a new Documents auto path
+     ↓ promptSession does not duplicate model application when the model is already in the saddle
+     ↓ listChatSessions excludes empty sessions from the local store
+     ↓ listChatSessions includes DB-only P9 sessions when includeEmpty is true
+     ↓ listChatSessions falls back to project.json.name through the fenced service
+     ↓ getChatState does not acquire when a session has no lease
+     ↓ schedules idle release after agent_settled and releases after timeout
+     ↓ does not idle-release a knowledge session on agent_end before agent_settled
+     ↓ does not idle-release or title a workflow session after agent_settled
+     ↓ rejects a transient prompt waiter after its slot is rebound instead of forwarding the new session event
+     ↓ R7 rejects a transient prompt waiter after same-id release and reacquire without forwarding the new binding event
+     ↓ R7 rejects a transient prompt when a successful send completes after same-id rebinding
+     × R7 preserves a replacement transient waiter cancellation when the old same-id send finishes 59ms
+     ↓ stamps chat-events with the live slot sessionId, not the subscribe-time id
+     ↓ stamps over an inner sessionId carried by the event
+     ↓ drops events while the slot has no session bound
+     ↓ sends session_unbound before releasing the slot so the spinner stops
+     ↓ logs and stops stamping when the pi child exits
+     ↓ stops forwarding client events after the workflow slot is released
+     ↓ idle-releases a post-run workflow slot so a later runWorkflow is not blocked
+     ↓ workflow selectModel routes to settings active provider and default model
+     ↓ workflow selectModel prefers the session-selected model
+     ↓ listThinkingLevels probes a model and returns available thinking levels
+     ↓ setChatThinkingLevel stores the session level and remembers it per model
+     ↓ promptSession applies the session thinking level before prompt
+     ↓ setChatModel applies the selected model to the open Pi session
+     ↓ setChatThinkingLevel applies the selected level to the open Pi session
+     ↓ queues a follow_up by default while the Pi session is streaming
+     ↓ abortChat clears the queue before aborting and returns the cleared items
+     ↓ connector_read document.read is handled by executeDocumentRead
+     ↓ connector_read rejects an ontology tool name outside the whitelist
+     ↓ connector_read writes exactly one audit per ontology tool call and records the query text
+     ↓ reports document-parse spawn failures to the error center as 文档解析
+     ↓ abortChat calls failSession before Pi abort
+     ↓ releaseSessionSlot calls failSession before unbind
+     × R7 does not release a same-id replacement while an explicit slot release is awaiting task shutdown 6ms
+     ↓ getDocumentParse handler exists
+     ↓ downloadDocumentParseModule without production hashes fails with offline import hint
+     ↓ queueMutate rebuilds both queues from the current Pi snapshot
+     ↓ promptSession stages attachments into the session workspace before prompting
+     ↓ promptSession sends images directly and stages only non-image attachments
+     ↓ promptSession creates a session and stages attachments into the chosen workspace
+     ↓ promptSession registers the proposal broker when creating a session
+     ↓ getModelOptions without agentId uses generic chat requirements instead of a default agent
+     ↓ classifies current DeepSeek models with orthogonal capabilities
+     ↓ promptSession refuses to create a session without profileId
+     ↓ ensureSessionRecord does not invent profileId general when pinning a Pi-only session
+     ↓ chooseDocument grants the selected path for readDocumentBytes
+     ↓ openChatSession ENOENT still returns session inputs
+     ↓ opens a live session from getBranch + streamingMessage, not get_messages
+     ↓ recovers the micro-gap assistant from get_messages only while streaming without a slot message
+     ↓ skips the micro-gap when the last assistant is already on the branch
+     ↓ does not read get_messages when the live session is idle
+     ↓ dead session reads JSONL entries only (no preview)
+     ↓ setChatTitle notifies the renderer so the sidebar can show the filename
+     ↓ setChatTitle updates the runtime pool label instead of leaving the session id
+     ↓ reopening a session acquires the pool with displayName and Pi title, not the uuid prefix
+     ↓ reopening a nameless workflow session uses 新会话, not the skill body
+     ↓ reopening still acquires display meta when listing Pi sessions fails
+     ↓ setChatTitle rejects empty titles and agent writes after a user lock
+     ↓ listChatSessions does not put firstMessage into title
+     ↓ completeText forwards text to complete without renaming the session
+     ↓ does not auto-title a chat session on agent_end
+     ↓ imports, lists, audits, and uninstalls a user skill
+     ↓ returns no-user-library when no skillLibrary user agent is assembled
+     ↓ prefers SPARKII_E2E_SKILL_DIR for chooseSkillFolder
+     ↓ opens the user skills dir after creating it
+     ↓ lists skills for an agent id from that agent skillsDir only
+     ↓ allocateAutoWorkspace returns a Documents path and does not create it
+     ↓ allocateAutoWorkspace rejects unknown agent
+     ↓ chooseWorkspace mkdirs an absolute defaultPath and forwards it
+     ↓ chooseWorkspace ignores a relative defaultPath without mkdir
+     ↓ openWorkspace mkdirs an absolute path and opens it
+     ↓ openWorkspace ignores a relative path without mkdir
+     ↓ runWorkflow without workspacePath allocates Documents path and does not mkdir
+     ↓ runWorkflow with an allocated path keeps workspaceKind auto
+     ↓ does not expose task capability or user revocation handlers
+     ↓ reads the session permission mode and host semantics without leaking credentials
+     ↓ writes the mode, ends the running task and audits the change
+     ↓ revokes the shell task grant when the mode changes
+     ↓ refuses a permission mode the profile does not allow
+     ↓ reports the reviewer as unavailable when Main has no worker
+     ↓ does not expose the Reviewer worker in the user runtime pool
+     ↓ runs an approved shell command through the host adapter and reports host semantics
+     ↓ registers the channel, moves files, updates all session records and broadcasts
+     ↓ blocks proposal-mode connector execution when privacy redaction wins during the dialog await
+     ↓ blocks proposal-mode connector execution when privacy redaction wins during the audit await
+     ↓ blocks proposal-mode connector execution when privacy redaction wins during the gateway await
+     ↓ commits the chosen export path to the canonical proposal before connector execution
+     ↓ blocks caller-mode workspace execution when privacy redaction wins during the revalidation await
+     ↓ blocks caller-mode workspace execution when privacy redaction wins during the audit await
+(node:36920) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/workflow-broker.test.ts (28 tests | 1 failed | 27 skipped) 9ms
+   ↓ settles a caller waiter as denied when privacy redaction invalidates its proposal
+   ↓ canonicalizes a stale approved broker completion against privacy-redacted gate state
+   ↓ acquires the workflow slot with the agent display name, not the session id
+   ↓ uses the runtime session id for the workflow session record
+   ↓ keeps only workflow tool-step tools plus read on the runtime saddle
+   ↓ persists the caller workspace and model on the workflow session
+   ↓ resolves skill ref and llm template to prompt content
+   ↓ resolves the two visible business skills plus hidden tools
+     ↓ rejects forged legacy coding proposals before they reach ApprovalGate
+     ↓ completes the human step when the shared broker decides approval
+     ↓ runs the workflow for the requested profile instead of contract-review
+     ↓ returns the session id before the runner finishes
+     ↓ persists step output on workflow_step_end and does not write a report-named result blob
+     ↓ persists workflow_step_end failed status when a step throws
+     ↓ stops the workflow and reports when a step_end append fails
+     ↓ stops the workflow when even the small failed end cannot be appended
+     ↓ does not swallow start/end append failures with empty catch
+     ↓ does not let a rebound session consume the previous workflow prompt
+     × does not let a same-client same-id rebinding consume the previous workflow prompt 7ms
+     ↓ stores full assistant text from message_update/message_end in step output
+     ↓ does not revive proposal-first edit/write semantics from Runtime requests
+     ↓ does not scan payload.diff to invent preview for other tools
+     ↓ does not resolve an approved write as 操作未执行:approved when the timeout elapses mid-execution
+     ↓ still resolves an untouched pending proposal as expired after the timeout
+     ↓ pushes the expired proposal to the renderer only when truly expired
+     ↓ does not push expired while an approved write is still executing
+     ↓ carries the approval scope back to the awaiting action router
+     ↓ cancels pending broker waits for one session
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/ipc.test.ts > ipc provider handlers > R7 preserves a replacement transient waiter cancellation when the old same-id send finishes
+Error: session is not occupying a runtime slot
+ ❯ releaseSessionSlotInternal apps/desktop/electron/main/ipc.ts:2218:25
+    2216|   async function releaseSessionSlotInternal(sessionId: string): Promis…
+    2217|     const binding = rt.pool.getBinding(sessionId);
+    2218|     if (!binding) throw new Error('session is not occupying a runtime …
+       |                         ^
+    2219|     const open = openSessions.get(sessionId);
+    2220|     cancelIdleRelease(sessionId);
+ ❯ apps/desktop/electron/main/ipc.ts:2239:11
+ ❯ apps/desktop/test/ipc.test.ts:2137:53
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  |1| apps/desktop/test/ipc.test.ts > ipc provider handlers > R7 does not release a same-id replacement while an explicit slot release is awaiting task shutdown
+AssertionError: expected "vi.fn()" to not be called at all, but actually been called 1 times
+
+Received:
+
+  1st vi.fn() call:
+
+    Array [
+      "A",
+    ]
+
+
+Number of calls: 1
+
+ ❯ apps/desktop/test/ipc.test.ts:3235:45
+    3233|     expect(rt.pool.getBinding('A')?.lease).toBe(newLease);
+    3234|     expect(vi.mocked(rt.pool.release).mock.calls).toHaveLength(release…
+    3235|     expect(supervisorMocks.failSession).not.toHaveBeenCalled();
+       |                                             ^
+    3236|     expect(rt.chatSessions.update).not.toHaveBeenCalled();
+    3237|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files
+AssertionError: expected 'episode:other-session:PRIVATE_PROPOSE…' not to contain 'PRIVATE_PROPOSED_B47D2'
+
+Expected: "PRIVATE_PROPOSED_B47D2"
+Received: "episode:other-session:PRIVATE_PROPOSED_B47D2"
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:161:70
+    159|     expect(service.list().pending).toHaveLength(1);
+    160|     expect(service.list().pending[0]?.source?.sessionId).toBe('other-s…
+    161|     expect(service.list().pending[0]?.pendingOp?.idempotencyKey).not.t…
+       |                                                                      ^
+    162|     expect(readFileSync(userMemoryFile(dataDir), 'utf8')).not.toContai…
+    163|     expect(readFileSync(userMemoryFile(dataDir), 'utf8')).not.toContai…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  |1| apps/desktop/test/workflow-broker.test.ts > runWorkflow session id and JSONL > does not let a same-client same-id rebinding consume the previous workflow prompt
+ReferenceError: release is not defined
+ ❯ apps/desktop/test/workflow-broker.test.ts:743:46
+    741|     const beforeRelease = vi.fn(async () => {});
+    742|     const running = runWf(rt, getWindow, { documents: [] }, broker, 'c…
+    743|     await waitUntil(() => release.mock.calls.length > 0);
+       |                                              ^
+    744|     await running;
+    745|
+ ❯ waitUntil apps/desktop/test/workflow-broker.test.ts:23:11
+ ❯ apps/desktop/test/workflow-broker.test.ts:743:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  4 failed | 164 skipped (168)
+   Start at  22:39:32
+   Duration  15.29s (transform 1.42s, setup 50ms, import 11.29s, tests 1.12s, environment 2.32s)
+

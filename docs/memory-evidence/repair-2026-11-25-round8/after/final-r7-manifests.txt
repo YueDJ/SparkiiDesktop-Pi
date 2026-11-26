@@ -1,0 +1,4 @@
+EXPECTED_R7_SOURCE=c7e148a3de4f31321b740b5ffba4bac16f606aa22f748b255f525b5cb4573b5a
+EXPECTED_R7_EVIDENCE=a9bf43dbacd32ad3b8c2a896a6edd2f7789768a056a7cb7f22f22a8a5c5903bd
+c7e148a3de4f31321b740b5ffba4bac16f606aa22f748b255f525b5cb4573b5a *docs/memory-evidence/repair-2026-11-24-round7/source-sha256.txt
+a9bf43dbacd32ad3b8c2a896a6edd2f7789768a056a7cb7f22f22a8a5c5903bd *docs/memory-evidence/repair-2026-11-24-round7/evidence-sha256.txt

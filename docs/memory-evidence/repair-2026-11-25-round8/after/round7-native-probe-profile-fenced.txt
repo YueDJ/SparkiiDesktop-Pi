@@ -1,0 +1,51 @@
+(node:25804) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:39416) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:14520) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | apps/desktop/test/r8-probe-profile.tmp.test.ts > profiles native probes for the basic memory path
+R8_PROBE_PROFILE count=167 constructedCount=15 addedCount=105 firstBlockCount=136 constructedMs=520.6095 addedMs=2319.0209999999997 firstBlockMs=902.0339999999997 secondBlockMs=895.1199999999999 id=mem_5efddf00-195b-4c76-a0ba-5638acc71585
+45 at entryExists (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:74:10)
+33 at MemoryStore.readVerifiedScopeSnapshot (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:491:20)
+14 at MemoryStore.allScopeFiles (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:539:26)
+14 at MemoryStore.allScopeFiles (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:573:26)
+8 at MemoryStore.readAuxTruthSnapshot (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:451:20)
+6 at atomicWrite (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/settings.ts:72:21)
+4 at MemoryStore.assertAuxSnapshotCurrent (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:464:13)
+3 at assertTruthRootSafe (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:291:3)
+3 at atomicWrite (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/settings.ts:32:3)
+3 at atomicWrite (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/settings.ts:34:38)
+3 at atomicWrite (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/settings.ts:48:62)
+3 at atomicWrite (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/settings.ts:60:38)
+3 at markRegularFileVerified (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:78:19)
+3 at cleanup (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:260:3)
+3 at cleanup (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:261:3)
+2 at new MemoryStore (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:272:5)
+2 at new MemoryStore (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:273:5)
+2 at MemoryStore.hasTruthFiles (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:443:9)
+2 at MemoryStore.hasTruthFiles (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:445:9)
+2 at MemoryStore.assertSnapshotCurrent (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:520:20)
+1 at new MemoryStore (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/store.ts:267:5)
+1 at commitTruthBatch (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:381:3)
+1 at C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:384:23
+1 at commitTruthBatch (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:391:3)
+1 at commitTruthBatch (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:393:22)
+1 at commitTruthBatch (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:406:5)
+1 at commitTruthBatch (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:423:5)
+1 at commitTruthBatch (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:425:7)
+1 at commitTruthBatch (C:/Users/YDJ/Desktop/SparkiiDesktop-Pi/apps/desktop/electron/main/memory/truth-batch.ts:429:5)
+
+ ✓ |1| apps/desktop/test/r8-probe-profile.tmp.test.ts > profiles native probes for the basic memory path 4647ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  10:05:36
+   Duration  6.20s (transform 178ms, setup 32ms, import 528ms, tests 4.65s, environment 820ms)
+
+
+EXIT_CODE=0

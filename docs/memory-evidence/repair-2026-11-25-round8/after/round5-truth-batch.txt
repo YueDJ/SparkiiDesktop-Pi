@@ -1,0 +1,35 @@
+(node:36168) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32084) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:29016) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts [2m([22m[2m42 tests[22m[2m)[22m[33m 16871[2mms[22m[39m
+     [33m[2m✓[22m[39m restores every prior truth file and removes new files when a later write fails [33m 301[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth [33m 323[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 final review keeps rollback backups when journal removal fails after truth restoration [33m 447[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 final review does not roll back committed truth when post-commit backup cleanup fails [33m 308[2mms[22m[39m
+     [33m[2m✓[22m[39m quarantines an unrecoverable journal without deleting partial truth when a backup is missing [33m 424[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects an unregistered outside project truth target during commit and recovery [33m 369[2mms[22m[39m
+     [33m[2m✓[22m[39m rolls back the project registry when a later truth write fails [33m 1692[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 truth round3 B1 merges canonical project aliases into one truth and index bucket [33m 1175[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 final review fences registered project reads and self-healing through an ancestor junction [33m 1226[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 final review rejects unregistered duplicate project identity before single or batch commits [33m 1457[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 review truth B1 does not authorize auto-workspace truth from session discovery alone [33m 769[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 truth round3 B2 ignores journal projectFiles as recovery authorization [33m 310[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 truth round3 B3 rebuild fails closed when truth changes before index commit and then indexes one snapshot [33m 751[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 truth round3 B3 reconcile fails closed when truth changes before index commit and then indexes one snapshot [33m 733[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 truth round3 B3 replaceScopeIndex fails closed when truth changes before index commit and then indexes one snapshot [33m 709[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 truth round3 B5 rejects a hard-linked -wal sidecar before SQLite opens [33m 521[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 truth round3 B5 rejects a hard-linked -shm sidecar before SQLite opens [33m 603[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 truth round3 B5 rejects a hard-linked -journal sidecar before SQLite opens [33m 581[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m42 passed[39m[22m[90m (42)[39m
+[2m   Start at [22m 05:48:06
+[2m   Duration [22m 18.47s[2m (transform 211ms, setup 33ms, import 592ms, tests 16.87s, environment 797ms)[22m
+

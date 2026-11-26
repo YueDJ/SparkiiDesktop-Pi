@@ -1,0 +1,69 @@
+(node:3276) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31656) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:17476) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrestores every prior truth file and removes new files when a later write fails
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 final review never rolls back truth after the committed journal is durable
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 review truth round7 B1 keeps committed truth when post-rename journal probe fails once
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 review truth round7 B1 keeps committed truth when post-rename journal probe fails persistent
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 review truth round7 B2 rejects a source replaced during the last destination probe before recovery copy[32m 115[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 review truth round7 B2 leaves destination bytes unchanged when verified copy source is replaced at the copy boundary[32m 6[2mms[22m[39m
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8-P1-4 preserves rollback backups when the unverified journal cannot be removed
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrecovers an interrupted batch at startup before truth files are opened
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrecovers a new project batch from the registry committed before its truth file
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 final review resumes a partially rolled-back new project with startup-injected authorization
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 final review keeps rollback backups when journal removal fails after truth restoration
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 final review does not roll back committed truth when post-commit backup cleanup fails
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 final review retries orphan backup cleanup without quarantining restored truth
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mquarantines an unrecoverable journal without deleting partial truth when a backup is missing
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrollback never recreates a missing project parent before path revalidation
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mdoes not write or quarantine outside a junctioned memory root during failed recovery
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 final review rejects an empty uncommitted journal without deleting the only original backup
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mquarantines a malformed journal and reports a warning instead of blocking startup
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrejects journal paths outside memory truth and backup locations
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrejects a truthy non-boolean committed marker without deleting uncommitted truth
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrejects a committed journal that still contains rollback file items
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrejects an unregistered outside project truth target during commit and recovery
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrejects a project truth target reached through a junction even when its workspace is registered
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mtreats a dangling write-block junction as a persistent block
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mkeeps the only recovery evidence when the write-block marker cannot be persisted
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mkeeps a committed batch and removes its recovery journal
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrolls back the project registry when a later truth write fails
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 truth round3 B1 rejects canonical duplicate change targets before journal creation
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 truth round3 B1 merges canonical project aliases into one truth and index bucket
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 final review fences registered project reads and self-healing through an ancestor junction
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 final review rejects unregistered duplicate project identity before single or batch commits
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 review truth B1 does not authorize auto-workspace truth from session discovery alone
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 review truth B2 rejects nested agents journal targets
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 review truth B2 rejects nested episode-proposals journal targets
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 review truth B3 rechecks attributes when a verified path becomes a reparse point
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 truth round3 B2 ignores journal projectFiles as recovery authorization
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 truth round3 index snapshots[2m > [22mR8 truth round3 B3 rebuild fails closed when truth changes before index commit and then indexes one snapshot
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 truth round3 index snapshots[2m > [22mR8 truth round3 B3 reconcile fails closed when truth changes before index commit and then indexes one snapshot
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 truth round3 index snapshots[2m > [22mR8 truth round3 B3 replaceScopeIndex fails closed when truth changes before index commit and then indexes one snapshot
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 truth round3 SQLite path fences[2m > [22mR8 truth round3 B5 rejects a hard-linked main database without changing external SQLite
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 truth round3 SQLite path fences[2m > [22mR8 truth round3 B5 rejects a hard-linked -wal sidecar before SQLite opens
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 truth round3 SQLite path fences[2m > [22mR8 truth round3 B5 rejects a hard-linked -shm sidecar before SQLite opens
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 truth round3 SQLite path fences[2m > [22mR8 truth round3 B5 rejects a hard-linked -journal sidecar before SQLite opens
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 truth round3 SQLite path fences[2m > [22mR8 truth round3 B5 refuses corrupt-database isolation and fallback while a sidecar is hard-linked
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 truth round3 SQLite path fences[2m > [22mR8 truth round3 B5 rejects a main-database symlink and stays fail closed on Windows symlink EPERM
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 final-round5 B1 fresh-probe production boundaries[2m > [22mrejects a target converted to an external hardlink after the pre-backup probe
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 final-round5 B1 fresh-probe production boundaries[2m > [22mrechecks restore identity after the rollback preflight and never overwrites an external hardlink
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 final-round5 B1 fresh-probe production boundaries[2m > [22mfails closed when reconcile observes a reparse conversion after its first safe per-file probe
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 final-round5 B1 fresh-probe production boundaries[2m > [22mfails closed when rebuild observes a reparse conversion after its first safe per-file probe
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 final-round5 B1 fresh-probe production boundaries[2m > [22mviewOf freshly fences the row path and never returns external hardlink content
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 final-round5 B1 fresh-probe production boundaries[2m > [22mre-probes the second markSourcesDeleted read after allScopeFiles
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 final-round5 B1 fresh-probe production boundaries[2m > [22mre-probes the second deleteMemoryEntriesBySession read after allScopeFiles
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m2 passed[39m[22m[2m | [22m[33m51 skipped[39m[90m (53)[39m
+[2m   Start at [22m 08:32:25
+[2m   Duration [22m 1.82s[2m (transform 256ms, setup 32ms, import 676ms, tests 122ms, environment 810ms)[22m
+

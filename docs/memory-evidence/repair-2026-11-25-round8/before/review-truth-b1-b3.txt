@@ -1,0 +1,111 @@
+(node:6488) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:33112) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:21452) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-truth-batch.test.ts (42 tests | 4 failed | 38 skipped) 3119ms
+     ↓ restores every prior truth file and removes new files when a later write fails
+     ↓ R8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth
+     ↓ R8 final review never rolls back truth after the committed journal is durable
+     ↓ R8-P1-4 preserves rollback backups when the unverified journal cannot be removed
+     ↓ recovers an interrupted batch at startup before truth files are opened
+     ↓ recovers a new project batch from the registry committed before its truth file
+     ↓ R8 final review resumes a partially rolled-back new project with startup-injected authorization
+     ↓ R8 final review keeps rollback backups when journal removal fails after truth restoration
+     ↓ R8 final review does not roll back committed truth when post-commit backup cleanup fails
+     ↓ R8 final review retries orphan backup cleanup without quarantining restored truth
+     ↓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing
+     ↓ rollback never recreates a missing project parent before path revalidation
+     ↓ does not write or quarantine outside a junctioned memory root during failed recovery
+     ↓ R8 final review rejects an empty uncommitted journal without deleting the only original backup
+     ↓ quarantines a malformed journal and reports a warning instead of blocking startup
+     ↓ rejects journal paths outside memory truth and backup locations
+     ↓ rejects a truthy non-boolean committed marker without deleting uncommitted truth
+     ↓ rejects a committed journal that still contains rollback file items
+     ↓ rejects an unregistered outside project truth target during commit and recovery
+     ↓ rejects a project truth target reached through a junction even when its workspace is registered
+     ↓ treats a dangling write-block junction as a persistent block
+     ↓ keeps the only recovery evidence when the write-block marker cannot be persisted
+     ↓ keeps a committed batch and removes its recovery journal
+     ↓ rolls back the project registry when a later truth write fails
+     ↓ R8 truth round3 B1 rejects canonical duplicate change targets before journal creation
+     ↓ R8 truth round3 B1 merges canonical project aliases into one truth and index bucket
+     ↓ R8 final review fences registered project reads and self-healing through an ancestor junction
+     ↓ R8 final review rejects unregistered duplicate project identity before single or batch commits
+     × R8 review truth B1 does not authorize auto-workspace truth from session discovery alone 1354ms
+     × R8 review truth B2 rejects nested agents journal targets 744ms
+     × R8 review truth B2 rejects nested episode-proposals journal targets 762ms
+     × R8 review truth B3 probes current reparse attributes at every safety boundary 256ms
+     ↓ R8 truth round3 B2 ignores journal projectFiles as recovery authorization
+     ↓ R8 truth round3 B3 rebuild fails closed when truth changes before index commit and then indexes one snapshot
+     ↓ R8 truth round3 B3 reconcile fails closed when truth changes before index commit and then indexes one snapshot
+     ↓ R8 truth round3 B3 replaceScopeIndex fails closed when truth changes before index commit and then indexes one snapshot
+     ↓ R8 truth round3 B5 rejects a hard-linked main database without changing external SQLite
+     ↓ R8 truth round3 B5 rejects a hard-linked -wal sidecar before SQLite opens
+     ↓ R8 truth round3 B5 rejects a hard-linked -shm sidecar before SQLite opens
+     ↓ R8 truth round3 B5 rejects a hard-linked -journal sidecar before SQLite opens
+     ↓ R8 truth round3 B5 refuses corrupt-database isolation and fallback while a sidecar is hard-linked
+     ↓ R8 truth round3 B5 rejects a main-database symlink and stays fail closed on Windows symlink EPERM
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > truth batch journal > R8 review truth B1 does not authorize auto-workspace truth from session discovery alone
+AssertionError: expected '' to contain '不是允许的记忆真相文件'
+
+- Expected
++ Received
+
+- 不是允许的记忆真相文件
+
+ ❯ apps/desktop/test/memory-truth-batch.test.ts:643:60
+    641|     });
+    642|     try {
+    643|       expect((service as any).recoveryWarnings.join('\n')).toContain('…
+       |                                                            ^
+    644|       expect(readFileSync(victim, 'utf8')).toBe('AUTO_TRUTH_MUST_SURVI…
+    645|       expect(() => service.searchMemory('ATTACKER_TRUTH_92D')).toThrow…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > truth batch journal > R8 review truth B2 rejects nested agents journal targets
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > truth batch journal > R8 review truth B2 rejects nested episode-proposals journal targets
+AssertionError: expected '' to contain '不是允许的记忆真相文件'
+
+- Expected
++ Received
+
+- 不是允许的记忆真相文件
+
+ ❯ apps/desktop/test/memory-truth-batch.test.ts:665:51
+    663|     }));
+    664|
+    665|     expect(recoverTruthBatch(dataDir).join('\n')).toContain('不是允许的记忆真相…
+       |                                                   ^
+    666|     expect(readFileSync(target, 'utf8')).toBe('NESTED_TRUTH_MUST_SURVI…
+    667|     expect(existsSync(join(dir, '.truth-write-block.json'))).toBe(true…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > truth batch journal > R8 review truth B3 probes current reparse attributes at every safety boundary
+AssertionError: expected 0 to be greater than 0
+ ❯ apps/desktop/test/memory-truth-batch.test.ts:673:19
+    671|     assertTruthPathSafe(dataDir);
+    672|     const first = fault.reparseProbes;
+    673|     expect(first).toBeGreaterThan(0);
+       |                   ^
+    674|     assertTruthPathSafe(dataDir);
+    675|     expect(fault.reparseProbes).toBeGreaterThan(first);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 38 skipped (42)
+   Start at  03:14:21
+   Duration  4.68s (transform 206ms, setup 30ms, import 469ms, tests 3.12s, environment 874ms)
+

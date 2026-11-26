@@ -1,0 +1,55 @@
+CHANGES_REQUIRED
+Task-id: R7-REVIEW-RUNTIME-LOGGER
+Review domain: runtime pool reset/event integrity and logger redaction/JSONL integrity
+Blocking finding count: 2
+
+Conclusion
+The duplicate-acquisition and creation-cleanup blockers from architecture-review-runtime-logger-final-2.txt are repaired in the inspected implementation. The marker-secret blocker is only partially repaired: a named marker can combine with adjacent text to recreate a registered secret after replacement. Independent inspection also found that the primary sparkii:promptSession path still carries an OpenSession across awaits without validating its lease, so a same-ID release/reacquire can let an old prompt mutate or consume the replacement binding. The domain cannot be approved.
+
+Re-review of the three final-2 blockers
+
+1. Duplicate concurrent acquisition — REPAIRED.
+- packages/agent-host/src/pi-runtime-pool.ts:154-169 coalesces every in-flight acquire by session ID; packages/agent-host/src/pi-runtime-pool.ts:172-175 rejects an already-bound ID on the owned path.
+- Event acceptance requires the current bySession client and lease as well as generation at packages/agent-host/src/pi-runtime-pool.ts:197-203.
+- renameSession refuses a target owned by another lease at packages/agent-host/src/pi-runtime-pool.ts:417-427.
+- The regression asserts one handle/client, one owner, consistent activeCount/snapshot, one event path and safe release at packages/agent-host/test/pi-runtime-pool.test.ts:68-91.
+
+2. Creation-failure cleanup destroying a same-ID replacement — REPAIRED.
+- apps/desktop/electron/main/ipc.ts:963-977 makes ensureOpenSession single-flight per session ID.
+- Creation captures the temporary and created leases and rechecks ownership after new_session/get_state/mkdir/key lookup/set_api_key awaits at apps/desktop/electron/main/ipc.ts:1424-1450 and apps/desktop/electron/main/ipc.ts:1477-1486.
+- The catch removes only the exact published entry, deletes the record and releases only while the created client/session/lease is still owned at apps/desktop/electron/main/ipc.ts:1492-1504.
+- The same-ID replacement regression is at apps/desktop/test/ipc.test.ts:1469-1497.
+
+3. Replacement marker preserving a registered secret — NOT FULLY REPAIRED.
+- apps/desktop/electron/main/logger.ts:14-18 rejects a named marker only when the marker contains the complete secret. It does not require the marker's characters to be absent from the secret corpus.
+- apps/desktop/electron/main/logger.ts:27-35 performs one literal replacement and one JSON-escaped replacement, with no fixed-point/final serialized-output check.
+- Concrete failure: register x"[已删除]. The selected marker is [已删除]. Redacting xx"[已删除] replaces the substring beginning at the second x and produces x"[已删除], exactly the registered secret. The second replacement searches for x\"[已删除], so it does not remove the recreated raw secret.
+- The leaked value flows through structured redaction at apps/desktop/electron/main/logger.ts:38-44, console output at apps/desktop/electron/main/logger.ts:149-157, future disk writes at apps/desktop/electron/main/logger.ts:158-164, historical rewrites at apps/desktop/electron/main/logger.ts:105-138, and a direct export of such history at apps/desktop/electron/main/logger.ts:166-170.
+- apps/desktop/test/logger.test.ts:26-52 covers only 已删除 and [已删除], not a secret that straddles the marker and contains a JSON-escapable character.
+
+Remaining blocking findings
+
+1. BLOCKING — logger replacement can recreate a registered secret across the marker boundary.
+Evidence: apps/desktop/electron/main/logger.ts:14-18 and apps/desktop/electron/main/logger.ts:27-44, with the concrete x"[已删除] example above.
+Impact: valid-history rewrite, direct export, future append and console output can still contain the registered secret in raw or JSON-escaped form. This violates the no-preserved-secrets requirement even though the two original marker literals are handled.
+Required repair: use a marker whose scalar characters are absent from the complete registered corpus for all cases (the existing Unicode-scalar fallback has this property), or iterate to a verified fixed point with cycle handling. Verify the final serialized output against every raw and JSON-escaped secret before rewrite/write/export/console output. Add regressions for prefix/suffix-wrapped markers containing quotes, backslashes and control characters.
+
+2. BLOCKING — sparkii:promptSession does not validate the captured binding lease across awaits, allowing an old prompt to affect a same-ID replacement.
+Evidence:
+- packages/agent-host/src/pi-runtime-pool.ts:244-257 exposes one stable facade per slot; packages/agent-host/src/pi-runtime-pool.ts:222-241 has no lease/ownership gate for ordinary commands. Reusing the slot intentionally returns the same client with a rotated lease, as asserted at packages/agent-host/test/pi-runtime-pool.test.ts:725-739.
+- apps/desktop/electron/main/ipc.ts:1367-1385 captures OpenSession, then awaits settings/model/key/thinking-level work and returns without comparing open.lease to rt.pool.getBinding(sessionId). selectModel re-resolves the current pool client at apps/desktop/electron/main/workflow.ts:169-203, so it can configure the replacement even when the old client differs.
+- apps/desktop/electron/main/ipc.ts:1714-1797 carries that OpenSession through attachment staging, image reads, get_state, task start, prompt/steer/follow_up and the final get_state without any client/session/lease validation.
+Impact: if the slot is released and the same ID is reacquired while promptSession is awaiting, the stale handler can change the replacement model/thinking level, send the old prompt/steer/follow_up into the replacement when the facade is reused, arm/update replacement bookkeeping, and return success. This is the same-ID binding corruption the lease mechanism is intended to prevent.
+Required repair: capture the immutable binding at promptSession entry and validate pool membership, client identity, session ID and lease before subscription/send, on every event, after every await and before success/bookkeeping. Abort stale work without touching the replacement and pass the captured lease to any cleanup/release. Add a deferred attachment or model/key regression that releases and reacquires the same ID on the same client while the old prompt is suspended.
+
+Other verified repairs
+- Reset ownership is detached before asynchronous reset, resetting slots are unavailable, failed reset retires the slot, and bind rechecks ownership after configure/switch awaits: packages/agent-host/src/pi-runtime-pool.ts:186-188, 304-391 and 474-503.
+- Successful session-changing responses require a strictly increasing safe generation; transport/validation uncertainty retires the slot and session-changing broadcasts are rejected: packages/agent-host/src/pi-runtime-pool.ts:205-241 and 510-517. Runtime generation increment and supervisor forwarding are at packages/agent-host/src/pi-runtime.ts:91-103 and packages/agent-host/src/pi-runtime-supervisor.ts:121-124.
+- Workflow prompt/journal/cleanup ownership guards remain present at apps/desktop/electron/main/workflow.ts:221-286, 497-583 and 586-649.
+- The transient sparkii:prompt waiter path validates lease before subscription/send/on events/after completion and coordinates early agent_end with send completion at apps/desktop/electron/main/ipc.ts:2821-2898; unbind cancellation remains at apps/desktop/electron/main/ipc.ts:1313-1320.
+- Logger still preserves keys/schema for valid records, decodes complete malformed string tokens with JSON.parse, and terminates nonempty rewrites with one newline at apps/desktop/electron/main/logger.ts:38-109.
+
+Evidence and limitations
+- Inspected architecture-review-runtime-logger-final-2.txt, the third-review before/after evidence, and the implementation/assertions cited above. Passing evidence was not treated as a substitute for source inspection.
+- Runtime tests use FakeHandle/DeferredResetHandle at packages/agent-host/test/pi-runtime-pool.test.ts:6-65, not real child processes. No real-process lifecycle, IPC ordering, generation timing or shutdown behavior is verified.
+- The reviewer did not edit any existing source file and created only this explicitly requested report. No files were staged, committed or pushed. No targeted or full test suite was run, and no destructive operation was performed.

@@ -1,0 +1,30 @@
+(node:25588) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:27676) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:35188) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/gate.test.ts (16 tests | 13 skipped) 48ms
+(node:18112) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-truth-batch.test.ts (37 tests | 30 skipped) 5864ms
+     ✓ R8 final review resumes a partially rolled-back new project with startup-injected authorization  749ms
+     ✓ R8 final review keeps rollback backups when journal removal fails after truth restoration  747ms
+     ✓ R8 final review does not roll back committed truth when post-commit backup cleanup fails  521ms
+     ✓ R8 final review retries orphan backup cleanup without quarantining restored truth  510ms
+     ✓ R8 final review rejects an empty uncommitted journal without deleting the only original backup  757ms
+     ✓ R8 final review fences registered project reads and self-healing through an ancestor junction  1445ms
+     ✓ R8 final review rejects unregistered duplicate project identity before single or batch commits  1131ms
+(node:6220) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/task-lifecycle.test.ts (12 tests | 11 skipped) 4ms
+
+ Test Files  3 passed (3)
+      Tests  11 passed | 54 skipped (65)
+   Start at  01:01:43
+   Duration  9.19s (transform 399ms, setup 29ms, import 1.17s, tests 5.92s, environment 1.58s)
+

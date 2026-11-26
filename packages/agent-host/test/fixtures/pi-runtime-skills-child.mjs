@@ -7,6 +7,7 @@ import {
 let pendingSaddle = null;
 let lastSkillNames = [];
 let modelRuntime;
+let sessionGeneration = 0;
 
 const agentDir = process.env.PI_CODING_AGENT_DIR;
 if (!agentDir) {
@@ -49,11 +50,12 @@ process.on("message", (env) => {
       }
       if (cmd.type === "new_session" || cmd.type === "switch_session") {
         await bindSkills();
-        respond(true, { skills: lastSkillNames });
+        sessionGeneration += 1;
+        respond(true, { skills: lastSkillNames, sessionGeneration });
         return;
       }
       if (cmd.type === "get_state") {
-        respond(true, { skills: lastSkillNames, sessionId: "s1" });
+        respond(true, { skills: lastSkillNames, sessionId: "s1", sessionGeneration });
         return;
       }
       respond(true);

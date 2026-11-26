@@ -8,6 +8,7 @@ import { handleMemoryToolAction } from '../electron/main/memory/tools.js';
 import { userMemoryFile } from '../electron/main/memory/settings.js';
 import { createMemoryToolDefinitions } from '../../../packages/agent-host/src/memory-tools.js';
 import { buildAgentSaddle } from '../electron/main/saddle.js';
+import type { Proposal } from '@sparkii/approval';
 
 let root: string;
 let dataDir: string;
@@ -15,6 +16,7 @@ let errors: ErrorStore;
 let service: MemoryService;
 let audit: ReturnType<typeof vi.fn>;
 let propose: ReturnType<typeof vi.fn>;
+let proposalOf: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   root = mkdtempSync(join(tmpdir(), 'sparkii-tools-'));
@@ -23,6 +25,7 @@ beforeEach(() => {
   service = new MemoryService({ dataDir, errors, sessionExists: () => true });
   audit = vi.fn(async () => ({}));
   propose = vi.fn(async () => ({ approved: true, proposalId: 'p1', status: 'approved' }));
+  proposalOf = vi.fn((id: string) => id === 'p1' ? { id, status: 'approved' } as Proposal : undefined);
 });
 
 afterEach(() => {
@@ -36,6 +39,8 @@ function runTool(name: string, args: Record<string, unknown>) {
     requestAction: (request) => handleMemoryToolAction(request, {
       service, audit: { append: audit }, actor: 'u1', sessionId: 'sess-1', profileId: 'general',
       propose,
+      proposalOf,
+      assertOwner: () => {},
     }),
   });
   const def = defs.find((d) => d.name === name)!;
@@ -69,6 +74,28 @@ describe('memory tools — platform trusted branch', () => {
     expect(audit).toHaveBeenCalledWith(expect.objectContaining({ action: 'memory.forget', decision: 'allowed' }));
   });
 
+  it('R8 memory_forget 不删除审批等待期间被同 ID 替换 admission 拥有的记忆', async () => {
+    const added = service.addMemory({ scope: 'user', text: '审批等待期间必须保留' });
+    let approve!: (decision: { approved: boolean; proposalId: string; status: string }) => void;
+    let replaced = false;
+    propose.mockImplementationOnce(() => new Promise((resolve) => { approve = resolve; }));
+    const assertOwner = vi.fn(() => { if (replaced) throw new Error('runtime owner replaced'); });
+    const deleting = handleMemoryToolAction({
+      requestId: 'forget-stale', toolName: 'memory_forget', args: { query: '审批等待期间' },
+    }, {
+      service, audit: { append: audit }, actor: 'u1', sessionId: 'sess-1', profileId: 'general',
+      propose, proposalOf, assertOwner,
+    });
+    await vi.waitFor(() => expect(propose).toHaveBeenCalledTimes(1));
+    replaced = true;
+    approve({ approved: true, proposalId: 'p1', status: 'approved' });
+    await expect(deleting).resolves.toMatchObject({
+      status: 'failed',
+      error: { code: 'MEMORY_TOOL_FAILED', message: '记忆工具执行失败' },
+    });
+    expect(service.store.rowFor(added.id)).toBeTruthy();
+  });
+
   it('memory_search 只读命中并强化（不重置其他记忆）', async () => {
     service.addMemory({ scope: 'user', text: '用户要求先给结论的汇报格式' });
     const out = await runTool('memory_search', { query: '先给结论的汇报' });
@@ -81,6 +108,25 @@ describe('memory tools — platform trusted branch', () => {
   it('总开关关闭时三工具均被拒，无写入无检索', async () => {
     service.saveSettings({ enabled: false });
     await expect(runTool('memory_remember', { text: 'x' })).rejects.toThrow('记忆功能已关闭');
+  });
+
+  it('memory_remember(scope: agent) 使用当前 profileId 并校验智能体存在', async () => {
+    const svc = new MemoryService({ dataDir, errors, sessionExists: () => true, agents: () => [{ id: 'general', name: '通用' }] });
+    try {
+      const defs = createMemoryToolDefinitions({
+        requestAction: (request) => handleMemoryToolAction(request, {
+          service: svc, audit: { append: audit }, actor: 'u1', sessionId: 'sess-1', profileId: 'general', propose,
+          proposalOf,
+          assertOwner: () => {},
+        }),
+      });
+      const def = defs.find((d) => d.name === 'memory_remember')!;
+      const out = await (def as any).execute('call-agent', { scope: 'agent', text: '智能体偏好先给结论' }, undefined, undefined, undefined);
+      expect(out.details.ok).toBe(true);
+      expect(svc.list().scopes.find((s) => s.scope === 'agent:general')?.entries[0]?.text).toBe('智能体偏好先给结论');
+    } finally {
+      svc.close();
+    }
   });
 
   it('工具名与鞍附加同源：签名 agent 清单不变，平台统一追加', () => {

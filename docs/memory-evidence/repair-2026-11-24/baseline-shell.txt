@@ -1,0 +1,73 @@
+(node:11824) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36820) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:3292) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/runtime-action-router.test.ts (37 tests | 1 failed | 36 skipped) 19ms
+     × P0 denies model-facing host shell because it cannot enforce the .sparkii fence 17ms
+     ↓ executes an ordinary workspace write without requesting approval
+     ↓ executes delete and move inside the workspace with no proposal
+     ↓ passes workspace CRUD straight through in auto_review as well
+     ↓ denies a structured write outside the workspace without asking
+     ↓ hard-denies critical targets before approval or execution
+     ↓ denies process execution when the platform is not ready
+     ↓ asks a human for shell and never starts the Reviewer
+     ↓ denies Ask mode shell when no human can approve
+     ↓ asks a human for an external write
+     ↓ does not execute when the user denies
+     ↓ grants ordinary shell for the rest of the task after a task-scoped approval
+     ↓ still asks again for a high-risk command under a task grant
+     ↓ refuses a task scope for anything that is not ordinary shell
+     ↓ drops the task grant for a new task
+     ↓ rejects execution when the task is revoked while approval is pending
+     ↓ rejects execution when the target identity changes after approval
+     ↓ uses the Reviewer for shell and still re-checks before executing
+     ↓ sends only the minimal review context
+     ↓ carries at most four compact tool evidence entries
+     ↓ escalates a reviewer ask to a high-risk human approval
+     ↓ rejects task scope when Reviewer requested high-risk confirmation
+     ↓ does not execute on a reviewer deny
+     ↓ opens the circuit breaker after three consecutive denials
+     ↓ resets the denial counter after one allow
+     ↓ refuses an identical denied action without asking the Reviewer again
+     ↓ falls back to human approval when the Reviewer is unavailable
+     ↓ does not send an oversized command to the Reviewer
+     ↓ denies an unattended task when the Reviewer is unavailable
+     ↓ denies an unattended Reviewer ask instead of opening human approval
+     ↓ does not fall back to approval when the Reviewer is canceled by Task revoke
+     ↓ never sends an external write or a remote push to the Reviewer
+     ↓ records the policy version and timing in the audit summary
+     ↓ keeps denials and evidence inside one task only
+     ↓ clears task state when the task is revoked
+     ↓ returns a failed result when the execution plane throws
+     ↓ denies when the runtime action belongs to no live task
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/runtime-action-router.test.ts > workspace CRUD passthrough > P0 denies model-facing host shell because it cannot enforce the .sparkii fence
+AssertionError: expected 'executed' to be 'denied' // Object.is equality
+
+Expected: "denied"
+Received: "executed"
+
+ ❯ apps/desktop/test/runtime-action-router.test.ts:171:27
+    169|   it('P0 denies model-facing host shell because it cannot enforce the …
+    170|     const result = await h.router.route(bash('r-shell', 'cat alias/mem…
+    171|     expect(result.status).toBe('denied');
+       |                           ^
+    172|     expect(h.execute).not.toHaveBeenCalled();
+    173|     expect(h.requestApproval).not.toHaveBeenCalled();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 36 skipped (37)
+   Start at  12:56:47
+   Duration  3.20s (transform 428ms, setup 31ms, import 2.14s, tests 19ms, environment 818ms)
+

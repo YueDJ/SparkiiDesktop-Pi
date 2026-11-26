@@ -1,0 +1,173 @@
+(node:2704) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16700) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:13996) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mstarts idempotently and sends commands
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mrejects send when no response arrives
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mrejects pending sends when the child exits
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mrejects later sends immediately after the child has exited
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mstreams events and routes proposals
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mdenies a proposal when the approval handler rejects
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mroutes connector_read to the handler and replies
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mroutes raw Runtime actions to Main and returns the correlated result
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mR8 final review rejects late runtime requests and events from a replaced session
+ [31m×[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mR8 B1 fails closed for same-generation action, proposal and connector envelopes without origin[32m 8[2mms[22m[39m
+[31m   → expected "vi.fn()" to not be called at all, but actually been called 1 times[90m
+
+Received:
+
+[1m  1st vi.fn() call:
+
+[22m    Array [
+      Object {
+        "args": Object {},
+        "requestId": "no-origin-a",
+        "toolName": "write",
+      },
+      Object {
+        "client": PiRuntimeClientImpl {
+          "closed": null,
+          "generation": 0,
+          "handle": FakeHandle {
+            "exitCb": [Function anonymous],
+            "killed": false,
+            "messageCb": [Function anonymous],
+            "sent": Array [
+              Object {
+                "direction": "main-to-runtime",
+                "proposalDecision": undefined,
+                "requestId": "no-origin-p",
+                "sessionGeneration": 0,
+              },
+              Object {
+                "connectorReadResult": undefined,
+                "direction": "main-to-runtime",
+                "requestId": "no-origin-r",
+                "sessionGeneration": 0,
+              },
+            ],
+          },
+          "listeners": Set {},
+          "onAction": [Function anonymous],
+          "onConnectorRead": [Function anonymous],
+          "onProposal": [Function anonymous],
+          "origin": "fad98d60-8ef2-4524-9d1f-90827f35fca7",
+          "pending": Map {},
+          "readinessTimeoutMs": 60000,
+          "readyPromise": Promise {},
+          "rejectReady": [Function anonymous],
+          "resolveReady": [Function anonymous],
+          "sendTimeoutMs": 300000,
+        },
+        "sessionGeneration": 0,
+      },
+    ]
+[31m[90m
+
+Number of calls: [1m1[22m
+[31m[39m
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mfails closed when no Runtime action handler is registered
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mdenies connector_read when no handler is registered
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mclears the client and reports exit
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mM3：stop() 等待子进程真正退出[2m > [22mkill 不阻塞 stop：exit 到达后 stop 才 resolve
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mM3：stop() 等待子进程真正退出[2m > [22m超时后强杀仍无 exit 确认：stop 必须拒绝，不得假报关机成功
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mM3：stop() 等待子进程真正退出[2m > [22m强杀宽限期内出现 exit：stop 等待确认后成功返回
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mM3：stop() 等待子进程真正退出[2m > [22m句柄同一性守卫（防御性）：旧句柄迟到 exit 不清理新句柄、不通知 onExit
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mR8 B1 fails closed for same-generation action, proposal and connector envelopes without origin
+[31m[1mAssertionError[22m: expected "vi.fn()" to not be called at all, but actually been called 1 times[90m
+
+Received:
+
+[1m  1st vi.fn() call:
+
+[22m    Array [
+      Object {
+        "args": Object {},
+        "requestId": "no-origin-a",
+        "toolName": "write",
+      },
+      Object {
+        "client": PiRuntimeClientImpl {
+          "closed": null,
+          "generation": 0,
+          "handle": FakeHandle {
+            "exitCb": [Function anonymous],
+            "killed": false,
+            "messageCb": [Function anonymous],
+            "sent": Array [
+              Object {
+                "direction": "main-to-runtime",
+                "proposalDecision": undefined,
+                "requestId": "no-origin-p",
+                "sessionGeneration": 0,
+              },
+              Object {
+                "connectorReadResult": undefined,
+                "direction": "main-to-runtime",
+                "requestId": "no-origin-r",
+                "sessionGeneration": 0,
+              },
+            ],
+          },
+          "listeners": Set {},
+          "onAction": [Function anonymous],
+          "onConnectorRead": [Function anonymous],
+          "onProposal": [Function anonymous],
+          "origin": "fad98d60-8ef2-4524-9d1f-90827f35fca7",
+          "pending": Map {},
+          "readinessTimeoutMs": 60000,
+          "readyPromise": Promise {},
+          "rejectReady": [Function anonymous],
+          "resolveReady": [Function anonymous],
+          "sendTimeoutMs": 300000,
+        },
+        "sessionGeneration": 0,
+      },
+    ]
+[31m[90m
+
+Number of calls: [1m1[22m
+[31m[39m
+[36m [2m❯[22m packages/agent-host/test/pi-runtime-supervisor.test.ts:[2m248:26[22m[39m
+    [90m246|[39m     })[33m;[39m
+    [90m247|[39m     [35mawait[39m [35mnew[39m [33mPromise[39m((resolve) [33m=>[39m [34msetTimeout[39m(resolve[33m,[39m [34m0[39m))[33m;[39m
+    [90m248|[39m     [34mexpect[39m(onAction)[33m.[39mnot[33m.[39m[34mtoHaveBeenCalled[39m()[33m;[39m
+    [90m   |[39m                          [31m^[39m
+    [90m249|[39m     [34mexpect[39m(onProposal)[33m.[39mnot[33m.[39m[34mtoHaveBeenCalled[39m()[33m;[39m
+    [90m250|[39m     [34mexpect[39m(onConnectorRead)[33m.[39mnot[33m.[39m[34mtoHaveBeenCalled[39m()[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Unhandled Errors [49m[22m[31m⎯⎯⎯⎯⎯⎯[39m
+[31m[1m
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.[22m[39m
+
+[31m⎯⎯⎯⎯[39m[1m[41m Unhandled Rejection [49m[22m[31m⎯⎯⎯⎯⎯[39m
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 'requestId')[39m
+[90m [2m❯[22m actionResultEnvelope packages/agent-host/src/runtime-actions.ts:[2m61:20[22m[39m
+[90m [2m❯[22m PiRuntimeClientImpl.consume packages/agent-host/src/pi-runtime-supervisor.ts:[2m206:31[22m[39m
+[90m [2m❯[22m processTicksAndRejections node:internal/process/task_queues:[2m103:5[22m[39m
+
+[31mThis error originated in "[1mpackages/agent-host/test/pi-runtime-supervisor.test.ts[22m" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.[39m
+[31mThe latest test that might've caused the error is "[1mR8 B1 fails closed for same-generation action, proposal and connector envelopes without origin[22m". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.[39m
+[31m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[33m16 skipped[39m[90m (17)[39m
+[2m     Errors [22m [1m[31m1 error[39m[22m
+[2m   Start at [22m 11:13:30
+[2m   Duration [22m 387ms[2m (transform 54ms, setup 0ms, import 198ms, tests 9ms, environment 0ms)[22m
+

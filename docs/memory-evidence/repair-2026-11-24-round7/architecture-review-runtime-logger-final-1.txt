@@ -1,0 +1,20 @@
+CHANGES_REQUIRED
+Task-id: R7-REVIEW-RUNTIME-LOGGER
+
+Blocking findings:
+
+1. Stale workflow cleanup and journaling can affect a same-ID replacement binding.
+- workflow.ts:497-499 sends append_workflow_entry through the stable client without checking the captured binding lease. After release/reacquire, an old workflow failure record can be written into the replacement session.
+- workflow.ts:609-621 journals failure and unconditionally invokes beforeRelease(sessionId) before lease-safe pool release.
+- ipc.ts:2822-2828 performs task shutdown, deletes inFlightWorkflowRuns, emits session_unbound, and deletes openSessions without validating the old lease. A replacement opened under the same ID can lose its task grant and UI binding.
+- Existing workflow assertions verify prompt output rejection and lease-safe pool release, but not journal writes or hook cleanup after rebinding.
+- Required repair: thread the captured lease into journal creation and beforeRelease; reject stale journal appends before sending; guard every cleanup side effect by lease/task identity and verify the exact openSessions entry before deletion.
+
+2. IPC transient-waiter cleanup is keyed only by session ID.
+- ipc.ts:2760-2770 registers cancellation by sessionId and finish() unconditionally deletes that entry. An old same-ID send completing after rebinding can delete a newer waiter's cancellation callback.
+- ipc.ts:1262-1270 then cannot synchronously cancel/reject the newer waiter during unbind.
+- Required repair: store { lease, cancel } and delete only the exact waiter/lease; use the captured lease for transient cleanup and pool release. Add overlapping old/new waiter coverage.
+
+Verified: pool synchronous retirement, generation validation, lease rotation, release/reset gating, event filtering, direct-facade send centralization, logger value-only redaction, malformed-token placeholders, and newline termination.
+
+Limitation: FakeHandle/DeferredResetHandle only; no real child-process verification. Reviewer edited no files and ran no suites.

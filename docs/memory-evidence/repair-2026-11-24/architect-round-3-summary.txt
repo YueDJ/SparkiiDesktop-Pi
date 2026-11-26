@@ -1,0 +1,46 @@
+Independent architect review round 3
+Date: 2026-11-24
+Baseline: 101487d
+Verdict: CHANGES_REQUIRED
+
+Independent commands personally run by the architect:
+NO_COLOR=1 pnpm exec vitest run apps/desktop/test/memory-audit-regression.test.ts apps/desktop/test/memory-fence-canonical.test.ts apps/desktop/test/memory-truth-batch.test.ts apps/desktop/test/memory-index-fallback.test.ts apps/desktop/test/memory-consolidation.test.ts apps/desktop/test/memory-extraction.test.ts apps/desktop/test/windows-platform.test.ts packages/agent-host/test/pi-runtime-pool.test.ts packages/agent-host/test/coding-tools.test.ts packages/agent-host/test/tool-registry.test.ts
+Result: 10 files / 137 tests passed in 11.93s.
+Desktop typecheck: passed.
+git diff --check: passed.
+Source hashes: 34 / 34 matched.
+Evidence hashes: 39 / 39 matched.
+The architect also ran five temporary probes and confirmed its worktree was unchanged.
+
+Confirmed findings and resolutions:
+
+F1 HIGH — Cross-file duplicate entry IDs remained listable and injectable.
+Resolution: MemoryStore.identityConflicts() now reports every projectId and entry-ID conflict with all affected files. reconcileAll() removes the derived index for every conflicted file even when its truth hash is unchanged. buildBlock() emits repair_needed and returns no injection on any identity conflict; list() suppresses every affected file; addMemory() rejects all writes with ScopeConflictError.
+Regression: apps/desktop/test/memory-audit-regression.test.ts — "cross-file duplicate ids are excluded from listing and injection until repaired".
+
+F2 HIGH — Privacy deletion retained pending episode proposals.
+Resolution: addEpisodeProposal() records source.sessionId; addMemory() rejects sources in deletedSessions and rejects episode proposals whose source session no longer exists, including after restart. markSourcesDeleted() and deleteMemoryEntriesBySession() also identify legacy episode proposals by their exact proposal file when source metadata is absent. Privacy deletion removes those rows and includes their text/proposedText in diagnostic redaction and invalidatedPending accounting. Legacy active entries marked source-deleted receive the known sessionId and consolidated source kind.
+Regressions: apps/desktop/test/memory-audit-regression.test.ts — "privacy deletion removes both current and legacy episode proposals" (including restart) and "ordinary source deletion removes legacy pending episode proposals and repairs active source metadata".
+
+F3 HIGH — Malformed mergeIds were partially accepted.
+Resolution: resolvePending() validates the complete mergeIds value before target degradation or any target/sibling mutation. Non-arrays and non-string elements throw; nothing is written or indexed on failure.
+Regression: apps/desktop/test/memory-audit-regression.test.ts — "malformed mergeIds are rejected before any pending or target mutation", including a missing-target case that previously would have degraded before rejection.
+
+F4 HIGH — PiRuntimeSupervisor.stop() falsely resolved after timeout without confirmed OS process exit.
+Resolution: observed exits are tracked per handle. After the first bounded wait, stop() force-kills once more and waits another bounded interval. It resolves only after an exit callback; otherwise it rejects. PiRuntimePool.stopAll() waits for all stop attempts via allSettled() and throws AggregateError if any exit is unconfirmed. Cold-start cleanup preserves the original startup error; dead-slot release awaits shutdown while advancing queued work in finally.
+Regressions: packages/agent-host/test/pi-runtime-supervisor.test.ts covers unconfirmed-exit rejection and forced-kill grace-period success, and updates the old-handle test to expect rejection; packages/agent-host/test/pi-runtime-pool.test.ts covers stopAll rejection, two kill attempts, shared rejected shutdown, and cleared active state.
+
+F5 MEDIUM — Logger construction could abort application startup.
+Resolution: Logger construction performs no filesystem operations. MemoryService still invokes old prompt-log cleanup in its existing guarded startup block and records a repair warning on failure. Logger log/export remain non-blocking on filesystem errors.
+Regression: apps/desktop/test/logger.test.ts — "constructor and logging stay non-blocking when the log file path is a directory". Existing memory-audit cleanup-warning regression also remains green.
+
+F6 MEDIUM — Unavailable real symlink/hardlink fixtures returned early and Vitest counted them as passed.
+Resolution: temporary capability probes actually create and remove a real link before test registration. Unavailable fixture cases use it.skipIf(), while available cases remove early returns. On this host the hardlink fixture ran; the real symlink fixture was unavailable with EPERM and is explicitly reported as skipped.
+Regression/evidence: apps/desktop/test/workspace-file-service.integration.test.ts; verification-round4-run-1.txt and verification-round4-run-2.txt explicitly show 6 tests / 1 skipped for that file.
+
+Post-fix verification:
+- Complete verification run 1: 24 files, 280 passed, 1 explicitly skipped, 19.06s.
+- Complete verification run 2: 24 files, 280 passed, 1 explicitly skipped, 21.45s.
+- Desktop typecheck: passed for renderer and Electron tsconfig.
+- The UI source was unchanged from the visually inspected round-3 browser probe; round-3 screenshots and browser console/network results are carried forward, with the current UI source hash checked separately.
+- No commit or push performed.

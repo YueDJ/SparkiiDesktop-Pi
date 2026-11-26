@@ -1,0 +1,415 @@
+(node:844) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:13396) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:26536) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:25648) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37988) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:33256) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |0| packages/agent-host/test/pi-runtime-pool.test.ts (23 tests | 1 failed) 61ms
+     × P1-7 reserves cold-start capacity before supervisor startup 10ms
+     ✓ reuses a free slot across release 1ms
+     ✓ queues beyond maxAgents and wakes on release 17ms
+     ✓ sends new_session on release 0ms
+     ✓ retires a slot whose new_session fails instead of reusing it 1ms
+     ✓ reports the live session id through getSessionId 0ms
+     ✓ clears sessionId before sending new_session on release 1ms
+     ✓ stamps the next session on the same slot after release 0ms
+     ✓ renames a session id while keeping the same client 0ms
+     ✓ renameSession is a no-op when the source id is unknown 0ms
+     ✓ broadcasts a command to every live runtime process 0ms
+     ✓ emits a snapshot after acquire, release and rename 1ms
+     ✓ wakes a queued session with its original saddle and meta 0ms
+     ✓ reuses one process and sends the next session's skillsDir on configure_session 0ms
+     ✓ updateMeta patches a live slot label and emits a snapshot 0ms
+     ✓ updateMeta patches a queued session without waking it 0ms
+     ✓ snapshot uses 新会话 when acquire has no label, not the session id 0ms
+     ✓ updateMeta follows renameSession so a temp key can receive the real title 0ms
+     ✓ updateMeta is a no-op for an unknown session 0ms
+     ✓ hides internal probe slots and queue items from the snapshot 0ms
+     ✓ drops a crashed slot instead of handing it to the next acquire 2ms
+     ✓ m9：await start() 期间池被 stopAll ⇒ acquire 复检 stopped、停掉新 supervisor 并拒绝 2ms
+     ✓ M3：stopAll 等到子进程 exit 才 resolve（kill 不自动退出时由超时兜底） 21ms
+ ❯ |0| packages/agent-host/test/tool-registry.test.ts (18 tests | 1 failed) 107ms
+     ✓ resolves coding and connector tool names 3ms
+     ✓ fails closed on unknown tool names 1ms
+     ✓ wires coding writes to the Runtime action requester 4ms
+     ✓ resolves the ontology connector tool surface 1ms
+     ✓ read tool returns WORKSPACE_NOT_CREATED when workspace missing 1ms
+     ✓ resolves relative read paths against workspaceRoot instead of anchor cwd 8ms
+     ✓ read tool returns inline image content for an image file 7ms
+     ✓ reads a skill-root file when the workspace does not exist 7ms
+     ✓ still reads workspace files when the workspace exists 4ms
+     ✓ denies another agent's skill path even when workspace exists 2ms
+     ✓ denies trust-anchor reads even when the file is inside the workspace 2ms
+     ✓ denies symlink escapes from the workspace 2ms
+     ✓ denies directly reading a hard-linked file 13ms
+     ✓ asks Main before reading a workspace file 10ms
+     × rejects a canonical .sparkii path returned by the runtime authorization boundary 20ms
+     ✓ still returns WORKSPACE_NOT_CREATED for workspace paths when workspace is missing 1ms
+     ✓ lists a skill-root directory when the workspace does not exist 3ms
+     ✓ isolates user-library and package skill roots across two agent saddles 16ms
+ ❯ |1| apps/desktop/test/memory-fence-canonical.test.ts (9 tests | 8 failed) 152ms
+     × generic IPC denies read through a real junction alias 34ms
+     × generic IPC denies readBytes through a real junction alias 14ms
+     × generic IPC denies write through a real junction alias 14ms
+     × generic IPC denies writeBytes through a real junction alias 12ms
+     × generic IPC denies delete through a real junction alias 12ms
+     × generic IPC denies rename through a real junction alias 13ms
+     × generic IPC denies move through a real junction alias 12ms
+     ✓ generic IPC denies direct canonical and hardlink aliases but keeps ordinary files usable 16ms
+     × production WorkspaceExecutor rejects direct canonical .sparkii resources 21ms
+ ❯ |1| apps/desktop/test/memory-audit-regression.test.ts (12 tests | 12 failed) 1195ms
+     × P1-2 LIKE fallback supports CRUD, search and rebuild 117ms
+     × P1-2 corrupt SQLite is quarantined and rebuilt from truth without blocking startup 80ms
+     × P1-3 copied workspace with the same projectId fails closed and preserves the first truth source 94ms
+     × P1-4 default search and includeHistory never expose pending memories 96ms
+     × P2 external truth edits reconcile list, injection and search 103ms
+     × P2 master switch rejects manual add while disabled 73ms
+     × P2 project archived state survives derived index rebuild 94ms
+     × P1-6 a missing cursor is rejected and truncation advances only through included messages 67ms
+     × P1-5 one invalid project UPDATE rejects the whole extraction batch 113ms
+     × P1-1 privacy deletion wins over an in-flight model response and redacts diagnostics 104ms
+     × P1-8 consolidation is single-flight across the first await 119ms
+     × P1-8 mergeIds approval is all-or-nothing 131ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 22 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > P1-2 LIKE fallback supports CRUD, search and rebuild
+SqliteError: no such column: m.status
+ ❯ Database.prepare node_modules/.pnpm/better-sqlite3@13.0.3/node_modules/better-sqlite3/lib/methods/wrappers.js:5:21
+ ❯ MemoryStore.search apps/desktop/electron/main/memory/store.ts:448:28
+    446|     } else {
+    447|       const like = `%${term}%`;
+    448|       const rows = this.db.prepare(`
+       |                            ^
+    449|         SELECT * FROM memories WHERE text LIKE ?${statusClause}
+    450|         ORDER BY importance DESC, updated_at DESC LIMIT ?
+ ❯ MemoryService.searchMemory apps/desktop/electron/main/memory/service.ts:559:29
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:53:21
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/23]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > P1-2 corrupt SQLite is quarantined and rebuilt from truth without blocking startup
+SqliteError: file is not a database
+ ❯ Database.exec node_modules/.pnpm/better-sqlite3@13.0.3/node_modules/better-sqlite3/lib/methods/wrappers.js:9:14
+ ❯ new MemoryStore apps/desktop/electron/main/memory/store.ts:169:13
+    167|     }
+    168|     this.db = new Database(memoryDbPath(opts.dataDir));
+    169|     this.db.exec(`
+       |             ^
+    170|       CREATE TABLE IF NOT EXISTS memories (
+    171|         id TEXT PRIMARY KEY, scope TEXT NOT NULL, project_id TEXT, wor…
+ ❯ new MemoryService apps/desktop/electron/main/memory/service.ts:69:18
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:64:15
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/23]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > P1-2 corrupt SQLite is quarantined and rebuilt from truth without blocking startup
+Error: EBUSY: resource busy or locked, unlink 'C:\Users\YDJ\AppData\Local\Temp\sparkii-audit-mVxGMs\data\memory.db'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/23]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > P1-3 copied workspace with the same projectId fails closed and preserves the first truth source
+Error: ENOENT: no such file or directory, copyfile 'C:\Users\YDJ\AppData\Local\Temp\sparkii-audit-HsC2zz\workspace-a\.sparkii\memory.json' -> 'C:\Users\YDJ\AppData\Local\Temp\sparkii-audit-HsC2zz\workspace-b\.sparkii\memory.json'
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:75:5
+     73|     mkdirSync(b, { recursive: true });
+     74|     service!.addMemory({ scope: 'project', workspacePath: a, workspace…
+     75|     copyFileSync(projectMemoryFile(a), projectMemoryFile(b));
+       |     ^
+     76|     const events: Array<Record<string, unknown>> = [];
+     77|     service!.setEmitter((type, payload) => { if (type === 'repair_need…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/23]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > P1-4 default search and includeHistory never expose pending memories
+AssertionError: expected [ { …(6) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "id": "mem_0f2dd536-7a86-4f34-95dc-8d70b60b1ffa",
++     "kind": "memory",
++     "scope": "user",
++     "score": 0.000001,
++     "status": "pending",
++     "text": "待确认隐私内容",
++   },
++ ]
+
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:87:46
+     85|   it('P1-4 default search and includeHistory never expose pending memo…
+     86|     service!.addMemory({ scope: 'user', text: '待确认隐私内容', status: 'pend…
+     87|     expect(service!.searchMemory('待确认隐私内容')).toEqual([]);
+       |                                              ^
+     88|     expect(service!.searchMemory('待确认隐私内容', { includeHistory: true }))…
+     89|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/23]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > P2 external truth edits reconcile list, injection and search
+AssertionError: expected [] to include 'mem_d177e9bd-9991-4bb1-95d8-bc8788c5a…'
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:99:59
+     97|     expect(service!.list().scopes.flatMap((s) => s.entries).find((e) =…
+     98|     expect(service!.buildBlock({ profileId: 'general' })).toContain('外…
+     99|     expect(service!.searchMemory('新事实').map((h) => h.id)).toContain(ad…
+       |                                                           ^
+    100|   });
+    101|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/23]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > P2 master switch rejects manual add while disabled
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:104:74
+    102|   it('P2 master switch rejects manual add while disabled', () => {
+    103|     service!.saveSettings({ enabled: false });
+    104|     expect(() => service!.addMemory({ scope: 'user', text: '关闭后不应写入' }…
+       |                                                                          ^
+    105|     expect(existsSync(userMemoryFile(dataDir))).toBe(false);
+    106|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/23]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > P2 project archived state survives derived index rebuild
+AssertionError: expected undefined to be true // Object.is equality
+
+- Expected:
+true
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:114:90
+    112|     service!.archiveProject(workspace, true);
+    113|     service!.rebuildIndex();
+    114|     expect(service!.list().scopes.find((s) => s.scope.startsWith('proj…
+       |                                                                                          ^
+    115|     expect(service!.buildBlock({ profileId: 'general', workspacePath: …
+    116|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/23]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > P1-6 a missing cursor is rejected and truncation advances only through included messages
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:126:62
+    124|     ];
+    125|     writeFileSync(file, entries.map((e) => JSON.stringify(e)).join('\n…
+    126|     expect(() => readSessionMaterial(file, 'missing', 6000)).toThrow(/…
+       |                                                              ^
+    127|     const limited = readSessionMaterial(file, 'e1', 12);
+    128|     expect(limited.text).toContain('第二条');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/23]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > P1-5 one invalid project UPDATE rejects the whole extraction batch
+AssertionError: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:145:31
+    143|     });
+    144|     const result = await extraction(async () => raw, { workspacePath: …
+    145|     expect(result.opsApplied).toBe(0);
+       |                               ^
+    146|     expect(service!.list().pending).toEqual([]);
+    147|     expect(service!.store.listEpisodes()).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/23]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > P1-1 privacy deletion wins over an in-flight model response and redacts diagnostics
+AssertionError: expected [ { …(13) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "createdAt": 1795495902326,
++     "id": "mem_9e4a8f3c-a4aa-414b-bf92-02730b9edf44",
++     "importance": 2,
++     "pendingOp": {
++       "op": "ADD",
++       "proposedText": "隐私删除后不得复活",
++     },
++     "pinned": false,
++     "scope": "user",
++     "source": {
++       "excerpt": "用户：用户要求先给结论
++ 用户：汇报要短
++ 用户：项目使用人民币",
++       "kind": "extracted",
++       "sessionId": "sess-private",
++     },
++     "sourceDeleted": true,
++     "status": "pending",
++     "supersededBy": null,
++     "text": "隐私删除后不得复活",
++     "updatedAt": 1795495902326,
++     "usage": {
++       "accessCount": 0,
++       "lastAccessedAt": null,
++     },
++   },
++ ]
+
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:173:37
+    171|     }));
+    172|     await running;
+    173|     expect(service!.list().pending).toEqual([]);
+       |                                     ^
+    174|     expect(service!.store.listEpisodes()).toEqual([]);
+    175|     expect(service!.store.getExtractionState('sess-private').lastRunAt…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/23]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > P1-8 consolidation is single-flight across the first await
+AssertionError: expected "vi.fn()" to be called 1 times, but got 0 times
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:189:22
+    187|     });
+    188|     const results = await Promise.all([c.runOnce(), c.runOnce()]);
+    189|     expect(complete).toHaveBeenCalledTimes(1);
+       |                      ^
+    190|     expect(results.filter((r) => r.calls > 0)).toHaveLength(1);
+    191|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/23]⎯
+
+ FAIL  |1| apps/desktop/test/memory-audit-regression.test.ts > memory audit regressions > P1-8 mergeIds approval is all-or-nothing
+AssertionError: expected [Function] to throw an error
+ ❯ apps/desktop/test/memory-audit-regression.test.ts:200:67
+    198|       pendingOp: { op: 'SUPERSEDE', targetId: keep.id, proposedText: '…
+    199|     });
+    200|     expect(() => service!.resolvePending(proposal.id, 'approve')).toTh…
+       |                                                                   ^
+    201|     expect(service!.list().scopes.flatMap((s) => s.entries).find((e) =…
+    202|     expect(service!.list().scopes.flatMap((s) => s.entries).find((e) =…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/23]⎯
+
+ FAIL  |1| apps/desktop/test/memory-fence-canonical.test.ts > P0 .sparkii canonical fence > generic IPC denies read through a real junction alias
+ FAIL  |1| apps/desktop/test/memory-fence-canonical.test.ts > P0 .sparkii canonical fence > generic IPC denies readBytes through a real junction alias
+ FAIL  |1| apps/desktop/test/memory-fence-canonical.test.ts > P0 .sparkii canonical fence > generic IPC denies write through a real junction alias
+ FAIL  |1| apps/desktop/test/memory-fence-canonical.test.ts > P0 .sparkii canonical fence > generic IPC denies writeBytes through a real junction alias
+ FAIL  |1| apps/desktop/test/memory-fence-canonical.test.ts > P0 .sparkii canonical fence > generic IPC denies delete through a real junction alias
+ FAIL  |1| apps/desktop/test/memory-fence-canonical.test.ts > P0 .sparkii canonical fence > generic IPC denies rename through a real junction alias
+ FAIL  |1| apps/desktop/test/memory-fence-canonical.test.ts > P0 .sparkii canonical fence > generic IPC denies move through a real junction alias
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ apps/desktop/test/memory-fence-canonical.test.ts:87:25
+     85|       };
+     86|       const result = await service.execute(op, request);
+     87|       expect(result.ok).toBe(false);
+       |                         ^
+     88|       expect(readFileSync(join(workspace, '.sparkii', 'memory.json'), …
+     89|     },
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/23]⎯
+
+ FAIL  |1| apps/desktop/test/memory-fence-canonical.test.ts > P0 .sparkii canonical fence > production WorkspaceExecutor rejects direct canonical .sparkii resources
+AssertionError: promise resolved "{ …(2) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "changes": [
++     {
++       "kind": "modified",
++       "path": "C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-fence-lT1jpn\\workspace\\.sparkii\\memory.json",
++     },
++   ],
++   "path": "C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-fence-lT1jpn\\workspace\\.sparkii\\memory.json",
+  }
+
+ ❯ apps/desktop/test/memory-fence-canonical.test.ts:111:120
+    109|     };
+    110|     const executor = createWorkspaceExecutor({ probe: probe() });
+    111|     await expect(executor.execute(executorAction('write', { path: targ…
+       |                                                                                                                        ^
+    112|       .rejects.toMatchObject({ code: 'DENIED' });
+    113|     expect(readFileSync(target, 'utf8')).toBe('{"secret":"memory"}');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/23]⎯
+
+ FAIL  |0| packages/agent-host/test/pi-runtime-pool.test.ts > PiRuntimePool > P1-7 reserves cold-start capacity before supervisor startup
+AssertionError: expected [ FakeHandle{ sent: [], …(3) }, …(1) ] to have a length of 1 but got 2
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ packages/agent-host/test/pi-runtime-pool.test.ts:35:21
+     33|     const second = pool.acquireIfIdle("memory:2", { meta: { profileId:…
+     34|     await new Promise((resolve) => setTimeout(resolve, 0));
+     35|     expect(handles).toHaveLength(1);
+       |                     ^
+     36|     expect(await second).toBeNull();
+     37|     handles[0].ready();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/23]⎯
+
+ FAIL  |0| packages/agent-host/test/tool-registry.test.ts > resolveToolDefinitions > rejects a canonical .sparkii path returned by the runtime authorization boundary
+AssertionError: expected 'reserved-secret' to match /拒绝访问/
+
+- Expected:
+/拒绝访问/
+
++ Received:
+"reserved-secret"
+
+ ❯ packages/agent-host/test/tool-registry.test.ts:253:39
+    251|     });
+    252|     const result = await (defs[0] as any).execute("t1", { path: "a.txt…
+    253|     expect(result.content?.[0]?.text).toMatch(/拒绝访问/);
+       |                                       ^
+    254|     expect(result.content?.[0]?.text).not.toContain("reserved-secret");
+    255|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/23]⎯
+
+
+ Test Files  4 failed (4)
+      Tests  22 failed | 40 passed (62)
+   Start at  12:51:38
+   Duration  4.62s (transform 1.28s, setup 72ms, import 6.50s, tests 1.51s, environment 1.85s)
+

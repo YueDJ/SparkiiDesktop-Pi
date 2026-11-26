@@ -1,0 +1,11 @@
+(node:25652) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+npm notice run typecheck
+npm notice run pnpm -r --if-present run typecheck
+(node:32876) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Scope: 9 of 10 workspace projects
+packages/ui typecheck$ tsc --noEmit -p tsconfig.json
+packages/ui typecheck: Done
+apps/desktop typecheck$ tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.electron.json
+apps/desktop typecheck: Done

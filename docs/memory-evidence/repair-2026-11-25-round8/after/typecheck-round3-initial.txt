@@ -1,0 +1,22 @@
+(node:10552) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+> sparkii-desktop-pi@ typecheck C:\Users\YDJ\Desktop\SparkiiDesktop-Pi
+> pnpm -r --if-present run typecheck
+
+(node:30996) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Scope: 9 of 10 workspace projects
+packages/ui typecheck$ tsc --noEmit -p tsconfig.json
+packages/ui typecheck: Done
+apps/desktop typecheck$ tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.electron.json
+apps/desktop typecheck: electron/main/chat-session-store.ts(270,13): error TS2551: Property 'pi_session_file' does not exist on type 'ChatSessionRecord'. Did you mean 'piSessionFile'?
+apps/desktop typecheck: electron/main/chat-session-store.ts(274,38): error TS2551: Property 'pi_session_file' does not exist on type 'ChatSessionRecord'. Did you mean 'piSessionFile'?
+apps/desktop typecheck: electron/main/chat-session-store.ts(275,16): error TS2551: Property 'pi_session_file' does not exist on type 'ChatSessionRecord'. Did you mean 'piSessionFile'?
+apps/desktop typecheck: Failed
+C:\Users\YDJ\Desktop\SparkiiDesktop-Pi\apps\desktop:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @sparkii/desktop@0.1.7 typecheck: `tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.electron.json`
+Exit status 2
+ ELIFECYCLE  Command failed with exit code 2.
+
+exit=2

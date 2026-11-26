@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { resolve } from 'node:path';
+import { lstat, readdir } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 import type { ToolDefinition } from '@earendil-works/pi-coding-agent';
 import type {
   ActionExecutionResult,
@@ -13,7 +14,27 @@ export interface WorkspaceToolContext {
   requestAction(request: RuntimeActionRequest): Promise<ActionExecutionResult>;
 }
 
-function targetPath(ctx: WorkspaceToolContext, value: unknown): string {
+async function rejectReservedDescendants(absolutePath: string): Promise<void> {
+  let info;
+  try {
+    info = await lstat(absolutePath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
+    throw error;
+  }
+  // Do not follow links. Main separately rejects reparse points during the
+  // actual mutation; this preflight fences retained children before approval.
+  if (!info.isDirectory() || info.isSymbolicLink()) return;
+  for (const entry of await readdir(absolutePath)) {
+    const child = join(absolutePath, entry);
+    if (isPlatformReservedPath(child)) {
+      throw new Error(`拒绝访问:${child} .sparkii 是平台保留目录`);
+    }
+    await rejectReservedDescendants(child);
+  }
+}
+
+async function targetPath(ctx: WorkspaceToolContext, value: unknown): Promise<string> {
   const path = String(value ?? '').trim();
   if (!path) throw new Error('路径不能为空');
   const absolute = resolve(ctx.workspaceRoot, path);
@@ -23,6 +44,7 @@ function targetPath(ctx: WorkspaceToolContext, value: unknown): string {
   if (isPlatformReservedPath(absolute)) {
     throw new Error(`拒绝访问:${path} .sparkii 是平台保留目录`);
   }
+  await rejectReservedDescendants(absolute);
   return absolute;
 }
 
@@ -65,7 +87,7 @@ export function createDeleteToolDefinition(
     },
     execute: async (toolCallId: string, params: { path?: unknown }) =>
       executeAction(ctx, toolCallId, 'delete', {
-        path: targetPath(ctx, params?.path),
+        path: await targetPath(ctx, params?.path),
       }),
   } as ToolDefinition<any, any, any>;
 }
@@ -90,8 +112,8 @@ export function createMoveToolDefinition(
       toolCallId: string,
       params: { from?: unknown; to?: unknown },
     ) => executeAction(ctx, toolCallId, 'move', {
-      from: targetPath(ctx, params?.from),
-      to: targetPath(ctx, params?.to),
+      from: await targetPath(ctx, params?.from),
+      to: await targetPath(ctx, params?.to),
     }),
   } as ToolDefinition<any, any, any>;
 }

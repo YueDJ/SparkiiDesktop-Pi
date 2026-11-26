@@ -1,0 +1,23 @@
+(node:10780) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:35808) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:35272) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:18088) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:42228) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime-pool.test.ts (50 tests | 49 skipped) 46ms
+ ✓ |1| apps/desktop/test/workflow-broker.test.ts (28 tests | 27 skipped) 31ms
+ ✓ |1| apps/desktop/test/ipc.test.ts (122 tests | 120 skipped) 15ms
+
+ Test Files  3 passed (3)
+      Tests  4 passed | 196 skipped (200)
+   Start at  22:11:36
+   Duration  5.89s (transform 1.78s, setup 40ms, import 7.82s, tests 92ms, environment 1.66s)
+

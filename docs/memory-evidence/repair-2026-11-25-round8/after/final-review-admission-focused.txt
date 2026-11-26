@@ -1,0 +1,62 @@
+(node:39320) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:23256) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:16676) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/gate.test.ts (16 tests) 402ms
+(node:25008) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/audit.test.ts (11 tests) 338ms
+(node:15644) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-round7-regression.test.ts (23 tests) 51509ms
+     ✓ R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files  2491ms
+     ✓ R7 privacy retry recovers an empty episode topic after restart and completes chat cleanup  2489ms
+     ✓ R7 privacy deletion discovers secrets nested only in pending operation extensions  1830ms
+     ✓ R7 privacy deletion scrubs an invalid structural targetId field  1821ms
+     ✓ R7 privacy deletion scrubs an invalid structural projectId field  1834ms
+     ✓ R7 privacy deletion scrubs an invalid structural mergeIds field  1789ms
+     ✓ R7 privacy deletion ignores whitespace-only episode topics without corrupting retained content  1823ms
+     ✓ R7 privacy deletion preserves pending UPDATE control fields when deleted text equals the op  1954ms
+     ✓ R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds  2249ms
+     ✓ R7 privacy deletion includes superseded episode records in the global redaction corpus  1906ms
+     ✓ R7 caller-mode memory deletion rechecks canonical approval after privacy redaction  1220ms
+     ✓ R7 production privacy retry succeeds in the same process after truth rows are gone  2454ms
+     ✓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body  1170ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes  2199ms
+     ✓ R7-P1-2 replacement preflight sees an indexed project after its registry entry is removed  2704ms
+     ✓ R7-P1-2 replacement preflight derives zero-entry project identity from scope_files  2931ms
+     ✓ R7-P1-3 source deletion detects indexed unregistered conflicts without an explicit workspace  2677ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes  2663ms
+     ✓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file  2674ms
+     ✓ R7-P1-3 valid source deletion updates unregistered project truth without reindexing it  2286ms
+     ✓ R7-P1-4 privacy deletion discovers indexed unregistered truth before reconciliation  2740ms
+     ✓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion  2803ms
+     ✓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution  2801ms
+(node:15264) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-tools.test.ts (7 tests) 7475ms
+     ✓ memory_remember 直接写入 active 并审计  1066ms
+     ✓ memory_forget 先弹审批；拒绝不删，批准才三处真删  1144ms
+     ✓ R8 memory_forget 不删除审批等待期间被同 ID 替换 admission 拥有的记忆  1135ms
+     ✓ memory_search 只读命中并强化（不重置其他记忆）  1136ms
+     ✓ 总开关关闭时三工具均被拒，无写入无检索  816ms
+     ✓ memory_remember(scope: agent) 使用当前 profileId 并校验智能体存在  1358ms
+     ✓ 工具名与鞍附加同源：签名 agent 清单不变，平台统一追加  818ms
+(node:14880) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/ipc.test.ts (156 tests) 2938ms
+(node:40380) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/runtime-action-router.test.ts (43 tests) 38ms
+
+ Test Files  6 passed (6)
+      Tests  256 passed (256)
+   Start at  02:45:39
+   Duration  74.34s (transform 2.06s, setup 59ms, import 7.41s, tests 62.70s, environment 3.15s)
+

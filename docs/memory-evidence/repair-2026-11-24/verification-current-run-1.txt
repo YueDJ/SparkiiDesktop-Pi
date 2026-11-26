@@ -1,0 +1,104 @@
+(node:28576) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:20996) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:37824) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:35132) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32960) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:5020) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:9984) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36424) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:34920) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:17440) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:35720) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:30096) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37844) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21840) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:18560) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:25840) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:4580) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime-pool.test.ts (27 tests) 158ms
+(node:20936) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/windows-platform.test.ts (9 tests) 341ms
+     ✓ reads the reparse attribute through the default Windows API path  309ms
+(node:35392) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-index-fallback.test.ts (2 tests) 246ms
+ ✓ |1| apps/desktop/test/memory-truth-batch.test.ts (7 tests) 281ms
+(node:38416) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1180) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/coding-tools.test.ts (10 tests) 89ms
+(node:22208) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-tools.test.ts (6 tests) 661ms
+(node:21912) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/tool-registry.test.ts (18 tests) 376ms
+(node:25500) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-consolidation.test.ts (11 tests) 2068ms
+     ✓ 三个阶段全都有活时仍然 ≤3 次调用，第四件事顺延  421ms
+     ✓ 没有空闲槽：跳过并顺延，不排队、不做任何写入  488ms
+stdout | apps/desktop/test/logger.test.ts > Logger > appends structured jsonl and exports
+start {"profile":"contract-review"}
+
+(node:38312) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stderr | apps/desktop/test/logger.test.ts > Logger > drops entries below the configured level
+kept ""
+
+ ✓ |1| apps/desktop/test/logger.test.ts (4 tests) 45ms
+ ✓ |1| apps/desktop/test/memory-service.test.ts (11 tests) 2624ms
+     ✓ 损坏文件停止该 scope 注入并出修复入口；修复后恢复  311ms
+     ✓ 普通删除保留历史版本，includeHistory 才真删  611ms
+     ✓ pending 出口：批准 ADD / 驳回进黑名单 / target 已删降级 ADD / 源会话删除失效  425ms
+ ✓ |1| apps/desktop/test/workspace-relocation.test.ts (11 tests) 25ms
+ ✓ |1| apps/desktop/test/memory-fence-canonical.test.ts (9 tests) 135ms
+ ✓ |1| apps/desktop/test/workspace-executor.test.ts (11 tests) 144ms
+ ✓ |1| apps/desktop/test/runtime-action-router.test.ts (36 tests) 112ms
+ ✓ |1| apps/desktop/test/memory-scoring.test.ts (6 tests) 10ms
+ ✓ |1| apps/desktop/test/memory-settings-pane.test.tsx (3 tests) 901ms
+     ✓ 导航有「记忆」；显示隐私明示；手动新增走 IPC  514ms
+     ✓ 损坏项目的修复草稿、空重建和覆盖修复按各自工作区隔离且需确认  330ms
+ ✓ |1| apps/desktop/test/memory-fence.test.ts (4 tests) 26ms
+ ✓ |1| apps/desktop/test/workspace-file-service.test.ts (7 tests) 47ms
+ ✓ |1| apps/desktop/test/action-normalizer.test.ts (12 tests) 29ms
+ ✓ |1| apps/desktop/test/memory-extraction.test.ts (10 tests) 1172ms
+ ✓ |1| apps/desktop/test/workspace.test.ts (5 tests) 16ms
+ ✓ |1| apps/desktop/test/memory-audit-regression.test.ts (21 tests) 2385ms
+stderr | apps/desktop/test/workspace-file-service.integration.test.ts > workspace file service — REAL probe integration (symlink / hard-link) > rejects a REAL symlink pointing outside the workspace
+[ws-boundary] symlink fixture unavailable (Error: EPERM: operation not permitted, symlink 'C:\Users\YDJ\AppData\Local\Temp\bid-wsreal-T9bZzF\outside\secret.txt' -> 'C:\Users\YDJ\AppData\Local\Temp\bid-wsreal-T9bZzF\workspace\escape.txt'); symlink-escape case skipped — run CI with Developer Mode to cover it for real
+
+ ✓ |1| apps/desktop/test/workspace-file-service.integration.test.ts (6 tests) 4479ms
+     ✓ allows a normal in-workspace write/read and audits sessionId→projectPath  1679ms
+     ✓ lists the workspace root with path "." (P1 rejects an empty path)  388ms
+     ✓ writes and reads back binary bytes through the fenced workspace  1602ms
+     ✓ rejects a REAL hard-link alias (nlink > 1) inside the workspace  597ms
+
+ Test Files  23 passed (23)
+      Tests  246 passed (246)
+   Start at  14:12:31
+   Duration  11.20s (transform 8.22s, setup 563ms, import 46.37s, tests 16.37s, environment 37.69s)
+

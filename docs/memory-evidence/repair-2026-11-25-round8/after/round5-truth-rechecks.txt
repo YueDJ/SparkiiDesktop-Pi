@@ -1,0 +1,93 @@
+(node:33048) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+npm notice run npx
+npm notice run vitest run apps/desktop/test/memory-audit-regression.test.ts apps/desktop/test/memory-truth-batch.test.ts --no-file-parallelism -t P1-2 LIKE fallback supports CRUD, search and rebuild|R8 truth round3 B3 rechecks attributes when a verified path becomes a reparse point --reporter=verbose
+(node:23324) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:29828) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrestores every prior truth file and removes new files when a later write fails
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 final review never rolls back truth after the committed journal is durable
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8-P1-4 preserves rollback backups when the unverified journal cannot be removed
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrecovers an interrupted batch at startup before truth files are opened
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrecovers a new project batch from the registry committed before its truth file
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 final review resumes a partially rolled-back new project with startup-injected authorization
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 final review keeps rollback backups when journal removal fails after truth restoration
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 final review does not roll back committed truth when post-commit backup cleanup fails
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 final review retries orphan backup cleanup without quarantining restored truth
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mquarantines an unrecoverable journal without deleting partial truth when a backup is missing
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrollback never recreates a missing project parent before path revalidation
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mdoes not write or quarantine outside a junctioned memory root during failed recovery
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 final review rejects an empty uncommitted journal without deleting the only original backup
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mquarantines a malformed journal and reports a warning instead of blocking startup
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrejects journal paths outside memory truth and backup locations
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrejects a truthy non-boolean committed marker without deleting uncommitted truth
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrejects a committed journal that still contains rollback file items
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrejects an unregistered outside project truth target during commit and recovery
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrejects a project truth target reached through a junction even when its workspace is registered
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mtreats a dangling write-block junction as a persistent block
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mkeeps the only recovery evidence when the write-block marker cannot be persisted
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mkeeps a committed batch and removes its recovery journal
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mrolls back the project registry when a later truth write fails
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 truth round3 B1 rejects canonical duplicate change targets before journal creation
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 truth round3 B1 merges canonical project aliases into one truth and index bucket
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 final review fences registered project reads and self-healing through an ancestor junction
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 final review rejects unregistered duplicate project identity before single or batch commits
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 review truth B1 does not authorize auto-workspace truth from session discovery alone
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 review truth B2 rejects nested agents journal targets
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 review truth B2 rejects nested episode-proposals journal targets
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 review truth B3 rechecks attributes when a verified path becomes a reparse point
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 truth round3 B2 ignores journal projectFiles as recovery authorization
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 truth round3 index snapshots[2m > [22mR8 truth round3 B3 rebuild fails closed when truth changes before index commit and then indexes one snapshot
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 truth round3 index snapshots[2m > [22mR8 truth round3 B3 reconcile fails closed when truth changes before index commit and then indexes one snapshot
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 truth round3 index snapshots[2m > [22mR8 truth round3 B3 replaceScopeIndex fails closed when truth changes before index commit and then indexes one snapshot
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 truth round3 SQLite path fences[2m > [22mR8 truth round3 B5 rejects a hard-linked main database without changing external SQLite
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 truth round3 SQLite path fences[2m > [22mR8 truth round3 B5 rejects a hard-linked -wal sidecar before SQLite opens
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 truth round3 SQLite path fences[2m > [22mR8 truth round3 B5 rejects a hard-linked -shm sidecar before SQLite opens
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 truth round3 SQLite path fences[2m > [22mR8 truth round3 B5 rejects a hard-linked -journal sidecar before SQLite opens
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 truth round3 SQLite path fences[2m > [22mR8 truth round3 B5 refuses corrupt-database isolation and fallback while a sidecar is hard-linked
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mR8 truth round3 SQLite path fences[2m > [22mR8 truth round3 B5 rejects a main-database symlink and stays fail closed on Windows symlink EPERM
+(node:12276) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mP1-2 LIKE fallback supports CRUD, search and rebuild[33m 1827[2mms[22m[39m
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mP1-2 corrupt SQLite is quarantined and rebuilt from truth without blocking startup
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mP1-3 copied workspace with the same projectId fails closed and preserves the first truth source
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mP1-4 default search and includeHistory never expose pending memories
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mP2 external truth edits reconcile list, injection and search
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mP2 master switch rejects manual add while disabled
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mP2 project archived state survives derived index rebuild
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mP1-6 a missing cursor is rejected and truncation advances only through included messages
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mP1-6 rejects an intra-entry cursor beyond the actual entry text
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mP1-5 one invalid project UPDATE rejects the whole extraction batch
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mP1-1 privacy deletion wins over an in-flight model response and redacts diagnostics
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mP1-1 privacy deletion while target resolution is pending prevents the model send
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mP1-1 corrupt project registry makes privacy deletion fail closed
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mP1-1 duplicate ids corrupt the whole truth file instead of exposing both rows
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mP1-1 privacy deletion discovers the indexed workspace even when the registry omits it
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mP1-3 privacy deletion fails closed when a copied project duplicates identity
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mP1-1 privacy deletion redacts retained diagnostic messages
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mP1-1 model and parse failures do not copy session content into diagnostics
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mP1-1 old prompt-log cleanup failures surface as repair warnings
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mP1-8 consolidation is single-flight across the first await
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mP1-8 a malformed consolidation element rejects the entire merge phase
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mtruth parser rejects object-valued id instead of stringifying it
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mtruth parser rejects object-valued text instead of stringifying it
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mcross-file duplicate ids are excluded from listing and injection until repaired
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mbatch writes fail closed while a cross-file duplicate identity exists
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mremoving a project truth file and registry reference clears its searchable index
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mepisode approval rejects malformed mergeIds before changing episode or proposal state
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mprivacy deletion removes both current and legacy episode proposals
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mordinary source deletion removes legacy pending episode proposals and repairs active source metadata
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mmalformed mergeIds are rejected before any pending or target mutation
+ [2m[90m↓[39m[22m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts[2m > [22mmemory audit regressions[2m > [22mP1-8 mergeIds approval is all-or-nothing
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (2)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[2m | [22m[33m72 skipped[39m[90m (73)[39m
+[2m   Start at [22m 06:06:30
+[2m   Duration [22m 6.88s[2m (transform 730ms, setup 43ms, import 3.08s, tests 1.83s, environment 1.58s)[22m
+

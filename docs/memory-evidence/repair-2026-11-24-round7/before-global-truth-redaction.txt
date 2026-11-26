@@ -1,0 +1,66 @@
+(node:36560) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:34828) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:29724) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-round7-regression.test.ts (7 tests | 1 failed | 6 skipped) 2491ms
+     × R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files 2489ms
+     ↓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body
+     ↓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes
+     ↓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes
+     ↓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file
+     ↓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion
+     ↓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files
+AssertionError: expected [ { …(7) }, { …(8) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "id": "mem_49599c86-6d28-4dd9-a059-118b7cd0fbce",
++     "kind": "memory",
++     "scope": "user",
++     "score": 0.000001,
++     "sessionId": "other-session",
++     "status": "active",
++     "text": "PRIVATE_MEMORY_92F3C",
++   },
++   {
++     "id": "episode:other-session",
++     "kind": "episode",
++     "scope": "episode:other-session",
++     "score": 0.000001,
++     "sessionId": "other-session",
++     "summary": "PRIVATE_MEMORY_92F3C",
++     "text": "PRIVATE_MEMORY_92F3C",
++     "workspacePath": "",
++   },
++ ]
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:129:72
+    127|     service.privacyDeleteBySession('private-session');
+    128|
+    129|     expect(service.searchMemory(memoryText, { includeHistory: true }))…
+       |                                                                        ^
+    130|     expect(service.store.listEpisodes().map((episode) => episode.sessi…
+    131|     expect(JSON.stringify(service.store.listEpisodes())).not.toContain…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 6 skipped (7)
+   Start at  19:34:03
+   Duration  4.88s (transform 271ms, setup 63ms, import 1.11s, tests 2.49s, environment 983ms)
+

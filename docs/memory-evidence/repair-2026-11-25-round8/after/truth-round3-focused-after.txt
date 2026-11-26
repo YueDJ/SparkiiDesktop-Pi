@@ -1,0 +1,105 @@
+(node:21320) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:38188) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:4572) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-round7-regression.test.ts (23 tests) 45091ms
+     ✓ R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files  2414ms
+     ✓ R7 privacy retry recovers an empty episode topic after restart and completes chat cleanup  2715ms
+     ✓ R7 privacy deletion discovers secrets nested only in pending operation extensions  1817ms
+     ✓ R7 privacy deletion scrubs an invalid structural targetId field  1840ms
+     ✓ R7 privacy deletion scrubs an invalid structural projectId field  1822ms
+     ✓ R7 privacy deletion scrubs an invalid structural mergeIds field  1837ms
+     ✓ R7 privacy deletion ignores whitespace-only episode topics without corrupting retained content  2112ms
+     ✓ R7 privacy deletion preserves pending UPDATE control fields when deleted text equals the op  1928ms
+     ✓ R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds  2457ms
+     ✓ R7 privacy deletion includes superseded episode records in the global redaction corpus  2101ms
+     ✓ R7 caller-mode memory deletion rechecks canonical approval after privacy redaction  1168ms
+     ✓ R7 production privacy retry succeeds in the same process after truth rows are gone  2649ms
+     ✓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body  1155ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes  1810ms
+     ✓ R7-P1-2 replacement preflight sees an indexed project after its registry entry is removed  1725ms
+     ✓ R7-P1-2 replacement preflight derives zero-entry project identity from scope_files  1768ms
+     ✓ R7-P1-3 source deletion detects indexed unregistered conflicts without an explicit workspace  1772ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes  1723ms
+     ✓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file  1807ms
+     ✓ R7-P1-3 valid source deletion updates unregistered project truth without reindexing it  2016ms
+     ✓ R7-P1-4 privacy deletion discovers indexed unregistered truth before reconciliation  2254ms
+     ✓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion  2297ms
+     ✓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution  1901ms
+(node:15268) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-audit-regression.test.ts (31 tests) 43531ms
+     ✓ P1-2 LIKE fallback supports CRUD, search and rebuild  1307ms
+     ✓ P1-2 corrupt SQLite is quarantined and rebuilt from truth without blocking startup  2015ms
+     ✓ P1-3 copied workspace with the same projectId fails closed and preserves the first truth source  1410ms
+     ✓ P1-4 default search and includeHistory never expose pending memories  1101ms
+     ✓ P2 external truth edits reconcile list, injection and search  1218ms
+     ✓ P2 master switch rejects manual add while disabled  830ms
+     ✓ P2 project archived state survives derived index rebuild  1733ms
+     ✓ P1-6 a missing cursor is rejected and truncation advances only through included messages  837ms
+     ✓ P1-6 rejects an intra-entry cursor beyond the actual entry text  835ms
+     ✓ P1-5 one invalid project UPDATE rejects the whole extraction batch  879ms
+     ✓ P1-1 privacy deletion wins over an in-flight model response and redacts diagnostics  1365ms
+     ✓ P1-1 privacy deletion while target resolution is pending prevents the model send  1366ms
+     ✓ P1-1 corrupt project registry makes privacy deletion fail closed  1373ms
+     ✓ P1-1 duplicate ids corrupt the whole truth file instead of exposing both rows  1424ms
+     ✓ P1-1 privacy deletion discovers the indexed workspace even when the registry omits it  2261ms
+     ✓ P1-3 privacy deletion fails closed when a copied project duplicates identity  2024ms
+     ✓ P1-1 privacy deletion redacts retained diagnostic messages  1735ms
+     ✓ P1-1 model and parse failures do not copy session content into diagnostics  859ms
+     ✓ P1-1 old prompt-log cleanup failures surface as repair warnings  1117ms
+     ✓ P1-8 consolidation is single-flight across the first await  1198ms
+     ✓ P1-8 a malformed consolidation element rejects the entire merge phase  1223ms
+     ✓ truth parser rejects object-valued id instead of stringifying it  886ms
+     ✓ truth parser rejects object-valued text instead of stringifying it  888ms
+     ✓ cross-file duplicate ids are excluded from listing and injection until repaired  1746ms
+     ✓ batch writes fail closed while a cross-file duplicate identity exists  1483ms
+     ✓ removing a project truth file and registry reference clears its searchable index  1430ms
+     ✓ episode approval rejects malformed mergeIds before changing episode or proposal state  1366ms
+     ✓ privacy deletion removes both current and legacy episode proposals  3070ms
+     ✓ ordinary source deletion removes legacy pending episode proposals and repairs active source metadata  2057ms
+     ✓ malformed mergeIds are rejected before any pending or target mutation  1249ms
+     ✓ P1-8 mergeIds approval is all-or-nothing  1247ms
+(node:33604) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-truth-batch.test.ts (34 tests) 22365ms
+     ✓ restores every prior truth file and removes new files when a later write fails  797ms
+     ✓ R8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth  493ms
+     ✓ R8-P1-4 preserves rollback backups when the unverified journal cannot be removed  508ms
+     ✓ recovers an interrupted batch at startup before truth files are opened  783ms
+     ✓ recovers a new project batch from the registry committed before its truth file  789ms
+     ✓ R8 final review resumes a partially rolled-back new project with startup-injected authorization  787ms
+     ✓ R8 final review keeps rollback backups when journal removal fails after truth restoration  792ms
+     ✓ R8 final review does not roll back committed truth when post-commit backup cleanup fails  549ms
+     ✓ R8 final review retries orphan backup cleanup without quarantining restored truth  523ms
+     ✓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing  836ms
+     ✓ rollback never recreates a missing project parent before path revalidation  832ms
+     ✓ R8 final review rejects an empty uncommitted journal without deleting the only original backup  809ms
+     ✓ quarantines a malformed journal and reports a warning instead of blocking startup  532ms
+     ✓ rejects journal paths outside memory truth and backup locations  800ms
+     ✓ rejects a truthy non-boolean committed marker without deleting uncommitted truth  530ms
+     ✓ rejects a committed journal that still contains rollback file items  518ms
+     ✓ rejects an unregistered outside project truth target during commit and recovery  801ms
+     ✓ keeps the only recovery evidence when the write-block marker cannot be persisted  525ms
+     ✓ keeps a committed batch and removes its recovery journal  790ms
+     ✓ rolls back the project registry when a later truth write fails  1767ms
+     ✓ R8 truth round3 B2 ignores journal projectFiles as recovery authorization  765ms
+     ✓ R8 truth round3 B3 rebuild fails closed when truth changes before index commit and then indexes one snapshot  883ms
+     ✓ R8 truth round3 B3 reconcile fails closed when truth changes before index commit and then indexes one snapshot  827ms
+     ✓ R8 truth round3 B3 replaceScopeIndex fails closed when truth changes before index commit and then indexes one snapshot  830ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -wal sidecar before SQLite opens  867ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -shm sidecar before SQLite opens  879ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -journal sidecar before SQLite opens  857ms
+     ✓ R8 truth round3 B5 refuses corrupt-database isolation and fallback while a sidecar is hard-linked  526ms
+
+ Test Files  3 passed (3)
+      Tests  88 passed (88)
+   Start at  23:49:21
+   Duration  117.38s (transform 837ms, setup 54ms, import 3.43s, tests 110.99s, environment 2.38s)
+

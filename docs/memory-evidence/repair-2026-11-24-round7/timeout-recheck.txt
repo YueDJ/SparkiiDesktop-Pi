@@ -1,0 +1,61 @@
+(node:36136) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:25656) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:37388) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-service.test.ts (11 tests | 1 failed) 24878ms
+     ✓ M1 step 0: FTS5 trigram 运行时可用  457ms
+     ✓ 手动新增用户记忆 → 注入块真的含 <memory> 与文本；注入不重置时钟  1143ms
+     ✓ 跨项目模糊回忆：情景摘要命中并带项目线索，同一检索两次命中与增量一致  528ms
+     ✓ 检索命中才重置时钟，且同一检索连跑两次命中与增量一致  1149ms
+     ✓ 项目记忆只建在 user 工作区；auto 不建；归档停注入  2424ms
+     ✓ 项目搬迁：文件移动后按 projectId 自愈重索引  1764ms
+     ✓ 损坏文件停止该 scope 注入并出修复入口；修复后恢复  3649ms
+     ✓ 置顶、编辑、删除、重建索引全通  2155ms
+     ✓ 普通删除保留历史版本，includeHistory 才真删  3340ms
+     ✓ 索引重建不丢 pending；隐私删除清黑名单；普通删除会话标记来源已删除  2625ms
+     × pending 出口：批准 ADD / 驳回进黑名单 / target 已删降级 ADD / 源会话删除失效 5639ms
+(node:31976) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-consolidation.test.ts (14 tests) 20953ms
+     ✓ 相似记忆只产出 pending 提案，绝不自动改 active  1858ms
+     ✓ 批准合并提案后：保留条作废、被合并条作废、新条生效  2387ms
+     ✓ 一次整合的模型调用不超过 3 次  1591ms
+     ✓ 三个阶段全都有活时仍然 ≤3 次调用，第四件事顺延  4021ms
+     ✓ 拒绝合并阶段的对象字段而不是字符串化  1576ms
+     ✓ 拒绝压缩阶段的对象字段而不是字符串化  462ms
+     ✓ 拒绝复核阶段的对象字段而不是字符串化  1554ms
+     ✓ P2 情景压缩混合越界输出时整阶段丢弃，不留下部分提案  455ms
+     ✓ 空闲不足或距上次整合不足：不调用模型  478ms
+     ✓ 开关关闭或有交互会话在跑：不整合  476ms
+     ✓ 没有空闲槽：跳过并顺延，不排队、不做任何写入  1834ms
+     ✓ 整合输出畸形：该阶段整批丢弃 + errors.db 记录 + 不产生提案  1803ms
+     ✓ 没有可用模型，或确实无事可做：不调模型、不写库，各自返回对应出口  417ms
+     ✓ 模型给不存在的 targetId 或越界文本：忽略该条，不落提案  2038ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-service.test.ts > memory foundation > pending 出口：批准 ADD / 驳回进黑名单 / target 已删降级 ADD / 源会话删除失效
+Error: Test timed out in 5000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/desktop/test/memory-service.test.ts:205:3
+    203|   });
+    204|
+    205|   it('pending 出口：批准 ADD / 驳回进黑名单 / target 已删降级 ADD / 源会话删除失效', () => {
+       |   ^
+    206|     const add = service.addMemory({
+    207|       scope: 'user', text: '待确认的用户偏好', status: 'pending', sessionId: '…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 24 passed (25)
+   Start at  19:45:29
+   Duration  49.60s (transform 259ms, setup 56ms, import 642ms, tests 45.83s, environment 2.53s)
+

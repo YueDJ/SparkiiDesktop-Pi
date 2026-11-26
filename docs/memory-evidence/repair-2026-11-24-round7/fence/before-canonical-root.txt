@@ -1,0 +1,131 @@
+(node:22956) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:30184) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:25176) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mresolves coding and connector tool names
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mfails closed on unknown tool names
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mwires coding writes to the Runtime action requester
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mresolves the ontology connector tool surface
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mread tool returns WORKSPACE_NOT_CREATED when workspace missing
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mresolves relative read paths against workspaceRoot instead of anchor cwd
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mread tool returns inline image content for an image file
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mreads a skill-root file when the workspace does not exist
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mstill reads workspace files when the workspace exists
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mdenies another agent's skill path even when workspace exists
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mdenies trust-anchor reads even when the file is inside the workspace
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mdenies symlink escapes from the workspace
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mdenies directly reading a hard-linked file
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22masks Main before reading a workspace file
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrejects a canonical .sparkii path returned by the runtime authorization boundary
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mstill returns WORKSPACE_NOT_CREATED for workspace paths when workspace is missing
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mlists a skill-root directory when the workspace does not exist
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mgrep excludes root and nested .sparkii content before formatting output[32m 37[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mgrep cannot reinclude .sparkii through an explicit positive glob[32m 27[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mgrep preserves caller glob filtering without reopening retained directories[32m 25[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mfind excludes retained directories while returning ordinary workspace files[32m 31[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mfind cannot target .sparkii with its glob pattern[32m 29[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mls filters .sparkii before entries are counted or formatted[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mgrep rejects direct .sparkii paths before approval[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mfind rejects direct .sparkii paths before approval[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mls rejects direct .sparkii paths before approval[32m 4[2mms[22m[39m
+ [31m×[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mgrep rejects an approved directory alias into .sparkii[32m 30[2mms[22m[39m
+[31m   → expected 'code.txt.sparkii/memory.json:1: R7-RE…' to match /拒绝访问/[39m
+ [31m×[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mfind rejects an approved directory alias into .sparkii[32m 29[2mms[22m[39m
+[31m   → expected 'No files found matching pattern' to match /拒绝访问/[39m
+ [31m×[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mls rejects an approved directory alias into .sparkii[32m 5[2mms[22m[39m
+[31m   → expected 'code.txt.sparkii/' to match /拒绝访问/[39m
+ [31m×[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mgrep revalidates an approved alias when Main omits canonicalPath[32m 27[2mms[22m[39m
+[31m   → expected 'code.txt.sparkii/memory.json:1: R7-RE…' to match /拒绝访问/[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mdoes not follow a real directory link into retained content[32m 53[2mms[22m[39m
+ [2m[90m↓[39m[22m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22misolates user-library and package skill roots across two agent saddles
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 4 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mgrep rejects an approved directory alias into .sparkii
+[31m[1mAssertionError[22m: expected 'code.txt.sparkii/memory.json:1: R7-RE…' to match /拒绝访问/[39m
+
+[32m- Expected:[39m
+/拒绝访问/
+
+[31m+ Received:[39m
+"code.txt.sparkii/memory.json:1: R7-RETAINED-CONTENT-CANARY"
+
+[36m [2m❯[22m packages/agent-host/test/tool-registry.test.ts:[2m403:41[22m[39m
+    [90m401|[39m       symlinkSync(join(ws, ".sparkii"), alias, process.platform === "w…
+    [90m402|[39m       const { result } = await execute(name, ws, { path: alias, patter…
+    [90m403|[39m       [34mexpect[39m(result[33m.[39mcontent[33m?.[39m[[34m0[39m][33m?.[39mtext)[33m.[39m[34mtoMatch[39m([36m/拒绝访问/[39m)[33m;[39m
+    [90m   |[39m                                         [31m^[39m
+    [90m404|[39m       [34mexpect[39m(result[33m.[39mcontent[33m?.[39m[[34m0[39m][33m?.[39mtext)[33m.[39mnot[33m.[39m[34mtoContain[39m(canary)[33m;[39m
+    [90m405|[39m       [34mexpect[39m(result[33m.[39mcontent[33m?.[39m[[34m0[39m][33m?.[39mtext)[33m.[39mnot[33m.[39m[34mtoContain[39m([32m"memory.json"[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mfind rejects an approved directory alias into .sparkii
+[31m[1mAssertionError[22m: expected 'No files found matching pattern' to match /拒绝访问/[39m
+
+[32m- Expected:[39m
+/拒绝访问/
+
+[31m+ Received:[39m
+"No files found matching pattern"
+
+[36m [2m❯[22m packages/agent-host/test/tool-registry.test.ts:[2m403:41[22m[39m
+    [90m401|[39m       symlinkSync(join(ws, ".sparkii"), alias, process.platform === "w…
+    [90m402|[39m       const { result } = await execute(name, ws, { path: alias, patter…
+    [90m403|[39m       [34mexpect[39m(result[33m.[39mcontent[33m?.[39m[[34m0[39m][33m?.[39mtext)[33m.[39m[34mtoMatch[39m([36m/拒绝访问/[39m)[33m;[39m
+    [90m   |[39m                                         [31m^[39m
+    [90m404|[39m       [34mexpect[39m(result[33m.[39mcontent[33m?.[39m[[34m0[39m][33m?.[39mtext)[33m.[39mnot[33m.[39m[34mtoContain[39m(canary)[33m;[39m
+    [90m405|[39m       [34mexpect[39m(result[33m.[39mcontent[33m?.[39m[[34m0[39m][33m?.[39mtext)[33m.[39mnot[33m.[39m[34mtoContain[39m([32m"memory.json"[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mls rejects an approved directory alias into .sparkii
+[31m[1mAssertionError[22m: expected 'code.txt.sparkii/' to match /拒绝访问/[39m
+
+[32m- Expected:[39m
+/拒绝访问/
+
+[31m+ Received:[39m
+"code.txt.sparkii/"
+
+[36m [2m❯[22m packages/agent-host/test/tool-registry.test.ts:[2m403:41[22m[39m
+    [90m401|[39m       symlinkSync(join(ws, ".sparkii"), alias, process.platform === "w…
+    [90m402|[39m       const { result } = await execute(name, ws, { path: alias, patter…
+    [90m403|[39m       [34mexpect[39m(result[33m.[39mcontent[33m?.[39m[[34m0[39m][33m?.[39mtext)[33m.[39m[34mtoMatch[39m([36m/拒绝访问/[39m)[33m;[39m
+    [90m   |[39m                                         [31m^[39m
+    [90m404|[39m       [34mexpect[39m(result[33m.[39mcontent[33m?.[39m[[34m0[39m][33m?.[39mtext)[33m.[39mnot[33m.[39m[34mtoContain[39m(canary)[33m;[39m
+    [90m405|[39m       [34mexpect[39m(result[33m.[39mcontent[33m?.[39m[[34m0[39m][33m?.[39mtext)[33m.[39mnot[33m.[39m[34mtoContain[39m([32m"memory.json"[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts[2m > [22mresolveToolDefinitions[2m > [22mrecursive path fence[2m > [22mgrep revalidates an approved alias when Main omits canonicalPath
+[31m[1mAssertionError[22m: expected 'code.txt.sparkii/memory.json:1: R7-RE…' to match /拒绝访问/[39m
+
+[32m- Expected:[39m
+/拒绝访问/
+
+[31m+ Received:[39m
+"code.txt.sparkii/memory.json:1: R7-RETAINED-CONTENT-CANARY"
+
+[36m [2m❯[22m packages/agent-host/test/tool-registry.test.ts:[2m420:41[22m[39m
+    [90m418|[39m       const { result } = await execute("grep", ws, { path: alias, patt…
+    [90m419|[39m       [34mexpect[39m(requestAction)[33m.[39m[34mtoHaveBeenCalledOnce[39m()[33m;[39m
+    [90m420|[39m       [34mexpect[39m(result[33m.[39mcontent[33m?.[39m[[34m0[39m][33m?.[39mtext)[33m.[39m[34mtoMatch[39m([36m/拒绝访问/[39m)[33m;[39m
+    [90m   |[39m                                         [31m^[39m
+    [90m421|[39m       [34mexpect[39m(result[33m.[39mcontent[33m?.[39m[[34m0[39m][33m?.[39mtext)[33m.[39mnot[33m.[39m[34mtoContain[39m(canary)[33m;[39m
+    [90m422|[39m     })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m4 failed[39m[22m[2m | [22m[1m[32m10 passed[39m[22m[2m | [22m[33m18 skipped[39m[90m (32)[39m
+[2m   Start at [22m 19:24:30
+[2m   Duration [22m 2.30s[2m (transform 279ms, setup 0ms, import 1.81s, tests 314ms, environment 0ms)[22m
+

@@ -1,0 +1,90 @@
+(node:33540) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:35980) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:16036) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:18932) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:35476) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-tools.test.ts (6 tests | 1 failed) 322ms
+     ✓ memory_remember 直接写入 active 并审计 62ms
+     ✓ memory_forget 先弹审批；拒绝不删，批准才三处真删 69ms
+     ✓ memory_search 只读命中并强化（不重置其他记忆） 57ms
+     ✓ 总开关关闭时三工具均被拒，无写入无检索 45ms
+     × memory_remember(scope: agent) 使用当前 profileId 并校验智能体存在 49ms
+     ✓ 工具名与鞍附加同源：签名 agent 清单不变，平台统一追加 38ms
+ ❯ |1| apps/desktop/test/memory-consolidation.test.ts (11 tests | 1 failed) 698ms
+     ✓ 相似记忆只产出 pending 提案，绝不自动改 active 96ms
+     ✓ 批准合并提案后：保留条作废、被合并条作废、新条生效 95ms
+     ✓ 一次整合的模型调用不超过 3 次 52ms
+     ✓ 三个阶段全都有活时仍然 ≤3 次调用，第四件事顺延 96ms
+     × P2 情景压缩最多 40 字且必须进入 pending，批准前原文不变 67ms
+     ✓ 空闲不足或距上次整合不足：不调用模型 38ms
+     ✓ 开关关闭或有交互会话在跑：不整合 42ms
+     ✓ 没有空闲槽：跳过并顺延，不排队、不做任何写入 50ms
+     ✓ 整合输出畸形：该阶段整批丢弃 + errors.db 记录 + 不产生提案 62ms
+     ✓ 没有可用模型，或确实无事可做：不调模型、不写库，各自返回对应出口 44ms
+     ✓ 模型给不存在的 targetId 或越界文本：忽略该条，不落提案 53ms
+ ❯ |1| apps/desktop/test/memory-settings-pane.test.tsx (3 tests | 1 failed) 504ms
+     ✓ 导航有「记忆」；显示隐私明示；手动新增走 IPC  332ms
+     × 损坏项目的修复草稿和 destructive 整理按各自工作区隔离且需确认 102ms
+     ✓ 面板开着时收到 pending_added 事件：当场重新拉取，新候选立刻出现在待确认区 67ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-consolidation.test.ts > idle consolidation > P2 情景压缩最多 40 字且必须进入 pending，批准前原文不变
+AssertionError: expected +0 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ apps/desktop/test/memory-consolidation.test.ts:154:30
+    152|     makeIdle(c);
+    153|     const result = await c.runOnce();
+    154|     expect(result.proposals).toBe(1);
+       |                              ^
+    155|     expect(service.store.listEpisodes()[0].summary).toBe('很长的旧摘要'.repe…
+    156|     expect(service.list().pending).toHaveLength(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  |1| apps/desktop/test/memory-settings-pane.test.tsx > settings — memory pane > 损坏项目的修复草稿和 destructive 整理按各自工作区隔离且需确认
+AssertionError: expected "bound " to be called at least once
+ ❯ apps/desktop/test/memory-settings-pane.test.tsx:77:21
+     75|     await waitFor(() => expect(screen.getAllByText('该项目的记忆内容无法读取，已暂停使用…
+     76|     fireEvent.click(screen.getAllByRole('button', { name: '重新整理' })[0]…
+     77|     expect(confirm).toHaveBeenCalled();
+       |                     ^
+     78|     expect(repairProjectMemory).not.toHaveBeenCalled();
+     79|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  |1| apps/desktop/test/memory-tools.test.ts > memory tools — platform trusted branch > memory_remember(scope: agent) 使用当前 profileId 并校验智能体存在
+Error: memory_remember未执行:failed:agentId 非法
+ ❯ Object.execute packages/agent-host/src/memory-tools.ts:33:15
+     31|       if (result.status !== 'executed') {
+     32|         const reason = result.error?.message ?? result.decision.reason;
+     33|         throw new Error(`${name}未执行:${result.status}:${reason}`);
+       |               ^
+     34|       }
+     35|       return {
+ ❯ apps/desktop/test/memory-tools.test.ts:95:19
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  3 failed | 17 passed (20)
+   Start at  12:52:47
+   Duration  24.87s (transform 1.14s, setup 90ms, import 23.87s, tests 1.52s, environment 2.70s)
+

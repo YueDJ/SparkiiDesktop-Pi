@@ -1,0 +1,268 @@
+COMMAND=NO_COLOR=1 pnpm exec vitest run apps/desktop/test/memory-round7-regression.test.ts apps/desktop/test/memory-extraction.test.ts -t "R8 round7" --maxWorkers=1 --no-file-parallelism
+(node:31672) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1864) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:28984) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-extraction.test.ts (21 tests | 1 failed | 20 skipped) 11528ms
+     ↓ R8-P1-3 never sends indexed plaintext to the extraction model while truth writes are blocked
+     ↓ R8-P0-1 never sends indexed plaintext to another session while privacy cleanup is pending
+     ↓ JSON 协议 fail closed：畸形/越界/非法 op 整批抛错
+     ↓ 拒绝被强制字符串化的提取字段：{"sessionSummary":{},"topics":[],"ops":[]}
+     ↓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":["ADD"],"scope":"user","text":"事实"}]}
+     ↓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":["user"],"text":"事实"}]}
+     ↓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":"user","text":{},"excerpt":{}}]}
+     ↓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":"user","text":"事实","importance":"2"}]}
+     ↓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"UPDATE","targetId":["mem_x"],"text":{}}]}
+     ↓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"SUPERSEDE","targetId":"mem_x","replacementText":{},"reason":{}}]}
+     ↓ 端到端：对话增量 → pending（含来源 excerpt）→ 批准 → 下一条会话注入
+     ↓ 驳回后进黑名单，同候选不再提案
+     ↓ 同 scope 高相似 ADD 降级为 UPDATE 候选
+     ↓ 畸形输出：整批丢弃 + errors.db 有记录 + 真相源无半批写入
+     ↓ 对象字段被拒绝时不写 pending、episode、真相文件或提取位点
+     ↓ auto 工作区的项目候选只落用户层
+     ↓ user 工作区的首条项目候选：项目文件尚不存在也能落 pending 并生成 projectId
+     ↓ 同一候选重复提炼：已有高相似 pending 时不再重复提案
+     ↓ 开关关闭：零模型调用
+     × R8 round7 redacts a registered secret reintroduced by production extraction episode output 11525ms
+     ↓ 槽位礼让：池满跳过、无排队；交互 acquire 不受影响
+(node:13600) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-round7-regression.test.ts (34 tests | 6 failed | 28 skipped) 5857ms
+     ↓ R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files
+     ↓ R7 privacy retry recovers an empty episode topic after restart and completes chat cleanup
+     ↓ R7 privacy deletion discovers secrets nested only in pending operation extensions
+     ↓ R7 privacy deletion scrubs an invalid structural targetId field
+     ↓ R7 privacy deletion scrubs an invalid structural projectId field
+     ↓ R7 privacy deletion scrubs an invalid structural mergeIds field
+     ↓ R7 privacy deletion ignores whitespace-only episode topics without corrupting retained content
+     ↓ R7 privacy deletion preserves pending UPDATE control fields when deleted text equals the op
+     ↓ R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds
+     ↓ R7 privacy deletion includes superseded episode records in the global redaction corpus
+     ↓ R7 caller-mode memory deletion rechecks canonical approval after privacy redaction
+     ↓ R7 production privacy retry succeeds in the same process after truth rows are gone
+     ↓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body
+     ↓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes
+     ↓ R7-P1-2 replacement preflight sees an indexed project after its registry entry is removed
+     ↓ R7-P1-2 replacement preflight derives zero-entry project identity from scope_files
+     ↓ R7-P1-3 source deletion detects indexed unregistered conflicts without an explicit workspace
+     ↓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes
+     ↓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file
+     ↓ R7-P1-3 valid source deletion updates unregistered project truth without reindexing it
+     ↓ R8-REPAIR-MEMORY truth A1 source deletion ignores auto-list-only truth while updating registered and indexed projects
+     ↓ R8-REPAIR-MEMORY truth A2 privacy deletion ignores auto-list-only truth while deleting registered and indexed projects
+     ↓ R7-P1-4 privacy deletion discovers indexed unregistered truth before reconciliation
+     ↓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion
+     ↓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution
+     ↓ retains the production privacy journal until a failed Gate listener succeeds on retry
+     ↓ collects deleted, survivor and nested dynamic keys, preserves controls, and scrubs later writes after restart
+     ↓ fails closed instead of overwriting two dynamic keys that redact to the same marker
+     × scrubs legal-looking nested structural fields in survivor and future pending operations 752ms
+     × registers deleted-only top-level structural IDs and scrubs the same value in survivor text 962ms
+     × fails closed when a retained or future top-level structural ID matches a registered secret 1087ms
+     × rejects a future top-level structural ID that matches an already registered secret 1060ms
+     × redacts addMemoriesBatch episode truth, index, FTS, search and restart reads 961ms
+     × redacts direct appendEpisode and updateEpisodeSummary ingress after privacy deletion 1033ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-extraction.test.ts > memory extraction > R8 round7 redacts a registered secret reintroduced by production extraction episode output
+AssertionError: expected '{"sessionId":"future-extraction-sessi…' not to contain 'FUTURE_EXTRACTION_EPISODE_SECRET_94D3'
+
+- Expected
++ Received
+
+- FUTURE_EXTRACTION_EPISODE_SECRET_94D3
++ {"sessionId":"future-extraction-session","agentId":"general","workspacePath":"","ts":1795651735463,"summary":"FUTURE_EXTRACTION_EPISODE_SECRET_94D3","topics":["FUTURE_EXTRACTION_EPISODE_SECRET_94D3"]}
++
+
+ ❯ apps/desktop/test/memory-extraction.test.ts:238:61
+    236|       .map((file) => readFileSync(file).toString('utf8'))
+    237|       .join('\n');
+    238|     expect(readFileSync(episodesFile(dataDir), 'utf8')).not.toContain(…
+       |                                                             ^
+    239|     expect(databaseBytes).not.toContain(secret);
+    240|     expect(JSON.stringify(service.store.listEpisodes())).not.toContain…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R8 round7 privacy structural-field fence > scrubs legal-looking nested structural fields in survivor and future pending operations
+AssertionError: expected '{\n  "version": 1,\n  "entries": [\n …' not to contain 'NESTED_STRUCTURAL_FIELD_SECRET_94D3'
+
+- Expected
++ Received
+
+- NESTED_STRUCTURAL_FIELD_SECRET_94D3
++ {
++   "version": 1,
++   "entries": [
++     {
++       "id": "mem_39e77ab1-2955-4e94-8bea-23d4b5cdcac3",
++       "text": "surviving [已删除] structure",
++       "status": "pending",
++       "pinned": false,
++       "importance": 2,
++       "createdAt": 1795651740909,
++       "updatedAt": 1795651740909,
++       "source": {
++         "sessionId": "other-session",
++         "excerpt": "surviving [已删除] structure",
++         "kind": "explicit"
++       },
++       "supersededBy": null,
++       "pendingOp": {
++         "op": "ADD",
++         "[已删除]": {
++           "[已删除]": {
++             "targetId": "NESTED_STRUCTURAL_FIELD_SECRET_94D3"
++           }
++         }
++       }
++     }
++   ]
++ }
++
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:904:63
+    902|
+    903|     expect(() => service.privacyDeleteBySession('private-session')).no…
+    904|     expect(readFileSync(userMemoryFile(dataDir), 'utf8')).not.toContai…
+       |                                                               ^
+    905|     expect(JSON.stringify(service.list())).not.toContain(secret);
+    906|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R8 round7 privacy structural-field fence > registers deleted-only top-level structural IDs and scrubs the same value in survivor text
+AssertionError: expected '{\n  "version": 1,\n  "entries": [\n …' not to contain 'DELETED_TOP_LEVEL_STRUCTURAL_SECRET_9…'
+
+- Expected
++ Received
+
+- DELETED_TOP_LEVEL_STRUCTURAL_SECRET_94D3
++ {
++   "version": 1,
++   "entries": [
++     {
++       "id": "mem_707ea216-271a-4c76-a80b-74a7bfaa333e",
++       "text": "survivor repeats DELETED_TOP_LEVEL_STRUCTURAL_SECRET_94D3",
++       "status": "active",
++       "pinned": false,
++       "importance": 2,
++       "createdAt": 1795651741745,
++       "updatedAt": 1795651741745,
++       "source": {
++         "sessionId": "other-session",
++         "excerpt": "survivor repeats DELETED_TOP_LEVEL_STRUCTURAL_SECRET_94D3",
++         "kind": "explicit"
++       },
++       "supersededBy": null,
++       "pendingOp": null
++     }
++   ]
++ }
++
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:926:63
+    924|
+    925|     expect(() => service.privacyDeleteBySession('private-session')).no…
+    926|     expect(readFileSync(userMemoryFile(dataDir), 'utf8')).not.toContai…
+       |                                                               ^
+    927|     expect(JSON.stringify(service.list())).not.toContain(secret);
+    928|     expect(databaseBytes(memoryDbPath(dataDir))).not.toContain(secret);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R8 round7 privacy structural-field fence > fails closed when a retained or future top-level structural ID matches a registered secret
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:940:69
+    938|     const before = readFileSync(userMemoryFile(dataDir));
+    939|
+    940|     expect(() => service.privacyDeleteBySession('private-session')).to…
+       |                                                                     ^
+    941|     expect(readFileSync(userMemoryFile(dataDir))).toEqual(before);
+    942|     const dir = join(dataDir, 'memory', 'privacy-pending');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R8 round7 privacy structural-field fence > rejects a future top-level structural ID that matches an already registered secret
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:956:9
+    954|       scope: 'user', text: 'future structural collision', sessionId: '…
+    955|       pendingOp: { op: 'ADD', targetId: secret },
+    956|     })).toThrow(/结构字段|登记模式/);
+       |         ^
+    957|     expect(readFileSync(userMemoryFile(dataDir))).toEqual(before);
+    958|     expect(JSON.stringify(service.list())).not.toContain(secret);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R8 round7 future episode privacy ingress > redacts addMemoriesBatch episode truth, index, FTS, search and restart reads
+AssertionError: expected '{"sessionId":"future-batch-episode","…' not to contain 'FUTURE_BATCH_EPISODE_SECRET_94D3'
+
+- Expected
++ Received
+
+- FUTURE_BATCH_EPISODE_SECRET_94D3
++ {"sessionId":"future-batch-episode","agentId":"general","workspacePath":"","ts":2,"summary":"FUTURE_BATCH_EPISODE_SECRET_94D3","topics":["FUTURE_BATCH_EPISODE_SECRET_94D3"]}
++
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:975:61
+    973|     });
+    974|
+    975|     expect(readFileSync(episodesFile(dataDir), 'utf8')).not.toContain(…
+       |                                                             ^
+    976|     expect(databaseBytes(memoryDbPath(dataDir))).not.toContain(secret);
+    977|     expect(JSON.stringify(service.store.listEpisodes())).not.toContain…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R8 round7 future episode privacy ingress > redacts direct appendEpisode and updateEpisodeSummary ingress after privacy deletion
+AssertionError: expected '{"sessionId":"future-direct-episode",…' not to contain 'FUTURE_DIRECT_EPISODE_SECRET_94D3'
+
+- Expected
++ Received
+
+- FUTURE_DIRECT_EPISODE_SECRET_94D3
++ {"sessionId":"future-direct-episode","agentId":"general","workspacePath":"","ts":3,"summary":"safe initial summary","topics":["safe topic"]}
++ {"sessionId":"future-direct-episode","agentId":"general","workspacePath":"","ts":3,"summary":"FUTURE_DIRECT_EPISODE_SECRET_94D3","topics":["safe topic"],"compressedAt":1795651746241}
++ {"sessionId":"future-direct-topics","agentId":"general","workspacePath":"","ts":4,"summary":"safe summary","topics":["FUTURE_DIRECT_EPISODE_SECRET_94D3"]}
++
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:1004:61
+    1002|     });
+    1003|
+    1004|     expect(readFileSync(episodesFile(dataDir), 'utf8')).not.toContain(…
+       |                                                             ^
+    1005|     expect(databaseBytes(memoryDbPath(dataDir))).not.toContain(secret);
+    1006|     expect(JSON.stringify(service.store.listEpisodes())).not.toContain…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  7 failed | 48 skipped (55)
+   Start at  08:08:43
+   Duration  23.41s (transform 797ms, setup 47ms, import 3.37s, tests 17.38s, environment 2.13s)
+
+
+EXIT_CODE=1

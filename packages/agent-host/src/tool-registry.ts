@@ -3,9 +3,6 @@ import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import {
   createReadToolDefinition,
-  createLsToolDefinition,
-  createGrepToolDefinition,
-  createFindToolDefinition,
   type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
 import { documentConnector, knowledgeConnector, reportConnector, sparkiiOntoConnector, type ToolDef } from "@sparkii/connectors";
@@ -17,6 +14,7 @@ import {
   createMoveToolDefinition,
 } from "./workspace-tools.js";
 import { createMemoryToolDefinitions } from "./memory-tools.js";
+import { createWorkspaceSearchToolDefinitions } from "./workspace-search-tools.js";
 import type { ProposalDecision, ConnectorReadRequest, ConnectorReadResult } from "./pi-runtime-transport.js";
 import type {
   ActionExecutionResult,
@@ -79,12 +77,24 @@ function withWorkspaceGuard(
           return { content: [{ type: "text", text: `拒绝访问:${path} ${reason}` }], details: {} };
         }
         const authorized = result.result as { canonicalPath?: unknown } | undefined;
-        const canonicalPath = typeof authorized?.canonicalPath === "string"
+        const authorizedPath = typeof authorized?.canonicalPath === "string"
           ? authorized.canonicalPath
           : absolute;
+        // Approval authorizes the requested root; it must not turn a directory
+        // alias into an unreviewed route into retained or out-of-workspace data.
+        const guarded = await resolveGuardedReadPath(root, authorizedPath, skillsDir);
+        if (!guarded.ok) {
+          const detail = guarded.code === 'OUTSIDE_WORKSPACE'
+            ? '不在工作区内'
+            : guarded.message;
+          return {
+            content: [{ type: "text", text: `拒绝访问:${path ?? absolute} ${detail}` }],
+            details: {},
+          };
+        }
         return original(
           toolCallId,
-          { ...params, path: canonicalPath },
+          { ...params, path: guarded.canonicalPath },
           signal,
           onUpdate,
           ctx,
@@ -139,6 +149,7 @@ export function resolveToolDefinitions(toolNames: string[], ctx: RegistryContext
     requestAction,
   }));
   const memoryTools = new Map(createMemoryToolDefinitions({ requestAction }).map((d) => [d.name, d]));
+  const searchByName = new Map(createWorkspaceSearchToolDefinitions(pathCwd).map((d) => [d.name, d]));
   const out: ToolDefinition[] = [];
   for (const name of toolNames) {
     if (memoryTools.has(name)) {
@@ -163,8 +174,7 @@ export function resolveToolDefinitions(toolNames: string[], ctx: RegistryContext
       continue;
     }
     if (name === "ls" || name === "grep" || name === "find") {
-      const factory = { ls: createLsToolDefinition, grep: createGrepToolDefinition, find: createFindToolDefinition }[name];
-      const def = factory(pathCwd) as ToolDefinition;
+      const def = searchByName.get(name)!;
       out.push(ctx.workspaceRoot ? withWorkspaceGuard(def, ctx.workspaceRoot, pathCwd, ctx.skillsDir, ctx.requestAction) : def);
       continue;
     }

@@ -52,8 +52,7 @@ export function SettingsMemoryPane({ api, onDirtyChange }: { api?: MemoryPaneApi
   const [editingText, setEditingText] = useState('');
   const [query, setQuery] = useState('');
   const [hits, setHits] = useState<MemorySearchHitApi[]>([]);
-  const [repairPath, setRepairPath] = useState('');
-  const [repairText, setRepairText] = useState('');
+  const [repairDrafts, setRepairDrafts] = useState<Record<string, string>>({});
 
   const refresh = useCallback(async () => {
     if (!api?.listMemories) return;
@@ -310,22 +309,28 @@ export function SettingsMemoryPane({ api, onDirtyChange }: { api?: MemoryPaneApi
         </SettingsSection>
       )}
 
-      {data?.scopes.map((scope) => (
+      {data?.scopes.map((scope) => {
+        const repairKey = scope.workspacePath ?? scope.scope;
+        const repairText = repairDrafts[repairKey] ?? '';
+        return (
         <SettingsSection title={scope.label} key={scope.scope}>
           {scope.warning && <div className="memory-warning">{scope.warning}</div>}
           {scope.corrupt && (
             <div className="memory-entry">
               <div className="memory-entry-text">该项目的记忆内容无法读取，已暂停使用。确认后可重新整理。</div>
               <SettingsRow label="修复方式" description="可留空重新整理，或粘贴此前保存的内容。">
-                <TextArea aria-label="修复内容" rows={3} value={repairText} onChange={(e) => setRepairText(e.target.value)} />
+                <TextArea aria-label="修复内容" rows={3} value={repairText} onChange={(e) => setRepairDrafts((current) => ({ ...current, [repairKey]: e.target.value }))} />
               </SettingsRow>
               <div className="settings-actions">
                 <Button onClick={() => {
-                  setRepairPath(scope.workspacePath ?? '');
-                  void run(() => api?.repairProjectMemory?.(scope.workspacePath ?? '', 'empty') ?? Promise.resolve(), '已重新整理');
+                  const path = scope.workspacePath ?? '';
+                  if (!path || !window.confirm('重新整理会清空该项目的现有记忆，且不可恢复。确认继续？')) return;
+                  void run(() => api?.repairProjectMemory?.(path, 'empty') ?? Promise.resolve(), '已重新整理');
                 }}>重新整理</Button>
                 <Button onClick={() => {
-                  const path = repairPath || scope.workspacePath || '';
+                  const path = scope.workspacePath ?? '';
+                  if (!path || !repairText.trim()) { setError('请先填写该项目的修复内容'); return; }
+                  if (!window.confirm('按提供内容修复会覆盖该项目的现有记忆文件，且不可恢复。确认继续？')) return;
                   void run(() => api?.repairProjectMemory?.(path, 'replace', repairText) ?? Promise.resolve(), '已按提供内容修复');
                 }}>按提供内容修复</Button>
               </div>
@@ -336,7 +341,8 @@ export function SettingsMemoryPane({ api, onDirtyChange }: { api?: MemoryPaneApi
           )}
           {scope.entries.filter((entry) => entry.status !== 'pending').map((entry) => entryRow(entry, scope))}
         </SettingsSection>
-      ))}
+        );
+      })}
 
       {status && <div className="memory-note">{status}</div>}
       {error && <div className="memory-warning">{error}</div>}

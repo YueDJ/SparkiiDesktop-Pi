@@ -1,0 +1,68 @@
+Working directory: C:\Users\YDJ\Desktop\SparkiiDesktop-Pi
+Baseline: 101487d
+Date: 2026-11-24
+Current source state: round 6, after final runtime/logger, strict memory schema and rollback-parent repairs
+
+Round-6 reproductions before fixes:
+NO_COLOR=1 npm.cmd exec -- vitest run apps/desktop/test/logger.test.ts
+Output: logger-round6-before.txt
+Result: 1 file / 6 passed / 1 failed. Stateful toJSON rejected on its second serialization and lost the basic message.
+
+NO_COLOR=1 pnpm exec vitest run apps/desktop/test/memory-extraction.test.ts apps/desktop/test/memory-audit-regression.test.ts
+Output: schema-round6-before.txt
+Result: 2 files / 40 passed / 9 failed. Object/array/numeric-string schema coercion and object truth text were accepted.
+
+NO_COLOR=1 pnpm exec vitest run apps/desktop/test/memory-truth-batch.test.ts
+Output: truth-parent-round6-before.txt
+Result: 1 file / 15 passed / 1 failed. Rollback recreated a missing project parent before revalidation.
+
+Round-6 focused verification after fixes:
+NO_COLOR=1 npm.cmd exec -- vitest run apps/desktop/test/logger.test.ts
+Output: logger-round6-after.txt
+Result: 1 file / 7 passed.
+
+NO_COLOR=1 pnpm exec vitest run apps/desktop/test/memory-extraction.test.ts apps/desktop/test/memory-audit-regression.test.ts apps/desktop/test/memory-truth-batch.test.ts
+Output: schema-truth-round6-after.txt
+Result: 3 files / 65 passed.
+
+NO_COLOR=1 pnpm exec vitest run apps/desktop/test/memory-audit-regression.test.ts apps/desktop/test/memory-truth-batch.test.ts apps/desktop/test/logger.test.ts packages/agent-host/test/pi-runtime-pool.test.ts
+Output: narrow-round6-after.txt
+Result: 4 files / 80 passed.
+
+Complete verification command:
+NO_COLOR=1 pnpm exec vitest run apps/desktop/test/*memory*.test.* apps/desktop/test/workspace*.test.* apps/desktop/test/action-normalizer.test.ts apps/desktop/test/runtime-action-router.test.ts apps/desktop/test/logger.test.ts apps/desktop/test/windows-platform.test.ts packages/agent-host/test/tool-registry.test.ts packages/agent-host/test/coding-tools.test.ts packages/agent-host/test/pi-runtime-pool.test.ts packages/agent-host/test/pi-runtime-supervisor.test.ts
+
+Complete verification run 1:
+Output: verification-round6-run-1.txt
+Result: 24 files / 298 passed / 1 explicitly skipped (299 total), 48.45s.
+
+Complete verification run 2:
+Same command as run 1.
+Output: verification-round6-run-2.txt
+Result: 24 files / 298 passed / 1 explicitly skipped (299 total), 51.60s.
+
+Environment limitation: the real symlink fixture is unavailable under this Windows account (EPERM) and is explicitly skipped. Real hardlink, real junction, canonical-path and injected generic-reparse cases ran. Capability is determined by actual temporary link creation. No assertion or threshold was weakened.
+
+Desktop typecheck:
+NO_COLOR=1 npm.cmd run typecheck
+Output: typecheck-round6.txt
+Result: passed, including apps/desktop renderer and Electron tsconfig.
+
+Real Chrome UI evidence:
+Round-3 outputs remain ui-probe-output-round3.txt, ui-probe-result.json, ui-memory-initial.png and ui-memory-isolated-repair.png.
+Round-3 result: replacement cancel/accept, empty rebuild cancel, exact repair arguments and per-workspace draft isolation passed. The two JSON warnings are expected corrupt-project badges, not browser console warnings. Browser console errors/warnings/page errors: 0. Failed or HTTP >= 400 network responses: 0. Both screenshots were visually inspected.
+Carry-forward verification: SettingsMemoryPane.tsx SHA-256 is 2af964969e86d5e23a1e96306128446afb3520043f65efa5c0ca2b40323750d2, identical to the visually reviewed round-3 source. No renderer/preload/IPC/memory UI source changed afterward.
+
+Independent architect gate:
+architect-round6-summary.txt
+Result: fence/truth APPROVE; runtime/logger APPROVE; memory schema/semantics APPROVE after a separate probe-only review resolved the prior INCOMPLETE.
+The reviewers verified source 39/39 and evidence 88/88 hashes. Final source recheck passed after review.
+
+Diff and worktree checks:
+git status --short
+git diff --stat
+git diff --numstat
+git diff --check
+git diff --cached --name-only
+Outputs: worktree-status-round6.txt, worktree-status-round6-final.txt, diff-stat-round6.txt, diff-numstat-round6.txt, diff-check-round6.txt, staged-round6-final.txt, tracked-diff-round6.patch.
+No commit or push performed. No staged files or sandbox executables. HEAD remains 101487d3f612764766cc024d4b28dbf846a926cf.

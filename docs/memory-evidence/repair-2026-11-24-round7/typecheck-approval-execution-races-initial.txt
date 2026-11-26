@@ -1,0 +1,19 @@
+(node:29720) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+> sparkii-desktop-pi@ typecheck C:\Users\YDJ\Desktop\SparkiiDesktop-Pi
+> pnpm -r --if-present run typecheck
+
+(node:29024) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Scope: 9 of 10 workspace projects
+packages/ui typecheck$ tsc --noEmit -p tsconfig.json
+packages/ui typecheck: Done
+apps/desktop typecheck$ tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.electron.json
+apps/desktop typecheck: electron/main/ipc.ts(2490,74): error TS2345: Argument of type 'SecurityAction | undefined' is not assignable to parameter of type 'SecurityAction'.
+apps/desktop typecheck:   Type 'undefined' is not assignable to type 'SecurityAction'.
+apps/desktop typecheck: Failed
+C:\Users\YDJ\Desktop\SparkiiDesktop-Pi\apps\desktop:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @sparkii/desktop@0.1.7 typecheck: `tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.electron.json`
+Exit status 2
+ ELIFECYCLE  Command failed with exit code 2.

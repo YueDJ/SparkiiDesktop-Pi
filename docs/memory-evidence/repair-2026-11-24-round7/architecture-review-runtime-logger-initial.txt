@@ -1,0 +1,19 @@
+## Review findings
+
+1. **Blocking — stale events can be attributed to the next session after reset succeeds.**
+   - `release()` clears ownership only while `resetting` is true, then assigns the slot to the next session: `packages/agent-host/src/pi-runtime-pool.ts:310-324,347-349`.
+   - Event handling has no session generation or reset-boundary guard; any subsequent event updates whichever session currently owns the slot: `packages/agent-host/src/pi-runtime-pool.ts:187,240-250`.
+   - Consumers likewise read the current live session ID when forwarding events, so an old-session event arriving after rebind is delivered as the new session: `apps/desktop/electron/main/ipc.ts:869-874`.
+   - The regression test emits an event only during reset and asserts attribution is null; it never emits an old-session event after reset completion and rebind: `packages/agent-host/test/pi-runtime-pool.test.ts:169-201`.
+   - Required repair: introduce an event generation/reset barrier that rejects pre-reset events after rebind, and add a regression covering an old event after successful reset plus a legitimate event from the new session.
+
+## Verified nonblocking behavior
+
+- Resetting slots are excluded from acquire and idle acquisition; snapshots and activeCount report no active ownership during reset.
+- Reset failure removes the slot, clears every client alias, detaches events, and serves waiters with a fresh client.
+- Supervisor shutdown closes the client before killing and matches exit waiters by handle identity.
+- Logger redaction recursively transforms string values while preserving keys; nonempty rewrites receive one trailing newline; future appends and exports use the same structured redaction path.
+- Tests cover schema keywords, newline termination, future writes/exports, normal-log retention, and malformed-line secret removal.
+- Runtime verification uses FakeHandle/DeferredResetHandle, not a real child process. No files were modified.
+
+**CHANGES_REQUIRED — task-id R7-REVIEW-RUNTIME-LOGGER**

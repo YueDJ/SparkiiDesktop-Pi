@@ -17,7 +17,7 @@ import {
   type SecurityAction,
   type WorkspaceSandboxAdapter,
 } from "@sparkii/approval";
-import { PiRuntimePool, PiRuntimeSupervisor } from "@sparkii/agent-host";
+import { PiRuntimePool, PiRuntimeSupervisor, type PiRuntimeClient } from "@sparkii/agent-host";
 import { knowledgeConnector } from "@sparkii/connectors";
 import { createUtilityHostHandle, createForkHostHandle } from "../pi-runtime/transports.js";
 import { registerConnectorHandlers } from "./connector-registry.js";
@@ -50,6 +50,7 @@ import { createPiShellReviewer, type ShellReviewer } from "./security/shell-revi
 import { resolveReviewerConfig } from "./settings.js";
 import { loadSettings, loadApiKey, saveApiKey } from "./settings.js";
 import type { Logger } from "./logger.js";
+import type { TaskAdmissionToken, TaskOwner } from "./security/task-lifecycle.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -75,6 +76,22 @@ export interface Runtime {
   knowledgeToken(backend: KnowledgeBackendId): Promise<string | null>;
   setKnowledgeToken(backend: KnowledgeBackendId, token: string): Promise<void>;
   security?: RuntimeSecurity;
+  /** Installed by IPC registration; workflow prompts use the same serialized turn lane. */
+  promptTurn?: (input: {
+    sessionId: string;
+    text: string;
+    behavior?: 'steer' | 'followUp' | 'prompt';
+    expectedAdmission?: TaskAdmissionToken;
+    retainTask?: boolean;
+    onPromptSend?: () => void;
+  }) => Promise<unknown>;
+  /** Exact Main-origin lookup shared by SDK action/proposal/connector dispatchers. */
+  resolveRuntimeOrigin?: (
+    sessionId: string,
+    originToken: unknown,
+    client: PiRuntimeClient,
+    lease: number | undefined,
+  ) => TaskOwner | undefined;
 }
 
 export interface RuntimeSecurity {
@@ -217,9 +234,17 @@ export async function assemble(opts: {
     dataDir: opts.dataDir,
     errors,
     logger: opts.logger,
+    audit,
+    gate,
     sessionExists: (id) => Boolean(chatSessions.get(id)),
-    sessionFileOf: (id) => chatSessions.get(id)?.piSessionFile ?? undefined,
-    deleteChatSession: (id) => chatSessions.delete(id),
+    sessionFileOf: (id) => chatSessions.rawPiSessionFile(id, true),
+    workspacePathOf: (id) => chatSessions.get(id)?.workspacePath ?? undefined,
+    workspacePathsOf: () => chatSessions.list().map((session) => session.workspacePath),
+    projectWorkspacePathsOf: () => chatSessions.list()
+      .filter((session) => session.workspaceKind === 'user')
+      .map((session) => session.workspacePath),
+    registerChatSessionRedactions: (texts) => chatSessions.registerRedactions(texts),
+    deleteChatSession: (id, texts) => chatSessions.privacyDelete(id, texts),
     agents: () => [...agents.values()].map((a) => ({ id: a.manifest.id, name: a.manifest.displayName ?? a.manifest.id })),
   });
   const keyring = new Keyring(join(opts.dataDir, "keyring"));

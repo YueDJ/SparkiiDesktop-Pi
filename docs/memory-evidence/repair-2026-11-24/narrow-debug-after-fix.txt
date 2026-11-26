@@ -1,0 +1,68 @@
+(node:15460) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:33936) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:37640) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:28120) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | apps/desktop/test/logger.test.ts > Logger > appends structured jsonl and exports
+start {"profile":"contract-review"}
+
+stderr | apps/desktop/test/logger.test.ts > Logger > drops entries below the configured level
+kept ""
+
+ ❯ |1| apps/desktop/test/logger.test.ts (6 tests | 1 failed) 60ms
+     ✓ appends structured jsonl and exports 16ms
+     ✓ drops entries below the configured level 16ms
+     ✓ echoes to console with level mapping 2ms
+     ✓ does not echo to console when echo is disabled 1ms
+     ✓ constructor and logging stay non-blocking when the log file path is a directory 2ms
+     × circular console context cannot reject logging or lose the message 21ms
+ ✓ |1| apps/desktop/test/memory-audit-regression.test.ts (29 tests) 20207ms
+     ✓ P1-2 LIKE fallback supports CRUD, search and rebuild  1162ms
+     ✓ P1-2 corrupt SQLite is quarantined and rebuilt from truth without blocking startup  690ms
+     ✓ P1-3 copied workspace with the same projectId fails closed and preserves the first truth source  643ms
+     ✓ P1-4 default search and includeHistory never expose pending memories  572ms
+     ✓ P2 external truth edits reconcile list, injection and search  626ms
+     ✓ P2 project archived state survives derived index rebuild  1190ms
+     ✓ P1-1 corrupt project registry makes privacy deletion fail closed  642ms
+     ✓ P1-1 duplicate ids corrupt the whole truth file instead of exposing both rows  665ms
+     ✓ P1-1 privacy deletion discovers the indexed workspace even when the registry omits it  1123ms
+     ✓ P1-3 privacy deletion fails closed when a copied project duplicates identity  612ms
+     ✓ P1-1 privacy deletion redacts retained diagnostic messages  876ms
+     ✓ P1-8 consolidation is single-flight across the first await  837ms
+     ✓ P1-8 a malformed consolidation element rejects the entire merge phase  898ms
+     ✓ cross-file duplicate ids are excluded from listing and injection until repaired  1202ms
+     ✓ batch writes fail closed while a cross-file duplicate identity exists  1174ms
+     ✓ removing a project truth file and registry reference clears its searchable index  612ms
+     ✓ episode approval rejects malformed mergeIds before changing episode or proposal state  589ms
+     ✓ privacy deletion removes both current and legacy episode proposals  1699ms
+     ✓ ordinary source deletion removes legacy pending episode proposals and repairs active source metadata  1586ms
+     ✓ malformed mergeIds are rejected before any pending or target mutation  1081ms
+     ✓ P1-8 mergeIds approval is all-or-nothing  1126ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/logger.test.ts > Logger > circular console context cannot reject logging or lose the message
+AssertionError: expected [] to include '循环上下文仍应记录'
+ ❯ apps/desktop/test/logger.test.ts:64:31
+     62|       expect(logSpy).toHaveBeenCalled();
+     63|       expect(readFileSync(join(dir, 'sparkii.log.jsonl'), 'utf8')).toC…
+     64|       expect(logger.export()).toContain('循环上下文仍应记录');
+       |                               ^
+     65|     } finally {
+     66|       logSpy.mockRestore();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  1 failed | 34 passed (35)
+   Start at  16:57:29
+   Duration  23.89s (transform 600ms, setup 73ms, import 2.73s, tests 20.27s, environment 1.61s)
+

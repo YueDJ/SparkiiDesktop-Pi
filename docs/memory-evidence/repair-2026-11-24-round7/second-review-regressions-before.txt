@@ -1,0 +1,122 @@
+(node:10472) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:27628) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:18396) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:15928) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32772) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime-pool.test.ts (38 tests) 257ms
+ ❯ |1| apps/desktop/test/workflow-broker.test.ts (26 tests | 2 failed) 2549ms
+   × settles a caller waiter as denied when privacy redaction invalidates its proposal 2014ms
+   × canonicalizes a stale approved broker completion against privacy-redacted gate state 30ms
+   ✓ acquires the workflow slot with the agent display name, not the session id 8ms
+   ✓ uses the runtime session id for the workflow session record 6ms
+   ✓ keeps only workflow tool-step tools plus read on the runtime saddle 0ms
+   ✓ persists the caller workspace and model on the workflow session 5ms
+   ✓ resolves skill ref and llm template to prompt content 1ms
+   ✓ resolves the two visible business skills plus hidden tools 1ms
+     ✓ rejects forged legacy coding proposals before they reach ApprovalGate 3ms
+     ✓ completes the human step when the shared broker decides approval 32ms
+     ✓ runs the workflow for the requested profile instead of contract-review 4ms
+     ✓ returns the session id before the runner finishes 40ms
+     ✓ persists step output on workflow_step_end and does not write a report-named result blob 31ms
+     ✓ persists workflow_step_end failed status when a step throws 16ms
+     ✓ stops the workflow and reports when a step_end append fails 32ms
+     ✓ stops the workflow when even the small failed end cannot be appended 29ms
+     ✓ does not swallow start/end append failures with empty catch 2ms
+     ✓ stores full assistant text from message_update/message_end in step output 13ms
+     ✓ does not revive proposal-first edit/write semantics from Runtime requests 2ms
+     ✓ does not scan payload.diff to invent preview for other tools 2ms
+     ✓ does not resolve an approved write as 操作未执行:approved when the timeout elapses mid-execution 74ms
+     ✓ still resolves an untouched pending proposal as expired after the timeout 44ms
+     ✓ pushes the expired proposal to the renderer only when truly expired 31ms
+     ✓ does not push expired while an approved write is still executing 78ms
+     ✓ carries the approval scope back to the awaiting action router 31ms
+     ✓ cancels pending broker waits for one session 16ms
+ ❯ |1| apps/desktop/test/memory-round7-regression.test.ts (12 tests | 1 failed) 14464ms
+     ✓ R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files  1266ms
+     ✓ R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds  1162ms
+     ✓ R7 privacy deletion includes superseded episode records in the global redaction corpus  1135ms
+     × R7 caller-mode memory deletion rechecks canonical approval after privacy redaction 738ms
+     ✓ R7 production privacy retry succeeds in the same process after truth rows are gone  1100ms
+     ✓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body  691ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes  1357ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes  1302ms
+     ✓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file  1309ms
+     ✓ R7-P1-3 valid source deletion updates unregistered project truth without reindexing it  1659ms
+     ✓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion  1351ms
+     ✓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution  1393ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7 caller-mode memory deletion rechecks canonical approval after privacy redaction
+AssertionError: expected undefined to match object { ok: false }
+
+- Expected:
+{
+  "ok": false,
+}
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:292:25
+    290|     });
+    291|
+    292|     expect(out.details).toMatchObject({ ok: false });
+       |                         ^
+    293|     expect(service.store.rowFor(target.id)).toBeTruthy();
+    294|     expect(gate.get(proposalId)?.privacyRedacted).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  |1| apps/desktop/test/workflow-broker.test.ts > settles a caller waiter as denied when privacy redaction invalidates its proposal
+Error: timed out waiting
+ ❯ waitUntil apps/desktop/test/workflow-broker.test.ts:24:47
+     22|   const start = Date.now();
+     23|   while (!predicate()) {
+     24|     if (Date.now() - start > timeoutMs) throw new Error('timed out wai…
+       |                                               ^
+     25|     await new Promise((r) => setTimeout(r, 10));
+     26|   }
+ ❯ apps/desktop/test/workflow-broker.test.ts:113:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  |1| apps/desktop/test/workflow-broker.test.ts > canonicalizes a stale approved broker completion against privacy-redacted gate state
+AssertionError: expected { approved: true, …(2) } to deeply equal { approved: false, …(2) }
+
+- Expected
++ Received
+
+  {
+-   "approved": false,
++   "approved": true,
+    "proposalId": "privacy-p2",
+-   "status": "denied",
++   "status": "approved",
+  }
+
+ ❯ apps/desktop/test/workflow-broker.test.ts:138:24
+    136|   broker.decide('privacy-p2', { approved: true, status: 'approved' });
+    137|
+    138|   await expect(pending).resolves.toEqual({ approved: false, proposalId…
+       |                        ^
+    139| });
+    140|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  2 failed | 1 passed (3)
+      Tests  3 failed | 73 passed (76)
+   Start at  21:10:48
+   Duration  16.67s (transform 1.02s, setup 80ms, import 3.98s, tests 17.27s, environment 2.03s)
+

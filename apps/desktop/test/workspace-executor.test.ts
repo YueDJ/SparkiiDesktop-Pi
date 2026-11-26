@@ -275,6 +275,84 @@ describe('WorkspaceExecutor', () => {
     expect(existsSync(s.workspace)).toBe(true);
   });
 
+  it.each(['.sparkii', '.SpArKiI'])(
+    'rejects deleting an ordinary parent containing nested %s/secret',
+    async (reservedName) => {
+      const s = setup();
+      const parent = join(s.workspace, 'generated');
+      const secret = join(parent, 'nested', reservedName, 'secret');
+      mkdirSync(dirname(secret), { recursive: true });
+      writeFileSync(secret, 'keep');
+      const executor = createWorkspaceExecutor({ probe: probe() });
+
+      await expect(executor.execute(
+        action('delete', { path: parent }, [resource(parent)]),
+        s.grant,
+      )).rejects.toMatchObject({ code: 'DENIED' });
+      expect(existsSync(parent)).toBe(true);
+      expect(readFileSync(secret, 'utf8')).toBe('keep');
+    },
+  );
+
+  it.each(['.sparkii', '.SpArKiI'])(
+    'rejects moving an ordinary parent containing nested %s/secret',
+    async (reservedName) => {
+      const s = setup();
+      const from = join(s.workspace, 'generated');
+      const to = join(s.workspace, 'moved');
+      const secret = join(from, 'nested', reservedName, 'secret');
+      mkdirSync(dirname(secret), { recursive: true });
+      writeFileSync(secret, 'keep');
+      const executor = createWorkspaceExecutor({ probe: probe() });
+
+      await expect(executor.execute(
+        action('move', { from, to }, [resource(from), resource(to)]),
+        s.grant,
+      )).rejects.toMatchObject({ code: 'DENIED' });
+      expect(existsSync(from)).toBe(true);
+      expect(existsSync(to)).toBe(false);
+      expect(readFileSync(secret, 'utf8')).toBe('keep');
+    },
+  );
+
+  it('continues to reject direct reserved delete and move requests', async () => {
+    const s = setup();
+    const reserved = join(s.workspace, '.sparkii');
+    const secret = join(reserved, 'secret');
+    const to = join(s.workspace, 'moved-secret');
+    mkdirSync(reserved);
+    writeFileSync(secret, 'keep');
+    const executor = createWorkspaceExecutor({ probe: probe() });
+
+    await expect(executor.execute(
+      action('delete', { path: reserved }, [resource(reserved)]),
+      s.grant,
+    )).rejects.toMatchObject({ code: 'DENIED' });
+    await expect(executor.execute(
+      action('move', { from: reserved, to }, [resource(reserved), resource(to)]),
+      s.grant,
+    )).rejects.toMatchObject({ code: 'DENIED' });
+    expect(readFileSync(secret, 'utf8')).toBe('keep');
+    expect(existsSync(to)).toBe(false);
+  });
+
+  it('moves an ordinary directory without reserved descendants', async () => {
+    const s = setup();
+    const from = join(s.workspace, 'generated');
+    const to = join(s.workspace, 'moved');
+    const file = join(from, 'nested', 'a.txt');
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, 'keep');
+    const executor = createWorkspaceExecutor({ probe: probe() });
+
+    await expect(executor.execute(
+      action('move', { from, to }, [resource(from), resource(to)]),
+      s.grant,
+    )).resolves.toMatchObject({ path: to });
+    expect(existsSync(from)).toBe(false);
+    expect(readFileSync(join(to, 'nested', 'a.txt'), 'utf8')).toBe('keep');
+  });
+
   it('moves files inside the workspace and rejects external destinations', async () => {
     const s = setup();
     const from = join(s.workspace, 'a.txt');

@@ -1,0 +1,299 @@
+(node:28384) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:35112) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:36144) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |0| packages/approval/test/audit.test.ts (6 tests | 1 failed) 66ms
+     ✓ appends and queries an audit event 17ms
+     ✓ exports jsonl 7ms
+     ✓ persists and queries sessionId 8ms
+     ✓ stores task, capability, rule, payload hash and sandbox evidence 8ms
+     × R8-P1-6 applies registered redactions before every free-text audit insert and after reopen 16ms
+     ✓ exports jsonl with camelCase fields 7ms
+(node:40872) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-truth-batch.test.ts (17 tests | 1 failed) 10977ms
+     ✓ restores every prior truth file and removes new files when a later write fails  841ms
+     × R8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth 557ms
+     ✓ recovers an interrupted batch at startup before truth files are opened  820ms
+     ✓ recovers a new project batch from the registry committed before its truth file  829ms
+     ✓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing  813ms
+     ✓ rollback never recreates a missing project parent before path revalidation  811ms
+     ✓ does not write or quarantine outside a junctioned memory root during failed recovery 18ms
+     ✓ quarantines a malformed journal and reports a warning instead of blocking startup  537ms
+     ✓ rejects journal paths outside memory truth and backup locations  798ms
+     ✓ rejects a truthy non-boolean committed marker without deleting uncommitted truth  530ms
+     ✓ rejects a committed journal that still contains rollback file items  540ms
+     ✓ rejects an unregistered outside project truth target during commit and recovery  822ms
+     ✓ rejects a project truth target reached through a junction even when its workspace is registered 258ms
+     ✓ treats a dangling write-block junction as a persistent block 267ms
+     ✓ keeps the only recovery evidence when the write-block marker cannot be persisted  519ms
+     ✓ keeps a committed batch and removes its recovery journal  796ms
+     ✓ rolls back the project registry when a later truth write fails  1220ms
+(node:33352) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | apps/desktop/test/logger.test.ts > Logger > appends structured jsonl and exports
+start {"profile":"contract-review"}
+
+stderr | apps/desktop/test/logger.test.ts > Logger > drops entries below the configured level
+kept ""
+
+ ❯ |1| apps/desktop/test/logger.test.ts (24 tests | 3 failed) 357ms
+     ✓ R7 never preserves the registered marker secret 已删除 25ms
+     ✓ R7 never preserves the registered marker secret [已删除] 21ms
+     ✓ R7 redaction cannot recreate a registered secret across the marker boundary: "x\"[已删除]" 20ms
+     ✓ R7 redaction cannot recreate a registered secret across the marker boundary: "x\\[已删除]" 9ms
+     ✓ R7 redaction cannot recreate a registered secret across the marker boundary: "x\n[已删除]" 21ms
+     ✓ appends structured jsonl and exports 21ms
+     ✓ drops entries below the configured level 17ms
+     ✓ echoes to console with level mapping 2ms
+     ✓ does not echo to console when echo is disabled 2ms
+     ✓ constructor and logging stay non-blocking when the log file path is a directory 2ms
+     ✓ circular console context cannot reject logging or lose the message 21ms
+     ✓ redactSession terminates a rewritten nonempty JSONL file before the next append 41ms
+     ✓ redactMemoryPromptLogs terminates a rewritten nonempty JSONL file before the next append 17ms
+     ✓ redacts string values without changing JSON schema field names during session redaction or export 5ms
+     ✓ uses structured redaction for future writes and exports 18ms
+     ✓ memory-prompt redaction keeps normal logs as valid JSONL with structured value redaction 3ms
+     ✓ retains malformed normal log lines while removing their registered secrets 24ms
+     ✓ redactSession scrubs every JSON escape encoding in malformed history without changing valid record schemas 7ms
+     ✓ redactMemoryPromptLogs scrubs every JSON escape encoding in malformed history without changing valid record schemas 6ms
+     ✓ export scrubs every JSON escape encoding in malformed history without changing valid record schemas 6ms
+     × R8-P1-2 preserves JSONL record boundaries when the registered secret is "\n" 7ms
+     × R8-P1-2 preserves JSONL record boundaries when the registered secret is "\r\n" 9ms
+     × R8-P1-2 preserves JSONL record boundaries when the registered secret is "\r" 24ms
+     ✓ serializes context once so a stateful toJSON cannot lose the basic message 27ms
+(node:39876) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-r8-regression.test.ts (11 tests | 11 failed) 15305ms
+     × R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext 1498ms
+     × R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext 1564ms
+     × R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext 1633ms
+     × R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext 1566ms
+     × R8-P0-1 resumes from journal context after the chat row and Pi file are already gone 1105ms
+     × R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers 1481ms
+     × R8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret 1439ms
+     × R8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker 700ms
+     × R8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state 1484ms
+     × R8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state 1387ms
+     × R8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state 1446ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 16 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/logger.test.ts > Logger > R8-P1-2 preserves JSONL record boundaries when the registered secret is "\n"
+SyntaxError: Unexpected non-whitespace character after JSON at position 93 (line 1 column 94)
+ ❯ apps/desktop/test/logger.test.ts:351:77
+    349|       else if (operation === 'redactMemoryPromptLogs') logger.redactMe…
+    350|       const output = operation === 'export' ? await logger.export() : …
+    351|       const records = output.split('\n').filter(Boolean).map((line) =>…
+       |                                                                             ^
+    352|       expect(records).toHaveLength(3);
+    353|       expect(records[0]).toMatchObject({ ts: 1, level: 'info', msg: 'k…
+ ❯ apps/desktop/test/logger.test.ts:351:58
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/16]⎯
+
+ FAIL  |1| apps/desktop/test/logger.test.ts > Logger > R8-P1-2 preserves JSONL record boundaries when the registered secret is "\r\n"
+ FAIL  |1| apps/desktop/test/logger.test.ts > Logger > R8-P1-2 preserves JSONL record boundaries when the registered secret is "\r"
+SyntaxError: Unexpected token 'm', "malformed["... is not valid JSON
+ ❯ apps/desktop/test/logger.test.ts:351:77
+    349|       else if (operation === 'redactMemoryPromptLogs') logger.redactMe…
+    350|       const output = operation === 'export' ? await logger.export() : …
+    351|       const records = output.split('\n').filter(Boolean).map((line) =>…
+       |                                                                             ^
+    352|       expect(records).toHaveLength(3);
+    353|       expect(records[0]).toMatchObject({ ts: 1, level: 'info', msg: 'k…
+ ❯ apps/desktop/test/logger.test.ts:351:58
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/16]⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 privacy recovery regressions > R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 privacy recovery regressions > R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 privacy recovery regressions > R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 privacy recovery regressions > R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext
+AssertionError: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "7ae99811b2c7c696275f6aca5adcedd71a90d8ab3ced71cd81d7e2c8020628fd.json",
++ ]
+
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:135:31
+    133|     restart();
+    134|
+    135|     expect(pendingJournals()).toEqual([]);
+       |                               ^
+    136|     expect(readFileSync(projectMemoryFile(workspace), 'utf8')).not.toC…
+    137|     await expectPrivateGone(secret, excerpt);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/16]⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 privacy recovery regressions > R8-P0-1 resumes from journal context after the chat row and Pi file are already gone
+AssertionError: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "7ae99811b2c7c696275f6aca5adcedd71a90d8ab3ced71cd81d7e2c8020628fd.json",
++ ]
+
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:153:31
+    151|     restart();
+    152|
+    153|     expect(pendingJournals()).toEqual([]);
+       |                               ^
+    154|     expect(readFileSync(projectMemoryFile(workspace), 'utf8')).not.toC…
+    155|     await expectPrivateGone(secret, excerpt);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/16]⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 privacy recovery regressions > R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers
+AssertionError: expected [Function] to throw error including '隐私清理失败' but got 'injected chat cleanup failure'
+
+Expected: "隐私清理失败"
+Received: "injected chat cleanup failure"
+
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:166:69
+    164|       sessions.privacyDelete(id, texts);
+    165|     } });
+    166|     expect(() => service.privacyDeleteBySession('private-session')).to…
+       |                                                                     ^
+    167|     service.close();
+    168|     service = makeService({ deleteChatSession: (id, texts) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/16]⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 privacy recovery regressions > R8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret
+AssertionError: expected '[{"id":"64b41819-410f-4bc8-82de-365e2…' not to contain 'R8_PRIVATE_private-session_71C'
+
+Expected: "R8_PRIVATE_private-session_71C"
+Received: "[{"id":"64b41819-410f-4bc8-82de-365e26e76c83","ts":1795580320403,"actor":"agent","action":"gateway.failed","resource":"memory","payloadSummary":"R8_PRIVATE_private-session_71C R8_EXCERPT_private-session_92D","decision":null},{"id":"e6463293-a601-4801-87dc-e18109492690","ts":1795580320050,"actor":"agent","action":"carrier.audit","resource":"memory","payloadSummary":"[已删除] [已删除]","decision":null,"sessionId":"carrier-session"}]"
+
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:184:55
+    182|     await appending;
+    183|
+    184|     expect(JSON.stringify(await audit.query({}))).not.toContain(secret…
+       |                                                       ^
+    185|     expect(await audit.exportJsonl()).not.toContain(excerpt);
+    186|     expect(databaseBytes(join(dataDir, 'audit.db'))).not.toContain(sec…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/16]⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 truth write-block regressions > R8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:201:64
+    199|     writeFileSync(userMemoryFile(dataDir), JSON.stringify({ version: 1…
+    200|
+    201|     expect(() => service.searchMemory('R8_PARTIAL_TRUTH_71C')).toThrow…
+       |                                                                ^
+    202|     expect(() => service.list()).toThrow(/写入阻断/);
+    203|     expect(() => service.store.rowFor(added.id)).toThrow(/写入阻断/);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/16]⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 privacy preflight regressions > R8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state
+AssertionError: expected '{"id":"cee81853-2c26-4293-8310-f508e8…' to be '{"id":"cee81853-2c26-4293-8310-f508e8…' // Object.is equality
+
+Expected: "{"id":"cee81853-2c26-4293-8310-f508e8b96894","ts":1795580322238,"actor":"agent","action":"carrier.audit","resource":"memory","payloadSummary":"R8_PRIVATE_private-session_71C R8_EXCERPT_private-session_92D","decision":null,"sessionId":"carrier-session"}"
+Received: "{"id":"cee81853-2c26-4293-8310-f508e8b96894","ts":1795580322238,"actor":"agent","action":"carrier.audit","resource":"memory","payloadSummary":"[已删除] [已删除]","decision":null,"sessionId":"carrier-session"}"
+
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:245:39
+    243|     expect(readFileSync(projectMemoryFile(workspace))).toEqual(project…
+    244|     expect(readFileSync(projectMemoryFile(second))).toEqual(secondBefo…
+    245|     expect(await audit.exportJsonl()).toBe(auditBefore);
+       |                                       ^
+    246|     expect(await logger.export()).toBe(logBefore);
+    247|     expect(sessions.get('private-session')).toEqual(chatBefore);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/16]⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 privacy preflight regressions > R8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state
+AssertionError: expected '{"id":"00b1f23c-035e-475a-8785-c5dafb…' to be '{"id":"00b1f23c-035e-475a-8785-c5dafb…' // Object.is equality
+
+Expected: "{"id":"00b1f23c-035e-475a-8785-c5dafbf230d3","ts":1795580323617,"actor":"agent","action":"carrier.audit","resource":"memory","payloadSummary":"R8_PRIVATE_private-session_71C R8_EXCERPT_private-session_92D","decision":null,"sessionId":"carrier-session"}"
+Received: "{"id":"00b1f23c-035e-475a-8785-c5dafbf230d3","ts":1795580323617,"actor":"agent","action":"carrier.audit","resource":"memory","payloadSummary":"[已删除] [已删除]","decision":null,"sessionId":"carrier-session"}"
+
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:245:39
+    243|     expect(readFileSync(projectMemoryFile(workspace))).toEqual(project…
+    244|     expect(readFileSync(projectMemoryFile(second))).toEqual(secondBefo…
+    245|     expect(await audit.exportJsonl()).toBe(auditBefore);
+       |                                       ^
+    246|     expect(await logger.export()).toBe(logBefore);
+    247|     expect(sessions.get('private-session')).toEqual(chatBefore);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/16]⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 privacy preflight regressions > R8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state
+AssertionError: expected '{"id":"dea98d48-6cd5-4375-9aab-03aa06…' to be '{"id":"dea98d48-6cd5-4375-9aab-03aa06…' // Object.is equality
+
+Expected: "{"id":"dea98d48-6cd5-4375-9aab-03aa06f66111","ts":1795580325083,"actor":"agent","action":"carrier.audit","resource":"memory","payloadSummary":"R8_PRIVATE_private-session_71C R8_EXCERPT_private-session_92D","decision":null,"sessionId":"carrier-session"}"
+Received: "{"id":"dea98d48-6cd5-4375-9aab-03aa06f66111","ts":1795580325083,"actor":"agent","action":"carrier.audit","resource":"memory","payloadSummary":"[已删除] [已删除]","decision":null,"sessionId":"carrier-session"}"
+
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:245:39
+    243|     expect(readFileSync(projectMemoryFile(workspace))).toEqual(project…
+    244|     expect(readFileSync(projectMemoryFile(second))).toEqual(secondBefo…
+    245|     expect(await audit.exportJsonl()).toBe(auditBefore);
+       |                                       ^
+    246|     expect(await logger.export()).toBe(logBefore);
+    247|     expect(sessions.get('private-session')).toEqual(chatBefore);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/16]⎯
+
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > truth batch journal > R8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ apps/desktop/test/memory-truth-batch.test.ts:70:79
+     68|
+     69|     expect(readFileSync(target, 'utf8')).toBe(original);
+     70|     expect(existsSync(join(memoryDir(dataDir), '.truth-batch-journal.j…
+       |                                                                               ^
+     71|     expect(existsSync(join(memoryDir(dataDir), '.truth-backups'))).toB…
+     72|     expect(recoverTruthBatch(dataDir)).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/16]⎯
+
+ FAIL  |0| packages/approval/test/audit.test.ts > AuditStore > R8-P1-6 applies registered redactions before every free-text audit insert and after reopen
+AssertionError: expected '{"actor":"actor-R8_AUDIT_SECRET_71C",…' not to contain 'R8_AUDIT_SECRET_71C'
+
+Expected: "R8_AUDIT_SECRET_71C"
+Received: "{"actor":"actor-R8_AUDIT_SECRET_71C","action":"action-R8_AUDIT_\"\\\n_SECRET_92D","resource":"memory","payloadSummary":"R8_AUDIT_SECRET_71C R8_AUDIT_\"\\\n_SECRET_92D","decision":"denied","modelRoute":"R8_AUDIT_SECRET_71C","sessionId":"R8_AUDIT_\"\\\n_SECRET_92D","taskId":"R8_AUDIT_SECRET_71C","actionId":"R8_AUDIT_\"\\\n_SECRET_92D","ruleId":"R8_AUDIT_SECRET_71C","capability":"R8_AUDIT_\"\\\n_SECRET_92D","payloadHash":"R8_AUDIT_SECRET_71C","platform":"R8_AUDIT_\"\\\n_SECRET_92D","sandboxVersion":"R8_AUDIT_SECRET_71C","id":"7b364a2c-4e81-4847-86d6-1d2b6145236b","ts":1795580294329}"
+
+ ❯ packages/approval/test/audit.test.ts:75:42
+     73|       capability: escaped, payloadHash: secret, platform: escaped, san…
+     74|     });
+     75|     expect(JSON.stringify(appended)).not.toContain(secret);
+       |                                          ^
+     76|     expect(JSON.stringify(appended)).not.toContain(escaped);
+     77|     expect(JSON.stringify(await store.query({ actor: `actor-${secret}`…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/16]⎯
+
+
+ Test Files  4 failed (4)
+      Tests  16 failed | 42 passed (58)
+   Start at  12:18:13
+   Duration  31.48s (transform 460ms, setup 54ms, import 1.47s, tests 26.70s, environment 2.53s)
+

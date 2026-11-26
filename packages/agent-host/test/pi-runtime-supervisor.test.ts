@@ -85,15 +85,15 @@ describe("PiRuntimeSupervisor", () => {
     const client = await sup.start();
     client.onEvent(onEvent);
     handle.emit(eventEnvelope({ type: "agent_start" }));
-    expect(onEvent).toHaveBeenCalledWith({ type: "agent_start" });
+    expect(onEvent).toHaveBeenCalledWith({ type: "agent_start" }, { sessionGeneration: 0 });
 
     const proposal = {
       requestId: "p1", toolName: "report.export", targetSystem: "report",
       summary: "export", payload: { path: "a.docx" }, risk: "write" as const,
     };
-    handle.emit(proposalEnvelope(proposal));
+    handle.emit(proposalEnvelope(proposal, 0, "origin-p1"));
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(onProposal).toHaveBeenCalledWith(proposal);
+    expect(onProposal).toHaveBeenCalledWith(proposal, expect.objectContaining({ client, sessionGeneration: 0, originToken: "origin-p1" }));
     expect(handle.sent).toContainEqual(proposalDecisionEnvelope("p1", { approved: false, proposalId: "p1", status: "denied" }));
   });
 
@@ -122,11 +122,12 @@ describe("PiRuntimeSupervisor", () => {
     handle.emit({
       direction: "runtime-to-main",
       connectorRead: { requestId: "r1", toolName: "knowledge.search", args: { query: "q" } },
+      originToken: "origin-r1",
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(onConnectorRead).toHaveBeenCalledWith({
       requestId: "r1", toolName: "knowledge.search", args: { query: "q" },
-    });
+    }, expect.objectContaining({ sessionGeneration: 0, originToken: "origin-r1" }));
     expect(handle.sent).toContainEqual(connectorReadResultEnvelope("r1", { ok: true, data: { chunks: [] } }));
   });
 
@@ -151,10 +152,10 @@ describe("PiRuntimeSupervisor", () => {
     }));
     sup.onAction(onAction);
     await sup.start();
-    handle.emit(runtimeActionEnvelope(request));
+    handle.emit(runtimeActionEnvelope(request, 0, "origin-a1"));
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(onAction).toHaveBeenCalledWith(request);
+    expect(onAction).toHaveBeenCalledWith(request, expect.objectContaining({ sessionGeneration: 0, originToken: "origin-a1" }));
     expect(handle.sent).toContainEqual(actionResultEnvelope("a1", {
       requestId: "a1",
       status: "executed",
@@ -167,6 +168,99 @@ describe("PiRuntimeSupervisor", () => {
     }));
   });
 
+  it("R8 final review rejects late runtime requests and events from a replaced session", async () => {
+    const handle = new FakeHandle();
+    const sup = new PiRuntimeSupervisor(() => handle);
+    const onAction = vi.fn(async (request: RuntimeActionRequest) => ({
+      requestId: request.requestId,
+      status: "executed" as const,
+      decision: { decision: "allow" as const, ruleId: "test", reason: "test" },
+    }));
+    const onProposal = vi.fn(async () => ({ approved: false, proposalId: "late-p", status: "denied" }));
+    const onConnectorRead = vi.fn(async () => ({ ok: true, data: {} }));
+    const onEvent = vi.fn();
+    sup.onAction(onAction);
+    sup.onProposal(onProposal);
+    sup.onConnectorRead(onConnectorRead);
+    const client = await sup.start();
+    client.onEvent(onEvent);
+    handle.emit(readyEnvelope());
+    const replaced = client.send({ type: "new_session" });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const command = handle.sent.at(-1)!;
+    const id = "id" in command ? command.id : "";
+    handle.emit(responseEnvelope(id, {
+      id, type: "response", command: "new_session", success: true, data: { sessionGeneration: 1 },
+    }));
+    await replaced;
+    expect(client.origin).toMatch(/^[0-9a-f-]{36}$/);
+    expect(client.sessionGeneration()).toBe(1);
+
+    handle.emit(eventEnvelope({ type: "agent_start" }, 0));
+    handle.emit(proposalEnvelope({
+      requestId: "late-p", toolName: "report.export", targetSystem: "report",
+      summary: "late", payload: {}, risk: "write",
+    }, 0, "origin-late"));
+    handle.emit(runtimeActionEnvelope({ requestId: "late-a", toolName: "write", args: {} }, 0, "origin-late"));
+    handle.emit({
+      direction: "runtime-to-main", sessionGeneration: 0, originToken: "origin-late",
+      connectorRead: { requestId: "late-r", toolName: "knowledge.search", args: {} },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(onEvent).not.toHaveBeenCalled();
+    expect(onAction).not.toHaveBeenCalled();
+    expect(onProposal).not.toHaveBeenCalled();
+    expect(onConnectorRead).not.toHaveBeenCalled();
+    expect(handle.sent).toContainEqual(expect.objectContaining({
+      requestId: "late-p", sessionGeneration: 0,
+      proposalDecision: expect.objectContaining({ status: "denied" }),
+    }));
+    expect(handle.sent).toContainEqual(expect.objectContaining({
+      requestId: "late-a", sessionGeneration: 0,
+      actionResult: expect.objectContaining({ status: "denied", decision: expect.objectContaining({ ruleId: "platform.stale-runtime-request" }) }),
+    }));
+    expect(handle.sent).toContainEqual(expect.objectContaining({
+      requestId: "late-r", sessionGeneration: 0,
+      connectorReadResult: expect.objectContaining({ error: expect.objectContaining({ code: "STALE_RUNTIME_REQUEST" }) }),
+    }));
+  });
+
+  it("R8 B1 fails closed for same-generation action, proposal and connector envelopes without origin", async () => {
+    const handle = new FakeHandle();
+    const sup = new PiRuntimeSupervisor(() => handle);
+    const onAction = vi.fn();
+    const onProposal = vi.fn();
+    const onConnectorRead = vi.fn();
+    sup.onAction(onAction);
+    sup.onProposal(onProposal);
+    sup.onConnectorRead(onConnectorRead);
+    await sup.start();
+    handle.emit(runtimeActionEnvelope({ requestId: "no-origin-a", toolName: "write", args: {} }));
+    handle.emit(proposalEnvelope({
+      requestId: "no-origin-p", toolName: "report.export", targetSystem: "report",
+      summary: "late", payload: {}, risk: "write",
+    }));
+    handle.emit({
+      direction: "runtime-to-main",
+      connectorRead: { requestId: "no-origin-r", toolName: "knowledge.search", args: {} },
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(onAction).not.toHaveBeenCalled();
+    expect(onProposal).not.toHaveBeenCalled();
+    expect(onConnectorRead).not.toHaveBeenCalled();
+    expect(handle.sent).toContainEqual(expect.objectContaining({
+      requestId: "no-origin-a",
+      actionResult: expect.objectContaining({ status: "denied", error: expect.objectContaining({ code: "ORIGIN_REQUIRED" }) }),
+    }));
+    expect(handle.sent).toContainEqual(expect.objectContaining({
+      requestId: "no-origin-p", proposalDecision: expect.objectContaining({ approved: false }),
+    }));
+    expect(handle.sent).toContainEqual(expect.objectContaining({
+      requestId: "no-origin-r", connectorReadResult: expect.objectContaining({ error: expect.objectContaining({ code: "ORIGIN_REQUIRED" }) }),
+    }));
+  });
+
   it("fails closed when no Runtime action handler is registered", async () => {
     const handle = new FakeHandle();
     const sup = new PiRuntimeSupervisor(() => handle);
@@ -175,7 +269,7 @@ describe("PiRuntimeSupervisor", () => {
       requestId: "a2",
       toolName: "bash",
       args: { command: "echo unsafe" },
-    }));
+    }, 0, "origin-a2"));
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(handle.sent).toContainEqual(expect.objectContaining({
       direction: "main-to-runtime",
@@ -195,7 +289,7 @@ describe("PiRuntimeSupervisor", () => {
     const sup = new PiRuntimeSupervisor(() => handle);
     await sup.start();
     handle.emit({
-      direction: "runtime-to-main",
+      direction: "runtime-to-main", originToken: "origin-r2",
       connectorRead: { requestId: "r2", toolName: "knowledge.search", args: { query: "q" } },
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -250,18 +344,28 @@ describe("PiRuntimeSupervisor", () => {
       expect(handle.kills).toBe(1);
     });
 
-    it("超时兜底：exit 永不出现 ⇒ stop 在 stopTimeoutMs 后返回并再 kill 一次", async () => {
+    it("超时后强杀仍无 exit 确认：stop 必须拒绝，不得假报关机成功", async () => {
       const handle = new ManualHandle();
       const logger = { warn: vi.fn() };
       const sup = new PiRuntimeSupervisor(() => handle, { stopTimeoutMs: 50, logger });
       await sup.start();
       const startedAt = Date.now();
-      await sup.stop();
+      await expect(sup.stop()).rejects.toThrow(/did not exit after forced kill/);
       const elapsed = Date.now() - startedAt;
       expect(elapsed).toBeGreaterThanOrEqual(40);
       expect(elapsed).toBeLessThan(2_000);
-      expect(handle.kills).toBe(2);                     // 超时后再强杀一次
+      expect(handle.kills).toBe(2);
       expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("did not exit"));
+    });
+
+    it("强杀宽限期内出现 exit：stop 等待确认后成功返回", async () => {
+      const handle = new ManualHandle();
+      const sup = new PiRuntimeSupervisor(() => handle, { stopTimeoutMs: 30 });
+      await sup.start();
+      const stop = sup.stop();
+      setTimeout(() => handle.emitExit(0), 45);
+      await expect(stop).resolves.toBeUndefined();
+      expect(handle.kills).toBe(2);
     });
 
     it("句柄同一性守卫（防御性）：旧句柄迟到 exit 不清理新句柄、不通知 onExit", async () => {
@@ -275,7 +379,7 @@ describe("PiRuntimeSupervisor", () => {
       const onExit = vi.fn();
       sup.onExit(onExit);
       const client1 = await sup.start();
-      await sup.stop();                                 // 第一个句柄不会自己退出 ⇒ 超时收尾
+      await expect(sup.stop()).rejects.toThrow(/did not exit after forced kill/); // 第一个句柄不会自己退出
       const client2 = await sup.start();
       expect(client2).not.toBe(client1);
       first.emitExit(1);                                // 旧句柄迟到 exit

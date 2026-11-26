@@ -1,0 +1,4 @@
+(node:38528) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+npm notice run @sparkii/desktop@0.1.7 typecheck
+npm notice run tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.electron.json

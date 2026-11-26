@@ -1,0 +1,25 @@
+Independent architect round 1 outcome: CHANGES_REQUIRED
+
+Confirmed findings addressed before round 2:
+1. Edit read a hardlink alias before Main authorization.
+2. Privacy deletion while target() was pending did not stop model send.
+3. Corrupt projects.json let privacy deletion report success while project truth remained.
+4. Duplicate entry IDs remained listable/injectable.
+5. Project registry writes occurred outside the truth journal.
+6. Missing-backup/corrupt-journal recovery was unsafe; malformed journal blocked startup.
+7. entryId@999 skipped unread tail and processed later entries.
+8. stopAll() during cold start returned before process exit.
+9. Queued bind failure did not advance the next request.
+10. A valid merge followed by null left a partial pending proposal.
+11. Replacement repair overwrote project truth without destructive confirmation.
+
+Additional risks addressed before round 2:
+- Generic non-symlink Windows reparse-point detection.
+- SQLite :memory: fallback fault injection.
+- Unified ErrorStore privacy redaction.
+- Logger old prompt-log cleanup failure visibility.
+- Registry completeness for privacy deletion via authoritative session/index workspace paths.
+- Persistent truth-write blocking and journal path allow-list after unrecoverable recovery.
+
+Round 2 evidence is in verification-current-run-1.txt, verification-current-run-2.txt,
+typecheck-current.txt, ui-probe-output-current.txt, ui-probe-result.json and the two PNG screenshots.

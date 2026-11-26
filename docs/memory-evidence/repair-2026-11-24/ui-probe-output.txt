@@ -1,0 +1,25 @@
+(node:30112) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+{
+  "url": "http://127.0.0.1:60303/",
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "warnings": 2,
+  "repairCalls": [
+    [
+      "/ws/b",
+      "replace",
+      "B 项目的修复内容"
+    ]
+  ],
+  "repairValues": [
+    "A 项目的修复草稿",
+    "B 项目的修复内容"
+  ],
+  "destructiveConfirmationDismissed": true,
+  "projectDraftsIsolated": true,
+  "consoleMessages": [],
+  "badNetwork": []
+}

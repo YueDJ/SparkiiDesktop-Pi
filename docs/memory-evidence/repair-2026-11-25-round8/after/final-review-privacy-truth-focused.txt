@@ -1,0 +1,123 @@
+(node:22060) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:33636) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:10700) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |0| packages/approval/test/audit.test.ts (11 tests | 1 failed) 250ms
+     ✓ appends and queries an audit event 14ms
+     ✓ exports jsonl 9ms
+     ✓ persists and queries sessionId 8ms
+     ✓ stores task, capability, rule, payload hash and sandbox evidence 9ms
+     ✓ R8-P1-6 applies registered redactions before every free-text audit insert and after reopen 36ms
+     × R8 final review keeps a durable audit privacy fence when history cleanup rolls back 15ms
+     ✓ R8 round3 registers physical-newline fragments for history, future append and restart without raw DB/WAL residue 46ms
+     ✓ rotates markers and scrubs old and future rows for 已删除 after restart 49ms
+     ✓ rotates markers and scrubs old and future rows for [已删除] after restart 40ms
+     ✓ scrubs nested string keys and values and collapses key collisions safely 13ms
+     ✓ exports jsonl with camelCase fields 9ms
+(node:6356) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-truth-batch.test.ts (38 tests) 29158ms
+     ✓ restores every prior truth file and removes new files when a later write fails  766ms
+     ✓ R8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth  510ms
+     ✓ R8 final review never rolls back truth after the committed journal is durable  762ms
+     ✓ R8-P1-4 preserves rollback backups when the unverified journal cannot be removed  502ms
+     ✓ recovers an interrupted batch at startup before truth files are opened  775ms
+     ✓ recovers a new project batch from the registry committed before its truth file  772ms
+     ✓ R8 final review resumes a partially rolled-back new project with startup-injected authorization  765ms
+     ✓ R8 final review keeps rollback backups when journal removal fails after truth restoration  754ms
+     ✓ R8 final review does not roll back committed truth when post-commit backup cleanup fails  529ms
+     ✓ R8 final review retries orphan backup cleanup without quarantining restored truth  500ms
+     ✓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing  758ms
+     ✓ rollback never recreates a missing project parent before path revalidation  763ms
+     ✓ R8 final review rejects an empty uncommitted journal without deleting the only original backup  761ms
+     ✓ quarantines a malformed journal and reports a warning instead of blocking startup  506ms
+     ✓ rejects journal paths outside memory truth and backup locations  778ms
+     ✓ rejects a truthy non-boolean committed marker without deleting uncommitted truth  503ms
+     ✓ rejects a committed journal that still contains rollback file items  499ms
+     ✓ rejects an unregistered outside project truth target during commit and recovery  753ms
+     ✓ keeps the only recovery evidence when the write-block marker cannot be persisted  489ms
+     ✓ keeps a committed batch and removes its recovery journal  758ms
+     ✓ rolls back the project registry when a later truth write fails  2181ms
+     ✓ R8 truth round3 B1 merges canonical project aliases into one truth and index bucket  1896ms
+     ✓ R8 final review fences registered project reads and self-healing through an ancestor junction  1430ms
+     ✓ R8 final review rejects unregistered duplicate project identity before single or batch commits  1165ms
+     ✓ R8 truth round3 B2 ignores journal projectFiles as recovery authorization  767ms
+     ✓ R8 truth round3 B3 rebuild fails closed when truth changes before index commit and then indexes one snapshot  1358ms
+     ✓ R8 truth round3 B3 reconcile fails closed when truth changes before index commit and then indexes one snapshot  1593ms
+     ✓ R8 truth round3 B3 replaceScopeIndex fails closed when truth changes before index commit and then indexes one snapshot  1350ms
+     ✓ R8 truth round3 B5 rejects a hard-linked main database without changing external SQLite  304ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -wal sidecar before SQLite opens  835ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -shm sidecar before SQLite opens  850ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -journal sidecar before SQLite opens  844ms
+     ✓ R8 truth round3 B5 refuses corrupt-database isolation and fallback while a sidecar is hard-linked  536ms
+(node:38872) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/chat-session-store.test.ts (15 tests | 1 failed) 315ms
+     ✓ R8 final review fences future session creates, updates and relocation after privacy cleanup and restart 68ms
+     ✓ R8 final review fences raw Pi carrier reads after privacy registration except explicit cleanup 29ms
+     ✓ R8 final review backfills legacy Pi carriers before privacy registration and preserves surviving encrypted mappings 28ms
+     × R8 final review refuses privacy primary-key collisions without dropping surviving chat or error rows 35ms
+     ✓ creates and reads a session keyed by pi session id 10ms
+     ✓ stores the piSessionFile overlay 14ms
+     ✓ updates model and workspace 10ms
+     ✓ stores and updates the thinking level 10ms
+     ✓ persists manual sort order 13ms
+     ✓ lists by profile and deletes 11ms
+     ✓ migrates a legacy schema by dropping the title column 35ms
+     ✓ persists titleLockedByUser and defaults to false 10ms
+     ✓ migrates title_locked_by_user onto an existing db 15ms
+     ✓ persists permission mode with Ask as legacy default 12ms
+     ✓ adds the permission column to a database written before it existed 13ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/chat-session-store.test.ts > ChatSessionStore > R8 final review refuses privacy primary-key collisions without dropping surviving chat or error rows
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/chat-session-store.test.ts:105:66
+    103|     store.create({ id: first, profileId: 'general', workspaceKind: 'au…
+    104|     store.create({ id: second, profileId: 'general', workspaceKind: 'a…
+    105|     expect(() => store.privacyDelete('remove', [first, second])).toThr…
+       |                                                                  ^
+    106|     expect(store.list()).toHaveLength(3);
+    107|     expect(JSON.stringify(store.list())).toContain(secret);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  |0| packages/approval/test/audit.test.ts > AuditStore > R8 final review keeps a durable audit privacy fence when history cleanup rolls back
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ packages/approval/test/audit.test.ts:109:47
+    107|       return statement;
+    108|     }) as typeof db.prepare;
+    109|     expect(() => store.redactTexts([secret])).toThrow('injected audit …
+       |                                               ^
+    110|     expect(JSON.stringify(await store.query({}))).not.toContain(secret…
+    111|     expect(await store.exportJsonl()).not.toContain(secret);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed | 1 passed (3)
+      Tests  2 failed | 62 passed (64)
+   Start at  01:58:51
+   Duration  32.65s (transform 268ms, setup 32ms, import 721ms, tests 29.72s, environment 1.67s)
+

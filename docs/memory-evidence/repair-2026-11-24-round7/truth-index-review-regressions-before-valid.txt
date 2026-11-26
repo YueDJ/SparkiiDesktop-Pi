@@ -1,0 +1,120 @@
+(node:35572) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32072) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:12684) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-round7-regression.test.ts (16 tests | 4 failed | 11 skipped) 6077ms
+     ↓ R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files
+     ↓ R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds
+     ↓ R7 privacy deletion includes superseded episode records in the global redaction corpus
+     ↓ R7 caller-mode memory deletion rechecks canonical approval after privacy redaction
+     ↓ R7 production privacy retry succeeds in the same process after truth rows are gone
+     ↓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body
+     ↓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes
+     × R7-P1-2 replacement preflight sees an indexed project after its registry entry is removed 1455ms
+     ✓ R7-P1-2 replacement preflight derives zero-entry project identity from scope_files  1131ms
+     × R7-P1-3 source deletion detects indexed unregistered conflicts without an explicit workspace 1407ms
+     ↓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes
+     ↓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file
+     × R7-P1-3 valid source deletion updates unregistered project truth without reindexing it 1170ms
+     × R7-P1-4 privacy deletion discovers indexed unregistered truth before reconciliation 911ms
+     ↓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion
+     ↓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7-P1-2 replacement preflight sees an indexed project after its registry entry is removed
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:408:83
+    406|     });
+    407|
+    408|     expect(() => service.repairProjectMemory(workspaceA, 'replace', re…
+       |                                                                                   ^
+    409|     expect(readFileSync(projectMemoryFile(workspaceA), 'utf8')).toBe(b…
+    410|     expect(events.some((event) => event.type === 'memory_changed' && e…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7-P1-3 source deletion detects indexed unregistered conflicts without an explicit workspace
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:451:72
+    449|     const beforeB = readFileSync(projectMemoryFile(workspaceB));
+    450|
+    451|     expect(() => service.markSourcesDeleted('indexed-delete-session'))…
+       |                                                                        ^
+    452|     expect(readFileSync(projectMemoryFile(workspaceA))).toEqual(before…
+    453|     expect(readFileSync(projectMemoryFile(workspaceB))).toEqual(before…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7-P1-3 valid source deletion updates unregistered project truth without reindexing it
+AssertionError: expected [ { …(10) }, { …(10) } ] to have a length of 1 but got 2
+
+- Expected
++ Received
+
+- 1
++ 2
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:512:28
+    510|       projectMemoryFile(workspace),
+    511|     );
+    512|     expect(parsed.entries).toHaveLength(1);
+       |                            ^
+    513|     expect(parsed.entries[0]).toMatchObject({
+    514|       id: active.id,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7-P1-4 privacy deletion discovers indexed unregistered truth before reconciliation
+AssertionError: expected { ok: true, removed: [], …(1) } to match object { ok: true, …(1) }
+(1 matching property omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "ok": true,
+-   "removed": [
+-     "mem_064270c5-b929-4ce7-8a22-88c8e4caf45b",
+-   ],
++   "removed": [],
+  }
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:531:76
+    529|     expect(service.store.recoverableProjectWorkspaces()).not.toContain…
+    530|
+    531|     expect(service.privacyDeleteBySession('private-indexed-unregistere…
+       |                                                                            ^
+    532|     expect(parseProjectMemoryFile(readFileSync(projectMemoryFile(works…
+    533|     expect(service.store.indexedRowFor(added.id)).toBeUndefined();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 1 passed | 11 skipped (16)
+   Start at  21:41:51
+   Duration  7.98s (transform 260ms, setup 31ms, import 917ms, tests 6.08s, environment 780ms)
+
+
+EXIT_CODE=1

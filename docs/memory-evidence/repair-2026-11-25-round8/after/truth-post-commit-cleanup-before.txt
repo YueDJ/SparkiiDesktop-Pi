@@ -1,0 +1,80 @@
+(node:10816) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31448) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:24212) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [31m❯[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts [2m([22m[2m23 tests[22m[2m | [22m[31m2 failed[39m[2m | [22m[33m21 skipped[39m[2m)[22m[33m 1264[2mms[22m[39m
+     [2m[90m↓[39m[22m restores every prior truth file and removes new files when a later write fails
+     [2m[90m↓[39m[22m R8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth
+     [2m[90m↓[39m[22m R8-P1-4 preserves rollback backups when the unverified journal cannot be removed
+     [2m[90m↓[39m[22m recovers an interrupted batch at startup before truth files are opened
+     [2m[90m↓[39m[22m recovers a new project batch from the registry committed before its truth file
+     [2m[90m↓[39m[22m R8 final review resumes a partially rolled-back new project after the registry was already restored
+     [2m[90m↓[39m[22m R8 final review keeps rollback backups when journal removal fails after truth restoration
+[31m     [31m×[31m R8 final review does not roll back committed truth when post-commit backup cleanup fails[39m[33m 758[2mms[22m[39m
+[31m     [31m×[31m R8 final review retries orphan backup cleanup without quarantining restored truth[39m[33m 504[2mms[22m[39m
+     [2m[90m↓[39m[22m quarantines an unrecoverable journal without deleting partial truth when a backup is missing
+     [2m[90m↓[39m[22m rollback never recreates a missing project parent before path revalidation
+     [2m[90m↓[39m[22m does not write or quarantine outside a junctioned memory root during failed recovery
+     [2m[90m↓[39m[22m R8 final review rejects an empty uncommitted journal without deleting the only original backup
+     [2m[90m↓[39m[22m quarantines a malformed journal and reports a warning instead of blocking startup
+     [2m[90m↓[39m[22m rejects journal paths outside memory truth and backup locations
+     [2m[90m↓[39m[22m rejects a truthy non-boolean committed marker without deleting uncommitted truth
+     [2m[90m↓[39m[22m rejects a committed journal that still contains rollback file items
+     [2m[90m↓[39m[22m rejects an unregistered outside project truth target during commit and recovery
+     [2m[90m↓[39m[22m rejects a project truth target reached through a junction even when its workspace is registered
+     [2m[90m↓[39m[22m treats a dangling write-block junction as a persistent block
+     [2m[90m↓[39m[22m keeps the only recovery evidence when the write-block marker cannot be persisted
+     [2m[90m↓[39m[22m keeps a committed batch and removes its recovery journal
+     [2m[90m↓[39m[22m rolls back the project registry when a later truth write fails
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 final review does not roll back committed truth when post-commit backup cleanup fails
+[31m[1mAssertionError[22m: expected 'old-truth' to be 'committed-new-truth' // Object.is equality[39m
+
+Expected: [32m"[7mcommitted-new[27m-truth"[39m
+Received: [31m"[7mold[27m-truth"[39m
+
+[36m [2m❯[22m apps/desktop/test/memory-truth-batch.test.ts:[2m219:42[22m[39m
+    [90m217|[39m       [33m.[39m[34mtoThrow[39m([32m'injected post-commit cleanup failure'[39m)[33m;[39m
+    [90m218|[39m
+    [90m219|[39m     [34mexpect[39m([34mreadFileSync[39m(target[33m,[39m [32m'utf8'[39m))[33m.[39m[34mtoBe[39m([32m'committed-new-truth'[39m)[33m;[39m
+    [90m   |[39m                                          [31m^[39m
+    [90m220|[39m     expect(existsSync(join(dir, '.truth-batch-journal.json'))).toBe(fa…
+    [90m221|[39m     expect(existsSync(join(dir, '.truth-write-block.json'))).toBe(fals…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts[2m > [22mtruth batch journal[2m > [22mR8 final review retries orphan backup cleanup without quarantining restored truth
+[31m[1mAssertionError[22m: expected true to be false // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- false[39m
+[31m+ true[39m
+
+[36m [2m❯[22m apps/desktop/test/memory-truth-batch.test.ts:[2m240:89[22m[39m
+    [90m238|[39m     expect(recoverTruthBatch(dataDir, { removePath }).join('\n')).toCo…
+    [90m239|[39m     expect(readFileSync(target, 'utf8')).toBe('already-restored-truth'…
+    [90m240|[39m     expect(readdirSync(dir).some((name) => name.startsWith('.truth-bac…
+    [90m   |[39m                                                                                         [31m^[39m
+    [90m241|[39m     expect(existsSync(join(dir, '.truth-write-block.json'))).toBe(fals…
+    [90m242|[39m     [34mexpect[39m([34mrecoverTruthBatch[39m(dataDir))[33m.[39m[34mtoEqual[39m([])[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[33m21 skipped[39m[90m (23)[39m
+[2m   Start at [22m 22:54:12
+[2m   Duration [22m 2.75s[2m (transform 170ms, setup 30ms, import 493ms, tests 1.26s, environment 780ms)[22m
+
+
+exit=1

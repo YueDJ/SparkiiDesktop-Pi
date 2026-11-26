@@ -28,6 +28,8 @@ function freezeGrant(grant: TaskGrant): TaskGrant {
  */
 export class TaskGrantRegistry {
   private grants = new Map<string, TaskGrant>();
+  /** Task ids are cancellation/approval keys, so they are never reusable. */
+  private usedTaskIds = new Set<string>();
   private listeners = new Set<RevokeListener>();
   private readonly now: () => number;
 
@@ -36,11 +38,10 @@ export class TaskGrantRegistry {
   }
 
   start(grant: TaskGrant): void {
-    for (const existing of this.grants.values()) {
-      if (existing.taskId === grant.taskId && existing.sessionId !== grant.sessionId) {
-        throw new Error(`task grant already exists: ${grant.taskId}`);
-      }
+    if (this.usedTaskIds.has(grant.taskId)) {
+      throw new Error(`task grant already exists; task id cannot be reused: ${grant.taskId}`);
     }
+    this.usedTaskIds.add(grant.taskId);
     if (this.grants.has(grant.sessionId)) {
       this.revoke(grant.sessionId, 'replaced');
     }

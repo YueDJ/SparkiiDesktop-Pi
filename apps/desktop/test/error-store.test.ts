@@ -1,4 +1,4 @@
-import { mkdtempSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it, expect } from 'vitest';
@@ -9,6 +9,28 @@ function store(now?: () => number) {
 }
 
 describe('ErrorStore', () => {
+  it('R8 final review fences future error ids, messages and sources after cleanup and restart', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'errors-privacy-'));
+    const path = join(dir, 'errors.db');
+    const secret = 'R8_ERROR_FUTURE_SECRET_71C';
+    const s = new ErrorStore(path);
+    s.append({ id: `old-${secret}`, message: `old ${secret}`, source: `source-${secret}`, createdAt: Date.now() });
+    s.redactTexts([secret]);
+    s.append({ id: `future-${secret}`, message: `future ${secret}`, source: `source-${secret}`, createdAt: Date.now() });
+    expect(JSON.stringify(s.list())).not.toContain(secret);
+    s.close();
+
+    const reopened = new ErrorStore(path);
+    reopened.append({ id: `restart-${secret}`, message: `restart ${secret}`, source: `source-${secret}`, createdAt: Date.now() });
+    expect(JSON.stringify(reopened.list())).not.toContain(secret);
+    reopened.close();
+    const registry = readFileSync(join(dir, 'errors.db.privacy-redactions.json'), 'utf8');
+    expect(registry).not.toContain(secret);
+    const bytes = [path, `${path}-wal`, `${path}-shm`, `${path}-journal`]
+      .filter(existsSync).map((file) => readFileSync(file).toString('utf8')).join('\n');
+    expect(bytes).not.toContain(secret);
+  });
+
   it('appends, lists newest-first, and keeps read state', () => {
     const s = store();
     const now = Date.now();

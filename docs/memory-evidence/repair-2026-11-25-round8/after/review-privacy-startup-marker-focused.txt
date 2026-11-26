@@ -1,0 +1,185 @@
+(node:12500) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21680) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:19648) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1608) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32900) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/privacy-redactions.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 49[2mms[22m[39m
+ [31m❯[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-round7-regression.test.ts [2m([22m[2m23 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 27063[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files [33m 1675[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy retry recovers an empty episode topic after restart and completes chat cleanup [33m 1280[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion discovers secrets nested only in pending operation extensions [33m 818[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion scrubs an invalid structural targetId field [33m 853[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion scrubs an invalid structural projectId field [33m 859[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion scrubs an invalid structural mergeIds field [33m 849[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion ignores whitespace-only episode topics without corrupting retained content [33m 1094[2mms[22m[39m
+[31m     [31m×[31m R7 privacy deletion preserves pending UPDATE control fields when deleted text equals the op[39m[33m 779[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds [33m 1183[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion includes superseded episode records in the global redaction corpus [33m 1106[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 caller-mode memory deletion rechecks canonical approval after privacy redaction [33m 650[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 production privacy retry succeeds in the same process after truth rows are gone [33m 1212[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-1 future memory-tool audit summaries contain no raw query or memory body [33m 644[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes [33m 1519[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-2 replacement preflight sees an indexed project after its registry entry is removed [33m 1214[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-2 replacement preflight derives zero-entry project identity from scope_files [33m 1264[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-3 source deletion detects indexed unregistered conflicts without an explicit workspace [33m 1233[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes [33m 1212[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file [33m 1246[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-3 valid source deletion updates unregistered project truth without reindexing it [33m 1702[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-4 privacy deletion discovers indexed unregistered truth before reconciliation [33m 1552[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion [33m 1558[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution [33m 1560[2mms[22m[39m
+ [31m❯[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts [2m([22m[2m20 tests[22m[2m | [22m[31m8 failed[39m[2m)[22m[33m 30690[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 final review fences same-process and restarted reads when the privacy journal cannot be persisted [33m 1498[2mms[22m[39m
+[31m     [31m×[31m R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext[39m[33m 1700[2mms[22m[39m
+[31m     [31m×[31m R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext[39m[33m 1709[2mms[22m[39m
+[31m     [31m×[31m R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext[39m[33m 1755[2mms[22m[39m
+[31m     [31m×[31m R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext[39m[33m 1615[2mms[22m[39m
+[31m     [31m×[31m R8-P0-1 resumes from journal context after the chat row and Pi file are already gone[39m[33m 1608[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers [33m 2048[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent [33m 1767[2mms[22m[39m
+[31m     [31m×[31m R8 review B3 registers chat secrets before sink cleanup and protects later chat writes after failure[39m[33m 1636[2mms[22m[39m
+[31m     [31m×[31m R8 review B3 cleans Pi and chat carriers before a safe-root truth write-block aborts startup[39m[33m 1730[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 review B5 rejects dangling privacy journal directory and file links without reading targets [33m 596[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 review B5 refuses to clear a privacy journal whose identity changed during cleanup [33m 1667[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 review B4 rotates memory markers when the deleted text collides with the default marker [33m 799[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret [33m 1948[2mms[22m[39m
+[31m     [31m×[31m R8-P1-3 refuses to construct MemoryService through an unsafe memory-root junction[39m[33m 467[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-3 fences project repair before registry or truth reads [33m 1376[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker [33m 1762[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state [33m 1802[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state [33m 1610[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state [33m 1594[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 9 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext
+[31m[1mAssertionError[22m: expected [Function] to throw an error[39m
+
+[32m- Expected:[39m
+null
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m apps/desktop/test/memory-r8-regression.test.ts:[2m145:69[22m[39m
+    [90m143|[39m     if (sink === 'errors') vi.spyOn(errors, 'redactTexts').mockImpleme…
+    [90m144|[39m
+    [90m145|[39m     expect(() => service.privacyDeleteBySession('private-session')).to…
+    [90m   |[39m                                                                     [31m^[39m
+    [90m146|[39m     [34mexpect[39m([34mpendingJournals[39m())[33m.[39m[34mtoHaveLength[39m([34m1[39m)[33m;[39m
+    [90m147|[39m     expect(readFileSync(userMemoryFile(dataDir), 'utf8')).toContain(se…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/9]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8-P0-1 resumes from journal context after the chat row and Pi file are already gone
+[31m[1mAssertionError[22m: expected [Function] to throw an error[39m
+
+[32m- Expected:[39m
+null
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m apps/desktop/test/memory-r8-regression.test.ts:[2m170:69[22m[39m
+    [90m168|[39m     sessions[33m.[39m[34mupdate[39m([32m'private-session'[39m[33m,[39m { piSessionFile[33m:[39m piFile })[33m;[39m
+    [90m169|[39m     vi.spyOn(logger, 'redactSession').mockImplementationOnce(() => { t…
+    [90m170|[39m     expect(() => service.privacyDeleteBySession('private-session')).to…
+    [90m   |[39m                                                                     [31m^[39m
+    [90m171|[39m     [34mexpect[39m([34mexistsSync[39m(piFile))[33m.[39m[34mtoBe[39m([35mtrue[39m)[33m;[39m
+    [90m172|[39m     sessions[33m.[39m[34mprivacyDelete[39m([32m'private-session'[39m[33m,[39m [])[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/9]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8 review B3 registers chat secrets before sink cleanup and protects later chat writes after failure
+[31m[1mAssertionError[22m: expected [Function] to throw an error[39m
+
+[32m- Expected:[39m
+null
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m apps/desktop/test/memory-r8-regression.test.ts:[2m225:69[22m[39m
+    [90m223|[39m     vi.spyOn(logger, 'redactSession').mockImplementationOnce(() => { t…
+    [90m224|[39m
+    [90m225|[39m     expect(() => service.privacyDeleteBySession('private-session')).to…
+    [90m   |[39m                                                                     [31m^[39m
+    [90m226|[39m     [34mexpect[39m(register)[33m.[39m[34mtoHaveBeenCalled[39m()[33m;[39m
+    [90m227|[39m     expect(register.mock.invocationCallOrder[0]).toBeLessThan(vi.mocke…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/9]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 privacy recovery regressions[2m > [22mR8 review B3 cleans Pi and chat carriers before a safe-root truth write-block aborts startup
+[31m[1mAssertionError[22m: expected [Function] to throw an error[39m
+
+[32m- Expected:[39m
+null
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m apps/desktop/test/memory-r8-regression.test.ts:[2m242:69[22m[39m
+    [90m240|[39m     sessions[33m.[39m[34mupdate[39m([32m'private-session'[39m[33m,[39m { piSessionFile[33m:[39m piFile })[33m;[39m
+    [90m241|[39m     vi.spyOn(logger, 'redactSession').mockImplementationOnce(() => { t…
+    [90m242|[39m     expect(() => service.privacyDeleteBySession('private-session')).to…
+    [90m   |[39m                                                                     [31m^[39m
+    [90m243|[39m     service[33m.[39m[34mclose[39m()[33m;[39m
+    [90m244|[39m     writeFileSync(join(memoryDir(dataDir), '.truth-write-block.json'),…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/9]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts[2m > [22mR8 truth write-block regressions[2m > [22mR8-P1-3 refuses to construct MemoryService through an unsafe memory-root junction
+[31m[1mAssertionError[22m: expected [Function] to throw error matching /写入阻断|保持只读/ but got '记忆真相路径包含链接：C:\Users\YDJ\AppData\Local…'[39m
+
+[32m- Expected:[39m
+/写入阻断|保持只读/
+
+[31m+ Received:[39m
+"记忆真相路径包含链接：C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-r8-memory-yJ4Dx0\\unsafe-data\\memory"
+
+[36m [2m❯[22m apps/desktop/test/memory-r8-regression.test.ts:[2m353:9[22m[39m
+    [90m351|[39m       gate: { redactTexts }, audit: { redactTexts }, errors: { redactT…
+    [90m352|[39m       logger[33m:[39m { redactSession[33m,[39m redactMemoryPromptLogs } [35mas[39m any[33m,[39m
+    [90m353|[39m     }))[33m.[39m[34mtoThrow[39m([36m/写入阻断|保持只读/[39m)[33m;[39m
+    [90m   |[39m         [31m^[39m
+    [90m354|[39m     [34mexpect[39m(redactTexts)[33m.[39mnot[33m.[39m[34mtoHaveBeenCalled[39m()[33m;[39m
+    [90m355|[39m     [34mexpect[39m(redactSession)[33m.[39mnot[33m.[39m[34mtoHaveBeenCalled[39m()[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/9]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/memory-round7-regression.test.ts[2m > [22mR7 memory regressions[2m > [22mR7 privacy deletion preserves pending UPDATE control fields when deleted text equals the op
+[31m[1mAssertionError[22m: expected '[已删除]' to be 'UPDATE' // Object.is equality[39m
+
+Expected: [32m"UPDATE"[39m
+Received: [31m"[已删除]"[39m
+
+[36m [2m❯[22m apps/desktop/test/memory-round7-regression.test.ts:[2m304:92[22m[39m
+    [90m302|[39m
+    [90m303|[39m     service[33m.[39m[34mprivacyDeleteBySession[39m([32m'private-session'[39m)[33m;[39m
+    [90m304|[39m     expect(service.list().pending.find((entry) => entry.id === pending…
+    [90m   |[39m                                                                                            [31m^[39m
+    [90m305|[39m     service[33m.[39m[34mresolvePending[39m(pending[33m.[39mid[33m,[39m [32m'approve'[39m)[33m;[39m
+    [90m306|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/9]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m2 failed[39m[22m[2m | [22m[1m[32m1 passed[39m[22m[90m (3)[39m
+[2m      Tests [22m [1m[31m9 failed[39m[22m[2m | [22m[1m[32m41 passed[39m[22m[90m (50)[39m
+[2m   Start at [22m 22:50:28
+[2m   Duration [22m 32.57s[2m (transform 586ms, setup 89ms, import 1.74s, tests 57.80s, environment 2.47s)[22m
+
+
+exit=1

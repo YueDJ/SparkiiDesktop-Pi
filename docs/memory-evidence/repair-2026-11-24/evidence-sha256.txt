@@ -1,0 +1,11 @@
+e71df7eb84b35f9a99cc1424e78f330ce7ba36d911402f60adc2180efc366161 *docs/memory-evidence/repair-2026-11-24/baseline-p2.txt
+727d9cab5564829ac03dec55aec7e761bfc9e742a50fa5bf63f862abb0ae94ef *docs/memory-evidence/repair-2026-11-24/baseline-regressions.txt
+0b2fc2334229fb52b1930460f210739ea291ca5ce9b0c710736792336e52ebe5 *docs/memory-evidence/repair-2026-11-24/baseline-shell.txt
+c369536c3c7e746d1128d9c3d65e5ae9b54a33465d173998ddce31c8afd960c9 *docs/memory-evidence/repair-2026-11-24/p0-material-pool.txt
+af6837d7f5f869ad867cce4ac6878d322c29669ba3c74816e9a44d89942ca464 *docs/memory-evidence/repair-2026-11-24/ui-memory-initial.png
+691975eae2d26c148322dd13b469f3d2a5e32b124779cd3eec0bc4d580754405 *docs/memory-evidence/repair-2026-11-24/ui-memory-isolated-repair.png
+cc3a3480aad174ca8c172d4d9514004261e9f7774615ccc46ea6668d4bb7ea91 *docs/memory-evidence/repair-2026-11-24/ui-probe-output.txt
+af91c33116dfbc37a9800abd3e93c95c7cc6cb7efe498e6e852ba690f1123bef *docs/memory-evidence/repair-2026-11-24/ui-probe-result.json
+87c003fb03edd24a9be62219a6b78c5eab314a4d7726318f89aef783d4517aa5 *docs/memory-evidence/repair-2026-11-24/ui-probe.mjs
+52ad8382ede666021e360decb4d4d9d9161c0c807742ba37aeead59abba09667 *docs/memory-evidence/repair-2026-11-24/verification-run-1.txt
+1a6a23e7ca52517b63395574946a1bcd07b1a4dca5d5c7a3c1900dd47d80c4b3 *docs/memory-evidence/repair-2026-11-24/verification-run-2.txt

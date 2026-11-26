@@ -1,0 +1,42 @@
+(node:38692) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:38844) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:26124) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-truth-batch.test.ts (16 tests) 10293ms
+     ✓ restores every prior truth file and removes new files when a later write fails  790ms
+     ✓ recovers an interrupted batch at startup before truth files are opened  798ms
+     ✓ recovers a new project batch from the registry committed before its truth file  802ms
+     ✓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing  808ms
+     ✓ rollback never recreates a missing project parent before path revalidation  843ms
+     ✓ quarantines a malformed journal and reports a warning instead of blocking startup  522ms
+     ✓ rejects journal paths outside memory truth and backup locations  806ms
+     ✓ rejects a truthy non-boolean committed marker without deleting uncommitted truth  521ms
+     ✓ rejects a committed journal that still contains rollback file items  534ms
+     ✓ rejects an unregistered outside project truth target during commit and recovery  804ms
+     ✓ keeps the only recovery evidence when the write-block marker cannot be persisted  537ms
+     ✓ keeps a committed batch and removes its recovery journal  795ms
+     ✓ rolls back the project registry when a later truth write fails  1191ms
+(node:7140) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-round7-regression.test.ts (9 tests) 11054ms
+     ✓ R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files  1010ms
+     ✓ R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds  1045ms
+     ✓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body  655ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes  1327ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes  1246ms
+     ✓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file  1288ms
+     ✓ R7-P1-3 valid source deletion updates unregistered project truth without reindexing it  1622ms
+     ✓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion  1421ms
+     ✓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution  1438ms
+
+ Test Files  2 passed (2)
+      Tests  25 passed (25)
+   Start at  20:43:51
+   Duration  24.46s (transform 403ms, setup 44ms, import 1.10s, tests 21.35s, environment 1.61s)
+

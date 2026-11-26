@@ -1,0 +1,32 @@
+(node:18596) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:23340) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:39436) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-round7-regression.test.ts (28 tests | 25 skipped) 3673ms
+     ✓ retains the production privacy journal until a failed Gate listener succeeds on retry  677ms
+     ✓ collects deleted, survivor and nested dynamic keys, preserves controls, and scrubs later writes after restart  1975ms
+     ✓ fails closed instead of overwriting two dynamic keys that redact to the same marker  1019ms
+(node:22380) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-r8-regression.test.ts (50 tests | 44 skipped) 4999ms
+     ✓ re-fences a privacy journal before zeroing even when cleanup already verified its identity  519ms
+     ✓ fences a real ancestor junction before Pi carrier deletion and retries normally after it is removed  544ms
+     ✓ fences a non-symlink reparse Pi carrier directory before rmSync  481ms
+     ✓ fences a non-symlink reparse Pi carrier file before rmSync  596ms
+     ✓ detects Pi carrier identity replacement before deletion and preserves external bytes across retry  1275ms
+     ✓ detects Pi carrier identity replacement before deletion and preserves external bytes across restart  1581ms
+(node:29620) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-truth-batch.test.ts (49 tests | 42 skipped) 757ms
+
+ Test Files  3 passed (3)
+      Tests  16 passed | 111 skipped (127)
+   Start at  07:49:47
+   Duration  13.88s (transform 514ms, setup 83ms, import 1.47s, tests 9.43s, environment 2.38s)
+

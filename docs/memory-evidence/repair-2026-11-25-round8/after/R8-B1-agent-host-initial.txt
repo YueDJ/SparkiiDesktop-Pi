@@ -1,0 +1,270 @@
+(node:24600) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:41436) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:7228) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:15052) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mstarts idempotently and sends commands[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mrejects send when no response arrives[32m 112[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mrejects pending sends when the child exits[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mrejects later sends immediately after the child has exited[32m 0[2mms[22m[39m
+ [31m×[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mstreams events and routes proposals[32m 19[2mms[22m[39m
+[31m   → expected "vi.fn()" to be called with arguments: [ { requestId: 'p1', …(5) }, …(1) ][90m
+
+Number of calls: [1m0[22m
+[31m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mdenies a proposal when the approval handler rejects[32m 11[2mms[22m[39m
+ [31m×[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mroutes connector_read to the handler and replies[32m 16[2mms[22m[39m
+[31m   → expected "vi.fn()" to be called with arguments: [ { requestId: 'r1', …(2) }, …(1) ][90m
+
+Number of calls: [1m0[22m
+[31m[39m
+ [31m×[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mroutes raw Runtime actions to Main and returns the correlated result[32m 15[2mms[22m[39m
+[31m   → expected "vi.fn()" to be called with arguments: [ { requestId: 'a1', …(3) }, …(1) ][90m
+
+Number of calls: [1m0[22m
+[31m[39m
+ [31m×[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mR8 final review rejects late runtime requests and events from a replaced session[32m 32[2mms[22m[39m
+[31m   → expected [ { …(3) }, { …(4) }, { …(4) }, …(1) ] to deep equally contain ObjectContaining{…}[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mR8 B1 fails closed for same-generation action, proposal and connector envelopes without origin[32m 1[2mms[22m[39m
+ [31m×[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mfails closed when no Runtime action handler is registered[32m 1[2mms[22m[39m
+[31m   → expected [ { …(4) } ] to deep equally contain ObjectContaining{…}[39m
+ [31m×[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mdenies connector_read when no handler is registered[32m 1[2mms[22m[39m
+[31m   → expected [ { …(4) } ] to deep equally contain { direction: 'main-to-runtime', …(3) }[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mclears the client and reports exit[32m 0[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mM3：stop() 等待子进程真正退出[2m > [22mkill 不阻塞 stop：exit 到达后 stop 才 resolve[32m 39[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mM3：stop() 等待子进程真正退出[2m > [22m超时后强杀仍无 exit 确认：stop 必须拒绝，不得假报关机成功[32m 123[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mM3：stop() 等待子进程真正退出[2m > [22m强杀宽限期内出现 exit：stop 等待确认后成功返回[32m 47[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mM3：stop() 等待子进程真正退出[2m > [22m句柄同一性守卫（防御性）：旧句柄迟到 exit 不清理新句柄、不通知 onExit[32m 122[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-runtime-queue.test.ts[2m > [22mpi-sdk-runtime queue adapters[2m > [22mreads the native steering and follow-up message getters[32m 2[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-runtime-queue.test.ts[2m > [22mpi-sdk-runtime queue adapters[2m > [22mclears queues through the native clearQueue method[32m 0[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-runtime-queue.test.ts[2m > [22mpi-sdk-runtime queue adapters[2m > [22mstarts a prompt without waiting for the full agent turn to finish[32m 1[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-runtime-queue.test.ts[2m > [22mpi-sdk-runtime queue adapters[2m > [22mR8 round7 B2 marks a deterministic pre-run rejection as a correlated terminal prompt error[32m 16[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-runtime-queue.test.ts[2m > [22mpi-sdk-runtime queue adapters[2m > [22mR8 round7 B2 keeps a started prompt rejection correlated to its own terminal signal[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-runtime-queue.test.ts[2m > [22mpi-sdk-runtime queue adapters[2m > [22mroutes late prompt rejections to the runtime error handler[32m 16[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 6 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mstreams events and routes proposals
+[31m[1mAssertionError[22m: expected "vi.fn()" to be called with arguments: [ { requestId: 'p1', …(5) }, …(1) ][90m
+
+Number of calls: [1m0[22m
+[31m[39m
+[36m [2m❯[22m packages/agent-host/test/pi-runtime-supervisor.test.ts:[2m96:24[22m[39m
+    [90m 94|[39m     handle[33m.[39m[34memit[39m([34mproposalEnvelope[39m(proposal))[33m;[39m
+    [90m 95|[39m     [35mawait[39m [35mnew[39m [33mPromise[39m((resolve) [33m=>[39m [34msetTimeout[39m(resolve[33m,[39m [34m0[39m))[33m;[39m
+    [90m 96|[39m     expect(onProposal).toHaveBeenCalledWith(proposal, expect.objectCon…
+    [90m   |[39m                        [31m^[39m
+    [90m 97|[39m     expect(handle.sent).toContainEqual(proposalDecisionEnvelope("p1", …
+    [90m 98|[39m   })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mroutes connector_read to the handler and replies
+[31m[1mAssertionError[22m: expected "vi.fn()" to be called with arguments: [ { requestId: 'r1', …(2) }, …(1) ][90m
+
+Number of calls: [1m0[22m
+[31m[39m
+[36m [2m❯[22m packages/agent-host/test/pi-runtime-supervisor.test.ts:[2m127:29[22m[39m
+    [90m125|[39m     })[33m;[39m
+    [90m126|[39m     [35mawait[39m [35mnew[39m [33mPromise[39m((resolve) [33m=>[39m [34msetTimeout[39m(resolve[33m,[39m [34m0[39m))[33m;[39m
+    [90m127|[39m     [34mexpect[39m(onConnectorRead)[33m.[39m[34mtoHaveBeenCalledWith[39m({
+    [90m   |[39m                             [31m^[39m
+    [90m128|[39m       requestId: "r1", toolName: "knowledge.search", args: { query: "q…
+    [90m129|[39m     }[33m,[39m expect[33m.[39m[34mobjectContaining[39m({ sessionGeneration[33m:[39m [34m0[39m }))[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mroutes raw Runtime actions to Main and returns the correlated result
+[31m[1mAssertionError[22m: expected "vi.fn()" to be called with arguments: [ { requestId: 'a1', …(3) }, …(1) ][90m
+
+Number of calls: [1m0[22m
+[31m[39m
+[36m [2m❯[22m packages/agent-host/test/pi-runtime-supervisor.test.ts:[2m157:22[22m[39m
+    [90m155|[39m     [35mawait[39m [35mnew[39m [33mPromise[39m((resolve) [33m=>[39m [34msetTimeout[39m(resolve[33m,[39m [34m0[39m))[33m;[39m
+    [90m156|[39m
+    [90m157|[39m     expect(onAction).toHaveBeenCalledWith(request, expect.objectContai…
+    [90m   |[39m                      [31m^[39m
+    [90m158|[39m     [34mexpect[39m(handle[33m.[39msent)[33m.[39m[34mtoContainEqual[39m([34mactionResultEnvelope[39m([32m"a1"[39m[33m,[39m {
+    [90m159|[39m       requestId[33m:[39m [32m"a1"[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mR8 final review rejects late runtime requests and events from a replaced session
+[31m[1mAssertionError[22m: expected [ { …(3) }, { …(4) }, { …(4) }, …(1) ] to deep equally contain ObjectContaining{…}[39m
+
+[32m- Expected:[39m
+ObjectContaining {
+  "connectorReadResult": ObjectContaining {
+    "error": ObjectContaining {
+      "code": "STALE_RUNTIME_REQUEST",
+    },
+  },
+  "requestId": "late-r",
+  "sessionGeneration": 0,
+}
+
+[31m+ Received:[39m
+[
+  {
+    "command": {
+      "type": "new_session",
+    },
+    "direction": "main-to-runtime",
+    "id": "fd527c0c-56fa-4e3c-b1b2-04d247a1030b",
+  },
+  {
+    "direction": "main-to-runtime",
+    "proposalDecision": {
+      "approved": false,
+      "proposalId": "late-p",
+      "status": "denied",
+    },
+    "requestId": "late-p",
+    "sessionGeneration": 0,
+  },
+  {
+    "actionResult": {
+      "decision": {
+        "decision": "deny",
+        "reason": "Runtime request belongs to a replaced session or prompt turn",
+        "ruleId": "platform.stale-runtime-request",
+      },
+      "error": {
+        "code": "ORIGIN_REQUIRED",
+        "message": "Runtime request has no prompt-turn origin",
+      },
+      "requestId": "late-a",
+      "status": "denied",
+    },
+    "direction": "main-to-runtime",
+    "requestId": "late-a",
+    "sessionGeneration": 0,
+  },
+  {
+    "connectorReadResult": {
+      "error": {
+        "code": "ORIGIN_REQUIRED",
+        "message": "Runtime request has no prompt-turn origin",
+      },
+      "ok": false,
+    },
+    "direction": "main-to-runtime",
+    "requestId": "late-r",
+    "sessionGeneration": 0,
+  },
+]
+
+[36m [2m❯[22m packages/agent-host/test/pi-runtime-supervisor.test.ts:[2m222:25[22m[39m
+    [90m220|[39m       actionResult: expect.objectContaining({ status: "denied", decisi…
+    [90m221|[39m     }))[33m;[39m
+    [90m222|[39m     [34mexpect[39m(handle[33m.[39msent)[33m.[39m[34mtoContainEqual[39m(expect[33m.[39m[34mobjectContaining[39m({
+    [90m   |[39m                         [31m^[39m
+    [90m223|[39m       requestId[33m:[39m [32m"late-r"[39m[33m,[39m sessionGeneration[33m:[39m [34m0[39m[33m,[39m
+    [90m224|[39m       connectorReadResult: expect.objectContaining({ error: expect.obj…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mfails closed when no Runtime action handler is registered
+[31m[1mAssertionError[22m: expected [ { …(4) } ] to deep equally contain ObjectContaining{…}[39m
+
+[32m- Expected:[39m
+ObjectContaining {
+  "actionResult": ObjectContaining {
+    "decision": ObjectContaining {
+      "decision": "deny",
+      "ruleId": "platform.action-handler-unavailable",
+    },
+    "status": "denied",
+  },
+  "direction": "main-to-runtime",
+  "requestId": "a2",
+}
+
+[31m+ Received:[39m
+[
+  {
+    "actionResult": {
+      "decision": {
+        "decision": "deny",
+        "reason": "Runtime request belongs to a replaced session or prompt turn",
+        "ruleId": "platform.stale-runtime-request",
+      },
+      "error": {
+        "code": "ORIGIN_REQUIRED",
+        "message": "Runtime request has no prompt-turn origin",
+      },
+      "requestId": "a2",
+      "status": "denied",
+    },
+    "direction": "main-to-runtime",
+    "requestId": "a2",
+    "sessionGeneration": 0,
+  },
+]
+
+[36m [2m❯[22m packages/agent-host/test/pi-runtime-supervisor.test.ts:[2m273:25[22m[39m
+    [90m271|[39m     }))[33m;[39m
+    [90m272|[39m     [35mawait[39m [35mnew[39m [33mPromise[39m((resolve) [33m=>[39m [34msetTimeout[39m(resolve[33m,[39m [34m0[39m))[33m;[39m
+    [90m273|[39m     [34mexpect[39m(handle[33m.[39msent)[33m.[39m[34mtoContainEqual[39m(expect[33m.[39m[34mobjectContaining[39m({
+    [90m   |[39m                         [31m^[39m
+    [90m274|[39m       direction[33m:[39m [32m"main-to-runtime"[39m[33m,[39m
+    [90m275|[39m       requestId[33m:[39m [32m"a2"[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts[2m > [22mPiRuntimeSupervisor[2m > [22mdenies connector_read when no handler is registered
+[31m[1mAssertionError[22m: expected [ { …(4) } ] to deep equally contain { direction: 'main-to-runtime', …(3) }[39m
+
+[32m- Expected:[39m
+{
+  "connectorReadResult": {
+    "error": {
+      "code": "CONNECTOR_DENIED",
+      "message": "unhandled",
+    },
+    "ok": false,
+  },
+  "direction": "main-to-runtime",
+  "requestId": "r2",
+  "sessionGeneration": 0,
+}
+
+[31m+ Received:[39m
+[
+  {
+    "connectorReadResult": {
+      "error": {
+        "code": "ORIGIN_REQUIRED",
+        "message": "Runtime request has no prompt-turn origin",
+      },
+      "ok": false,
+    },
+    "direction": "main-to-runtime",
+    "requestId": "r2",
+    "sessionGeneration": 0,
+  },
+]
+
+[36m [2m❯[22m packages/agent-host/test/pi-runtime-supervisor.test.ts:[2m295:25[22m[39m
+    [90m293|[39m     })[33m;[39m
+    [90m294|[39m     [35mawait[39m [35mnew[39m [33mPromise[39m((resolve) [33m=>[39m [34msetTimeout[39m(resolve[33m,[39m [34m0[39m))[33m;[39m
+    [90m295|[39m     expect(handle.sent).toContainEqual(connectorReadResultEnvelope("r2…
+    [90m   |[39m                         [31m^[39m
+    [90m296|[39m       ok[33m:[39m [35mfalse[39m[33m,[39m
+    [90m297|[39m       error[33m:[39m { code[33m:[39m [32m"CONNECTOR_DENIED"[39m[33m,[39m message[33m:[39m [32m"unhandled"[39m }[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m1 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[31m6 failed[39m[22m[2m | [22m[1m[32m17 passed[39m[22m[90m (23)[39m
+[2m   Start at [22m 11:18:09
+[2m   Duration [22m 2.23s[2m (transform 334ms, setup 0ms, import 2.11s, tests 612ms, environment 0ms)[22m
+

@@ -1,0 +1,106 @@
+CHANGES_REQUIRED
+Task-id: R7-REVIEW-FENCE-PRIVACY
+Review date: 2026-11-24
+Scope: R7-P0-1 workspace fence and R7-P1-1 privacy deletion only
+
+VERDICT
+
+CHANGES_REQUIRED — 3 blocking findings, all in R7-P1-1. No blocking finding was verified in R7-P0-1.
+
+The previously reported retained pendingOp.idempotencyKey plaintext blocker is repaired for the tested production path: store.ts:1077-1100 now recursively redacts string values in arrays/objects and then restores targetId/projectId/mergeIds. The real regression at apps/desktop/test/memory-round7-regression.test.ts:94-100,161-164 creates a surviving pending episode proposal whose idempotencyKey contains the deleted proposedText and checks raw truth. That focused case passed. However, the recursive repair is incomplete: the deletion corpus still misses nested pendingOp content, and the recursive redactor can corrupt structural pendingOp metadata.
+
+BLOCKING FINDINGS
+
+F1 — Empty episode text makes the privacy journal unreloadable, preventing restart retry and leaving chat plaintext/tombstone state behind.
+
+Evidence:
+- apps/desktop/electron/main/memory/ops.ts:37-42,79-82 accepts topics containing empty strings; production extraction persists them at apps/desktop/electron/main/memory/extraction.ts:168-178.
+- apps/desktop/electron/main/memory/store.ts:814-830 also accepts empty summary/topics in episode JSONL.
+- apps/desktop/electron/main/memory/service.ts:792-802 collects episode summary/topics verbatim and persistPendingPrivacy writes them before destructive cleanup.
+- apps/desktop/electron/main/memory/service.ts:731-745 rejects the entire journal if any text is an empty string. The catch abandons the journal rather than recovering its non-empty corpus.
+- Tombstones and ID-to-session mappings are restored only after that validation at service.ts:737-742.
+- Chat cleanup occurs after truth deletion at service.ts:825-833. If it fails, the target indexed row is already gone while the journal remains.
+- On restart, deleteMemory resolves the session from the pending map/index/recovery row at service.ts:688-696. With the journal rejected and the index row gone, the production ID-based retry cannot resolve a session.
+- ChatSessionStore.privacyDelete is the operation that scrubs surviving sessions and deletes the target session (apps/desktop/electron/main/chat-session-store.ts:190-219); it is never reached successfully after the failed retry.
+
+Real production-object reproduction (temporary files/SQLite; cleanup failure injected after truth deletion):
+- Target episode had topics ['', 'EMPTY_TOPIC_CHAT_SECRET_47B9'].
+- First deleteMemory(privacy) threw the injected chat cleanup failure.
+- The retained journal contained an empty text.
+- After constructing a new MemoryService, recoveredPendingTexts was false.
+- Retry through deleteMemory(target.id, {mode:'privacy'}) threw “该记忆没有来源会话，无法执行隐私删除”.
+- The target chat session remained, the surviving other-session inputs still contained the secret, and the journal remained.
+- A post-restart addMemory for the deleted source session also succeeded, showing that the deleted-session tombstone was not restored.
+
+Impact: a valid production extraction output can turn a recoverable cleanup failure into a permanently stuck privacy deletion. Plaintext remains in chat_sessions/SQLite, the target chat row remains, and the deleted-session write fence is lost after restart. One malformed/empty-text journal also stops the loader loop for later journals.
+
+Required repair:
+1. Normalize the collected/persisted corpus to non-empty strings before writing the journal.
+2. Make the loader tolerate legacy journals containing empty strings by validating that every item is a string and then dropping empty values, so already-affected installations can recover. Keep the existing strict checks for non-string/non-array data and invalid memory IDs.
+3. Add a regression that drives parseExtraction with topics: [''] (or an equivalent real producer), injects ChatSessionStore cleanup failure, restarts, and retries through deleteMemory. Assert journal recovery/clearing, tombstone restoration, target-session deletion, and surviving-chat/SQLite secret removal.
+
+F2 — Nested pendingOp strings that are the only source of a secret are omitted from the global deletion corpus.
+
+Evidence:
+- PendingOperation explicitly permits arbitrary extension fields (apps/desktop/electron/main/memory/types.ts:13-20).
+- addMemory/addMemoriesBatch store the supplied pendingOp object wholesale (apps/desktop/electron/main/memory/service.ts:468-505,513-586), and truth parsing preserves it (apps/desktop/electron/main/memory/store.ts:112-123).
+- The privacy corpus includes only entry.text, source.excerpt, and pendingOp.proposedText (service.ts:791-801). It does not inspect other pendingOp keys or nested values.
+- store.ts:1077-1100 can recursively redact a nested value only if that value is already present in the supplied texts corpus. Redaction is not discovery.
+
+Real production-object reproduction:
+- A victim-session pending entry contained proposedText 'safe proposal' and extension.nested = ['NESTED_PENDING_ONLY_SECRET_83C1'].
+- An other-session memory contained the same secret in text/excerpt.
+- privacyDeleteBySession removed the target entry, but raw user.json still contained the secret in the surviving other-session entry (carrierRetainedSecret=true, targetRemoved=true).
+
+Impact: the latest recursive pendingOp repair does not satisfy the global privacy guarantee for arbitrary retained/legacy/future pendingOp content. A secret that exists only in a target pendingOp extension is absent from approvals/audits/errors/loggers/chat scrub corpora as well as from surviving truth/indexes.
+
+Required repair:
+1. Add a schema-aware recursive pendingOp content collector and include its results in removedTexts before persisting the journal. Cover proposedText, idempotencyKey, degraded content such as text, and arbitrary nested extension strings.
+2. Exclude validated structural/identity fields (op, degradedFrom, targetId, projectId, mergeIds) from content collection so common enum words/IDs do not cause unrelated global text replacement.
+3. Add a real MemoryService regression where a nested pendingOp extension is the secret's sole source and an other-session entry/chat/audit carries it. Assert raw truth and all retained stores are scrubbed.
+
+F3 — Recursive pendingOp redaction corrupts surviving operation control fields when deleted text overlaps an enum value.
+
+Evidence:
+- store.ts:1077-1100 recursively redacts every pendingOp string, including op and degradedFrom. It restores targetId/projectId/mergeIds but not these control fields.
+- resolvePending reads op at apps/desktop/electron/main/memory/service.ts:899. An unrecognized op with an existing target bypasses the ADD/UPDATE branches and reaches the SUPERSEDE path at service.ts:933-961.
+- PendingOperation's schema requires op to be a defined operation enum (apps/desktop/electron/main/memory/types.ts:13-20), but truth parsing does not validate it (store.ts:112-123).
+
+Real production-object reproduction:
+- Victim memory text was exactly 'UPDATE'.
+- A surviving other-session pending UPDATE proposal targeted an active memory.
+- After privacy deletion, its retained pendingOp.op was '[已删除]'.
+- Approving that proposal did not update the target text; it followed the supersede fallback. The target remained indexed with text 'original target', and the pending entry remained active.
+
+Impact: an ordinary valid deleted memory such as “UPDATE” can silently change another session's pending UPDATE into a different operation during privacy cleanup. This violates the repair requirement that retained pending operations continue to resolve correctly and can cause incorrect memory mutation.
+
+Required repair:
+1. Preserve only schema-valid op/degradedFrom enum values after recursive redaction, or make the redactor key-aware and treat these fields as structural metadata. Invalid/unexpected strings must still be redacted rather than blindly restored.
+2. Add a cross-session regression with deleted text 'UPDATE' and a retained pending UPDATE; approve it afterward and assert the target text is replaced and the pending row is consumed, not superseded.
+
+VERIFIED NON-BLOCKING AREAS
+
+R7-P0-1:
+- packages/agent-host/src/workspace-search-tools.ts:43-98 prunes all case variants of .sparkii during traversal; :122-129 and :158-164 prevent positive globs/results from reintroducing reserved content; :250-279 filters ls entries before native limiting/sorting and uses guarded find/grep implementations.
+- packages/agent-host/src/tool-registry.ts:41-122 rejects direct lexical reserved paths before approval and canonicalizes/rechecks after approval.
+- packages/agent-host/src/workspace-tools.ts:17-49 recursively rejects reserved descendants before delete/move approval.
+- apps/desktop/electron/main/security/workspace-tree-fence.ts:22-44 fails closed on reserved/reparse descendants; workspace-executor.ts:400-460 and workspace-file-service.ts:277-303 fence before mutation.
+- Caller-mode approval carries proposalId through a required synchronous canonical validator (apps/desktop/electron/main/security/runtime-action-router.ts:77-81,524-541); proposal-mode IPC re-fetches Gate state and uses CAS; broker invalidation settles waiters denied. No additional blocker was verified.
+
+R7-P1-1 previously repaired paths:
+- Privacy journals are written before destructive changes and cleared only after Pi-file/chat cleanup (service.ts:749-780,802-834), subject to F1.
+- All episode JSONL history is collected and surviving episodes/index hashes are rebuilt from scrubbed truth (service.ts:791-801; store.ts:1115-1137), subject to F1/F2.
+- Retained Gate states, audits, errors, logs, chat sessions, and SQLite files have global scrub/compaction paths; future memory-tool summaries use IDs/counts/length/hash rather than raw query/body (apps/desktop/electron/main/memory/tools.ts:26-27,44-52,74-107).
+- The original idempotencyKey plaintext case is fixed, subject to the distinct F2/F3 defects above.
+
+TESTING AND CONSTRAINTS
+
+Focused test run:
+  pnpm exec vitest run apps/desktop/test/memory-round7-regression.test.ts -t "R7-P1-1 privacy deletion scrubs every retained approval state"
+Result: 1 passed, 15 skipped. Only existing experimental proxy/esbuild warnings were emitted.
+
+Three inline reproductions loaded the real TypeScript production modules and used temporary files/SQLite: F1 restart/chat residual, F2 nested pendingOp-only secret, and F3 pending UPDATE metadata corruption. Temporary data was removed afterward. No full suite was run.
+
+Accepted limitations (unchanged): Windows main-process TOCTOU; symlink EPERM skips; untested recursive hard-link aliases outside .sparkii.
+
+Reviewer did not edit source, tests, configuration, or the handoff file; did not stage, commit, or push; and did not run destructive repository commands or full suites. The only file written was this explicitly requested final report.

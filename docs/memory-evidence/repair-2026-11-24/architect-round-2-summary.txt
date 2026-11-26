@@ -1,0 +1,40 @@
+Independent architect round 2 outcome: CHANGES_REQUIRED
+
+The second independent review did not grant final acceptance. The confirmed findings below were addressed before the third-loop verification:
+
+F1. Production runtime action routing could accept host Shell execution when upstream approval paths were satisfied.
+Resolution: runtime-action-router.ts denies process.exec by default before approval/reviewer/execution; only trusted policy tests explicitly opt in.
+
+F2. Truth-batch journal validation accepted a truthy non-boolean committed field and a committed journal that retained rollback file items.
+Resolution: truth-batch.ts validates the exact journal schema and rejects both forms before recovery or cleanup.
+
+F3. Recovery could authorize outside project truth files and could traverse registered workspaces through links/reparse points/hardlinks.
+Resolution: canonical/reparse/hardlink inspection and an authoritative project-file allow-list were added to commit and recovery; registry-staged changes authorize newly registered project files.
+
+F4. A dangling write-block junction was treated as absent; failure to persist the write-block marker could discard the only journal evidence.
+Resolution: lstat-based existence, persistent/in-memory write blocking, and evidence retention when marker persistence fails were added.
+
+F5. Extraction diagnostics echoed model-controlled invalid op/scope values.
+Resolution: parse errors no longer include the rejected value; regression coverage checks that a secret is absent from both thrown messages and recorded diagnostics.
+
+F6. Consolidation accepted object-valued fields in merge, compress and stale phases, allowing stringification or partial phases.
+Resolution: malformed field types reject the whole merge/stale phase or produce no compression proposal/digest.
+
+F7. Main read normalization rejected a final reparse target but not a reparse-point parent.
+Resolution: target and parent canonical paths are both inspected and rejected before authorized reads.
+
+F8. Privacy deletion from an authoritative session workspace could conflict with a copied project sharing the same projectId.
+Resolution: scope-file conflicts are checked before any mutation; commit receives the exact authorized project files. A copied-project privacy regression verifies both truth files remain unchanged.
+
+F9. Evidence wording said "zero console warnings" without distinguishing the two expected corrupt-project warning badges shown by the page.
+Resolution: commands-current.txt now states that the JSON warnings are page-level UI badges and that browser console errors/warnings/page errors are zero.
+
+Third-loop evidence:
+- verification-round3-run-1.txt: 23 files / 260 tests passed.
+- verification-round3-run-2.txt: 23 files / 260 tests passed.
+- typecheck-round3.txt: renderer and electron typechecks passed.
+- ui-probe-output-round3.txt and ui-probe-result.json: all repair confirmation/isolation checks passed; consoleMessages and badNetwork are empty.
+- ui-memory-initial.png and ui-memory-isolated-repair.png: visually inspected after the final UI run.
+- commands-current.txt: commands, counts, environment limitations and UI-warning terminology.
+
+Known environment limitation: the real symlink fixture is unavailable under the current Windows account (EPERM) and is explicitly skipped by the integration test; real junction, hardlink, canonical-path and injected generic-reparse cases ran. No test threshold or assertion was weakened.

@@ -1,0 +1,101 @@
+(node:35444) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:13572) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:32120) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [31m❯[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-pool.test.ts [2m([22m[2m54 tests[22m[2m | [22m[31m1 failed[39m[2m | [22m[33m53 skipped[39m[2m)[22m[32m 142[2mms[22m[39m
+     [2m[90m↓[39m[22m R7 coalesces concurrent acquisition of one session id into a single owner
+[31m     [31m×[31m R8 round7 B1 retires a cancelled opening instead of letting a late switch undo release[39m[32m 139[2mms[22m[39m
+     [2m[90m↓[39m[22m R8-P0-2 cancels only the queued acquisition for a session being deleted
+     [2m[90m↓[39m[22m R8-P0-2 stops a cold-starting supervisor when acquisition is cancelled
+     [2m[90m↓[39m[22m P1-7 reserves cold-start capacity before supervisor startup
+     [2m[90m↓[39m[22m reuses a free slot across release
+     [2m[90m↓[39m[22m queues beyond maxAgents and wakes on release
+     [2m[90m↓[39m[22m wakes queued sessions when maxAgents increases
+     [2m[90m↓[39m[22m sends new_session on release
+     [2m[90m↓[39m[22m retires a slot whose new_session fails instead of reusing it
+     [2m[90m↓[39m[22m R7 keeps a resetting slot unavailable and queues a concurrent acquire until reset succeeds
+     [2m[90m↓[39m[22m R7 ignores a stale lease release after the same session id is reacquired
+     [2m[90m↓[39m[22m R7 drops pre-reset events after rebind and accepts new-generation events
+     [2m[90m↓[39m[22m R7 retires a slot when a successful new_session returns a missing generation
+     [2m[90m↓[39m[22m R7 retires a slot when a successful new_session returns a equal generation
+     [2m[90m↓[39m[22m R7 retires a bound slot when the exposed facade sends new_session with a missing generation
+     [2m[90m↓[39m[22m R7 retires a bound slot when the exposed facade sends new_session with a equal generation
+     [2m[90m↓[39m[22m R7 retires a bound slot when the exposed facade sends switch_session with a missing generation
+     [2m[90m↓[39m[22m R7 retires a bound slot when the exposed facade sends switch_session with a equal generation
+     [2m[90m↓[39m[22m R7 retires an uncertain slot once for concurrent exposed facade sends
+     [2m[90m↓[39m[22m R7 does not validate generation data on an unsuccessful exposed facade new_session response
+     [2m[90m↓[39m[22m R7 does not validate generation data on an unsuccessful exposed facade switch_session response
+     [2m[90m↓[39m[22m R7 rejects session-changing new_session broadcasts without sending them
+     [2m[90m↓[39m[22m R7 rejects session-changing switch_session broadcasts without sending them
+     [2m[90m↓[39m[22m R7 rejects an equal switch_session generation and retires the uncertain slot
+     [2m[90m↓[39m[22m R7 does not validate generation data on an unsuccessful switch_session response
+     [2m[90m↓[39m[22m R7 drops stale events throughout switch_session and accepts only the confirmed generation
+     [2m[90m↓[39m[22m R7 clears a concurrent binding on reset failure and gives the waiter a healthy new client
+     [2m[90m↓[39m[22m R7 retires the slot when new_session rejects and does not resolve a waiter with its killed client
+     [2m[90m↓[39m[22m reports the live session id through getSessionId
+     [2m[90m↓[39m[22m clears sessionId before sending new_session on release
+     [2m[90m↓[39m[22m R7 rotates the binding lease when the same session id reacquires a reused client
+     [2m[90m↓[39m[22m stamps the next session on the same slot after release
+     [2m[90m↓[39m[22m renames a session id while keeping the same client
+     [2m[90m↓[39m[22m renameSession is a no-op when the source id is unknown
+     [2m[90m↓[39m[22m broadcasts a command to every live runtime process
+     [2m[90m↓[39m[22m emits a snapshot after acquire, release and rename
+     [2m[90m↓[39m[22m wakes a queued session with its original saddle and meta
+     [2m[90m↓[39m[22m reuses one process and sends the next session's skillsDir on configure_session
+     [2m[90m↓[39m[22m updateMeta patches a live slot label and emits a snapshot
+     [2m[90m↓[39m[22m updateMeta patches a queued session without waking it
+     [2m[90m↓[39m[22m snapshot uses 新会话 when acquire has no label, not the session id
+     [2m[90m↓[39m[22m updateMeta follows renameSession so a temp key can receive the real title
+     [2m[90m↓[39m[22m updateMeta is a no-op for an unknown session
+     [2m[90m↓[39m[22m hides internal probe slots and queue items from the snapshot
+     [2m[90m↓[39m[22m drops a crashed slot instead of handing it to the next acquire
+     [2m[90m↓[39m[22m m9：await start() 期间池被 stopAll ⇒ acquire 复检 stopped、停掉新 supervisor 并拒绝
+     [2m[90m↓[39m[22m stopAll waits for every cold-start supervisor and repeated calls share the same shutdown
+     [2m[90m↓[39m[22m releases cold-start capacity when supervisor creation fails
+     [2m[90m↓[39m[22m R7 rejects a switch binding retired before its continuation and serves the next acquire
+     [2m[90m↓[39m[22m stopAll during a queued bind rejects the request instead of returning a stopped slot
+     [2m[90m↓[39m[22m continues queued binds after configure_session fails without rebinding the failed request
+     [2m[90m↓[39m[22m stopAll rejects when a child never confirms process exit
+     [2m[90m↓[39m[22m M3：stopAll 等到子进程 exit 才 resolve（kill 不自动退出时由超时兜底）
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-pool.test.ts[2m > [22mPiRuntimePool[2m > [22mR8 round7 B1 retires a cancelled opening instead of letting a late switch undo release
+[31m[1mAssertionError[22m: expected { releaseSettled: true, …(4) } to deeply equal { releaseSettled: false, …(4) }[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[2m    "handles": 1,[22m
+[2m    "killed": false,[22m
+[32m-   "releaseSettled": false,[39m
+[32m-   "replacementSettled": false,[39m
+[32m-   "resetRequests": 0,[39m
+[31m+   "releaseSettled": true,[39m
+[31m+   "replacementSettled": true,[39m
+[31m+   "resetRequests": 1,[39m
+[2m  }[22m
+
+[36m [2m❯[22m packages/agent-host/test/pi-runtime-pool.test.ts:[2m162:32[22m[39m
+    [90m160|[39m
+    [90m161|[39m     [35mtry[39m {
+    [90m162|[39m       [34mexpect[39m(beforeLateSwitch)[33m.[39m[34mtoEqual[39m({
+    [90m   |[39m                                [31m^[39m
+    [90m163|[39m         releaseSettled[33m:[39m [35mfalse[39m[33m,[39m
+    [90m164|[39m         replacementSettled[33m:[39m [35mfalse[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[33m53 skipped[39m[90m (54)[39m
+[2m   Start at [22m 08:10:24
+[2m   Duration [22m 670ms[2m (transform 121ms, setup 0ms, import 291ms, tests 142ms, environment 0ms)[22m
+

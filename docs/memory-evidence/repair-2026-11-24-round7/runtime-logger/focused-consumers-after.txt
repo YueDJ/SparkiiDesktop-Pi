@@ -1,0 +1,58 @@
+(node:25652) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:35512) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:35184) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:7016) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:35424) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:4060) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts [2m([22m[2m15 tests[22m[2m)[22m[33m 536[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/shutdown-order.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-extraction.test.ts [2m([22m[2m18 tests[22m[2m)[22m[33m 12735[2mms[22m[39m
+     [33m[2m✓[22m[39m JSON 协议 fail closed：畸形/越界/非法 op 整批抛错 [33m 398[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝被强制字符串化的提取字段：{"sessionSummary":{},"topics":[],"ops":[]} [33m 368[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":["ADD"],"scope":"user","text":"事实"}]} [33m 386[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":["user"],"text":"事实"}]} [33m 367[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":"user","text":{},"excerpt":{}}]} [33m 392[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":"user","text":"事实","importance":"2"}]} [33m 358[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"UPDATE","targetId":["mem_x"],"text":{}}]} [33m 345[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"SUPERSEDE","targetId":"mem_x","replacementText":{},"reason":{}}]} [33m 352[2mms[22m[39m
+     [33m[2m✓[22m[39m 端到端：对话增量 → pending（含来源 excerpt）→ 批准 → 下一条会话注入 [33m 1575[2mms[22m[39m
+     [33m[2m✓[22m[39m 驳回后进黑名单，同候选不再提案 [33m 1775[2mms[22m[39m
+     [33m[2m✓[22m[39m 同 scope 高相似 ADD 降级为 UPDATE 候选 [33m 1353[2mms[22m[39m
+     [33m[2m✓[22m[39m 畸形输出：整批丢弃 + errors.db 有记录 + 真相源无半批写入 [33m 398[2mms[22m[39m
+     [33m[2m✓[22m[39m 对象字段被拒绝时不写 pending、episode、真相文件或提取位点 [33m 359[2mms[22m[39m
+     [33m[2m✓[22m[39m auto 工作区的项目候选只落用户层 [33m 986[2mms[22m[39m
+     [33m[2m✓[22m[39m user 工作区的首条项目候选：项目文件尚不存在也能落 pending 并生成 projectId [33m 1269[2mms[22m[39m
+     [33m[2m✓[22m[39m 同一候选重复提炼：已有高相似 pending 时不再重复提案 [33m 1312[2mms[22m[39m
+     [33m[2m✓[22m[39m 开关关闭：零模型调用 [33m 372[2mms[22m[39m
+     [33m[2m✓[22m[39m 槽位礼让：池满跳过、无排队；交互 acquire 不受影响 [33m 367[2mms[22m[39m
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-consolidation.test.ts [2m([22m[2m14 tests[22m[2m)[22m[33m 16973[2mms[22m[39m
+     [33m[2m✓[22m[39m 相似记忆只产出 pending 提案，绝不自动改 active [33m 1680[2mms[22m[39m
+     [33m[2m✓[22m[39m 批准合并提案后：保留条作废、被合并条作废、新条生效 [33m 1956[2mms[22m[39m
+     [33m[2m✓[22m[39m 一次整合的模型调用不超过 3 次 [33m 1275[2mms[22m[39m
+     [33m[2m✓[22m[39m 三个阶段全都有活时仍然 ≤3 次调用，第四件事顺延 [33m 3749[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝合并阶段的对象字段而不是字符串化 [33m 1348[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝压缩阶段的对象字段而不是字符串化 [33m 406[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝复核阶段的对象字段而不是字符串化 [33m 1285[2mms[22m[39m
+     [33m[2m✓[22m[39m P2 情景压缩混合越界输出时整阶段丢弃，不留下部分提案 [33m 392[2mms[22m[39m
+     [33m[2m✓[22m[39m 空闲不足或距上次整合不足：不调用模型 [33m 371[2mms[22m[39m
+     [33m[2m✓[22m[39m 开关关闭或有交互会话在跑：不整合 [33m 372[2mms[22m[39m
+     [33m[2m✓[22m[39m 没有空闲槽：跳过并顺延，不排队、不做任何写入 [33m 1293[2mms[22m[39m
+     [33m[2m✓[22m[39m 整合输出畸形：该阶段整批丢弃 + errors.db 记录 + 不产生提案 [33m 1243[2mms[22m[39m
+     [33m[2m✓[22m[39m 没有可用模型，或确实无事可做：不调模型、不写库，各自返回对应出口 [33m 351[2mms[22m[39m
+     [33m[2m✓[22m[39m 模型给不存在的 targetId 或越界文本：忽略该条，不落提案 [33m 1249[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m4 passed[39m[22m[90m (4)[39m
+[2m      Tests [22m [1m[32m56 passed[39m[22m[90m (56)[39m
+[2m   Start at [22m 19:17:28
+[2m   Duration [22m 18.87s[2m (transform 1.08s, setup 58ms, import 5.78s, tests 30.27s, environment 3.38s)[22m
+

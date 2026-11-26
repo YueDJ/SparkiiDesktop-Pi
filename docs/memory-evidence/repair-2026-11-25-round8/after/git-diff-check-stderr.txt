@@ -1,0 +1,15 @@
+warning: in the working copy of 'apps/desktop/electron/main/logger.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/electron/main/memory/extraction.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/electron/main/memory/material.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/electron/main/memory/ops.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/electron/main/memory/settings.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/electron/main/memory/store.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/electron/main/memory/tools.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/electron/main/security/workspace-file-service.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/src/shell/SettingsMemoryPane.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/test/logger.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/test/memory-extraction.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/test/memory-settings-pane.test.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/test/memory-tools.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/test/workspace-file-service.integration.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/test/workspace-file-service.test.ts', LF will be replaced by CRLF the next time Git touches it

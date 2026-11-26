@@ -6,7 +6,7 @@ import {
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   createWindowsPathProbe,
   windowsPathKey,
@@ -24,6 +24,7 @@ const baseOptions: WindowsPlatformOptions = {
   localAppData: 'C:/Users/me/AppData/Local',
   dataDir: 'C:/Users/me/AppData/Roaming/Sparkii/data',
   volumes: ['C:/', 'D:/'],
+  readReparsePointAttribute: async () => 0,
 };
 
 describe('windowsProtectedRoots', () => {
@@ -123,6 +124,38 @@ describe.skipIf(process.platform !== 'win32')('createWindowsPathProbe', () => {
     expect(alias.canonicalPath.toLowerCase()).toBe(real.toLowerCase());
     expect(alias.identity).toBe(direct.identity);
     expect(alias.isReparsePoint).toBe(true);
+  });
+
+  it('reads the reparse attribute through the default Windows API path', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sparkii-win-attribute-'));
+    const file = join(root, 'ordinary.txt');
+    await writeFile(file, 'x');
+    const options: WindowsPlatformOptions = {
+      ...baseOptions,
+      home: root,
+      dataDir: join(root, 'data'),
+    };
+    delete options.readReparsePointAttribute;
+
+    const inspected = await createWindowsPathProbe(options).inspect(file);
+    expect(inspected.isReparsePoint).toBe(false);
+  });
+
+  it('detects non-symlink reparse points through Windows file attributes', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sparkii-win-reparse-'));
+    const file = join(root, 'placeholder.txt');
+    await writeFile(file, 'x');
+    const readReparsePointAttribute = vi.fn(async () => 16);
+    const probe = createWindowsPathProbe({
+      ...baseOptions,
+      home: root,
+      dataDir: join(root, 'data'),
+      readReparsePointAttribute,
+    });
+
+    const inspected = await probe.inspect(file);
+    expect(inspected.isReparsePoint).toBe(true);
+    expect(readReparsePointAttribute).toHaveBeenCalledWith(file);
   });
 
   it('rejects relative paths, device paths, and alternate data streams', async () => {

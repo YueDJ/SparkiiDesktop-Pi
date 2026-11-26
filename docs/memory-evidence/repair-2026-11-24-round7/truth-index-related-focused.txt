@@ -1,0 +1,69 @@
+(node:30384) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:2644) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:13548) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16016) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32860) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-index-fallback.test.ts (2 tests) 1285ms
+     ✓ keeps truth writes and reads working after disk open failure  664ms
+     ✓ keeps truth writes and reads working after disk query failure  620ms
+ ✓ |1| apps/desktop/test/memory-truth-batch.test.ts (16 tests) 9932ms
+     ✓ restores every prior truth file and removes new files when a later write fails  836ms
+     ✓ recovers an interrupted batch at startup before truth files are opened  819ms
+     ✓ recovers a new project batch from the registry committed before its truth file  763ms
+     ✓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing  762ms
+     ✓ rollback never recreates a missing project parent before path revalidation  763ms
+     ✓ quarantines a malformed journal and reports a warning instead of blocking startup  517ms
+     ✓ rejects journal paths outside memory truth and backup locations  755ms
+     ✓ rejects a truthy non-boolean committed marker without deleting uncommitted truth  511ms
+     ✓ rejects a committed journal that still contains rollback file items  495ms
+     ✓ rejects an unregistered outside project truth target during commit and recovery  769ms
+     ✓ keeps the only recovery evidence when the write-block marker cannot be persisted  501ms
+     ✓ keeps a committed batch and removes its recovery journal  769ms
+     ✓ rolls back the project registry when a later truth write fails  1145ms
+ ✓ |1| apps/desktop/test/memory-audit-regression.test.ts (31 tests) 20466ms
+     ✓ P1-2 LIKE fallback supports CRUD, search and rebuild  664ms
+     ✓ P1-2 corrupt SQLite is quarantined and rebuilt from truth without blocking startup  668ms
+     ✓ P1-3 copied workspace with the same projectId fails closed and preserves the first truth source  848ms
+     ✓ P1-4 default search and includeHistory never expose pending memories  579ms
+     ✓ P2 external truth edits reconcile list, injection and search  578ms
+     ✓ P2 master switch rejects manual add while disabled  309ms
+     ✓ P2 project archived state survives derived index rebuild  1140ms
+     ✓ P1-6 a missing cursor is rejected and truncation advances only through included messages  335ms
+     ✓ P1-6 rejects an intra-entry cursor beyond the actual entry text  318ms
+     ✓ P1-5 one invalid project UPDATE rejects the whole extraction batch  321ms
+     ✓ P1-1 privacy deletion wins over an in-flight model response and redacts diagnostics  585ms
+     ✓ P1-1 privacy deletion while target resolution is pending prevents the model send  588ms
+     ✓ P1-1 corrupt project registry makes privacy deletion fail closed  834ms
+     ✓ P1-1 duplicate ids corrupt the whole truth file instead of exposing both rows  602ms
+     ✓ P1-1 privacy deletion discovers the indexed workspace even when the registry omits it  1119ms
+     ✓ P1-3 privacy deletion fails closed when a copied project duplicates identity  848ms
+     ✓ P1-1 privacy deletion redacts retained diagnostic messages  585ms
+     ✓ P1-1 old prompt-log cleanup failures surface as repair warnings  553ms
+     ✓ P1-8 consolidation is single-flight across the first await  582ms
+     ✓ P1-8 a malformed consolidation element rejects the entire merge phase  604ms
+     ✓ truth parser rejects object-valued text instead of stringifying it  307ms
+     ✓ cross-file duplicate ids are excluded from listing and injection until repaired  877ms
+     ✓ batch writes fail closed while a cross-file duplicate identity exists  856ms
+     ✓ removing a project truth file and registry reference clears its searchable index  829ms
+     ✓ episode approval rejects malformed mergeIds before changing episode or proposal state  842ms
+     ✓ privacy deletion removes both current and legacy episode proposals  1147ms
+     ✓ ordinary source deletion removes legacy pending episode proposals and repairs active source metadata  1130ms
+     ✓ malformed mergeIds are rejected before any pending or target mutation  608ms
+     ✓ P1-8 mergeIds approval is all-or-nothing  619ms
+
+ Test Files  3 passed (3)
+      Tests  49 passed (49)
+   Start at  21:56:28
+   Duration  24.06s (transform 861ms, setup 90ms, import 3.56s, tests 31.68s, environment 2.52s)
+
+
+EXIT_CODE=0

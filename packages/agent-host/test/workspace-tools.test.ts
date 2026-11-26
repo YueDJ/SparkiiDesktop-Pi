@@ -1,4 +1,4 @@
-import { mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
@@ -110,6 +110,26 @@ describe('workspace tools', () => {
         to: join(h.workspaceRoot, 'src', 'b.txt'),
       },
     });
+  });
+
+  it.each(['delete', 'move'] as const)('%s rejects a recursive target containing .sparkii before Main is called', async (name) => {
+    const h = harness();
+    const source = join(h.workspaceRoot, 'src');
+    mkdirSync(join(source, '.sparkii'), { recursive: true });
+    writeFileSync(join(source, '.sparkii', 'memory.json'), 'retained-content');
+    writeFileSync(join(source, 'app.ts'), 'ordinary');
+    const tool = name === 'delete'
+      ? createDeleteToolDefinition({ cwd: h.workspaceRoot, workspaceRoot: h.workspaceRoot, requestAction: h.requestAction })
+      : createMoveToolDefinition({ cwd: h.workspaceRoot, workspaceRoot: h.workspaceRoot, requestAction: h.requestAction });
+
+    await expect((tool as any).execute(
+      `call-${name}`,
+      name === 'delete' ? { path: 'src' } : { from: 'src', to: 'renamed' },
+      undefined,
+      () => {},
+      toolCtx,
+    )).rejects.toThrow(/\.sparkii 是平台保留目录/);
+    expect(h.requestAction).not.toHaveBeenCalled();
   });
 
   it('rejects paths outside the workspace before Main is called', async () => {

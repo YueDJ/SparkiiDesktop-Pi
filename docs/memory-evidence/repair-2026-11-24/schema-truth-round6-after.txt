@@ -1,0 +1,85 @@
+(node:25972) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:25760) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:38056) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37064) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:25840) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-truth-batch.test.ts (16 tests) 11110ms
+     ✓ restores every prior truth file and removes new files when a later write fails  828ms
+     ✓ recovers an interrupted batch at startup before truth files are opened  825ms
+     ✓ recovers a new project batch from the registry committed before its truth file  828ms
+     ✓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing  849ms
+     ✓ rollback never recreates a missing project parent before path revalidation  857ms
+     ✓ quarantines a malformed journal and reports a warning instead of blocking startup  563ms
+     ✓ rejects journal paths outside memory truth and backup locations  841ms
+     ✓ rejects a truthy non-boolean committed marker without deleting uncommitted truth  563ms
+     ✓ rejects a committed journal that still contains rollback file items  549ms
+     ✓ rejects an unregistered outside project truth target during commit and recovery  862ms
+     ✓ keeps the only recovery evidence when the write-block marker cannot be persisted  560ms
+     ✓ keeps a committed batch and removes its recovery journal  840ms
+     ✓ rolls back the project registry when a later truth write fails  1549ms
+ ✓ |1| apps/desktop/test/memory-extraction.test.ts (18 tests) 11795ms
+     ✓ JSON 协议 fail closed：畸形/越界/非法 op 整批抛错  374ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":{},"topics":[],"ops":[]}  338ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":["ADD"],"scope":"user","text":"事实"}]}  339ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":["user"],"text":"事实"}]}  349ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":"user","text":{},"excerpt":{}}]}  350ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"ADD","scope":"user","text":"事实","importance":"2"}]}  346ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"UPDATE","targetId":["mem_x"],"text":{}}]}  355ms
+     ✓ 拒绝被强制字符串化的提取字段：{"sessionSummary":"摘要","topics":[],"ops":[{"op":"SUPERSEDE","targetId":"mem_x","replacementText":{},"reason":{}}]}  351ms
+     ✓ 端到端：对话增量 → pending（含来源 excerpt）→ 批准 → 下一条会话注入  1332ms
+     ✓ 驳回后进黑名单，同候选不再提案  1583ms
+     ✓ 同 scope 高相似 ADD 降级为 UPDATE 候选  1273ms
+     ✓ 畸形输出：整批丢弃 + errors.db 有记录 + 真相源无半批写入  377ms
+     ✓ 对象字段被拒绝时不写 pending、episode、真相文件或提取位点  360ms
+     ✓ auto 工作区的项目候选只落用户层  977ms
+     ✓ user 工作区的首条项目候选：项目文件尚不存在也能落 pending 并生成 projectId  1238ms
+     ✓ 同一候选重复提炼：已有高相似 pending 时不再重复提案  1221ms
+     ✓ 开关关闭：零模型调用  322ms
+     ✓ 槽位礼让：池满跳过、无排队；交互 acquire 不受影响  309ms
+ ✓ |1| apps/desktop/test/memory-audit-regression.test.ts (31 tests) 32424ms
+     ✓ P1-2 LIKE fallback supports CRUD, search and rebuild  1620ms
+     ✓ P1-2 corrupt SQLite is quarantined and rebuilt from truth without blocking startup  1027ms
+     ✓ P1-3 copied workspace with the same projectId fails closed and preserves the first truth source  1239ms
+     ✓ P1-4 default search and includeHistory never expose pending memories  931ms
+     ✓ P2 external truth edits reconcile list, injection and search  976ms
+     ✓ P2 master switch rejects manual add while disabled  340ms
+     ✓ P2 project archived state survives derived index rebuild  1812ms
+     ✓ P1-6 a missing cursor is rejected and truncation advances only through included messages  345ms
+     ✓ P1-6 rejects an intra-entry cursor beyond the actual entry text  354ms
+     ✓ P1-5 one invalid project UPDATE rejects the whole extraction batch  396ms
+     ✓ P1-1 privacy deletion wins over an in-flight model response and redacts diagnostics  624ms
+     ✓ P1-1 privacy deletion while target resolution is pending prevents the model send  605ms
+     ✓ P1-1 corrupt project registry makes privacy deletion fail closed  1153ms
+     ✓ P1-1 duplicate ids corrupt the whole truth file instead of exposing both rows  880ms
+     ✓ P1-1 privacy deletion discovers the indexed workspace even when the registry omits it  1651ms
+     ✓ P1-3 privacy deletion fails closed when a copied project duplicates identity  1109ms
+     ✓ P1-1 privacy deletion redacts retained diagnostic messages  1133ms
+     ✓ P1-1 model and parse failures do not copy session content into diagnostics  343ms
+     ✓ P1-1 old prompt-log cleanup failures surface as repair warnings  581ms
+     ✓ P1-8 consolidation is single-flight across the first await  1127ms
+     ✓ P1-8 a malformed consolidation element rejects the entire merge phase  1152ms
+     ✓ truth parser rejects object-valued id instead of stringifying it  311ms
+     ✓ truth parser rejects object-valued text instead of stringifying it  323ms
+     ✓ cross-file duplicate ids are excluded from listing and injection until repaired  1439ms
+     ✓ batch writes fail closed while a cross-file duplicate identity exists  1381ms
+     ✓ removing a project truth file and registry reference clears its searchable index  1152ms
+     ✓ episode approval rejects malformed mergeIds before changing episode or proposal state  1137ms
+     ✓ privacy deletion removes both current and legacy episode proposals  2222ms
+     ✓ ordinary source deletion removes legacy pending episode proposals and repairs active source metadata  2207ms
+     ✓ malformed mergeIds are rejected before any pending or target mutation  1418ms
+     ✓ P1-8 mergeIds approval is all-or-nothing  1433ms
+
+ Test Files  3 passed (3)
+      Tests  65 passed (65)
+   Start at  17:21:28
+   Duration  36.25s (transform 1.18s, setup 82ms, import 5.95s, tests 55.33s, environment 2.55s)
+
