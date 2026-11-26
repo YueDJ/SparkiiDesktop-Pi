@@ -133,7 +133,7 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
       actor: actor(),
       action: event,
       resource: action.toolName,
-      payloadSummary: detail.slice(0, 512),
+      payloadSummary: detail,
       sessionId: action.sessionId,
       taskId: action.taskId,
       actionId: action.id,
@@ -146,6 +146,21 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
     });
   };
 
+  // 拒绝类审计写入失败不能把整次派发变成异常：决策本身已经是 denied，调用方仍要拿到结构化拒绝。
+  // 只有放行路径的审计失败才必须转成 AUDIT_FAILED（见下方 action.allowed 分支）。
+  const auditDenial = async (
+    action: SecurityAction,
+    event: string,
+    detail: string,
+    ruleId: string,
+    decision = 'denied',
+  ): Promise<void> => {
+    try {
+      await auditDecision(action, event, detail, ruleId, decision);
+    } catch {
+      /* 拒绝已经返回，审计写入失败不改变“不执行”的决定 */
+    }
+  };
   const auditReviewer = async (
     action: SecurityAction,
     event: string,
@@ -157,7 +172,7 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
       actor: `reviewer:${options.reviewerModel}`,
       action: event,
       resource: action.toolName,
-      payloadSummary: JSON.stringify(summary).slice(0, 512),
+      payloadSummary: JSON.stringify(summary),
       sessionId: action.sessionId,
       taskId: action.taskId,
       actionId: action.id,
@@ -234,11 +249,11 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
     riskOverride?: SecurityRisk,
   ): Promise<{ deniedResult: ActionExecutionResult } | { outcome: PolicyOutcome; approval: ApprovalResolution }> => {
     try { assertTask(); } catch {
-      await auditDecision(action, 'action.denied', 'task grant revoked before approval settlement', 'task-grant.revoked', 'denied');
+      await auditDenial(action, 'action.denied', 'task grant revoked before approval settlement', 'task-grant.revoked', 'denied');
       return { deniedResult: denied(requestId, fallback, 'TASK_REVOKED', 'Task grant is no longer active') };
     }
     if (approval.choice === 'deny') {
-      await auditDecision(action, 'action.denied', 'user denied', 'user.denied', 'denied');
+      await auditDenial(action, 'action.denied', 'user denied', 'user.denied', 'denied');
       return { deniedResult: denied(
         requestId,
         fallback,
@@ -278,7 +293,7 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
     try {
       assertTask();
     } catch {
-      await auditDecision(action, 'action.denied',
+      await auditDenial(action, 'action.denied',
         'task grant revoked before human approval', 'task-grant.revoked', 'denied');
       return { deniedResult: denied(
         requestId,
@@ -288,7 +303,7 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
       ) };
     }
     if (grant.unattended) {
-      await auditDecision(action, 'action.denied',
+      await auditDenial(action, 'action.denied',
         'human approval is unavailable for an unattended task',
         'human-approval.unavailable', 'denied');
       return { deniedResult: denied(
@@ -302,6 +317,21 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
     try {
       approval = await options.requestApproval(action, grant, riskOverride);
     } catch (error) {
+      try {
+        assertTask();
+      } catch {
+        await auditDenial(action, 'action.denied',
+          'task grant revoked during human approval', 'task-grant.revoked', 'denied');
+        return { deniedResult: denied(
+          requestId,
+          fallback,
+          'TASK_REVOKED',
+          'Task grant was revoked during approval',
+        ) };
+      }
+      await auditDenial(action, 'action.denied',
+        `approval request failed: ${error instanceof Error ? error.message : String(error)}`,
+        'approval.failed', 'denied');
       return { deniedResult: denied(requestId, fallback, 'APPROVAL_FAILED',
         error instanceof Error ? error.message : String(error)) };
     }
@@ -335,7 +365,7 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
       try {
         assertTask();
       } catch {
-        await auditDecision(action, 'action.denied',
+        await auditDenial(action, 'action.denied',
           'task grant revoked while reviewer was running',
           'task-grant.revoked', 'denied');
         return { deniedResult: denied(
@@ -479,7 +509,7 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
           reason: '宿主 Shell 执行未开放',
         };
         recordEvidence(action, 'denied', `${outcome.ruleId}: ${outcome.reason}`);
-        await auditDecision(action, 'action.denied',
+        await auditDenial(action, 'action.denied',
           `${outcome.ruleId}: ${outcome.reason}`, outcome.ruleId, 'denied');
         return denied(request.requestId, outcome, 'SHELL_DISABLED', outcome.reason);
       }
@@ -494,7 +524,7 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
 
       if (outcome.decision === 'deny') {
         recordEvidence(action, 'denied', `${outcome.ruleId}: ${outcome.reason}`);
-        await auditDecision(action, 'action.denied',
+        await auditDenial(action, 'action.denied',
           `${outcome.ruleId}: ${outcome.reason}`, outcome.ruleId);
         return denied(request.requestId, outcome, 'POLICY_DENIED', outcome.reason);
       }
@@ -536,13 +566,24 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
       try {
         assertTask();
       } catch {
-        await auditDecision(action, 'action.denied',
+        await auditDenial(action, 'action.denied',
           'task grant revoked before execution', 'task-grant.revoked', 'denied');
         return denied(request.requestId, outcome, 'TASK_REVOKED',
           'Task grant was revoked before execution');
       }
-      if (!await options.revalidate(action, grant)) {
-        await auditDecision(action, 'action.denied',
+      let targetUnchanged = false;
+      try {
+        targetUnchanged = await options.revalidate(action, grant);
+      } catch (error) {
+        try { assertTask(); } catch { return taskRevoked(outcome); }
+        await auditDenial(action, 'action.denied',
+          `target revalidation failed: ${error instanceof Error ? error.message : String(error)}`,
+          'target.revalidation-failed', 'denied');
+        return denied(request.requestId, outcome, 'TARGET_REVALIDATION_FAILED',
+          'Target identity could not be revalidated');
+      }
+      if (!targetUnchanged) {
+        await auditDenial(action, 'action.denied',
           'target identity or parent chain changed after normalization',
           'target.changed', 'denied');
         return denied(request.requestId, outcome, 'TARGET_CHANGED',
@@ -550,8 +591,17 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
       }
       try { assertTask(); } catch { return taskRevoked(outcome); }
 
-      await auditDecision(action, 'action.allowed',
-        `${outcome.ruleId}: ${outcome.reason}`, outcome.ruleId);
+      try {
+        await auditDecision(action, 'action.allowed',
+          `${outcome.ruleId}: ${outcome.reason}`, outcome.ruleId);
+      } catch (error) {
+        try { assertTask(); } catch { return taskRevoked(outcome); }
+        await auditDenial(action, 'action.denied',
+          `allow audit failed: ${error instanceof Error ? error.message : String(error)}`,
+          'audit.failed', 'denied');
+        return denied(request.requestId, outcome, 'AUDIT_FAILED',
+          'Allow decision could not be audited');
+      }
       try { assertTask(); } catch { return taskRevoked(outcome); }
       let executionAction = action;
       if (approval) {
@@ -562,7 +612,7 @@ export function createRuntimeActionRouter(options: RuntimeActionRouterOptions) {
           // Missing or failing canonical accessors fail closed.
         }
         if (!canonical) {
-          await auditDecision(action, 'action.denied',
+          await auditDenial(action, 'action.denied',
             'approval was invalidated before execution', 'approval.invalidated', 'denied');
           return denied(request.requestId, outcome, 'APPROVAL_INVALIDATED',
             'Approval was invalidated before execution');

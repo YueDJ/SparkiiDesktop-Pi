@@ -1,0 +1,89 @@
+(node:38740) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+npm notice run npx
+npm notice run vitest run apps/desktop/test/workflow-broker.test.ts -t does not treat a retryable agent_end
+(node:2376) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:1932) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [31m❯[39m [30m[46m 1 [49m[39m apps/desktop/test/workflow-broker.test.ts [2m([22m[2m43 tests[22m[2m | [22m[31m1 failed[39m[2m | [22m[33m42 skipped[39m[2m)[22m[32m 60[2mms[22m[39m
+   [2m[90m↓[39m[22m R8 review runtime B6 keeps the original workflow admission when Task becomes task-a
+   [2m[90m↓[39m[22m R8 review runtime B6 keeps the original workflow admission when Task becomes task-b
+   [2m[90m↓[39m[22m R8 round5 r1 rejects workflow proposals when no admission can be proven
+   [2m[90m↓[39m[22m R8 round5 blocker2 does not release a lease replaced while beforeRelease awaits
+   [2m[90m↓[39m[22m R8 round5 blocker2 does not fall back to a replacement when onReady fails before returning an admission
+   [2m[90m↓[39m[22m R8 round5 r2 cleans its own binding after onReady fails without an admission or replacement
+   [2m[90m↓[39m[22m settles a caller waiter as denied when privacy redaction invalidates its proposal
+   [2m[90m↓[39m[22m canonicalizes a stale approved broker completion against privacy-redacted gate state
+   [2m[90m↓[39m[22m acquires the workflow slot with the agent display name, not the session id
+   [2m[90m↓[39m[22m uses the runtime session id for the workflow session record
+   [2m[90m↓[39m[22m keeps only workflow tool-step tools plus read on the runtime saddle
+   [2m[90m↓[39m[22m persists the caller workspace and model on the workflow session
+   [2m[90m↓[39m[22m resolves skill ref and llm template to prompt content
+   [2m[90m↓[39m[22m resolves the two visible business skills plus hidden tools
+     [2m[90m↓[39m[22m rejects forged legacy coding proposals before they reach ApprovalGate
+     [2m[90m↓[39m[22m completes the human step when the shared broker decides approval
+     [2m[90m↓[39m[22m runs the workflow for the requested profile instead of contract-review
+     [2m[90m↓[39m[22m returns the session id before the runner finishes
+     [2m[90m↓[39m[22m persists step output on workflow_step_end and does not write a report-named result blob
+     [2m[90m↓[39m[22m persists workflow_step_end failed status when a step throws
+     [2m[90m↓[39m[22m stops the workflow and reports when a step_end append fails
+     [2m[90m↓[39m[22m stops the workflow when even the small failed end cannot be appended
+     [2m[90m↓[39m[22m R8-P1-1 rejects a workflow whose original lease is replaced during new_session
+     [2m[90m↓[39m[22m R8-P1-1 does not send model commands to a stale lease after an awaited key lookup
+     [2m[90m↓[39m[22m R8-P1-1 stops before prompt when the original lease is replaced during set_model
+     [2m[90m↓[39m[22m R8-P1-1 stops before prompt when the original lease is replaced during set_thinking_level
+     [2m[90m↓[39m[22m R8-P1-1 does not start the next workflow step after an between-step rebind
+     [2m[90m↓[39m[22m R8-P1-1 denies a tool approval completed after the original lease is replaced
+     [2m[90m↓[39m[22m does not swallow start/end append failures with empty catch
+     [2m[90m↓[39m[22m does not let a rebound session consume the previous workflow prompt
+     [2m[90m↓[39m[22m does not let a same-client same-id rebinding consume the previous workflow prompt
+     [2m[90m↓[39m[22m waits for the correlated prompt terminal instead of completing at prompt acceptance
+     [2m[90m↓[39m[22m surfaces a correlated prompt_error delivered before the promptId callback
+[31m     [31m×[31m does not treat a retryable agent_end as the prompt terminal[39m[32m 56[2mms[22m[39m
+     [2m[90m↓[39m[22m stores full assistant text from message_update/message_end in step output
+     [2m[90m↓[39m[22m does not revive proposal-first edit/write semantics from Runtime requests
+     [2m[90m↓[39m[22m does not scan payload.diff to invent preview for other tools
+     [2m[90m↓[39m[22m does not resolve an approved write as 操作未执行:approved when the timeout elapses mid-execution
+     [2m[90m↓[39m[22m still resolves an untouched pending proposal as expired after the timeout
+     [2m[90m↓[39m[22m pushes the expired proposal to the renderer only when truly expired
+     [2m[90m↓[39m[22m does not push expired while an approved write is still executing
+     [2m[90m↓[39m[22m carries the approval scope back to the awaiting action router
+     [2m[90m↓[39m[22m cancels pending broker waits for one session
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[46m 1 [49m[39m apps/desktop/test/workflow-broker.test.ts[2m > [22mrunWorkflow session id and JSONL[2m > [22mdoes not treat a retryable agent_end as the prompt terminal
+[31m[1mAssertionError[22m: expected { stepId: 'review', …(3) } to match object { stepId: 'review', …(2) }
+(1 matching property omitted from actual)[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  {[22m
+[32m-   "output": StringContaining "FINAL_RETRY_ANSWER_73C",[39m
+[31m+   "output": "RETRY_INTERMEDIATE_73A",[39m
+[2m    "status": "completed",[22m
+[2m    "stepId": "review",[22m
+[2m  }[22m
+
+[36m [2m❯[22m apps/desktop/test/workflow-broker.test.ts:[2m1307:23[22m[39m
+    [90m1305|[39m     const end = appends.find((a) => a.customType === 'workflow_step_en…
+    [90m1306|[39m     [34mexpect[39m(listeners[33m.[39msize)[33m.[39m[34mtoBe[39m([34m0[39m)[33m;[39m
+    [90m1307|[39m     [34mexpect[39m(end[33m?.[39mdata)[33m.[39m[34mtoMatchObject[39m({
+    [90m   |[39m                       [31m^[39m
+    [90m1308|[39m       stepId[33m:[39m [32m'review'[39m[33m,[39m
+    [90m1309|[39m       status[33m:[39m [32m'completed'[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[33m42 skipped[39m[90m (43)[39m
+[2m   Start at [22m 01:43:42
+[2m   Duration [22m 5.38s[2m (transform 907ms, setup 44ms, import 3.76s, tests 60ms, environment 1.23s)[22m
+

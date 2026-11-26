@@ -571,12 +571,9 @@ export class MemoryStore {
     for (let index = 0; index < refs.length; index += 1) {
       const ref = refs[index];
       const key = truthPathKey(ref.file);
-      const cached = this.truthSnapshots.get(key);
       if (!current[index]) {
         this.truthSnapshots.delete(key);
         snapshots.set(key, undefined);
-      } else if (cached?.identity === current[index]!.identity) {
-        snapshots.set(key, structuredClone(cached));
       } else {
         missing.push({ ref, identity: current[index]! });
       }
@@ -611,18 +608,15 @@ export class MemoryStore {
 
   private readVerifiedScopeSnapshot(ref: ScopeFileRef): TruthFileSnapshot | undefined {
     const key = truthPathKey(ref.file);
-    const cached = this.truthSnapshots.get(key);
-    if (cached) {
-      const current = inspectTruthFile(ref.file, this.probeAttributes, { allowMissing: true, regularFile: true });
-      if (!current) {
-        this.truthSnapshots.delete(key);
-        return undefined;
-      }
-      if (current.identity === cached.identity) return structuredClone(cached);
+    const current = inspectTruthFile(ref.file, this.probeAttributes, { allowMissing: true, regularFile: true });
+    if (!current) {
+      this.truthSnapshots.delete(key);
+      return undefined;
     }
     const result = readTruthFileVerifiedResult(ref.file, {
       allowMissing: true,
       probeAttributes: this.probeAttributes,
+      expectedIdentity: current.identity,
       read: (file) => Buffer.from(this.readTruthFile(file)),
     });
     if (!result) {
@@ -654,6 +648,13 @@ export class MemoryStore {
   }
 
   allScopeFiles(options: { strictProjects?: boolean; workspacePaths?: string[] } = {}): Array<ScopeFileRef & { corrupt?: string }> {
+    return this.allScopeFilesAndSnapshots(options).refs;
+  }
+
+  private allScopeFilesAndSnapshots(options: { strictProjects?: boolean; workspacePaths?: string[] } = {}): {
+    refs: Array<ScopeFileRef & { corrupt?: string }>;
+    snapshots: Map<string, TruthFileSnapshot | undefined>;
+  } {
     this.assertAvailable();
     const files: Array<ScopeFileRef & { corrupt?: string }> = [
       { scope: 'user', file: userMemoryFile(this.dataDir) },
@@ -728,7 +729,7 @@ export class MemoryStore {
         ref.corrupt = error instanceof Error ? error.message : String(error);
       }
     }
-    return files;
+    return { refs: files, snapshots };
   }
 
   readAllTruth(refs: Array<ScopeFileRef & { corrupt?: string }>): Array<{ ref: ScopeFileRef; entry: MemoryEntry; archived?: boolean }> {
@@ -784,17 +785,28 @@ export class MemoryStore {
     return { warnings: [...new Set(warnings)], projectFiles, idFiles };
   }
 
-  private identityConflictsFromDiscovery(refs: Array<ScopeFileRef & { corrupt?: string }>): {
+  private identityConflictsFromDiscovery(refs: Array<ScopeFileRef & { corrupt?: string }>, providedSnapshots?: Map<string, TruthFileSnapshot | undefined>): {
     warnings: string[];
     projectFiles: Set<string>;
     idFiles: Set<string>;
   } {
     const rows = refs.flatMap((ref) => {
       if (ref.corrupt) return [];
-      const snapshot = this.truthSnapshots.get(truthPathKey(ref.file));
+      const snapshot = providedSnapshots?.get(truthPathKey(ref.file)) ?? this.truthSnapshots.get(truthPathKey(ref.file));
       return snapshot ? [{ ref, entries: snapshot.entries }] : [];
     }).flatMap(({ ref, entries }) => entries.map((entry) => ({ ref, entry })));
     return this.identityConflictsFromRows(refs, rows);
+  }
+
+  private rowsFromDiscoverySnapshots(refs: Array<ScopeFileRef & { corrupt?: string }>, snapshots: Map<string, TruthFileSnapshot | undefined>): Array<{ ref: ScopeFileRef; entry: MemoryEntry; archived?: boolean }> {
+    return refs.flatMap((ref) => {
+      if (ref.corrupt) return [];
+      const snapshot = snapshots.get(truthPathKey(ref.file));
+      if (!snapshot) return [];
+      const archived = snapshot.archived;
+      if (archived !== undefined) ref.archived = archived;
+      return snapshot.entries.map((entry) => ({ ref, entry, archived }));
+    });
   }
 
   preflightReplacement(file: string, projectId: string, entries: MemoryEntry[], workspacePaths: string[] = []): void {
@@ -862,11 +874,12 @@ export class MemoryStore {
 
   private rebuildUnfenced(): { entries: number; corrupt: string[]; conflicts: string[] } {
     this.assertAvailable();
-    const refs = this.allScopeFiles();
-    const rows = this.readAllTruth(refs);
+    const discovered = this.allScopeFilesAndSnapshots();
+    const refs = discovered.refs;
+    const rows = this.rowsFromDiscoverySnapshots(refs, discovered.snapshots);
     const snapshots = refs.flatMap((ref) => {
-      const snapshot = this.truthSnapshots.get(truthPathKey(ref.file));
-      return snapshot ? [{ ref, snapshot }] : [];
+      const snapshot = discovered.snapshots.get(truthPathKey(ref.file));
+      return snapshot ? [{ ref, snapshot: structuredClone(snapshot) }] : [];
     });
     const conflicts = this.identityConflictsFromRows(refs, rows);
     if (conflicts.warnings.length) throw new ScopeConflictError(conflicts.warnings.join('；'));
@@ -928,9 +941,8 @@ export class MemoryStore {
       if (current.identity) {
         const fresh = inspectTruthFile(ref.file, this.probeAttributes, { regularFile: true });
         if (!fresh || fresh.identity !== current.identity) throw new TruthSnapshotChangedError(ref.file);
-      } else {
-        this.assertSnapshotCurrent(ref, current);
       }
+      this.assertSnapshotCurrent(ref, current);
       this.removeFileIndex(ref.file);
       this.db.prepare('DELETE FROM privacy_recovery WHERE file_ref = ?').run(ref.file);
       for (const entry of current.entries) this.insertRow(ref, entry, usage.get(entry.id) ?? { lastAccessedAt: null, accessCount: 0 });
@@ -1031,8 +1043,9 @@ export class MemoryStore {
 
   private reconcileAllUnfenced(): TruthReconciliation {
     this.assertAvailable();
-    const refs = this.allScopeFiles();
-    const identity = this.identityConflictsFromDiscovery(refs);
+    const discovered = this.allScopeFilesAndSnapshots();
+    const refs = discovered.refs;
+    const identity = this.identityConflictsFromDiscovery(refs, discovered.snapshots);
     const blockedFiles = new Set([...identity.projectFiles, ...identity.idFiles]);
     const knownFiles = new Set(refs.map((ref) => workspacePathKey(ref.file)));
     const staleFiles = this.db.prepare(`
@@ -1063,7 +1076,7 @@ export class MemoryStore {
         this.db.prepare('DELETE FROM scope_files WHERE file_ref = ?').run(ref.file);
         continue;
       }
-      const snapshot = this.truthSnapshots.get(truthPathKey(ref.file));
+      const snapshot = discovered.snapshots.get(truthPathKey(ref.file));
       if (!snapshot) throw new CorruptMemoryError(ref.file, '索引快照缺失');
       const current = snapshot.contentHash;
       const indexed = this.db.prepare('SELECT content_hash FROM scope_files WHERE file_ref = ?').get(ref.file) as { content_hash: string } | undefined;
@@ -1083,7 +1096,7 @@ export class MemoryStore {
       warnings: identity.warnings,
       refs,
       snapshots: new Map(refs.map((ref) => {
-        const snapshot = this.truthSnapshots.get(truthPathKey(ref.file));
+        const snapshot = discovered.snapshots.get(truthPathKey(ref.file));
         return [truthPathKey(ref.file), snapshot ? structuredClone(snapshot) : undefined];
       })),
       identity,

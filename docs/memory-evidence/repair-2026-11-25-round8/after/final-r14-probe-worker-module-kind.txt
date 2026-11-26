@@ -1,0 +1,51 @@
+# R8 final-r14 truth 复审 BLOCKING-1：eval worker 的模块类型决定 bridge 是否能启动
+
+被验证缺陷：`apps/desktop/electron/main/memory/truth-path.ts` 的 `PROBE_DAEMON_SOURCE` 原先以
+`const { workerData } = require('node:worker_threads')` 开头。`new Worker(code, { eval: true })`
+的求值模块类型继承父线程启动方式；一旦按 ESM 求值（`--input-type=module` 一类的启动环境），
+`require` 不存在，worker 在编译期即失败。此时 `worker.on('error')` 监听器只能在主线程事件循环上投递，
+而主线程已经停在同步的 `Atomics.wait(control, 0, …, 5000)`，监听器无法提前唤醒等待，
+每个逻辑 truth 边界都要冻结主线程满 5s 才回退一次性 `execFileSync`。
+
+## 复现命令
+
+```
+cd %LOCALAPPDATA%\Temp\r14-repro
+node module-kind.mjs
+```
+
+`module-kind.mjs` 用同一个 `execArgv: ['--input-type=module']` 分别启动
+“修复前的 require 形式”和“当前 tree 里逐字提取的 PROBE_DAEMON_SOURCE”。
+
+## 输出
+
+```
+OLD-CODE-FORM (require first statement) -> ERROR: require is not defined in ES module scope, you can use import instead
+CURRENT-CODE (dynamic import bootstrap) -> ALIVE-after-2000ms
+```
+
+（OLD 行重复打印三次是脚本在 error/exit/timeout 三个回调里都输出同一条结果，不影响判定。）
+
+## 生产 bridge 实测（修复后，默认配置，未设置 `SPARKII_TRUTH_PROBE_DAEMON_DISABLED`）
+
+```
+cd %LOCALAPPDATA%\Temp\r14-repro
+node measure.mjs
+BEFORE-PROCESSES=0
+FIVE-PROBES-MS=296
+AFTER-PROCESSES=1
+```
+
+`node measure.mjs` 直接 import `apps/desktop/electron/main/memory/truth-path.ts`，对临时目录里的
+普通文件连续调用五次 `assertTruthPathSafe`，再用 `tasklist /FI "IMAGENAME eq SandboxProbe.exe"` 统计。
+5 次探测 296ms 且调用结束后仍有 1 个常驻 `SandboxProbe.exe`，证明真实生产路径走的是 resident bridge，
+而不是一次性子进程回退（一次性回退 5 次约 247ms 且调用结束常驻数为 0）。
+
+## 修复
+
+1. worker 源码改用 `Promise.all([import('node:worker_threads'), import('node:child_process')])` 引导，
+   动态 `import()` 在 CJS 与 ESM 两种求值模式下都合法，模块类型不再影响 bridge 能否启动。
+2. 主线程等待改为按状态 1/2 续等并重算截止时间，避免 worker 已取走请求时被误判成“意外状态”而回收健康 bridge。
+3. 探针路径解析逐级短路（resourcesPath → 模块相对 → cwd），打包环境不再每批探测重复必定落空的目录回溯。
+4. `apps/desktop/test/memory-truth-probe-daemon.test.ts` 新增回归：连续五次生产探测必须 < 2000ms
+   且调用结束时常驻子进程数增加，同时 warm bridge 后 junction 仍被拒绝。

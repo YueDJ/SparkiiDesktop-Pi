@@ -2134,7 +2134,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
     options?: { behavior?: 'steer' | 'followUp' | 'prompt' },
     attachments: ChatAttachment[] = [],
     context: { profileId?: string; workspacePath?: string | null; workspaceKind?: 'auto' | 'user'; model?: string | null; thinkingLevel?: string | null; permissionMode?: PlatformPermissionMode; allowDegradedKnowledge?: boolean } = {},
-    internal?: { expectedAdmission?: TaskAdmissionToken; retainTask?: boolean; onPromptSend?: () => void },
+    internal?: { expectedAdmission?: TaskAdmissionToken; retainTask?: boolean; onPromptSend?: () => void; onPromptId?: (promptId: string) => void; waitForSettled?: boolean },
   ) => {
     const profileIdForGate = sessionId
       ? rt.chatSessions.get(sessionId)?.profileId
@@ -2212,6 +2212,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         assertBinding();
         turn = createPromptTurn(queued, releaseQueued, open.slot.client, open.lease, internal?.retainTask === true);
         promptTurnsBySession.set(resolvedSessionId, turn);
+        if (behavior === 'prompt') internal?.onPromptId?.(turn.promptId);
       } catch (error) {
         completePromptQueue(resolvedSessionId, queued, releaseQueued);
         throw error;
@@ -2316,7 +2317,8 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
       });
     }
     assertPromptOwnership();
-    return { ok: true, sessionId: resolvedSessionId, behavior: behavior === 'prompt' ? 'prompt' : behavior };
+    if (behavior === 'prompt' && turn && internal?.waitForSettled) await turn.settled;
+    return { ok: true, sessionId: resolvedSessionId, behavior: behavior === 'prompt' ? 'prompt' : behavior, promptId: turn?.promptId };
     } catch (error) {
       // A post-send failure is not a terminal event. Keep the serialization
       // barrier until an owned/cancelled settled arrives, abort confirms idle,
@@ -3232,7 +3234,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
         from: previous,
         to: resolved,
         policyVersion: rt.security?.reviewerPolicyVersion,
-      }).slice(0, 512),
+      }),
       sessionId,
       taskId: activeTask?.taskId,
       ruleId: 'permission-mode.changed',
@@ -3641,7 +3643,7 @@ const MODEL_CAPABILITY_DEFAULTS: Record<string, ModelCapability[]> = {
             return;
           }
           win?.webContents.send('sparkii:event:chat-event', { ...ev, sessionId });
-          if (ev.type === 'agent_end') {
+          if (ev.type === 'agent_end' && ev.willRetry !== true) {
             terminalEvent = true;
             if (sendSettled) finish();
           }

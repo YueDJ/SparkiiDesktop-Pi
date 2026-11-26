@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { copyFileSync, lstatSync, existsSync, readFileSync, readdirSync, renameSync, rmSync, type BigIntStats } from 'node:fs';
-import { isAbsolute, join, parse } from 'node:path';
+import { isAbsolute, join, dirname, parse } from 'node:path';
 import { Worker } from 'node:worker_threads';
 
 const FILE_ATTRIBUTE_REPARSE_POINT = 16;
@@ -24,9 +24,13 @@ export function pathProbeContext(probeAttributes: (paths: string[]) => number[] 
 }
 
 const PROBE_DAEMON_SOURCE = `
-const { workerData } = require('node:worker_threads');
-const { spawn } = require('node:child_process');
+// eval worker 的模块类型取决于父线程启动方式：\`require\` 在 ESM 求值下不存在，
+// 而 \`import\` 语句在 CJS 求值下是语法错误。动态 import 在两种求值模式下都合法。
+Promise.all([import('node:worker_threads'), import('node:child_process')])
+  .then(([threads, childProcess]) => main(threads.workerData, childProcess.spawn))
+  .catch(() => process.exit(71));
 
+function main(workerData, spawn) {
 const control = new Int32Array(workerData.shared, 0, 4);
 const payload = new Uint8Array(workerData.shared, 16);
 const capacity = payload.length;
@@ -138,6 +142,7 @@ function waitForRequest() {
 }
 
 waitForRequest();
+}
 `;
 
 interface ProbeDaemon {
@@ -152,7 +157,7 @@ let probeDaemon: ProbeDaemon | undefined;
 function disposeProbeDaemon(): void {
   const daemon = probeDaemon;
   probeDaemon = undefined;
-  if (daemon) void daemon.worker.terminate();
+  daemon?.worker.terminate().catch(() => undefined);
 }
 
 function encodeProbePaths(paths: string[]): Buffer {
@@ -181,12 +186,20 @@ function daemonAttributes(helper: string, paths: string[]): number[] {
       workerData: { helper, shared },
     });
     worker.unref();
-    probeDaemon = {
+    const record: ProbeDaemon = {
       helper,
       worker,
       control: new Int32Array(shared, 0, 4),
       payload: new Uint8Array(shared, 16),
     };
+    // worker 编译失败或未捕获异常必须有监听器，否则 'error' 事件会以未捕获异常
+    // 终止 Electron 主进程；失效记录立即回收，下一次探测重建并回退一次性原生调用。
+    const invalidate = () => {
+      if (probeDaemon === record) disposeProbeDaemon();
+    };
+    worker.on('error', invalidate);
+    worker.on('exit', invalidate);
+    probeDaemon = record;
   }
   const daemon = probeDaemon!;
   const request = encodeProbePaths(paths);
@@ -196,7 +209,24 @@ function daemonAttributes(helper: string, paths: string[]): number[] {
   Atomics.store(daemon.control, 3, request.length);
   Atomics.store(daemon.control, 0, 1);
   Atomics.notify(daemon.control, 0);
-  const waited = Atomics.wait(daemon.control, 0, 1, PROBE_WAIT_MS);
+  const deadline = Date.now() + PROBE_WAIT_MS;
+  let waited: 'ok' | 'timed-out' | 'not-equal' = 'not-equal';
+  for (;;) {
+    const current = Atomics.load(daemon.control, 0);
+    // 1 = 请求已就绪，2 = worker 已取走请求但尚未回填：两者都必须继续等待，
+    // 否则在高负载下会把“正在处理”误判成意外状态并回收健康的 bridge。
+    if (current !== 1 && current !== 2) {
+      waited = 'ok';
+      break;
+    }
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) {
+      waited = 'timed-out';
+      break;
+    }
+    waited = Atomics.wait(daemon.control, 0, current, remaining);
+    if (waited === 'timed-out' && Atomics.load(daemon.control, 0) === current) break;
+  }
   const status = Atomics.load(daemon.control, 0);
   if (waited === 'timed-out') {
     disposeProbeDaemon();
@@ -222,16 +252,54 @@ function daemonAttributes(helper: string, paths: string[]): number[] {
   return values;
 }
 
+let moduleProbeHelper: string | undefined;
+
+/** 打包后由 resourcesPath 命中；未打包时 `electron .` 的 cwd 是 apps/desktop，必须按模块位置回溯查找。 */
+function moduleRelativeProbeHelper(): string | undefined {
+  if (moduleProbeHelper) return moduleProbeHelper;
+  let dir = import.meta.dirname;
+  for (let depth = 0; depth < 8; depth += 1) {
+    const candidate = join(dir, 'native', 'windows-sandbox', 'bin', 'SandboxProbe.exe');
+    if (existsSync(candidate)) {
+      moduleProbeHelper = candidate;
+      return candidate;
+    }
+    // 只在最近的包根之内回溯：越过包根去祖先目录找同名可执行文件会植入任意程序。
+    if (existsSync(join(dir, 'package.json'))) break;
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return undefined;
+}
+
+/** 逐级短路，避免打包环境在每个 probe 批次里重复执行必定落空的目录回溯。 */
+function resolveProbeHelper(): string | undefined {
+  if (process.resourcesPath) {
+    const packaged = join(process.resourcesPath, 'windows-sandbox', 'SandboxProbe.exe');
+    if (existsSync(packaged)) return packaged;
+  }
+  const moduleHelper = moduleRelativeProbeHelper();
+  if (moduleHelper) return moduleHelper;
+  const fromCwd = join(process.cwd(), 'apps', 'desktop', 'native', 'windows-sandbox', 'bin', 'SandboxProbe.exe');
+  return existsSync(fromCwd) ? fromCwd : undefined;
+}
+
 function reparseAttributes(pathsToInspect: string[]): number[] {
   if (!pathsToInspect.length || process.platform !== 'win32') return pathsToInspect.map(() => 0);
-  const candidates = [
-    ...(process.resourcesPath ? [join(process.resourcesPath, 'windows-sandbox', 'SandboxProbe.exe')] : []),
-    join(process.cwd(), 'apps', 'desktop', 'native', 'windows-sandbox', 'bin', 'SandboxProbe.exe'),
-  ];
-  const helper = candidates.find((candidate) => existsSync(candidate));
+  const helper = resolveProbeHelper();
   if (!helper) throw new Error('Windows reparse-point attribute probe is unavailable');
   let values: number[];
-  try {
+  if (process.env.SPARKII_TRUTH_PROBE_DAEMON_DISABLED === '1') {
+    disposeProbeDaemon();
+    const output = execFileSync(helper, ['reparse-attributes', ...pathsToInspect], {
+      windowsHide: true,
+      timeout: 10_000,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }).trim();
+    values = output ? output.split(/\s+/).map(Number) : [];
+  } else try {
     values = daemonAttributes(helper, pathsToInspect);
   } catch {
     disposeProbeDaemon();
@@ -467,7 +535,12 @@ export interface VerifiedTruthReadOptions {
 export function readTruthDirectoryVerified(path: string, probeAttributes: TruthAttributeProbe = reparseAttributes): string[] {
   const before = inspectTruthFileTwice(path, probeAttributes);
   if (!before?.stats.isDirectory()) throw new TruthPathSafetyError(`记忆真相路径不是目录：${path}`);
-  const entries = readdirSync(path);
+  let entries: string[];
+  try {
+    entries = readdirSync(path);
+  } catch (error) {
+    throw new TruthPathSafetyError(error instanceof Error ? error.message : String(error));
+  }
   assertTruthFileIdentity(path, before.identity, probeAttributes);
   return entries;
 }
@@ -608,10 +681,21 @@ export function copyTruthFileVerified(source: string, destination: string, optio
     expectedContent ??= sourceRead.content;
     expectedSourceIdentity ??= sourceRead.identity;
   }
-  const [sourceImmediatelyBefore, destinationImmediatelyBefore] = inspectTruthFilesTwice([
-    { path: source, options: { regularFile: true, expectedIdentity: expectedSourceIdentity } },
-    { path: destination, options: { allowMissing: true, regularFile: true, expectedIdentity: options.expectedDestinationIdentity } },
-  ], probeAttributes);
+  const destinationInitial = inspectTruthFileTwice(destination, probeAttributes, {
+    allowMissing: true, regularFile: true, expectedIdentity: options.expectedDestinationIdentity,
+  });
+  const sourceImmediatelyBefore = inspectTruthFileTwice(source, probeAttributes, {
+    regularFile: true, expectedIdentity: expectedSourceIdentity,
+  });
+  const destinationImmediatelyBefore = inspectTruthFileTwice(destination, probeAttributes, {
+    allowMissing: true, regularFile: true, expectedIdentity: destinationInitial?.identity,
+  });
+  inspectTruthFileTwice(source, probeAttributes, {
+    regularFile: true, expectedIdentity: sourceImmediatelyBefore?.identity,
+  });
+  inspectTruthFileTwice(destination, probeAttributes, {
+    allowMissing: true, regularFile: true, expectedIdentity: destinationImmediatelyBefore?.identity,
+  });
   if (!sourceImmediatelyBefore) throw new TruthPathSafetyError(`记忆真相文件不存在：${source}`);
   copyFileSync(source, destination);
   // The verified read's double-lstat precheck is the post-copy identity fence;

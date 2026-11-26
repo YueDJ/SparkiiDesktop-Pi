@@ -1,0 +1,60 @@
+# R8 final-r15 git state
+captured: 2026-11-27T02:55:59+08:00
+
+## HEAD
+b411f47fb3494636fa460a0a074e02c95916abba
+b411f47 fix(memory): complete R8 privacy, truth, and runtime fencing repairs
+
+## branch / upstream
+## main...origin/main [ahead 4]
+
+## tracked changes (name-status vs HEAD)
+ M apps/desktop/electron/main/ipc.ts
+ M apps/desktop/electron/main/memory/service.ts
+ M apps/desktop/electron/main/memory/store.ts
+ M apps/desktop/electron/main/memory/truth-path.ts
+ M apps/desktop/electron/main/runtime.ts
+ M apps/desktop/electron/main/security/runtime-action-router.ts
+ M apps/desktop/electron/main/security/workspace-file-service.ts
+ M apps/desktop/electron/main/workflow.ts
+ M apps/desktop/electron/main/workspace-relocation.ts
+ M apps/desktop/test/memory-r8-regression.test.ts
+ M apps/desktop/test/memory-truth-batch.test.ts
+ M apps/desktop/test/runtime-action-router.test.ts
+ M apps/desktop/test/workflow-broker.test.ts
+ M docs/memory-evidence/repair-2026-11-25-round8/R8-MAPPING.md
+ M docs/memory-evidence/repair-2026-11-25-round8/source-manifest-sha256.txt
+ M packages/approval/src/audit.ts
+ M packages/approval/test/audit.test.ts
+
+## untracked (non-evidence)
+?? apps/desktop/test/memory-truth-probe-daemon.test.ts
+
+## untracked evidence count
+84
+
+## diff --stat vs HEAD (tracked)
+warning: in the working copy of 'apps/desktop/electron/main/memory/store.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/electron/main/memory/truth-path.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/electron/main/security/workspace-file-service.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/electron/main/workspace-relocation.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/test/memory-r8-regression.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/test/memory-truth-batch.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/memory-evidence/repair-2026-11-25-round8/R8-MAPPING.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/memory-evidence/repair-2026-11-25-round8/source-manifest-sha256.txt', LF will be replaced by CRLF the next time Git touches it
+ .../repair-2026-11-25-round8/R8-MAPPING.md         | 229 +++++++++++++++++----
+ .../source-manifest-sha256.txt                     |   5 +-
+ packages/approval/src/audit.ts                     |   5 +
+ packages/approval/test/audit.test.ts               |  22 ++
+ 17 files changed, 719 insertions(+), 123 deletions(-)
+
+## diff --check
+warning: in the working copy of 'apps/desktop/electron/main/memory/store.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/electron/main/memory/truth-path.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/electron/main/security/workspace-file-service.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/electron/main/workspace-relocation.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/test/memory-r8-regression.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/test/memory-truth-batch.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/memory-evidence/repair-2026-11-25-round8/R8-MAPPING.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/memory-evidence/repair-2026-11-25-round8/source-manifest-sha256.txt', LF will be replaced by CRLF the next time Git touches it
+diff-check exit=0

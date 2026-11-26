@@ -84,6 +84,8 @@ export interface Runtime {
     expectedAdmission?: TaskAdmissionToken;
     retainTask?: boolean;
     onPromptSend?: () => void;
+    onPromptId?: (promptId: string) => void;
+    waitForSettled?: boolean;
   }) => Promise<unknown>;
   /** Exact Main-origin lookup shared by SDK action/proposal/connector dispatchers. */
   resolveRuntimeOrigin?: (

@@ -1,0 +1,60 @@
+(node:37012) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37992) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:24696) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24696) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-r8-regression.test.ts (59 tests) 30156ms
+     ✓ R8 review privacy B5 zeroes a plaintext journal temp file before a failed removal  599ms
+     ✓ R8 final review fences same-process and restarted reads when the privacy journal cannot be persisted  591ms
+     ✓ R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext  975ms
+     ✓ R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext  873ms
+     ✓ R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext  847ms
+     ✓ R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext  911ms
+     ✓ R8-P0-1 resumes from journal context after the chat row and Pi file are already gone  964ms
+     ✓ R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers  1042ms
+     ✓ R8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent  821ms
+     ✓ R8 review B3 registers chat secrets before sink cleanup and protects later chat writes after failure  794ms
+     ✓ R8-P0-1 restores privacy sink fences before truth recovery can restore plaintext  903ms
+     ✓ R8 review B3 cleans Pi and chat carriers before a safe-root truth write-block aborts startup  570ms
+     ✓ refuses to clear a privacy journal whose identity changed during cleanup  800ms
+     ✓ fences the journal read source identity before accepting parsed privacy content  469ms
+     ✓ R8-REPAIR-MEMORY refuses to delete a journal when the zero-write readback contains a nonzero byte  542ms
+     ✓ R8-REPAIR-MEMORY digest-mismatch startup temp evidence persists a privacy write-block without deleting context  464ms
+     ✓ R8-REPAIR-MEMORY session-mismatch startup temp evidence persists a privacy write-block without deleting context  400ms
+     ✓ R8-REPAIR-MEMORY malformed startup temp evidence persists a privacy write-block without deleting context  454ms
+     ✓ R8-REPAIR-MEMORY promotes a valid startup temp journal and automatically resumes its privacy deletion  812ms
+     ✓ R8-REPAIR-MEMORY fences Windows non-symlink reparse attributes on the privacy directory before temp reads and cleanup  411ms
+     ✓ R8-REPAIR-MEMORY fences Windows non-symlink reparse attributes on the privacy file before temp reads and cleanup  453ms
+     ✓ R8-REPAIR-MEMORY continues Gate Audit Error Logger cleanup when store privacy registration fails  501ms
+     ✓ R8 review B4 rotates memory markers when the deleted text collides with %s  428ms
+     ✓ R8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret  875ms
+     ✓ R8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker  343ms
+     ✓ R8 privacy review reads the raw Pi path before chat redaction can alter it  732ms
+     ✓ R8 privacy review resumes a secret-named Pi carrier after restart  941ms
+     ✓ R8 privacy review retries independent carriers after a same-process truth rollback block  556ms
+     ✓ R8 privacy review removes a plaintext journal temp file left before rename  746ms
+     ✓ freshly probes and validates journal content after rename before privacy truth cleanup  607ms
+     ✓ rejects a post-rename reparse journal before privacy truth cleanup  499ms
+     ✓ R8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state  566ms
+     ✓ R8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state  621ms
+     ✓ R8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state  572ms
+     ✓ re-fences a privacy journal before zeroing even when cleanup already verified its identity  576ms
+     ✓ fences a real ancestor junction before Pi carrier deletion and retries normally after it is removed  833ms
+     ✓ fences a non-symlink reparse Pi carrier directory before rmSync  729ms
+     ✓ fences a non-symlink reparse Pi carrier file before rmSync  639ms
+     ✓ detects Pi carrier identity replacement before deletion and preserves external bytes across retry  861ms
+     ✓ detects Pi carrier identity replacement before deletion and preserves external bytes across restart  1015ms
+
+ Test Files  1 passed (1)
+      Tests  59 passed (59)
+   Start at  22:23:59
+   Duration  32.31s (transform 342ms, setup 33ms, import 1.15s, tests 30.16s, environment 796ms)
+
+EXIT_CODE=0

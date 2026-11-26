@@ -1,0 +1,15 @@
+# R8 final-r14 before：仅按 process.cwd() 解析原生探针时，非仓库根工作目录无法定位 SandboxProbe.exe
+
+command: cd %LOCALAPPDATA%\Temp && node r14-probe-cwd-driver.mjs
+child-cwd=C:\Users\YDJ\AppData\Local\Temp  node=v22.23.2  platform=win32
+driver: 在同一子进程中依次 import 两份 truth-path 变体（before=仅 process.cwd() 候选，after=新增模块相对回溯候选），
+        对临时目录中的普通文件与 junction 分别调用 assertTruthPathSafe。
+        before 变体是把当前文件候选列表还原为“resourcesPath → process.cwd()”的逐字副本，运行后已删除。
+说明: 工作目录不是仓库根，模拟 apps/desktop 下 `pnpm start` 的真实启动方式。
+
+输出:
+ZZ-R14-BEFORE regular=THROW:Windows reparse-point attribute probe is unavailable | junction=THROW:记忆真相路径包含链接：C:\Users\YDJ\AppData\Local\Temp\probe-run-SW1fJo\link
+
+结论: regular=THROW 即修复前缺陷——`apps/desktop/package.json` 的 `start` 脚本以 apps/desktop 为工作目录启动
+`electron .`，`process.resourcesPath` 又指向 electron dist 的 resources（不含 windows-sandbox），
+候选列表拼不出真实 exe 路径，truth 读写在启动阶段就会全线抛“探针不可用”。

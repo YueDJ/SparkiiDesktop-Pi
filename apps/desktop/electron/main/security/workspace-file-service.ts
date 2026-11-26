@@ -99,7 +99,7 @@ function deny(
     resource: req.path,
     decision: 'failed',
     ruleId: `workspace-file.${code.toLowerCase()}`,
-    payloadSummary: JSON.stringify({ reason, sessionId: req.sessionId, projectPath: ctx?.workspaceRoot }).slice(0, 512),
+    payloadSummary: JSON.stringify({ reason, sessionId: req.sessionId, projectPath: ctx?.workspaceRoot }),
     sessionId: req.sessionId,
   }).catch(() => {});
   return { ok: false, code, reason };
@@ -197,7 +197,7 @@ export function createWorkspaceFileService(deps: WorkspaceFileServiceDeps) {
       resource: req.path,
       decision: 'allowed',
       ruleId: 'workspace-file.allowed',
-      payloadSummary: JSON.stringify({ sessionId: req.sessionId, projectPath: ctx.workspaceRoot }).slice(0, 512),
+      payloadSummary: JSON.stringify({ sessionId: req.sessionId, projectPath: ctx.workspaceRoot }),
       sessionId: req.sessionId,
     }).catch(() => {});
   };

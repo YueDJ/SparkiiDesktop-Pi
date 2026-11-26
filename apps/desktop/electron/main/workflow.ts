@@ -342,19 +342,24 @@ async function sendPrompt(
   let terminalError: Error | undefined;
   let finish!: (err?: Error) => void;
   let timer!: ReturnType<typeof setTimeout>;
-  const done = new Promise<void>((resolve, reject) => {
+  const done = new Promise<void>((resolve) => {
     finish = (err) => {
       if (err) terminalError ??= err;
       if (settled) return;
       settled = true;
       clearTimeout(timer);
       off();
-      if (err) reject(err);
-      else resolve();
+      resolve();
     };
     timer = setTimeout(() => finish(new Error('prompt timeout')), 300_000);
   });
   assertBinding();
+  let promptId: string | undefined;
+  let pendingErrorPromptId: string | undefined;
+  let pendingError: Error | undefined;
+  const applyPendingError = (): void => {
+    if (promptId && pendingErrorPromptId === promptId && pendingError) finish(pendingError);
+  };
   off = client.onEvent((e) => {
     try {
       assertBinding();
@@ -365,20 +370,38 @@ async function sendPrompt(
     if ((e.type === 'message_update' || e.type === 'message_end') && e.message) {
       acc = assistantTextFromMessage(e.message);
     }
-    if (e.type === 'agent_settled') finish();
+    // Pi 在有界重试前也会派发 agent_end（带 willRetry:true），只有非重试的 agent_end 才是本轮终态。
+    if (e.type === 'agent_settled' || (e.type === 'agent_end' && e.willRetry !== true)) finish();
+    if (e.type === 'prompt_error') {
+      const error = new Error(String(e.error ?? 'prompt failed'));
+      if (!promptId) {
+        pendingErrorPromptId = typeof e.promptId === 'string' ? e.promptId : undefined;
+        pendingError = error;
+      } else if (e.promptId === promptId) {
+        finish(error);
+      }
+    }
   });
 
   try {
     assertBinding();
     if (!rt.promptTurn) throw new Error('Main prompt-turn lane is unavailable');
-    await rt.promptTurn({
+    const turnResult = await rt.promptTurn({
       sessionId,
       text,
       expectedAdmission,
       retainTask: true,
       onPromptSend,
-    });
+      onPromptId: (id: string) => {
+        promptId = id;
+        applyPendingError();
+      },
+      waitForSettled: true,
+    }) as { promptId?: string } | undefined;
+    if (!promptId) promptId = turnResult?.promptId;
+    applyPendingError();
     assertBinding();
+    finish();
   } catch (error) {
     finish(error instanceof Error ? error : new Error(String(error)));
   }

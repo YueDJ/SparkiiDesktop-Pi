@@ -1,0 +1,59 @@
+(node:1176) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16248) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:34876) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/gate.test.ts (21 tests) 462ms
+(node:16236) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/audit.test.ts (11 tests) 435ms
+(node:26144) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/invariants.test.ts (3 tests) 42ms
+(node:32512) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/gate-multiprofile.test.ts (3 tests) 35ms
+(node:7812) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/executor.test.ts (2 tests) 27ms
+(node:30112) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/security-fingerprint.test.ts (3 tests) 12ms
+(node:6404) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/capability-gateway.test.ts (5 tests) 15ms
+(node:7048) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/proposal.test.ts (7 tests) 13ms
+(node:12576) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/workspace-admission.test.ts (10 tests) 7ms
+(node:2764) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/task-grant-registry.test.ts (6 tests) 7ms
+(node:31604) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/security-policy.test.ts (11 tests) 9ms
+(node:21916) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/platform-conformance.test.ts (3 tests) 5ms
+(node:18852) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/reviewer-contract.test.ts (3 tests) 6ms
+(node:20976) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/permission-mode.test.ts (4 tests) 5ms
+(node:24556) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/approval/test/platform-security-contracts.test.ts (2 tests) 4ms
+
+ Test Files  15 passed (15)
+      Tests  94 passed (94)
+   Start at  23:47:31
+   Duration  5.51s (transform 365ms, setup 0ms, import 1.27s, tests 1.08s, environment 1ms)
+

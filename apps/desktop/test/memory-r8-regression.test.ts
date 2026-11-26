@@ -292,7 +292,7 @@ describe('R8 truth registry path regressions', () => {
     service.addMemory({ scope: 'user', text: 'DEFAULT_NATIVE_PROBE_71C' });
     const file = userMemoryFile(dataDir);
     const { execFileSync } = await vi.importActual<typeof import('node:child_process')>('node:child_process');
-    const helper = join(process.cwd(), 'apps', 'desktop', 'native', 'windows-sandbox', 'bin', 'SandboxProbe.exe');
+    const helper = join(import.meta.dirname, '..', 'native', 'windows-sandbox', 'bin', 'SandboxProbe.exe');
 
     expect(() => nativeProbeHarness.defaultAssertTruthPathSafe!(file)).not.toThrow();
     expect(execFileSync(helper, ['reparse-attributes', file], { encoding: 'utf8', windowsHide: true }).trim()).toBe('0');
@@ -1082,6 +1082,35 @@ describe('R8 final-round5 privacy B2/B3 production fences', () => {
     expect(lstatSync(journal, { bigint: true }).nlink).toBe(2n);
     expect(pendingJournals()).toHaveLength(1);
     expect(existsSync(join(memoryDir(dataDir), '.privacy-write-block.json'))).toBe(true);
+  });
+
+  it('zeroizes an existing privacy journal immediately before replacing it on retry', async () => {
+    const { secret } = await seedPrivacy();
+    vi.spyOn(logger, 'redactSession').mockImplementationOnce(() => { throw new Error('injected retry fence'); });
+    expect(() => service.privacyDeleteBySession('private-session')).toThrow('隐私清理失败');
+    const pendingBefore = pendingJournals();
+    expect(pendingBefore).toHaveLength(1);
+    const journal = join(memoryDir(dataDir), 'privacy-pending', pendingBefore[0]);
+    expect(existsSync(journal)).toBe(true);
+
+    let destinationZeroedBeforeRemove = false;
+    let destinationRemoveCalls = 0;
+    service.close();
+    service = makeService({
+      removePath: (path, options) => {
+        if (path === journal) {
+          const bytes = readFileSync(path);
+          destinationZeroedBeforeRemove = bytes.length > 0 && bytes.every((byte) => byte === 0);
+          destinationRemoveCalls += 1;
+        }
+        rmSync(path, options);
+      },
+    });
+
+    expect(destinationZeroedBeforeRemove).toBe(true);
+    expect(destinationRemoveCalls).toBeGreaterThanOrEqual(1);
+    expect(pendingJournals()).toEqual([]);
+    expect(service.searchMemory(secret, { includeHistory: true })).toEqual([]);
   });
 
   it('fences a real ancestor junction before Pi carrier deletion and retries normally after it is removed', async () => {

@@ -1,1 +1,4 @@
-57ab2583264705467b2d8f1389ea2a14e4f7cddb916de3586dda031301108704 *docs/memory-evidence/repair-2026-11-25-round8/source-sha256.txt
+c32ff098b0903314c3e3b5091d022fc3312e30b33e19baee4ea65e8dd4135981 *docs/memory-evidence/repair-2026-11-25-round8/source-sha256.txt
+c36954fdcac9694d495dae75d1137d7c30dbaa99f8d19b4ec1ee604de9d34dff *docs/memory-evidence/repair-2026-11-25-round8/source-sha256-final-r12.txt
+35b65ca9b2a904582d79ac925c0bfceb7bffe2a1c3f74807c3644d9b731cedc0 *docs/memory-evidence/repair-2026-11-25-round8/source-sha256-final-r13.txt
+0c9b04398b37cf21e4ca4a3cf170c264fe1cabcc392ccf03b985ee298cdad2aa *docs/memory-evidence/repair-2026-11-25-round8/source-sha256-final-r15.txt

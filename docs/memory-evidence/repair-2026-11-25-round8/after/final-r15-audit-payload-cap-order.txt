@@ -1,0 +1,50 @@
+# R8 final-r15 privacy 复审 N2：审计载荷在脱敏前被截断，残留明文前缀
+
+## 缺陷
+
+`auditReviewer()` 与 `auditDecision()` 在把 detail 交给 `AuditStore.append()` 之前先做
+`JSON.stringify(summary).slice(0, 512)`。登记过的秘密切在 512 字符边界上时，截断留下的是
+“秘真前半段”——它不再等于登记的完整串，指纹匹配认不出来，于是这段明文前缀被永久写入审计库
+（含 `-wal`）。同一条性质也适用于 `runtime-action-router.ts` 之外的
+`workspace-file-service.ts`、`workspace-relocation.ts`、`ipc.ts` 中把会话/项目路径塞进
+payload 再截断的调用点：隐私删除登记过的路径同样可能被切成残留前缀。
+
+## 修复
+
+1. `packages/approval/src/audit.ts:299`：512 字符上限移到逐列脱敏之后，在 `append()` 内部施加，
+   使所有调用方共享同一条“先脱敏、后截断”的顺序。
+2. 调用点不再预截断：`runtime-action-router.ts:136`、`runtime-action-router.ts:175`、
+   `workspace-file-service.ts:102`、`workspace-file-service.ts:200`、`ipc.ts:3233`、
+   `workspace-relocation.ts:151`。
+3. `apps/desktop/electron/main/memory/tools.ts:53` 保留原样：其 summary 仅由
+   `scope:id`、sha256 摘要与计数构成，不含可被隐私删除登记的自由文本。
+
+## 新增回归
+
+- `packages/approval/test/audit.test.ts` 第 12 条 `caps payload_summary only after redaction so a
+  straddling secret leaves no plaintext prefix`：payload 为 500 个填充字符 + 27 字符密钥 + 200 个尾部字符，
+  断言入库后 `payload_summary` 长度恰为 512、不含密钥前 12 字符，且原始 `.db` / `-wal` 字节同样不含该片段。
+- `apps/desktop/test/runtime-action-router.test.ts` 第 44 条 `hands the audit store the full payload
+  so redaction can run before the length cap`：以 600+ 字符的 reviewer reason 走 `auto_review` 路径，
+  断言交给 `audit.append` 的 `payloadSummary` 仍带被 512 截掉的尾部标记 `_TAIL_AFTER_CAP`。
+
+## 前/后实测（router 级回归的判别力）
+
+修复前（把 `payloadSummary: JSON.stringify(summary)` 临时改回 `.slice(0, 512)`，改完按 SHA-256 校验还原）：
+
+```
+AssertionError: expected '{"policyVersion":"shell-review-v1","m…' to contain '_TAIL_AFTER_CAP'
+ Test Files  1 failed (1)
+      Tests  1 failed | 43 skipped (44)
+```
+
+修复后（还原为不预截断，`unmutated identical=true`）：
+
+```
+ Test Files  2 passed (2)
+      Tests  56 passed (56)
+```
+
+即 `runtime-action-router.test.ts` 44 条与 `packages/approval/test/audit.test.ts` 12 条全绿；
+`pnpm -w typecheck` 通过；`packages/approval` 全套 94 条、`workspace-file-service`/`workspace-relocation`
+相关套件在改动后亦全绿（见 `final-r15-approval-full.txt` 与本轮 focused/完整套件输出）。

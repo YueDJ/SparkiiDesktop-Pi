@@ -1,0 +1,6 @@
+warning: in the working copy of 'apps/desktop/electron/main/memory/store.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/electron/main/memory/truth-path.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/test/memory-r8-regression.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/test/memory-truth-batch.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/memory-evidence/repair-2026-11-25-round8/R8-MAPPING.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/memory-evidence/repair-2026-11-25-round8/source-manifest-sha256.txt', LF will be replaced by CRLF the next time Git touches it

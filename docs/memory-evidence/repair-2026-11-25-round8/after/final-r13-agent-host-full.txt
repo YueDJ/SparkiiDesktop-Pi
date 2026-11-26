@@ -1,0 +1,115 @@
+(node:26660) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:6876) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:3704) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime-pool-skill-isolation.test.ts (1 test) 1174ms
+     ✓ reloads Pi getSkills on the reused process after configure + new_session  1172ms
+(node:41828) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/tool-registry.test.ts (32 tests) 343ms
+(node:23588) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime-supervisor.test.ts (17 tests) 583ms
+(node:9664) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime-pool.test.ts (54 tests) 418ms
+(node:28608) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-sdk-runtime.test.ts (11 tests) 1113ms
+     ✓ R8 round7 B2 turns a real SDK no-model rejection into a correlated terminal event  467ms
+     ✓ R8 round7 B2 turns a real SDK prepare rejection into a correlated terminal event  318ms
+(node:15008) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-sdk-host-tools.test.ts (4 tests) 654ms
+(node:21236) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/profile.test.ts (1 test) 65ms
+(node:6328) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime-pool-saddle.test.ts (2 tests) 280ms
+(node:38000) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime.test.ts (10 tests) 181ms
+(node:23612) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi.integration.test.ts (1 test) 172ms
+(node:28680) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-sdk-session-boundary.test.ts (3 tests) 458ms
+(node:30228) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-sdk-tool-loadout.test.ts (3 tests) 332ms
+(node:14392) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime-command-data.test.ts (7 tests) 80ms
+(node:41664) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-sdk-runtime-skill-rebind.test.ts (2 tests) 155ms
+(node:20768) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/coding-tools.test.ts (10 tests) 242ms
+(node:7444) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-sdk-runtime-queue.test.ts (7 tests) 90ms
+(node:13480) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/session-catalog.test.ts (3 tests) 83ms
+(node:11840) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/workspace-tools.test.ts (6 tests) 64ms
+(node:23876) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime-append-entry.test.ts (2 tests) 37ms
+(node:6752) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/tool-validation-compatibility.test.ts (4 tests) 47ms
+(node:20484) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/rpc-client.test.ts (7 tests) 25ms
+(node:18768) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime-tools.test.ts (4 tests) 18ms
+(node:32772) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/skill-prompt.test.ts (7 tests) 6ms
+(node:9160) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/workflow.test.ts (3 tests) 5ms
+(node:37696) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/connector-read.test.ts (2 tests) 11ms
+(node:27896) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/runtime-actions.test.ts (3 tests) 4ms
+(node:31012) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/workspace-guard.test.ts (2 tests) 3ms
+(node:15932) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/write-tool-presentation.test.ts (4 tests) 4ms
+(node:1484) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/workflow-trace.test.ts (1 test) 4ms
+(node:14176) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime-transport.test.ts (1 test) 4ms
+(node:30680) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/bridge.test.ts (2 tests) 4ms
+(node:41436) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/edit-diff.test.ts (3 tests) 5ms
+
+ Test Files  32 passed (32)
+      Tests  219 passed (219)
+   Start at  23:47:38
+   Duration  69.07s (transform 1.72s, setup 0ms, import 48.78s, tests 6.66s, environment 5ms)
+
+APPROVAL_EXIT_CODE=0
+AGENT_HOST_EXIT_CODE=0

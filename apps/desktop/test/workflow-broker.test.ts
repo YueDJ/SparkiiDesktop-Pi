@@ -96,6 +96,41 @@ function makeHarness(opts: {
     chatSessions: { create: vi.fn(), update: vi.fn() },
     errors: { append: vi.fn((rec: unknown) => rec) },
   } as any;
+  let workflowTurnCounter = 0;
+  rt.promptTurn = async ({ sessionId: promptSessionId, text, onPromptSend, onPromptId }: any) => {
+    const binding = rt.pool.getBinding(promptSessionId);
+    const promptClient = binding?.client ?? rt.pool.get(promptSessionId);
+    if (!promptClient) throw new Error(`unknown session ${promptSessionId}`);
+    const promptId = `workflow-test-turn-${++workflowTurnCounter}`;
+    let terminalDone = false;
+    const terminal = new Promise<void>((resolve, reject) => {
+      const finish = (error?: unknown) => {
+        if (terminalDone) return;
+        terminalDone = true;
+        off();
+        if (error) reject(error instanceof Error ? error : new Error(String(error)));
+        else resolve();
+      };
+      var off = promptClient.onEvent?.((event: any) => {
+        if (event.type === 'agent_settled' || (event.type === 'agent_end' && event.willRetry !== true)) finish();
+        // 只接受带本 turn promptId 的 terminal 错误，与生产关联语义一致；generic/迟到错误不得结束当前 turn。
+        if (event.type === 'prompt_error' && event.promptId === promptId && event.terminal === true) {
+          finish(new Error(String(event.error ?? 'workflow prompt failed')));
+        }
+      }) ?? (() => undefined);
+      if (!promptClient.onEvent) {
+        queueMicrotask(() => finish());
+      }
+    });
+    onPromptId?.(promptId);
+    onPromptSend?.();
+    const resp = await promptClient.send({
+      type: 'prompt', message: text, promptId, originToken: `workflow-test-origin-${promptId}`,
+    });
+    if (!resp?.success) throw new Error(resp?.error ?? 'workflow prompt failed');
+    await terminal;
+    return { ok: true, sessionId: promptSessionId, behavior: 'prompt', promptId };
+  };
   return { rt, getWindow, send, appends, release, sessionId, profileId };
 }
 
@@ -190,7 +225,7 @@ it('R8 round5 r1 rejects workflow proposals when no admission can be proven', as
     await expect(proposalHandler!({
       requestId: 'unowned-proposal', toolName: 'memory_forget', targetSystem: 'memory',
       summary: 'forget', payload: {}, risk: 'high-risk', executionMode: 'caller',
-    })).rejects.toThrow(/admission is not ready/i);
+    })).rejects.toThrow(/workflow proposal origin is not executable|admission is not ready/i);
     expect(submit).toHaveBeenCalledTimes(1);
   } finally {
     broker.decide('p1', { approved: false, status: 'denied' });
@@ -1106,6 +1141,175 @@ it('does not swallow start/end append failures with empty catch', async () => {
     expect(beforeRelease).not.toHaveBeenCalled();
     expect(rt.pool.release).toHaveBeenLastCalledWith(sessionId, 1);
     expect(binding).toMatchObject({ lease: 2 });
+  });
+
+it('waits for the correlated prompt terminal instead of completing at prompt acceptance', async () => {
+    const listeners = new Set<(e: unknown) => void>();
+    const { rt, getWindow, appends, sessionId } = makeHarness({
+      steps: [{ id: 'review', type: 'llm', template: '请审核' }],
+    });
+    let promptAccepted = false;
+    const client = {
+      send: async (cmd: any) => {
+        if (cmd.type === 'new_session') return { success: true };
+        if (cmd.type === 'get_state') {
+          return { success: true, data: { sessionId, sessionFile: 'C:/wf/session.jsonl' } };
+        }
+        if (cmd.type === 'prompt') {
+          promptAccepted = true;
+          for (const cb of listeners) cb({
+            type: 'prompt_error', promptId: cmd.promptId, terminal: true, error: 'MODEL_TERMINAL_71C',
+          });
+          return { success: true };
+        }
+        if (cmd.type === 'append_workflow_entry') {
+          appends.push({ customType: cmd.customType, data: cmd.data });
+        }
+        return { success: true };
+      },
+      onEvent: (cb: (e: unknown) => void) => {
+        listeners.add(cb);
+        return () => listeners.delete(cb);
+      },
+    };
+    rt.pool.get = () => client;
+    rt.pool.getBinding = () => ({ client, lease: 1 });
+    rt.pool.acquire = async () => ({ client, supervisor: { onProposal: () => {} }, lease: 1, getSessionId: () => sessionId });
+    rt.keyFor = async () => null;
+    let requestedWaitForSettled = false;
+    rt.promptTurn = async ({ text, onPromptSend, onPromptId, waitForSettled }: any) => {
+      requestedWaitForSettled = waitForSettled === true;
+      const promptId = 'prompt-accepted-without-terminal';
+      onPromptId?.(promptId);
+      onPromptSend?.();
+      const resp = await client.send({ type: 'prompt', message: text, promptId });
+      if (!resp?.success) throw new Error(resp?.error ?? 'workflow prompt failed');
+      return { ok: true, promptId };
+    };
+    const broker = createBroker(rt, getWindow);
+    const running = runWf(rt, getWindow, { documents: [] }, broker, 'contract-review');
+    await waitUntil(() => appends.some((a) => a.customType === 'workflow_step_end' && a.data.stepId === 'review'));
+    await running;
+    const end = appends.find((a) => a.customType === 'workflow_step_end' && a.data.stepId === 'review');
+    expect(promptAccepted).toBe(true);
+    expect(requestedWaitForSettled).toBe(true);
+    expect(end?.data).toMatchObject({
+      stepId: 'review',
+      status: 'failed',
+      error: expect.objectContaining({ message: expect.stringContaining('MODEL_TERMINAL_71C') }),
+    });
+    expect(end?.data).not.toHaveProperty('output');
+  });
+
+  it('surfaces a correlated prompt_error delivered before the promptId callback', async () => {
+    const listeners = new Set<(e: unknown) => void>();
+    const { rt, getWindow, appends, sessionId } = makeHarness({
+      steps: [{ id: 'review', type: 'llm', template: '请审核' }],
+    });
+    const client = {
+      send: async (cmd: any) => {
+        if (cmd.type === 'new_session') return { success: true };
+        if (cmd.type === 'get_state') {
+          return { success: true, data: { sessionId, sessionFile: 'C:/wf/session.jsonl' } };
+        }
+        if (cmd.type === 'append_workflow_entry') {
+          appends.push({ customType: cmd.customType, data: cmd.data });
+        }
+        return { success: true };
+      },
+      onEvent: (cb: (e: unknown) => void) => {
+        listeners.add(cb);
+        return () => listeners.delete(cb);
+      },
+    };
+    rt.pool.get = () => client;
+    rt.pool.getBinding = () => ({ client, lease: 1 });
+    rt.pool.acquire = async () => ({ client, supervisor: { onProposal: () => {} }, lease: 1, getSessionId: () => sessionId });
+    rt.keyFor = async () => null;
+    const promptId = 'prompt-error-before-callback';
+    rt.promptTurn = async () => {
+      // 生产 lane 可能在把 promptId 回调给 workflow 之前就把 terminal 错误广播出来，
+      // 此时 workflow 必须暂存并在回调后立即消费，而不是把该步骤判为成功。
+      for (const cb of listeners) cb({
+        type: 'prompt_error', promptId, terminal: true, error: 'MODEL_TERMINAL_72D',
+      });
+      return { ok: true, promptId };
+    };
+    const broker = createBroker(rt, getWindow);
+    const running = runWf(rt, getWindow, { documents: [] }, broker, 'contract-review');
+    await waitUntil(() => appends.some((a) => a.customType === 'workflow_step_end' && a.data.stepId === 'review'));
+    await running;
+    const end = appends.find((a) => a.customType === 'workflow_step_end' && a.data.stepId === 'review');
+    expect(end?.data).toMatchObject({
+      stepId: 'review',
+      status: 'failed',
+      error: expect.objectContaining({ message: expect.stringContaining('MODEL_TERMINAL_72D') }),
+    });
+    expect(end?.data).not.toHaveProperty('output');
+  });
+
+  it('does not treat a retryable agent_end as the prompt terminal', async () => {
+    const listeners = new Set<(e: unknown) => void>();
+    const { rt, getWindow, appends, sessionId } = makeHarness({
+      steps: [{ id: 'review', type: 'llm', template: '请审核' }],
+    });
+    const client = {
+      send: async (cmd: any) => {
+        if (cmd.type === 'new_session') return { success: true };
+        if (cmd.type === 'get_state') {
+          return { success: true, data: { sessionId, sessionFile: 'C:/wf/session.jsonl' } };
+        }
+        if (cmd.type === 'append_workflow_entry') {
+          appends.push({ customType: cmd.customType, data: cmd.data });
+        }
+        return { success: true };
+      },
+      onEvent: (cb: (e: unknown) => void) => {
+        listeners.add(cb);
+        return () => listeners.delete(cb);
+      },
+    };
+    rt.pool.get = () => client;
+    rt.pool.getBinding = () => ({ client, lease: 1 });
+    rt.pool.acquire = async () => ({ client, supervisor: { onProposal: () => {} }, lease: 1, getSessionId: () => sessionId });
+    rt.keyFor = async () => null;
+    const promptId = 'prompt-end-with-retry';
+    const emit = (event: unknown): void => {
+      for (const cb of [...listeners]) cb(event);
+    };
+    rt.promptTurn = async ({ text, onPromptSend, onPromptId }: any) => {
+      onPromptId?.(promptId);
+      onPromptSend?.();
+      await client.send({ type: 'prompt', message: text, promptId });
+      // Pi 在有界重试前会先派发 agent_end{willRetry:true}，此时本轮还没有结束。
+      emit({ type: 'message_end', message: { role: 'assistant', content: [{ type: 'text', text: 'RETRY_INTERMEDIATE_73A' }] } });
+      emit({ type: 'agent_end', willRetry: true });
+      await new Promise<void>((resolve) => {
+        const offLane = client.onEvent((event: any) => {
+          if (event.type === 'agent_settled') {
+            offLane();
+            resolve();
+          }
+        });
+        queueMicrotask(() => {
+          emit({ type: 'message_end', message: { role: 'assistant', content: [{ type: 'text', text: 'FINAL_RETRY_ANSWER_73C' }] } });
+          emit({ type: 'agent_settled', aborted: false });
+        });
+      });
+      return { ok: true, promptId };
+    };
+    const broker = createBroker(rt, getWindow);
+    const running = runWf(rt, getWindow, { documents: [] }, broker, 'contract-review');
+    await waitUntil(() => appends.some((a) => a.customType === 'workflow_step_end' && a.data.stepId === 'review'));
+    await running;
+    const end = appends.find((a) => a.customType === 'workflow_step_end' && a.data.stepId === 'review');
+    expect(listeners.size).toBe(0);
+    expect(end?.data).toMatchObject({
+      stepId: 'review',
+      status: 'completed',
+      output: expect.stringContaining('FINAL_RETRY_ANSWER_73C'),
+    });
+    expect(String(end?.data?.output)).not.toContain('RETRY_INTERMEDIATE_73A');
   });
 
   it('stores full assistant text from message_update/message_end in step output', async () => {

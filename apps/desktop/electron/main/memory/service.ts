@@ -1,5 +1,5 @@
 import {
-  closeSync, existsSync, fstatSync, fsyncSync, ftruncateSync, lstatSync, mkdirSync, openSync,
+  closeSync, constants, existsSync, fstatSync, fsyncSync, ftruncateSync, lstatSync, mkdirSync, openSync,
   readdirSync, readSync, renameSync, rmSync, writeFileSync,
 } from 'node:fs';
 import { createHash, randomUUID } from 'node:crypto';
@@ -1008,7 +1008,7 @@ export class MemoryService {
         || !immediatelyBefore.isFile() || immediatelyBefore.isSymbolicLink() || immediatelyBefore.nlink !== 1n) {
         throw new Error('隐私删除恢复日志身份已变化');
       }
-      descriptor = openSync(file, 'r+');
+      descriptor = openSync(file, constants.O_RDWR | (constants.O_NOFOLLOW ?? 0));
       const opened = fstatSync(descriptor, { bigint: true });
       if (!opened.isFile() || opened.nlink !== 1n
         || truthFileIdentity(opened) !== identity) {
@@ -1088,12 +1088,22 @@ export class MemoryService {
 
   private renamePrivacyJournalVerified(source: string, destination: string, expectedSourceIdentity?: string, expectedContent?: Buffer): string {
     const probeAttributes = this.deps.probeAttributes;
-    const [sourceBefore, destinationBefore] = inspectTruthFilesTwice([
+    const [sourceBeforeInitial, destinationBefore] = inspectTruthFilesTwice([
       { path: source, options: { regularFile: true, expectedIdentity: expectedSourceIdentity } },
       { path: destination, options: { allowMissing: true, regularFile: true } },
     ], probeAttributes);
-    if (!sourceBefore) throw new Error('隐私删除恢复日志来源缺失');
-    if (destinationBefore) throw new Error('隐私删除恢复日志重命名目标已存在');
+    if (!sourceBeforeInitial) throw new Error('隐私删除恢复日志来源缺失');
+    let sourceBefore = sourceBeforeInitial;
+    if (destinationBefore) {
+      this.removeZeroedPrivacyFile(destination, destinationBefore.identity);
+      const [refreshedSource, refreshedDestination] = inspectTruthFilesTwice([
+        { path: source, options: { regularFile: true, expectedIdentity: sourceBefore.identity } },
+        { path: destination, options: { allowMissing: true, regularFile: true } },
+      ], probeAttributes);
+      if (!refreshedSource) throw new Error('隐私删除恢复日志来源缺失');
+      if (refreshedDestination) throw new Error('隐私删除恢复日志重命名目标已存在');
+      sourceBefore = refreshedSource;
+    }
     const [sourceImmediatelyBefore, destinationImmediatelyBefore] = inspectTruthFilesTwice([
       { path: source, options: { regularFile: true, expectedIdentity: sourceBefore.identity } },
       { path: destination, options: { allowMissing: true, regularFile: true } },
@@ -1196,7 +1206,7 @@ export class MemoryService {
       } catch (cleanupError) {
         throw new Error(`无法保存隐私删除恢复日志；临时文件清零清理失败：${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`);
       }
-      throw new Error('无法保存隐私删除恢复日志');
+      throw new Error(`无法保存隐私删除恢复日志：${error instanceof Error ? error.message : String(error)}`);
     }
   }
 

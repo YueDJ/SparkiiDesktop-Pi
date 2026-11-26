@@ -213,7 +213,6 @@ describe('truth batch journal', () => {
     let sourceProbedAfterDestination = false;
     let replaced = false;
     nativeProbeHarness.afterAttributes = (paths) => {
-      if (paths.includes(target) || paths.includes(backup)) console.log('R8_DEBUG_PROBE', { paths, destinationProbes, sourceProbedAfterDestination });
       if (paths.includes(target)) {
         destinationProbes += 1;
         if (sourceProbedAfterDestination && !replaced) {
@@ -227,7 +226,6 @@ describe('truth batch journal', () => {
     };
 
     const warnings = recoverTruthBatch(dataDir);
-    console.log('R8_DEBUG_B2', { destinationProbes, sourceProbedAfterDestination, replaced, warnings });
 
     expect(replaced).toBe(true);
     expect(warnings.join('\n')).toContain('恢复失败');

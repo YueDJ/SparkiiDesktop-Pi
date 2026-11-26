@@ -1,0 +1,19 @@
+# R8 final-r14 after：truth-path.ts 增加模块位置回溯解析（resourcesPath → 模块相对 → cwd）后
+
+command: cd %LOCALAPPDATA%\Temp && node r14-probe-cwd-driver.mjs
+child-cwd=C:\Users\YDJ\AppData\Local\Temp  node=v22.23.2  platform=win32
+driver: 在同一子进程中依次 import 两份 truth-path 变体（before=仅 process.cwd() 候选，after=新增模块相对回溯候选），
+        对临时目录中的普通文件与 junction 分别调用 assertTruthPathSafe。
+说明: 工作目录不是仓库根，模拟 apps/desktop 下 `pnpm start` 的真实启动方式（该方式下 cwd 候选拼不出真实路径）。
+
+输出:
+ZZ-R14-AFTER regular=NO-THROW | junction=THROW:记忆真相路径包含链接：C:\Users\YDJ\AppData\Local\Temp\probe-run-SW1fJo\link
+
+结论:
+1. 普通文件通过，且驱动为默认配置（未设置 SPARKII_TRUTH_PROBE_DAEMON_DISABLED），即解析方式改变后
+   resident bridge 仍能定位 SandboxProbe.exe 并完成探测——同一修复后的独立实测见
+   `final-r14-probe-worker-module-kind.txt`（5 次生产探测 296ms，调用结束仍有 1 个常驻子进程）。
+2. junction 仍被拒绝，但本次消息 `记忆真相路径包含链接` 来自 `lstat().isSymbolicLink()` 分支
+   （truth-path.ts:414），不是原生 reparse 属性分支；原生探测分支的覆盖见
+   `apps/desktop/test/memory-r8-regression.test.ts:1002` 的 non-symlink reparse 用例，
+   其断言为 `/重解析点|目录/`。两条分支都 fail closed，围栏强度未因解析方式改变而降低。

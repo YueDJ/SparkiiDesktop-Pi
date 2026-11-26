@@ -1,0 +1,271 @@
+(node:17804) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+npm notice run npx
+npm notice run vitest run --no-file-parallelism apps/desktop/test/action-normalizer.test.ts apps/desktop/test/logger.test.ts apps/desktop/test/memory-audit-regression.test.ts apps/desktop/test/memory-consolidation.test.ts apps/desktop/test/memory-extraction.test.ts apps/desktop/test/memory-fence-canonical.test.ts apps/desktop/test/memory-fence.test.ts apps/desktop/test/memory-index-fallback.test.ts apps/desktop/test/memory-r8-regression.test.ts apps/desktop/test/memory-round7-regression.test.ts apps/desktop/test/memory-scoring.test.ts apps/desktop/test/memory-service.test.ts apps/desktop/test/memory-settings-pane.test.tsx apps/desktop/test/memory-tools.test.ts apps/desktop/test/memory-truth-batch.test.ts apps/desktop/test/memory-truth-probe-daemon.test.ts apps/desktop/test/runtime-action-router.test.ts apps/desktop/test/task-lifecycle.test.ts apps/desktop/test/windows-platform.test.ts apps/desktop/test/workflow-broker.test.ts apps/desktop/test/workspace-executor.test.ts apps/desktop/test/workspace-file-service.integration.test.ts apps/desktop/test/workspace-file-service.test.ts apps/desktop/test/workspace-relocation.test.ts apps/desktop/test/workspace.test.ts packages/agent-host/test/coding-tools.test.ts packages/agent-host/test/pi-runtime-pool.test.ts packages/agent-host/test/pi-runtime-supervisor.test.ts packages/agent-host/test/tool-registry.test.ts
+(node:38172) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:1868) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts [2m([22m[2m32 tests[22m[2m)[22m[33m 4346[2mms[22m[39m
+       [33m[2m✓[22m[39m grep excludes root and nested .sparkii content before formatting output [33m 344[2mms[22m[39m
+       [33m[2m✓[22m[39m find excludes retained directories while returning ordinary workspace files [33m 1717[2mms[22m[39m
+       [33m[2m✓[22m[39m does not follow a real directory link into retained content [33m 407[2mms[22m[39m
+(node:8384) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-pool.test.ts [2m([22m[2m54 tests[22m[2m)[22m[33m 434[2mms[22m[39m
+(node:3872) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts [2m([22m[2m17 tests[22m[2m)[22m[33m 574[2mms[22m[39m
+(node:29768) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/coding-tools.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 651[2mms[22m[39m
+(node:7636) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:7636) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts [2m([22m[2m60 tests[22m[2m)[22m[33m 52346[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY truth B symlink replacement makes production list fail closed [33m 1380[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY truth B symlink replacement makes production search fail closed [33m 679[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY truth B symlink replacement makes production rebuild fail closed [33m 851[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY truth B hardlink replacement makes production list fail closed [33m 717[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY truth B hardlink replacement makes production search fail closed [33m 880[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY truth B hardlink replacement makes production rebuild fail closed [33m 707[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY truth B non-symlink-reparse replacement makes production list fail closed [33m 673[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY truth B non-symlink-reparse replacement makes production search fail closed [33m 901[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY truth B non-symlink-reparse replacement makes production rebuild fail closed [33m 525[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY truth C default fence and rebuilt SandboxProbe batch mode stay integrated [33m 707[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 review privacy B5 zeroes a plaintext journal temp file before a failed removal [33m 2424[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 final review fences same-process and restarted reads when the privacy journal cannot be persisted [33m 2074[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext [33m 3647[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext [33m 3547[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext [33m 3415[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext [33m 2543[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes from journal context after the chat row and Pi file are already gone [33m 1555[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers [33m 1221[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent [33m 853[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 review B3 registers chat secrets before sink cleanup and protects later chat writes after failure [33m 830[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 restores privacy sink fences before truth recovery can restore plaintext [33m 954[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 review B3 cleans Pi and chat carriers before a safe-root truth write-block aborts startup [33m 621[2mms[22m[39m
+     [33m[2m✓[22m[39m refuses to clear a privacy journal whose identity changed during cleanup [33m 755[2mms[22m[39m
+     [33m[2m✓[22m[39m fences the journal read source identity before accepting parsed privacy content [33m 572[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY refuses to delete a journal when the zero-write readback contains a nonzero byte [33m 721[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY digest-mismatch startup temp evidence persists a privacy write-block without deleting context [33m 619[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY session-mismatch startup temp evidence persists a privacy write-block without deleting context [33m 589[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY malformed startup temp evidence persists a privacy write-block without deleting context [33m 492[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY promotes a valid startup temp journal and automatically resumes its privacy deletion [33m 952[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY fences Windows non-symlink reparse attributes on the privacy directory before temp reads and cleanup [33m 431[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY fences Windows non-symlink reparse attributes on the privacy file before temp reads and cleanup [33m 483[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY continues Gate Audit Error Logger cleanup when store privacy registration fails [33m 511[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 review B4 rotates memory markers when the deleted text collides with %s [33m 463[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret [33m 864[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker [33m 350[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 privacy review reads the raw Pi path before chat redaction can alter it [33m 741[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 privacy review resumes a secret-named Pi carrier after restart [33m 888[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 privacy review retries independent carriers after a same-process truth rollback block [33m 672[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 privacy review removes a plaintext journal temp file left before rename [33m 729[2mms[22m[39m
+     [33m[2m✓[22m[39m freshly probes and validates journal content after rename before privacy truth cleanup [33m 564[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects a post-rename reparse journal before privacy truth cleanup [33m 542[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state [33m 617[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state [33m 622[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state [33m 563[2mms[22m[39m
+     [33m[2m✓[22m[39m re-fences a privacy journal before zeroing even when cleanup already verified its identity [33m 646[2mms[22m[39m
+     [33m[2m✓[22m[39m zeroizes an existing privacy journal immediately before replacing it on retry [33m 799[2mms[22m[39m
+     [33m[2m✓[22m[39m fences a real ancestor junction before Pi carrier deletion and retries normally after it is removed [33m 844[2mms[22m[39m
+     [33m[2m✓[22m[39m fences a non-symlink reparse Pi carrier directory before rmSync [33m 697[2mms[22m[39m
+     [33m[2m✓[22m[39m fences a non-symlink reparse Pi carrier file before rmSync [33m 700[2mms[22m[39m
+     [33m[2m✓[22m[39m detects Pi carrier identity replacement before deletion and preserves external bytes across retry [33m 838[2mms[22m[39m
+     [33m[2m✓[22m[39m detects Pi carrier identity replacement before deletion and preserves external bytes across restart [33m 1161[2mms[22m[39m
+(node:34496) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:34496) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-round7-regression.test.ts [2m([22m[2m34 tests[22m[2m)[22m[33m 44305[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files [33m 2735[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy retry recovers an empty episode topic after restart and completes chat cleanup [33m 1022[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion discovers secrets nested only in pending operation extensions [33m 572[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion scrubs an invalid structural targetId field [33m 595[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion scrubs an invalid structural projectId field [33m 1507[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion scrubs an invalid structural mergeIds field [33m 688[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion ignores whitespace-only episode topics without corrupting retained content [33m 1071[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion preserves pending UPDATE control fields when deleted text equals the op [33m 1896[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds [33m 2755[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 privacy deletion includes superseded episode records in the global redaction corpus [33m 2252[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 caller-mode memory deletion rechecks canonical approval after privacy redaction [33m 433[2mms[22m[39m
+     [33m[2m✓[22m[39m R7 production privacy retry succeeds in the same process after truth rows are gone [33m 1940[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-1 future memory-tool audit summaries contain no raw query or memory body [33m 409[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes [33m 1128[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-2 replacement preflight sees an indexed project after its registry entry is removed [33m 865[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-2 replacement preflight derives zero-entry project identity from scope_files [33m 1008[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-3 source deletion detects indexed unregistered conflicts without an explicit workspace [33m 689[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes [33m 975[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file [33m 1017[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-3 valid source deletion updates unregistered project truth without reindexing it [33m 874[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY truth A1 source deletion ignores auto-list-only truth while updating registered and indexed projects [33m 1105[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY truth A2 privacy deletion ignores auto-list-only truth while deleting registered and indexed projects [33m 1744[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-4 privacy deletion discovers indexed unregistered truth before reconciliation [33m 1260[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion [33m 1889[2mms[22m[39m
+     [33m[2m✓[22m[39m R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution [33m 1561[2mms[22m[39m
+     [33m[2m✓[22m[39m retains the production privacy journal until a failed Gate listener succeeds on retry [33m 1185[2mms[22m[39m
+     [33m[2m✓[22m[39m collects deleted, survivor and nested dynamic keys, preserves controls, and scrubs later writes after restart [33m 2113[2mms[22m[39m
+     [33m[2m✓[22m[39m fails closed instead of overwriting two dynamic keys that redact to the same marker [33m 1189[2mms[22m[39m
+     [33m[2m✓[22m[39m scrubs legal-looking nested structural fields in survivor and future pending operations [33m 1927[2mms[22m[39m
+     [33m[2m✓[22m[39m registers deleted-only top-level structural IDs and scrubs the same value in survivor text [33m 1784[2mms[22m[39m
+     [33m[2m✓[22m[39m fails closed when a retained or future top-level structural ID matches a registered secret [33m 949[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects a future top-level structural ID that matches an already registered secret [33m 864[2mms[22m[39m
+     [33m[2m✓[22m[39m redacts addMemoriesBatch episode truth, index, FTS, search and restart reads [33m 1040[2mms[22m[39m
+     [33m[2m✓[22m[39m redacts direct appendEpisode and updateEpisodeSummary ingress after privacy deletion [33m 1257[2mms[22m[39m
+(node:42056) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:42056) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-audit-regression.test.ts [2m([22m[2m31 tests[22m[2m)[22m[33m 22727[2mms[22m[39m
+     [33m[2m✓[22m[39m P1-2 LIKE fallback supports CRUD, search and rebuild [33m 2934[2mms[22m[39m
+     [33m[2m✓[22m[39m P1-2 corrupt SQLite is quarantined and rebuilt from truth without blocking startup [33m 1220[2mms[22m[39m
+     [33m[2m✓[22m[39m P1-3 copied workspace with the same projectId fails closed and preserves the first truth source [33m 974[2mms[22m[39m
+     [33m[2m✓[22m[39m P1-4 default search and includeHistory never expose pending memories [33m 947[2mms[22m[39m
+     [33m[2m✓[22m[39m P2 external truth edits reconcile list, injection and search [33m 939[2mms[22m[39m
+     [33m[2m✓[22m[39m P2 master switch rejects manual add while disabled [33m 346[2mms[22m[39m
+     [33m[2m✓[22m[39m P2 project archived state survives derived index rebuild [33m 1655[2mms[22m[39m
+     [33m[2m✓[22m[39m P1-5 one invalid project UPDATE rejects the whole extraction batch [33m 445[2mms[22m[39m
+     [33m[2m✓[22m[39m P1-1 privacy deletion wins over an in-flight model response and redacts diagnostics [33m 866[2mms[22m[39m
+     [33m[2m✓[22m[39m P1-1 privacy deletion while target resolution is pending prevents the model send [33m 452[2mms[22m[39m
+     [33m[2m✓[22m[39m P1-1 corrupt project registry makes privacy deletion fail closed [33m 894[2mms[22m[39m
+     [33m[2m✓[22m[39m P1-1 duplicate ids corrupt the whole truth file instead of exposing both rows [33m 1130[2mms[22m[39m
+     [33m[2m✓[22m[39m P1-1 privacy deletion discovers the indexed workspace even when the registry omits it [33m 1588[2mms[22m[39m
+     [33m[2m✓[22m[39m P1-3 privacy deletion fails closed when a copied project duplicates identity [33m 1031[2mms[22m[39m
+     [33m[2m✓[22m[39m P1-1 privacy deletion redacts retained diagnostic messages [33m 854[2mms[22m[39m
+     [33m[2m✓[22m[39m P1-8 consolidation is single-flight across the first await [33m 568[2mms[22m[39m
+     [33m[2m✓[22m[39m P1-8 a malformed consolidation element rejects the entire merge phase [33m 622[2mms[22m[39m
+     [33m[2m✓[22m[39m cross-file duplicate ids are excluded from listing and injection until repaired [33m 564[2mms[22m[39m
+     [33m[2m✓[22m[39m batch writes fail closed while a cross-file duplicate identity exists [33m 400[2mms[22m[39m
+     [33m[2m✓[22m[39m removing a project truth file and registry reference clears its searchable index [33m 349[2mms[22m[39m
+     [33m[2m✓[22m[39m privacy deletion removes both current and legacy episode proposals [33m 790[2mms[22m[39m
+     [33m[2m✓[22m[39m ordinary source deletion removes legacy pending episode proposals and repairs active source metadata [33m 599[2mms[22m[39m
+     [33m[2m✓[22m[39m malformed mergeIds are rejected before any pending or target mutation [33m 538[2mms[22m[39m
+     [33m[2m✓[22m[39m P1-8 mergeIds approval is all-or-nothing [33m 563[2mms[22m[39m
+(node:32400) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32400) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts [2m([22m[2m53 tests[22m[2m)[22m[33m 4590[2mms[22m[39m
+     [33m[2m✓[22m[39m rolls back the project registry when a later truth write fails [33m 360[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 truth round3 B1 merges canonical project aliases into one truth and index bucket [33m 330[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 final review fences registered project reads and self-healing through an ancestor junction [33m 386[2mms[22m[39m
+(node:16140) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16140) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-consolidation.test.ts [2m([22m[2m19 tests[22m[2m)[22m[33m 6346[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 final review rechecks the truth fence after the async target boundary [33m 325[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 final review stops all later consolidation phases when privacy cleanup becomes pending during a model call [33m 319[2mms[22m[39m
+     [33m[2m✓[22m[39m 相似记忆只产出 pending 提案，绝不自动改 active [33m 344[2mms[22m[39m
+     [33m[2m✓[22m[39m 批准合并提案后：保留条作废、被合并条作废、新条生效 [33m 599[2mms[22m[39m
+     [33m[2m✓[22m[39m 一次整合的模型调用不超过 3 次 [33m 341[2mms[22m[39m
+     [33m[2m✓[22m[39m 三个阶段全都有活时仍然 ≤3 次调用，第四件事顺延 [33m 1050[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝合并阶段的对象字段而不是字符串化 [33m 400[2mms[22m[39m
+     [33m[2m✓[22m[39m 拒绝复核阶段的对象字段而不是字符串化 [33m 389[2mms[22m[39m
+     [33m[2m✓[22m[39m 没有空闲槽：跳过并顺延，不排队、不做任何写入 [33m 325[2mms[22m[39m
+     [33m[2m✓[22m[39m 整合输出畸形：该阶段整批丢弃 + errors.db 记录 + 不产生提案 [33m 390[2mms[22m[39m
+     [33m[2m✓[22m[39m 模型给不存在的 targetId 或越界文本：忽略该条，不落提案 [33m 376[2mms[22m[39m
+(node:11616) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:11616) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-service.test.ts [2m([22m[2m11 tests[22m[2m)[22m[33m 5209[2mms[22m[39m
+     [33m[2m✓[22m[39m 项目记忆只建在 user 工作区；auto 不建；归档停注入 [33m 376[2mms[22m[39m
+     [33m[2m✓[22m[39m 损坏文件停止该 scope 注入并出修复入口；修复后恢复 [33m 523[2mms[22m[39m
+     [33m[2m✓[22m[39m 置顶、编辑、删除、重建索引全通 [33m 561[2mms[22m[39m
+     [33m[2m✓[22m[39m 普通删除保留历史版本，includeHistory 才真删 [33m 768[2mms[22m[39m
+     [33m[2m✓[22m[39m 索引重建不丢 pending；隐私删除清黑名单；普通删除会话标记来源已删除 [33m 625[2mms[22m[39m
+     [33m[2m✓[22m[39m pending 出口：批准 ADD / 驳回进黑名单 / target 已删降级 ADD / 源会话删除失效 [33m 1423[2mms[22m[39m
+(node:29872) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:29872) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-extraction.test.ts [2m([22m[2m21 tests[22m[2m)[22m[33m 3784[2mms[22m[39m
+     [33m[2m✓[22m[39m 端到端：对话增量 → pending（含来源 excerpt）→ 批准 → 下一条会话注入 [33m 342[2mms[22m[39m
+     [33m[2m✓[22m[39m 驳回后进黑名单，同候选不再提案 [33m 486[2mms[22m[39m
+     [33m[2m✓[22m[39m 同 scope 高相似 ADD 降级为 UPDATE 候选 [33m 321[2mms[22m[39m
+     [33m[2m✓[22m[39m 同一候选重复提炼：已有高相似 pending 时不再重复提案 [33m 345[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 round7 redacts a registered secret reintroduced by production extraction episode output [33m 483[2mms[22m[39m
+(node:6812) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:6812) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-probe-daemon.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 4692[2mms[22m[39m
+     [33m[2m✓[22m[39m serves production probes from one resident child instead of stalling on a dead bridge [33m 530[2mms[22m[39m
+(node:17312) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.integration.test.ts [2m([22m[2m6 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[33m 4468[2mms[22m[39m
+     [33m[2m✓[22m[39m allows a normal in-workspace write/read and audits sessionId→projectPath [33m 1378[2mms[22m[39m
+     [33m[2m✓[22m[39m lists the workspace root with path "." (P1 rejects an empty path) [33m 385[2mms[22m[39m
+     [33m[2m✓[22m[39m writes and reads back binary bytes through the fenced workspace [33m 1810[2mms[22m[39m
+     [33m[2m✓[22m[39m rejects a REAL hard-link alias (nlink > 1) inside the workspace [33m 674[2mms[22m[39m
+(node:22344) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[90mstdout[2m | apps/desktop/test/logger.test.ts[2m > [22m[2mLogger[2m > [22m[2mappends structured jsonl and exports
+[22m[39mstart {"profile":"contract-review"}
+
+[90mstderr[2m | apps/desktop/test/logger.test.ts[2m > [22m[2mLogger[2m > [22m[2mdrops entries below the configured level
+[22m[39mkept ""
+
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/logger.test.ts [2m([22m[2m38 tests[22m[2m)[22m[33m 1388[2mms[22m[39m
+(node:32480) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32480) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-tools.test.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 1031[2mms[22m[39m
+(node:25476) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-settings-pane.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 571[2mms[22m[39m
+(node:30604) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workflow-broker.test.ts [2m([22m[2m42 tests[22m[2m)[22m[33m 769[2mms[22m[39m
+(node:37312) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37312) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-index-fallback.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 464[2mms[22m[39m
+(node:17592) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/windows-platform.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 217[2mms[22m[39m
+(node:11316) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-executor.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 95[2mms[22m[39m
+(node:24972) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-file-service.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 83[2mms[22m[39m
+(node:42292) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-fence-canonical.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 53[2mms[22m[39m
+(node:38188) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-fence.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+(node:37028) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/action-normalizer.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+(node:8952) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/runtime-action-router.test.ts [2m([22m[2m43 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+(node:2512) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace-relocation.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+(node:7532) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workspace.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+(node:20976) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/task-lifecycle.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+(node:29820) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-scoring.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m29 passed[39m[22m[90m (29)[39m
+[2m      Tests [22m [1m[32m593 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (594)[39m
+[2m   Start at [22m 01:03:16
+[2m   Duration [22m 326.77s[2m (transform 12.55s, setup 786ms, import 124.37s, tests 159.26s, environment 33.58s)[22m
+

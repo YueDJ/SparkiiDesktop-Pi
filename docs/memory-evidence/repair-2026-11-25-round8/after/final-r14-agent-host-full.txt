@@ -1,0 +1,122 @@
+(node:34148) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+npm notice run npx
+npm notice run vitest run packages/agent-host/test
+(node:10480) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:38060) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:41592) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:17384) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:23028) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:15368) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31876) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:39584) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:34076) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:29872) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31072) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:39684) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32044) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:11040) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36760) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:39148) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 200[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi.integration.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 542[2mms[22m[39m
+     [33m[2m✓[22m[39m round-trips commands and events through a real child process [33m 537[2mms[22m[39m
+(node:34756) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-pool.test.ts [2m([22m[2m54 tests[22m[2m)[22m[33m 591[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-supervisor.test.ts [2m([22m[2m17 tests[22m[2m)[22m[33m 618[2mms[22m[39m
+(node:20684) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:42604) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:6932) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-pool-saddle.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 926[2mms[22m[39m
+     [33m[2m✓[22m[39m configures saddle then switches to resume file [33m 484[2mms[22m[39m
+     [33m[2m✓[22m[39m fails closed when configure_session rejects [33m 437[2mms[22m[39m
+(node:19296) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/profile.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 1124[2mms[22m[39m
+     [33m[2m✓[22m[39m loads without signature in dev mode [33m 1119[2mms[22m[39m
+(node:34700) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/workspace-tools.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 69[2mms[22m[39m
+(node:29604) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-tools.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+(node:33912) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/connector-read.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+(node:42372) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-tool-loadout.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 427[2mms[22m[39m
+(node:1664) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-validation-compatibility.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 99[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-session-boundary.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 455[2mms[22m[39m
+(node:3896) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-pool-skill-isolation.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 7165[2mms[22m[39m
+     [33m[2m✓[22m[39m reloads Pi getSkills on the reused process after configure + new_session [33m 7161[2mms[22m[39m
+(node:24560) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/rpc-client.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+(node:27772) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32048) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/session-catalog.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 126[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-runtime-skill-rebind.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 498[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-runtime-queue.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 151[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-command-data.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 146[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/workflow.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/skill-prompt.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 38[2mms[22m[39m
+(node:28484) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:9096) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24800) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/bridge.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-append-entry.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 63[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/write-tool-presentation.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/coding-tools.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 149[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-host-tools.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 2011[2mms[22m[39m
+     [33m[2m✓[22m[39m exposes no tools at all before a saddle is configured [33m 1188[2mms[22m[39m
+     [33m[2m✓[22m[39m applies the saddle to the live session and swaps it on reconfigure [33m 319[2mms[22m[39m
+     [33m[2m✓[22m[39m re-applies the saddle after the session is replaced [33m 375[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/edit-diff.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-runtime-transport.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/pi-sdk-runtime.test.ts [2m([22m[2m11 tests[22m[2m)[22m[33m 2129[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 round7 B2 turns a real SDK no-model rejection into a correlated terminal event [33m 1282[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 round7 B2 turns a real SDK prepare rejection into a correlated terminal event [33m 510[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/workspace-guard.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/tool-registry.test.ts [2m([22m[2m32 tests[22m[2m)[22m[33m 1446[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/workflow-trace.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[43m 0 [49m[39m packages/agent-host/test/runtime-actions.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m32 passed[39m[22m[90m (32)[39m
+[2m      Tests [22m [1m[32m219 passed[39m[22m[90m (219)[39m
+[2m   Start at [22m 01:12:38
+[2m   Duration [22m 12.19s[2m (transform 6.46s, setup 0ms, import 103.45s, tests 19.14s, environment 12ms)[22m
+

@@ -294,6 +294,11 @@ export class AuditStore {
       const value = full[key];
       if (typeof value === 'string') Object.assign(full, { [key]: this.redact(value, patterns, marker) });
     }
+    // 长度上限必须在脱敏之后施加：先截断会把登记过的秘密切成不完整的片段，
+    // 使指纹匹配再也认不出来，明文前缀就会被持久化。
+    if (typeof full.payloadSummary === 'string' && full.payloadSummary.length > 512) {
+      full.payloadSummary = full.payloadSummary.slice(0, 512);
+    }
     this.db.prepare(`INSERT INTO audit (
       id, ts, actor, action, resource, payload_summary, decision, model_route,
       session_id, task_id, action_id, rule_id, capability, payload_hash,

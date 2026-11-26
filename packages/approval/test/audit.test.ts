@@ -121,6 +121,28 @@ describe('AuditStore', () => {
     expect(existsSync(`${path}.privacy-redactions.json`)).toBe(true);
   });
 
+  it('caps payload_summary only after redaction so a straddling secret leaves no plaintext prefix', async () => {
+    const path = join(mkdtempSync(join(tmpdir(), 'audit-r8-cap-')), 'a.db');
+    const store = new AuditStore(path);
+    stores.push(store);
+    const secret = 'R8_AUDIT_STRADDLE_SECRET_74A_';
+    const detail = `${'p'.repeat(500)}${secret}${'s'.repeat(200)}`;
+    expect(detail.length).toBeGreaterThan(512);
+    store.redactTexts([secret]);
+    const appended = await store.append({
+      actor: 'agent', action: 'reviewer.decision', resource: 'write', payloadSummary: detail,
+    });
+    expect(appended.payloadSummary).toHaveLength(512);
+    const fragment = Buffer.from(secret.slice(0, 12));
+    expect(appended.payloadSummary).not.toContain(secret.slice(0, 12));
+    expect(readFileSync(path).includes(fragment)).toBe(false);
+    store.close();
+    stores.splice(stores.indexOf(store), 1);
+    const wal = `${path}-wal`;
+    expect(readFileSync(path).includes(fragment)).toBe(false);
+    if (existsSync(wal)) expect(readFileSync(wal).includes(fragment)).toBe(false);
+  });
+
   it('R8 round3 registers physical-newline fragments for history, future append and restart without raw DB/WAL residue', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'audit-r8-round3-lines-'));
     const path = join(dir, 'a.db');

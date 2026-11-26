@@ -1,0 +1,291 @@
+(node:4560) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24652) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:33020) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:33020) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-round7-regression.test.ts (34 tests) 17561ms
+     ✓ R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files  768ms
+     ✓ R7 privacy retry recovers an empty episode topic after restart and completes chat cleanup  659ms
+     ✓ R7 privacy deletion discovers secrets nested only in pending operation extensions  470ms
+     ✓ R7 privacy deletion scrubs an invalid structural targetId field  459ms
+     ✓ R7 privacy deletion scrubs an invalid structural projectId field  429ms
+     ✓ R7 privacy deletion scrubs an invalid structural mergeIds field  452ms
+     ✓ R7 privacy deletion ignores whitespace-only episode topics without corrupting retained content  554ms
+     ✓ R7 privacy deletion preserves pending UPDATE control fields when deleted text equals the op  620ms
+     ✓ R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds  643ms
+     ✓ R7 privacy deletion includes superseded episode records in the global redaction corpus  636ms
+     ✓ R7 production privacy retry succeeds in the same process after truth rows are gone  750ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes  611ms
+     ✓ R7-P1-2 replacement preflight sees an indexed project after its registry entry is removed  358ms
+     ✓ R7-P1-2 replacement preflight derives zero-entry project identity from scope_files  393ms
+     ✓ R7-P1-3 source deletion detects indexed unregistered conflicts without an explicit workspace  363ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes  378ms
+     ✓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file  429ms
+     ✓ R7-P1-3 valid source deletion updates unregistered project truth without reindexing it  538ms
+     ✓ R8-REPAIR-MEMORY truth A1 source deletion ignores auto-list-only truth while updating registered and indexed projects  574ms
+     ✓ R8-REPAIR-MEMORY truth A2 privacy deletion ignores auto-list-only truth while deleting registered and indexed projects  632ms
+     ✓ R7-P1-4 privacy deletion discovers indexed unregistered truth before reconciliation  415ms
+     ✓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion  531ms
+     ✓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution  591ms
+     ✓ retains the production privacy journal until a failed Gate listener succeeds on retry  506ms
+     ✓ collects deleted, survivor and nested dynamic keys, preserves controls, and scrubs later writes after restart  824ms
+     ✓ fails closed instead of overwriting two dynamic keys that redact to the same marker  432ms
+     ✓ scrubs legal-looking nested structural fields in survivor and future pending operations  599ms
+     ✓ registers deleted-only top-level structural IDs and scrubs the same value in survivor text  546ms
+     ✓ fails closed when a retained or future top-level structural ID matches a registered secret  362ms
+     ✓ rejects a future top-level structural ID that matches an already registered secret  399ms
+     ✓ redacts addMemoriesBatch episode truth, index, FTS, search and restart reads  507ms
+     ✓ redacts direct appendEpisode and updateEpisodeSummary ingress after privacy deletion  711ms
+(node:14976) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | apps/desktop/test/memory-truth-batch.test.ts > truth batch journal > R8 review truth round7 B2 rejects a source replaced during the last destination probe before recovery copy
+R8_DEBUG_PROBE {
+  paths: [
+    'C:\\Users',
+    'C:\\Users\\YDJ',
+    'C:\\Users\\YDJ\\AppData',
+    'C:\\Users\\YDJ\\AppData\\Local',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data\\memory',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data\\memory\\.truth-backups',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data\\memory\\.truth-backups\\0.backup'
+  ],
+  destinationProbes: 0,
+  sourceProbedAfterDestination: false
+}
+R8_DEBUG_PROBE {
+  paths: [
+    'C:\\Users',
+    'C:\\Users\\YDJ',
+    'C:\\Users\\YDJ\\AppData',
+    'C:\\Users\\YDJ\\AppData\\Local',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data\\memory',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data\\memory\\.truth-backups',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data\\memory\\.truth-backups\\0.backup'
+  ],
+  destinationProbes: 0,
+  sourceProbedAfterDestination: false
+}
+R8_DEBUG_PROBE {
+  paths: [
+    'C:\\Users',
+    'C:\\Users\\YDJ',
+    'C:\\Users\\YDJ\\AppData',
+    'C:\\Users\\YDJ\\AppData\\Local',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data\\memory',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data\\memory\\.truth-backups',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data\\memory\\.truth-backups\\0.backup'
+  ],
+  destinationProbes: 0,
+  sourceProbedAfterDestination: false
+}
+R8_DEBUG_PROBE {
+  paths: [
+    'C:\\Users',
+    'C:\\Users\\YDJ',
+    'C:\\Users\\YDJ\\AppData',
+    'C:\\Users\\YDJ\\AppData\\Local',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data\\memory',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data\\memory\\.truth-backups',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data\\memory\\.truth-backups\\0.backup',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data\\memory\\user.json'
+  ],
+  destinationProbes: 0,
+  sourceProbedAfterDestination: false
+}
+R8_DEBUG_PROBE {
+  paths: [
+    'C:\\Users',
+    'C:\\Users\\YDJ',
+    'C:\\Users\\YDJ\\AppData',
+    'C:\\Users\\YDJ\\AppData\\Local',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data\\memory',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data\\memory\\user.json'
+  ],
+  destinationProbes: 1,
+  sourceProbedAfterDestination: false
+}
+R8_DEBUG_PROBE {
+  paths: [
+    'C:\\Users',
+    'C:\\Users\\YDJ',
+    'C:\\Users\\YDJ\\AppData',
+    'C:\\Users\\YDJ\\AppData\\Local',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data\\memory',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data\\memory\\user.json'
+  ],
+  destinationProbes: 2,
+  sourceProbedAfterDestination: false
+}
+R8_DEBUG_PROBE {
+  paths: [
+    'C:\\Users',
+    'C:\\Users\\YDJ',
+    'C:\\Users\\YDJ\\AppData',
+    'C:\\Users\\YDJ\\AppData\\Local',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data\\memory',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data\\memory\\.truth-backups',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-QMmgfJ\\data\\memory\\.truth-backups\\0.backup'
+  ],
+  destinationProbes: 3,
+  sourceProbedAfterDestination: false
+}
+R8_DEBUG_B2 {
+  destinationProbes: 3,
+  sourceProbedAfterDestination: true,
+  replaced: false,
+  warnings: []
+}
+
+(node:14976) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-truth-batch.test.ts (53 tests | 5 failed) 3358ms
+     ✓ restores every prior truth file and removes new files when a later write fails 156ms
+     ✓ R8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth 61ms
+     ✓ R8 final review never rolls back truth after the committed journal is durable 59ms
+     ✓ R8 review truth round7 B1 keeps committed truth when post-rename journal probe fails once 62ms
+     ✓ R8 review truth round7 B1 keeps committed truth when post-rename journal probe fails persistent 55ms
+     × R8 review truth round7 B2 rejects a source replaced during the last destination probe before recovery copy 54ms
+     × R8 review truth round7 B2 leaves destination bytes unchanged when verified copy source is replaced at the copy boundary 12ms
+     ✓ R8-P1-4 preserves rollback backups when the unverified journal cannot be removed 51ms
+     ✓ recovers an interrupted batch at startup before truth files are opened 27ms
+     ✓ recovers a new project batch from the registry committed before its truth file 31ms
+     ✓ R8 final review resumes a partially rolled-back new project with startup-injected authorization 15ms
+     ✓ R8 final review keeps rollback backups when journal removal fails after truth restoration 44ms
+     ✓ R8 final review does not roll back committed truth when post-commit backup cleanup fails 41ms
+     ✓ R8 final review retries orphan backup cleanup without quarantining restored truth 9ms
+     ✓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing 35ms
+     ✓ rollback never recreates a missing project parent before path revalidation 27ms
+     ✓ does not write or quarantine outside a junctioned memory root during failed recovery 4ms
+     ✓ R8 final review rejects an empty uncommitted journal without deleting the only original backup 22ms
+     ✓ quarantines a malformed journal and reports a warning instead of blocking startup 25ms
+     ✓ rejects journal paths outside memory truth and backup locations 44ms
+     ✓ rejects a truthy non-boolean committed marker without deleting uncommitted truth 46ms
+     ✓ rejects a committed journal that still contains rollback file items 43ms
+     ✓ rejects an unregistered outside project truth target during commit and recovery 38ms
+     ✓ rejects a project truth target reached through a junction even when its workspace is registered 5ms
+     ✓ treats a dangling write-block junction as a persistent block 3ms
+     ✓ keeps the only recovery evidence when the write-block marker cannot be persisted 15ms
+     ✓ keeps a committed batch and removes its recovery journal 8ms
+     ✓ rolls back the project registry when a later truth write fails 197ms
+     ✓ R8 truth round3 B1 rejects canonical duplicate change targets before journal creation 20ms
+     ✓ R8 truth round3 B1 merges canonical project aliases into one truth and index bucket 152ms
+     ✓ R8 final review fences registered project reads and self-healing through an ancestor junction 176ms
+     ✓ R8 final review rejects unregistered duplicate project identity before single or batch commits 157ms
+     ✓ R8 review truth B1 does not authorize auto-workspace truth from session discovery alone 88ms
+     ✓ R8 review truth B2 rejects nested agents journal targets 56ms
+     ✓ R8 review truth B2 rejects nested episode-proposals journal targets 43ms
+     ✓ R8 review truth B3 rechecks attributes when a verified path becomes a reparse point 5ms
+     ✓ R8 truth round3 B2 ignores journal projectFiles as recovery authorization 49ms
+     × R8 truth round3 B3 rebuild fails closed when truth changes before index commit and then indexes one snapshot 99ms
+     × R8 truth round3 B3 reconcile fails closed when truth changes before index commit and then indexes one snapshot 106ms
+     × R8 truth round3 B3 replaceScopeIndex fails closed when truth changes before index commit and then indexes one snapshot 84ms
+     ✓ R8 truth round3 B5 rejects a hard-linked main database without changing external SQLite 69ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -wal sidecar before SQLite opens 123ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -shm sidecar before SQLite opens 115ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -journal sidecar before SQLite opens 127ms
+     ✓ R8 truth round3 B5 refuses corrupt-database isolation and fallback while a sidecar is hard-linked 48ms
+     ✓ R8 truth round3 B5 rejects a main-database symlink and stays fail closed on Windows symlink EPERM 78ms
+     ✓ rejects a target converted to an external hardlink after the pre-backup probe 28ms
+     ✓ rechecks restore identity after the rollback preflight and never overwrites an external hardlink 78ms
+     ✓ fails closed when reconcile observes a reparse conversion after its first safe per-file probe 88ms
+     ✓ fails closed when rebuild observes a reparse conversion after its first safe per-file probe 92ms
+     ✓ viewOf freshly fences the row path and never returns external hardlink content 98ms
+     ✓ re-probes the second markSourcesDeleted read after allScopeFiles 82ms
+     ✓ re-probes the second deleteMemoryEntriesBySession read after allScopeFiles 104ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > truth batch journal > R8 review truth round7 B2 rejects a source replaced during the last destination probe before recovery copy
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ apps/desktop/test/memory-truth-batch.test.ts:232:22
+    230|     console.log('R8_DEBUG_B2', { destinationProbes, sourceProbedAfterD…
+    231|
+    232|     expect(replaced).toBe(true);
+       |                      ^
+    233|     expect(warnings.join('\n')).toContain('恢复失败');
+    234|     expect(warnings.join('\n')).toContain('包含硬链接');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > truth batch journal > R8 review truth round7 B2 leaves destination bytes unchanged when verified copy source is replaced at the copy boundary
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-truth-batch.test.ts:275:62
+    273|     };
+    274|
+    275|     expect(() => copyTruthFileVerified(source, destination)).toThrow('…
+       |                                                              ^
+    276|     expect(replaced).toBe(true);
+    277|     expect(readFileSync(destination, 'utf8')).toBe(destinationBytes);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > R8 truth round3 index snapshots > R8 truth round3 B3 rebuild fails closed when truth changes before index commit and then indexes one snapshot
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > R8 truth round3 index snapshots > R8 truth round3 B3 reconcile fails closed when truth changes before index commit and then indexes one snapshot
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > R8 truth round3 index snapshots > R8 truth round3 B3 replaceScopeIndex fails closed when truth changes before index commit and then indexes one snapshot
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-truth-batch.test.ts:946:12
+    944|           else if (operation === 'reconcile') store.reconcileAll();
+    945|           else store.replaceScopeIndex({ scope: 'user', file: target }…
+    946|         }).toThrow(/索引提交前变化|身份已变化/);
+       |            ^
+    947|         expect(store.db.prepare('SELECT text FROM memories WHERE id = …
+    948|         expect(store.db.prepare('SELECT content_hash FROM scope_files …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+
+ Test Files  1 failed | 1 passed (2)
+      Tests  5 failed | 82 passed (87)
+   Start at  22:24:38
+   Duration  24.40s (transform 496ms, setup 45ms, import 1.41s, tests 20.92s, environment 1.65s)
+
+EXIT_CODE=1

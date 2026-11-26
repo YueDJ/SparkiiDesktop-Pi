@@ -1,0 +1,23 @@
+# R8 final-r15 证据清单独立重算
+
+命令：`cd` 到仓库根后执行 `sha256sum -c docs/memory-evidence/repair-2026-11-25-round8/evidence-sha256.txt`。
+
+- 清单条目数：410
+- 逐条重算匹配（`: OK`）：410
+- 不匹配行：无
+- `sha256sum -c` 退出码：0
+- `evidence-sha256.txt` 自身 SHA-256：312de683c2c63b3f101d755c34c19c9e1d7cde9a330f5b6d18065c85d17e402d
+
+同源复验：
+- `sha256sum -c docs/memory-evidence/repair-2026-11-25-round8/source-sha256-final-r15.txt` → 82 条 OK，退出码 0
+- `sha256sum -c docs/memory-evidence/repair-2026-11-25-round8/source-manifest-sha256.txt` → 4 条 OK，退出码 0
+
+自引用处理：
+- `evidence-sha256.txt` 覆盖 `docs/memory-evidence/repair-2026-11-25-round8/` 下除自身以外的全部文件，
+  因此清单自身不在清单内（不可能包含自己的聚合哈希）。
+- 本复核文件在清单生成之后写出，同样不在清单内；其自身 SHA-256 见文末补记行。
+
+与 r13 封存的差异：本轮清单由 370 条增至 410 条，新纳入 final-r14/final-r15 全部前后证据、
+三份 r15 终审报告、`R8-FINDING-IPC-BLOCKER5-NONDETERMINISM.md`、`source-sha256-final-r15.txt`、
+`final-git-state-r15.txt`，以及此前未被封存的 `source-manifest-filelist-r12.txt` 与 `source-manifest-filelist-r12-sorted.txt`。
+body-sha256-before-this-line=2ac0e1e7984dcdba05bbb0c0db357d7ec491a8fa9918d8ba1aa1a8e26aa124ca

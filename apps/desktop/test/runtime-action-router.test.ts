@@ -796,3 +796,11 @@ describe('execution plane', () => {
     expect(result).toMatchObject({ status: 'denied', error: { code: 'TASK_REVOKED' } });
   });
 });
+
+it('hands the audit store the full payload so redaction can run before the length cap', async () => {
+  const longReason = 'r'.repeat(600) + '_TAIL_AFTER_CAP';
+  const scoped = await harness({ permissionMode: 'auto_review', review: { ...allowReview, reason: longReason } });
+  await scoped.router.route(bash('audit-payload-not-truncated', 'pnpm test'), 's1');
+  const reviewerEvent = scoped.auditEvents.find((event) => event.action === 'reviewer.decision');
+  expect(String(reviewerEvent?.payloadSummary)).toContain('_TAIL_AFTER_CAP');
+});

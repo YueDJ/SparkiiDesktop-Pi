@@ -1,0 +1,132 @@
+(node:36904) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16640) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:18460) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | apps/desktop/test/memory-truth-batch.test.ts > truth batch journal > R8 review truth round7 B2 rejects a source replaced during the last destination probe before recovery copy
+R8_DEBUG_PROBE {
+  paths: [
+    'C:\\Users',
+    'C:\\Users\\YDJ',
+    'C:\\Users\\YDJ\\AppData',
+    'C:\\Users\\YDJ\\AppData\\Local',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj\\data',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj\\data\\memory',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj\\data\\memory\\.truth-backups',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj\\data\\memory\\.truth-backups\\0.backup'
+  ],
+  destinationProbes: 0,
+  sourceProbedAfterDestination: false
+}
+R8_DEBUG_PROBE {
+  paths: [
+    'C:\\Users',
+    'C:\\Users\\YDJ',
+    'C:\\Users\\YDJ\\AppData',
+    'C:\\Users\\YDJ\\AppData\\Local',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj\\data',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj\\data\\memory',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj\\data\\memory\\.truth-backups',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj\\data\\memory\\.truth-backups\\0.backup'
+  ],
+  destinationProbes: 0,
+  sourceProbedAfterDestination: false
+}
+R8_DEBUG_PROBE {
+  paths: [
+    'C:\\Users',
+    'C:\\Users\\YDJ',
+    'C:\\Users\\YDJ\\AppData',
+    'C:\\Users\\YDJ\\AppData\\Local',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj\\data',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj\\data\\memory',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj\\data\\memory\\.truth-backups',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj\\data\\memory\\.truth-backups\\0.backup'
+  ],
+  destinationProbes: 0,
+  sourceProbedAfterDestination: false
+}
+R8_DEBUG_PROBE {
+  paths: [
+    'C:\\Users',
+    'C:\\Users\\YDJ',
+    'C:\\Users\\YDJ\\AppData',
+    'C:\\Users\\YDJ\\AppData\\Local',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj\\data',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj\\data\\memory',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj\\data\\memory\\user.json'
+  ],
+  destinationProbes: 0,
+  sourceProbedAfterDestination: false
+}
+R8_DEBUG_PROBE {
+  paths: [
+    'C:\\Users',
+    'C:\\Users\\YDJ',
+    'C:\\Users\\YDJ\\AppData',
+    'C:\\Users\\YDJ\\AppData\\Local',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj\\data',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj\\data\\memory',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj\\data\\memory\\.truth-backups',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj\\data\\memory\\.truth-backups\\0.backup'
+  ],
+  destinationProbes: 1,
+  sourceProbedAfterDestination: false
+}
+R8_DEBUG_PROBE {
+  paths: [
+    'C:\\Users',
+    'C:\\Users\\YDJ',
+    'C:\\Users\\YDJ\\AppData',
+    'C:\\Users\\YDJ\\AppData\\Local',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj\\data',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj\\data\\memory',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj\\data\\memory\\user.json'
+  ],
+  destinationProbes: 1,
+  sourceProbedAfterDestination: true
+}
+R8_DEBUG_B2 {
+  destinationProbes: 2,
+  sourceProbedAfterDestination: true,
+  replaced: true,
+  warnings: [
+    '记忆真相批次仍处于写入阻断状态：记忆批次恢复失败：记忆真相路径包含硬链接：C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-fsumYj\\data\\memory\\.truth-backups\\0.backup'
+  ]
+}
+
+(node:18460) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:18460) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-truth-batch.test.ts (53 tests) 3796ms
+(node:24128) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-truth-probe-daemon.test.ts (3 tests) 4124ms
+(node:37188) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/workflow-broker.test.ts (40 tests) 758ms
+
+ Test Files  3 passed (3)
+      Tests  96 passed (96)
+   Start at  22:55:58
+   Duration  15.70s (transform 1.24s, setup 58ms, import 3.60s, tests 8.68s, environment 2.77s)
+
+EXIT_CODE=0

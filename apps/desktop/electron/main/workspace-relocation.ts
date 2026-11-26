@@ -150,7 +150,7 @@ export async function relocateWorkspace(
         ruleId,
         payloadSummary: JSON.stringify({
           sessionId, newPath: newPathRaw, reason, at: now(),
-        }).slice(0, 512),
+        }),
         sessionId,
       });
     } catch { /* audit must never change the operation result */ }

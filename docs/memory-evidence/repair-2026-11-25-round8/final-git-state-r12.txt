@@ -1,0 +1,91 @@
+UTC=2026-11-26T14:59:21Z
+b411f47fb3494636fa460a0a074e02c95916abba
+main
+4
+--- git status --short ---
+ M apps/desktop/electron/main/memory/service.ts
+ M apps/desktop/electron/main/memory/store.ts
+ M apps/desktop/electron/main/memory/truth-path.ts
+ M apps/desktop/electron/main/security/runtime-action-router.ts
+ M apps/desktop/electron/main/workflow.ts
+ M apps/desktop/test/workflow-broker.test.ts
+ M docs/memory-evidence/repair-2026-11-25-round8/R8-MAPPING.md
+?? apps/desktop/test/memory-truth-probe-daemon.test.ts
+?? docs/memory-evidence/repair-2026-11-25-round8/after/evidence-sha256-verification-final-r12.txt
+?? docs/memory-evidence/repair-2026-11-25-round8/after/final-r10-full-suite-round1.txt
+?? docs/memory-evidence/repair-2026-11-25-round8/after/final-r10-memory-r8-after-journal-replacement.txt
+?? docs/memory-evidence/repair-2026-11-25-round8/after/final-r10-memory-round7-truth-batch-initial.txt
+?? docs/memory-evidence/repair-2026-11-25-round8/after/final-r11-approval-audit.txt
+?? docs/memory-evidence/repair-2026-11-25-round8/after/final-r11-full-suite-round1.txt
+?? docs/memory-evidence/repair-2026-11-25-round8/after/final-r11-full-suite-round2.txt
+?? docs/memory-evidence/repair-2026-11-25-round8/after/final-r11-ipc-r8.txt
+?? docs/memory-evidence/repair-2026-11-25-round8/after/final-r11-pi-runtime-focused.txt
+?? docs/memory-evidence/repair-2026-11-25-round8/after/final-r12-agent-host-full.txt
+?? docs/memory-evidence/repair-2026-11-25-round8/after/final-r12-approval-full.txt
+?? docs/memory-evidence/repair-2026-11-25-round8/after/final-r12-full-suite-round1.txt
+?? docs/memory-evidence/repair-2026-11-25-round8/after/final-r12-full-suite-round2.txt
+?? docs/memory-evidence/repair-2026-11-25-round8/after/final-r12-git-diff-check.txt
+?? docs/memory-evidence/repair-2026-11-25-round8/after/final-r12-ipc-full.txt
+?? docs/memory-evidence/repair-2026-11-25-round8/after/final-r12-ipc-r8-abc.txt
+?? docs/memory-evidence/repair-2026-11-25-round8/after/final-r12-r7-manifests.txt
+?? docs/memory-evidence/repair-2026-11-25-round8/after/final-r12-truth-daemon-workflow.txt
+?? docs/memory-evidence/repair-2026-11-25-round8/after/final-r12-typecheck.txt
+?? docs/memory-evidence/repair-2026-11-25-round8/after/source-sha256-verification-final-r12.txt
+?? docs/memory-evidence/repair-2026-11-25-round8/evidence-filelist-r12.txt
+?? docs/memory-evidence/repair-2026-11-25-round8/evidence-sha256.txt
+?? docs/memory-evidence/repair-2026-11-25-round8/final-git-state-r12.txt
+?? docs/memory-evidence/repair-2026-11-25-round8/source-manifest-filelist-r12-sorted.txt
+?? docs/memory-evidence/repair-2026-11-25-round8/source-manifest-filelist-r12.txt
+?? docs/memory-evidence/repair-2026-11-25-round8/source-sha256-final-r12.txt
+--- git log -6 ---
+b411f47 fix(memory): complete R8 privacy, truth, and runtime fencing repairs
+101487d feat(memory): M3 cross-project recall, idle consolidation and search reinforcement
+85daa98 feat(memory): M2 extraction pipeline, pending queue and trusted memory tools
+df5285f feat(memory): M1 foundation, manual memories, injection and workspace fence
+34851fc feat(bid-writing): polish project titles, editor, and outline
+550050c docs(handoff): implementation prompt for bid-writing polish
+--- remote ---
+origin	https://github.com/YueDJ/SparkiiDesktop-Pi (fetch)
+origin	https://github.com/YueDJ/SparkiiDesktop-Pi (push)
+--- branch tracking ---
+* main b411f47 [origin/main: ahead 4] fix(memory): complete R8 privacy, truth, and runtime fencing repairs
+--- diff stat vs HEAD ---
+warning: in the working copy of 'apps/desktop/electron/main/memory/store.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/desktop/electron/main/memory/truth-path.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/memory-evidence/repair-2026-11-25-round8/R8-MAPPING.md', LF will be replaced by CRLF the next time Git touches it
+ apps/desktop/electron/main/memory/service.ts       | 18 +++++--
+ apps/desktop/electron/main/memory/store.ts         | 61 +++++++++++++---------
+ apps/desktop/electron/main/memory/truth-path.ts    | 30 +++++++++--
+ .../main/security/runtime-action-router.ts         | 38 ++++++++++++--
+ apps/desktop/electron/main/workflow.ts             |  8 +--
+ apps/desktop/test/workflow-broker.test.ts          | 13 ++++-
+ .../repair-2026-11-25-round8/R8-MAPPING.md         | 59 ++++++++++++++++++++-
+ 7 files changed, 185 insertions(+), 42 deletions(-)
+--- untracked ---
+apps/desktop/test/memory-truth-probe-daemon.test.ts
+docs/memory-evidence/repair-2026-11-25-round8/after/evidence-sha256-verification-final-r12.txt
+docs/memory-evidence/repair-2026-11-25-round8/after/final-r10-full-suite-round1.txt
+docs/memory-evidence/repair-2026-11-25-round8/after/final-r10-memory-r8-after-journal-replacement.txt
+docs/memory-evidence/repair-2026-11-25-round8/after/final-r10-memory-round7-truth-batch-initial.txt
+docs/memory-evidence/repair-2026-11-25-round8/after/final-r11-approval-audit.txt
+docs/memory-evidence/repair-2026-11-25-round8/after/final-r11-full-suite-round1.txt
+docs/memory-evidence/repair-2026-11-25-round8/after/final-r11-full-suite-round2.txt
+docs/memory-evidence/repair-2026-11-25-round8/after/final-r11-ipc-r8.txt
+docs/memory-evidence/repair-2026-11-25-round8/after/final-r11-pi-runtime-focused.txt
+docs/memory-evidence/repair-2026-11-25-round8/after/final-r12-agent-host-full.txt
+docs/memory-evidence/repair-2026-11-25-round8/after/final-r12-approval-full.txt
+docs/memory-evidence/repair-2026-11-25-round8/after/final-r12-full-suite-round1.txt
+docs/memory-evidence/repair-2026-11-25-round8/after/final-r12-full-suite-round2.txt
+docs/memory-evidence/repair-2026-11-25-round8/after/final-r12-git-diff-check.txt
+docs/memory-evidence/repair-2026-11-25-round8/after/final-r12-ipc-full.txt
+docs/memory-evidence/repair-2026-11-25-round8/after/final-r12-ipc-r8-abc.txt
+docs/memory-evidence/repair-2026-11-25-round8/after/final-r12-r7-manifests.txt
+docs/memory-evidence/repair-2026-11-25-round8/after/final-r12-truth-daemon-workflow.txt
+docs/memory-evidence/repair-2026-11-25-round8/after/final-r12-typecheck.txt
+docs/memory-evidence/repair-2026-11-25-round8/after/source-sha256-verification-final-r12.txt
+docs/memory-evidence/repair-2026-11-25-round8/evidence-filelist-r12.txt
+docs/memory-evidence/repair-2026-11-25-round8/evidence-sha256.txt
+docs/memory-evidence/repair-2026-11-25-round8/final-git-state-r12.txt
+docs/memory-evidence/repair-2026-11-25-round8/source-manifest-filelist-r12-sorted.txt
+docs/memory-evidence/repair-2026-11-25-round8/source-manifest-filelist-r12.txt
+docs/memory-evidence/repair-2026-11-25-round8/source-sha256-final-r12.txt

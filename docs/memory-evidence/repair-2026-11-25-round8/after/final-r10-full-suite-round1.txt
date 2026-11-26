@@ -1,0 +1,1142 @@
+(node:14424) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:4232) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic' }`
+
+ RUN  v4.1.11 C:/Users/YDJ/Desktop/SparkiiDesktop-Pi
+
+(node:4664) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/tool-registry.test.ts (32 tests) 824ms
+(node:38580) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime-pool.test.ts (54 tests) 460ms
+(node:38200) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/pi-runtime-supervisor.test.ts (17 tests) 578ms
+(node:14444) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |0| packages/agent-host/test/coding-tools.test.ts (10 tests) 89ms
+(node:40548) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/workspace-file-service.integration.test.ts (6 tests | 1 skipped) 5143ms
+     ✓ allows a normal in-workspace write/read and audits sessionId→projectPath  1614ms
+     ✓ lists the workspace root with path "." (P1 rejects an empty path)  510ms
+     ✓ writes and reads back binary bytes through the fenced workspace  1937ms
+     ✓ rejects a REAL hard-link alias (nlink > 1) inside the workspace  796ms
+(node:1176) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:1176) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-r8-regression.test.ts (59 tests | 14 failed) 34589ms
+     ✓ R8-REPAIR-MEMORY truth B symlink replacement makes production list fail closed 287ms
+     ✓ R8-REPAIR-MEMORY truth B symlink replacement makes production search fail closed 136ms
+     ✓ R8-REPAIR-MEMORY truth B symlink replacement makes production rebuild fail closed 158ms
+     ✓ R8-REPAIR-MEMORY truth B hardlink replacement makes production list fail closed 277ms
+     ✓ R8-REPAIR-MEMORY truth B hardlink replacement makes production search fail closed 264ms
+     ✓ R8-REPAIR-MEMORY truth B hardlink replacement makes production rebuild fail closed 271ms
+     ✓ R8-REPAIR-MEMORY truth B non-symlink-reparse replacement makes production list fail closed 273ms
+     ✓ R8-REPAIR-MEMORY truth B non-symlink-reparse replacement makes production search fail closed  303ms
+     ✓ R8-REPAIR-MEMORY truth B non-symlink-reparse replacement makes production rebuild fail closed 236ms
+     ✓ R8-REPAIR-MEMORY truth C default fence and rebuilt SandboxProbe batch mode stay integrated 266ms
+     ✓ R8 review privacy B5 zeroes a plaintext journal temp file before a failed removal  784ms
+     ✓ R8 final review fences same-process and restarted reads when the privacy journal cannot be persisted  730ms
+     × R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext 786ms
+     × R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext 802ms
+     × R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext 777ms
+     × R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext 782ms
+     × R8-P0-1 resumes from journal context after the chat row and Pi file are already gone 820ms
+     × R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers 1025ms
+     ✓ R8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent  1094ms
+     ✓ R8 review B3 registers chat secrets before sink cleanup and protects later chat writes after failure  874ms
+     × R8-P0-1 restores privacy sink fences before truth recovery can restore plaintext 952ms
+     ✓ R8 review B3 cleans Pi and chat carriers before a safe-root truth write-block aborts startup  767ms
+     ✓ R8 review B5 rejects dangling privacy journal directory and file links without reading targets 212ms
+     ✓ refuses to clear a privacy journal whose identity changed during cleanup  928ms
+     ✓ fences the journal read source identity before accepting parsed privacy content  636ms
+     ✓ R8-REPAIR-MEMORY refuses to delete a journal when the zero-write readback contains a nonzero byte  951ms
+     ✓ R8-REPAIR-MEMORY digest-mismatch startup temp evidence persists a privacy write-block without deleting context  508ms
+     ✓ R8-REPAIR-MEMORY session-mismatch startup temp evidence persists a privacy write-block without deleting context  541ms
+     ✓ R8-REPAIR-MEMORY malformed startup temp evidence persists a privacy write-block without deleting context  563ms
+     × R8-REPAIR-MEMORY promotes a valid startup temp journal and automatically resumes its privacy deletion 709ms
+     ✓ R8-REPAIR-MEMORY fences Windows non-symlink reparse attributes on the privacy directory before temp reads and cleanup  540ms
+     ✓ R8-REPAIR-MEMORY fences Windows non-symlink reparse attributes on the privacy file before temp reads and cleanup  529ms
+     ✓ R8-REPAIR-MEMORY continues Gate Audit Error Logger cleanup when store privacy registration fails  636ms
+     ✓ R8 review B4 rotates memory markers when the deleted text collides with %s  541ms
+     ✓ R8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret  999ms
+     ✓ R8-P1-3 refuses to construct MemoryService through an unsafe memory-root junction 129ms
+     ✓ R8-P1-3 fences project repair before registry or truth reads  401ms
+     ✓ R8-P1-3 blocks search/list/row/rebuild in-process and after restart, including a damaged marker  654ms
+     ✓ R8 privacy review reads the raw Pi path before chat redaction can alter it  835ms
+     × R8 privacy review resumes a secret-named Pi carrier after restart 749ms
+     ✓ R8 privacy review retries independent carriers after a same-process truth rollback block  702ms
+     ✓ R8 privacy review removes a plaintext journal temp file left before rename  1228ms
+     ✓ refuses to zero or remove an externally linked corrupt file after the fresh probe 146ms
+     ✓ refuses to zero or remove an externally linked journal file after the fresh probe 157ms
+     × freshly probes and validates journal content after rename before privacy truth cleanup 601ms
+     ✓ rejects a post-rename reparse journal before privacy truth cleanup  585ms
+     ✓ rejects a pre-existing agents junction before list, search or rebuild can enumerate it 128ms
+     ✓ rejects a pre-existing episode-proposals junction before list, search or rebuild can enumerate it 115ms
+     ✓ rejects a pre-existing agents non-symlink reparse directory before list, search or rebuild can enumerate it 123ms
+     ✓ rejects a pre-existing episode-proposals non-symlink reparse directory before list, search or rebuild can enumerate it 120ms
+     ✓ R8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state  651ms
+     ✓ R8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state  696ms
+     ✓ R8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state  668ms
+     × re-fences a privacy journal before zeroing even when cleanup already verified its identity 689ms
+     × fences a real ancestor junction before Pi carrier deletion and retries normally after it is removed 857ms
+     ✓ fences a non-symlink reparse Pi carrier directory before rmSync  818ms
+     ✓ fences a non-symlink reparse Pi carrier file before rmSync  742ms
+     × detects Pi carrier identity replacement before deletion and preserves external bytes across retry 861ms
+     × detects Pi carrier identity replacement before deletion and preserves external bytes across restart 973ms
+(node:9768) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:9768) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:9768) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:9768) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:9768) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-round7-regression.test.ts (34 tests | 5 failed) 27692ms
+     ✓ R7-P1-1 privacy deletion scrubs every retained approval state, cross-session audit, JSONL and SQLite files  1348ms
+     × R7 privacy retry recovers an empty episode topic after restart and completes chat cleanup 888ms
+     ✓ R7 privacy deletion discovers secrets nested only in pending operation extensions  716ms
+     ✓ R7 privacy deletion scrubs an invalid structural targetId field  1328ms
+     ✓ R7 privacy deletion scrubs an invalid structural projectId field  1665ms
+     ✓ R7 privacy deletion scrubs an invalid structural mergeIds field  1809ms
+     ✓ R7 privacy deletion ignores whitespace-only episode topics without corrupting retained content  2080ms
+     ✓ R7 privacy deletion preserves pending UPDATE control fields when deleted text equals the op  1960ms
+     × R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds 1177ms
+     ✓ R7 privacy deletion includes superseded episode records in the global redaction corpus  1767ms
+     ✓ R7 caller-mode memory deletion rechecks canonical approval after privacy redaction  389ms
+     × R7 production privacy retry succeeds in the same process after truth rows are gone 914ms
+     ✓ R7-P1-1 future memory-tool audit summaries contain no raw query or memory body 252ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate memory id before changing corrupt truth bytes  612ms
+     ✓ R7-P1-2 replacement preflight sees an indexed project after its registry entry is removed  421ms
+     ✓ R7-P1-2 replacement preflight derives zero-entry project identity from scope_files  426ms
+     ✓ R7-P1-3 source deletion detects indexed unregistered conflicts without an explicit workspace  411ms
+     ✓ R7-P1-2 replacement repair rejects a duplicate project identity before changing corrupt truth bytes  484ms
+     ✓ R7-P1-3 source deletion rejects cross-file identity conflicts without changing any truth file  476ms
+     ✓ R7-P1-3 valid source deletion updates unregistered project truth without reindexing it  602ms
+     ✓ R8-REPAIR-MEMORY truth A1 source deletion ignores auto-list-only truth while updating registered and indexed projects  781ms
+     ✓ R8-REPAIR-MEMORY truth A2 privacy deletion ignores auto-list-only truth while deleting registered and indexed projects  735ms
+     ✓ R7-P1-4 privacy deletion discovers indexed unregistered truth before reconciliation  425ms
+     ✓ R7-P1-4 unregistered project truth is not searchable but remains discoverable for privacy deletion  603ms
+     ✓ R7-P1-4 conflict eviction invalidates the hash and unchanged truth is reindexed after resolution  721ms
+     × retains the production privacy journal until a failed Gate listener succeeds on retry 298ms
+     × collects deleted, survivor and nested dynamic keys, preserves controls, and scrubs later writes after restart 591ms
+     ✓ fails closed instead of overwriting two dynamic keys that redact to the same marker  518ms
+     ✓ scrubs legal-looking nested structural fields in survivor and future pending operations  640ms
+     ✓ registers deleted-only top-level structural IDs and scrubs the same value in survivor text  517ms
+     ✓ fails closed when a retained or future top-level structural ID matches a registered secret  407ms
+     ✓ rejects a future top-level structural ID that matches an already registered secret  444ms
+     ✓ redacts addMemoriesBatch episode truth, index, FTS, search and restart reads  500ms
+     ✓ redacts direct appendEpisode and updateEpisodeSummary ingress after privacy deletion  783ms
+(node:39944) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | apps/desktop/test/memory-truth-batch.test.ts > truth batch journal > R8 review truth round7 B2 rejects a source replaced during the last destination probe before recovery copy
+R8_DEBUG_PROBE {
+  paths: [
+    'C:\\Users',
+    'C:\\Users\\YDJ',
+    'C:\\Users\\YDJ\\AppData',
+    'C:\\Users\\YDJ\\AppData\\Local',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data\\memory',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data\\memory\\.truth-backups',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data\\memory\\.truth-backups\\0.backup'
+  ],
+  destinationProbes: 0,
+  sourceProbedAfterDestination: false
+}
+R8_DEBUG_PROBE {
+  paths: [
+    'C:\\Users',
+    'C:\\Users\\YDJ',
+    'C:\\Users\\YDJ\\AppData',
+    'C:\\Users\\YDJ\\AppData\\Local',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data\\memory',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data\\memory\\.truth-backups',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data\\memory\\.truth-backups\\0.backup'
+  ],
+  destinationProbes: 0,
+  sourceProbedAfterDestination: false
+}
+R8_DEBUG_PROBE {
+  paths: [
+    'C:\\Users',
+    'C:\\Users\\YDJ',
+    'C:\\Users\\YDJ\\AppData',
+    'C:\\Users\\YDJ\\AppData\\Local',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data\\memory',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data\\memory\\.truth-backups',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data\\memory\\.truth-backups\\0.backup'
+  ],
+  destinationProbes: 0,
+  sourceProbedAfterDestination: false
+}
+R8_DEBUG_PROBE {
+  paths: [
+    'C:\\Users',
+    'C:\\Users\\YDJ',
+    'C:\\Users\\YDJ\\AppData',
+    'C:\\Users\\YDJ\\AppData\\Local',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data\\memory',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data\\memory\\.truth-backups',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data\\memory\\.truth-backups\\0.backup',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data\\memory\\user.json'
+  ],
+  destinationProbes: 0,
+  sourceProbedAfterDestination: false
+}
+R8_DEBUG_PROBE {
+  paths: [
+    'C:\\Users',
+    'C:\\Users\\YDJ',
+    'C:\\Users\\YDJ\\AppData',
+    'C:\\Users\\YDJ\\AppData\\Local',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data\\memory',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data\\memory\\user.json'
+  ],
+  destinationProbes: 1,
+  sourceProbedAfterDestination: false
+}
+R8_DEBUG_PROBE {
+  paths: [
+    'C:\\Users',
+    'C:\\Users\\YDJ',
+    'C:\\Users\\YDJ\\AppData',
+    'C:\\Users\\YDJ\\AppData\\Local',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data\\memory',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data\\memory\\user.json'
+  ],
+  destinationProbes: 2,
+  sourceProbedAfterDestination: false
+}
+R8_DEBUG_PROBE {
+  paths: [
+    'C:\\Users',
+    'C:\\Users\\YDJ',
+    'C:\\Users\\YDJ\\AppData',
+    'C:\\Users\\YDJ\\AppData\\Local',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data\\memory',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data\\memory\\.truth-backups',
+    'C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-truth-batch-TKiIEG\\data\\memory\\.truth-backups\\0.backup'
+  ],
+  destinationProbes: 3,
+  sourceProbedAfterDestination: false
+}
+R8_DEBUG_B2 {
+  destinationProbes: 3,
+  sourceProbedAfterDestination: true,
+  replaced: false,
+  warnings: []
+}
+
+(node:39944) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/memory-truth-batch.test.ts (53 tests | 5 failed) 4005ms
+     ✓ restores every prior truth file and removes new files when a later write fails 161ms
+     ✓ R8-P1-4 removes an uncommitted journal when post-write verification fails without changing original truth 77ms
+     ✓ R8 final review never rolls back truth after the committed journal is durable 87ms
+     ✓ R8 review truth round7 B1 keeps committed truth when post-rename journal probe fails once 69ms
+     ✓ R8 review truth round7 B1 keeps committed truth when post-rename journal probe fails persistent 55ms
+     × R8 review truth round7 B2 rejects a source replaced during the last destination probe before recovery copy 47ms
+     × R8 review truth round7 B2 leaves destination bytes unchanged when verified copy source is replaced at the copy boundary 24ms
+     ✓ R8-P1-4 preserves rollback backups when the unverified journal cannot be removed 51ms
+     ✓ recovers an interrupted batch at startup before truth files are opened 26ms
+     ✓ recovers a new project batch from the registry committed before its truth file 25ms
+     ✓ R8 final review resumes a partially rolled-back new project with startup-injected authorization 28ms
+     ✓ R8 final review keeps rollback backups when journal removal fails after truth restoration 65ms
+     ✓ R8 final review does not roll back committed truth when post-commit backup cleanup fails 53ms
+     ✓ R8 final review retries orphan backup cleanup without quarantining restored truth 14ms
+     ✓ quarantines an unrecoverable journal without deleting partial truth when a backup is missing 42ms
+     ✓ rollback never recreates a missing project parent before path revalidation 29ms
+     ✓ does not write or quarantine outside a junctioned memory root during failed recovery 16ms
+     ✓ R8 final review rejects an empty uncommitted journal without deleting the only original backup 33ms
+     ✓ quarantines a malformed journal and reports a warning instead of blocking startup 23ms
+     ✓ rejects journal paths outside memory truth and backup locations 46ms
+     ✓ rejects a truthy non-boolean committed marker without deleting uncommitted truth 35ms
+     ✓ rejects a committed journal that still contains rollback file items 42ms
+     ✓ rejects an unregistered outside project truth target during commit and recovery 32ms
+     ✓ rejects a project truth target reached through a junction even when its workspace is registered 4ms
+     ✓ treats a dangling write-block junction as a persistent block 3ms
+     ✓ keeps the only recovery evidence when the write-block marker cannot be persisted 19ms
+     ✓ keeps a committed batch and removes its recovery journal 7ms
+     ✓ rolls back the project registry when a later truth write fails 219ms
+     ✓ R8 truth round3 B1 rejects canonical duplicate change targets before journal creation 21ms
+     ✓ R8 truth round3 B1 merges canonical project aliases into one truth and index bucket 155ms
+     ✓ R8 final review fences registered project reads and self-healing through an ancestor junction 161ms
+     ✓ R8 final review rejects unregistered duplicate project identity before single or batch commits 196ms
+     ✓ R8 review truth B1 does not authorize auto-workspace truth from session discovery alone 138ms
+     ✓ R8 review truth B2 rejects nested agents journal targets 44ms
+     ✓ R8 review truth B2 rejects nested episode-proposals journal targets 61ms
+     ✓ R8 review truth B3 rechecks attributes when a verified path becomes a reparse point 5ms
+     ✓ R8 truth round3 B2 ignores journal projectFiles as recovery authorization 53ms
+     × R8 truth round3 B3 rebuild fails closed when truth changes before index commit and then indexes one snapshot 146ms
+     × R8 truth round3 B3 reconcile fails closed when truth changes before index commit and then indexes one snapshot 126ms
+     × R8 truth round3 B3 replaceScopeIndex fails closed when truth changes before index commit and then indexes one snapshot 125ms
+     ✓ R8 truth round3 B5 rejects a hard-linked main database without changing external SQLite 65ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -wal sidecar before SQLite opens 163ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -shm sidecar before SQLite opens 174ms
+     ✓ R8 truth round3 B5 rejects a hard-linked -journal sidecar before SQLite opens 131ms
+     ✓ R8 truth round3 B5 refuses corrupt-database isolation and fallback while a sidecar is hard-linked 54ms
+     ✓ R8 truth round3 B5 rejects a main-database symlink and stays fail closed on Windows symlink EPERM 81ms
+     ✓ rejects a target converted to an external hardlink after the pre-backup probe 26ms
+     ✓ rechecks restore identity after the rollback preflight and never overwrites an external hardlink 79ms
+     ✓ fails closed when reconcile observes a reparse conversion after its first safe per-file probe 123ms
+     ✓ fails closed when rebuild observes a reparse conversion after its first safe per-file probe 137ms
+     ✓ viewOf freshly fences the row path and never returns external hardlink content 137ms
+     ✓ re-probes the second markSourcesDeleted read after allScopeFiles 142ms
+     ✓ re-probes the second deleteMemoryEntriesBySession read after allScopeFiles 124ms
+(node:41380) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:41380) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-extraction.test.ts (21 tests) 4118ms
+     ✓ 端到端：对话增量 → pending（含来源 excerpt）→ 批准 → 下一条会话注入  325ms
+     ✓ 驳回后进黑名单，同候选不再提案  489ms
+     ✓ 同 scope 高相似 ADD 降级为 UPDATE 候选  400ms
+     ✓ 同一候选重复提炼：已有高相似 pending 时不再重复提案  491ms
+     ✓ R8 round7 redacts a registered secret reintroduced by production extraction episode output  648ms
+(node:32408) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/workflow-broker.test.ts (40 tests | 5 failed) 875ms
+   ✓ R8 review runtime B6 keeps the original workflow admission when Task becomes task-a 63ms
+   ✓ R8 review runtime B6 keeps the original workflow admission when Task becomes task-b 24ms
+   × R8 round5 r1 rejects workflow proposals when no admission can be proven 35ms
+   ✓ R8 round5 blocker2 does not release a lease replaced while beforeRelease awaits 26ms
+   ✓ R8 round5 blocker2 does not fall back to a replacement when onReady fails before returning an admission 3ms
+   ✓ R8 round5 r2 cleans its own binding after onReady fails without an admission or replacement 4ms
+   ✓ settles a caller waiter as denied when privacy redaction invalidates its proposal 4ms
+   ✓ canonicalizes a stale approved broker completion against privacy-redacted gate state 18ms
+   ✓ acquires the workflow slot with the agent display name, not the session id 3ms
+   ✓ uses the runtime session id for the workflow session record 5ms
+   ✓ keeps only workflow tool-step tools plus read on the runtime saddle 1ms
+   ✓ persists the caller workspace and model on the workflow session 7ms
+   ✓ resolves skill ref and llm template to prompt content 1ms
+   ✓ resolves the two visible business skills plus hidden tools 1ms
+     ✓ rejects forged legacy coding proposals before they reach ApprovalGate 2ms
+     ✓ completes the human step when the shared broker decides approval 42ms
+     ✓ runs the workflow for the requested profile instead of contract-review 5ms
+     ✓ returns the session id before the runner finishes 40ms
+     ✓ persists step output on workflow_step_end and does not write a report-named result blob 32ms
+     ✓ persists workflow_step_end failed status when a step throws 16ms
+     ✓ stops the workflow and reports when a step_end append fails 46ms
+     ✓ stops the workflow when even the small failed end cannot be appended 29ms
+     ✓ R8-P1-1 rejects a workflow whose original lease is replaced during new_session 3ms
+     ✓ R8-P1-1 does not send model commands to a stale lease after an awaited key lookup 28ms
+     ✓ R8-P1-1 stops before prompt when the original lease is replaced during set_model 16ms
+     ✓ R8-P1-1 stops before prompt when the original lease is replaced during set_thinking_level 15ms
+     × R8-P1-1 does not start the next workflow step after an between-step rebind 20ms
+     ✓ R8-P1-1 denies a tool approval completed after the original lease is replaced 27ms
+     ✓ does not swallow start/end append failures with empty catch 3ms
+     × does not let a rebound session consume the previous workflow prompt 13ms
+     × does not let a same-client same-id rebinding consume the previous workflow prompt 16ms
+     × stores full assistant text from message_update/message_end in step output 18ms
+     ✓ does not revive proposal-first edit/write semantics from Runtime requests 6ms
+     ✓ does not scan payload.diff to invent preview for other tools 2ms
+     ✓ does not resolve an approved write as 操作未执行:approved when the timeout elapses mid-execution 82ms
+     ✓ still resolves an untouched pending proposal as expired after the timeout 46ms
+     ✓ pushes the expired proposal to the renderer only when truly expired 46ms
+     ✓ does not push expired while an approved write is still executing 76ms
+     ✓ carries the approval scope back to the awaiting action router 31ms
+     ✓ cancels pending broker waits for one session 16ms
+(node:16688) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16688) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16688) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16688) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16688) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-consolidation.test.ts (19 tests) 8854ms
+     ✓ R8 final review rechecks the truth fence after the async target boundary  370ms
+     ✓ R8 final review stops all later consolidation phases when privacy cleanup becomes pending during a model call  569ms
+     ✓ R8-P1-3 never sends indexed plaintext to consolidation while truth writes are blocked  306ms
+     ✓ 相似记忆只产出 pending 提案，绝不自动改 active  683ms
+     ✓ 批准合并提案后：保留条作废、被合并条作废、新条生效  986ms
+     ✓ 一次整合的模型调用不超过 3 次  468ms
+     ✓ 三个阶段全都有活时仍然 ≤3 次调用，第四件事顺延  1292ms
+     ✓ 拒绝合并阶段的对象字段而不是字符串化  516ms
+     ✓ 拒绝压缩阶段的对象字段而不是字符串化  465ms
+     ✓ 拒绝复核阶段的对象字段而不是字符串化  414ms
+     ✓ P2 情景压缩混合越界输出时整阶段丢弃，不留下部分提案  313ms
+     ✓ 没有空闲槽：跳过并顺延，不排队、不做任何写入  434ms
+     ✓ 整合输出畸形：该阶段整批丢弃 + errors.db 记录 + 不产生提案  512ms
+     ✓ 模型给不存在的 targetId 或越界文本：忽略该条，不落提案  502ms
+(node:36192) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36192) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36192) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36192) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36192) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-service.test.ts (11 tests) 7756ms
+     ✓ 跨项目模糊回忆：情景摘要命中并带项目线索，同一检索两次命中与增量一致  572ms
+     ✓ 项目记忆只建在 user 工作区；auto 不建；归档停注入  627ms
+     ✓ 项目搬迁：文件移动后按 projectId 自愈重索引  503ms
+     ✓ 损坏文件停止该 scope 注入并出修复入口；修复后恢复  1182ms
+     ✓ 置顶、编辑、删除、重建索引全通  653ms
+     ✓ 普通删除保留历史版本，includeHistory 才真删  948ms
+     ✓ 索引重建不丢 pending；隐私删除清黑名单；普通删除会话标记来源已删除  856ms
+     ✓ pending 出口：批准 ADD / 驳回进黑名单 / target 已删降级 ADD / 源会话删除失效  1783ms
+(node:5464) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:5464) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-tools.test.ts (7 tests) 1192ms
+(node:23952) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:23952) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-index-fallback.test.ts (2 tests) 610ms
+     ✓ keeps truth writes and reads working after disk open failure  373ms
+(node:7020) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |1| apps/desktop/test/runtime-action-router.test.ts (43 tests | 3 failed) 113ms
+     ✓ denies host shell before approval or execution unless explicitly enabled 16ms
+     ✓ executes an ordinary workspace write without requesting approval 11ms
+     ✓ executes delete and move inside the workspace with no proposal 2ms
+     ✓ passes workspace CRUD straight through in auto_review as well 2ms
+     ✓ denies a structured write outside the workspace without asking 1ms
+     ✓ hard-denies critical targets before approval or execution 1ms
+     ✓ denies process execution when the platform is not ready 2ms
+     ✓ asks a human for shell and never starts the Reviewer 3ms
+     ✓ denies Ask mode shell when no human can approve 2ms
+     ✓ asks a human for an external write 1ms
+     ✓ does not execute when the user denies 1ms
+     ✓ grants ordinary shell for the rest of the task after a task-scoped approval 2ms
+     ✓ still asks again for a high-risk command under a task grant 1ms
+     ✓ refuses a task scope for anything that is not ordinary shell 1ms
+     ✓ drops the task grant for a new task 2ms
+     ✓ rejects execution when the task is revoked while approval is pending 1ms
+     × rejects execution when a same-ID admission replaces the owner during approval 13ms
+     ✓ rejects execution when a same-ID admission replaces the owner during review 2ms
+     × rejects execution when a same-ID admission replaces the owner during revalidation 4ms
+     × rejects execution when a same-ID admission replaces the owner during the allow audit 6ms
+     ✓ rejects execution when the target identity changes after approval 2ms
+     ✓ re-fetches the canonical action after the final allow audit and executes that object 2ms
+     ✓ fails closed when canonical approval is missing after the final allow audit 1ms
+     ✓ uses the Reviewer for shell and still re-checks before executing 1ms
+     ✓ sends only the minimal review context 2ms
+     ✓ carries at most four compact tool evidence entries 4ms
+     ✓ escalates a reviewer ask to a high-risk human approval 1ms
+     ✓ rejects task scope when Reviewer requested high-risk confirmation 1ms
+     ✓ does not execute on a reviewer deny 1ms
+     ✓ opens the circuit breaker after three consecutive denials 2ms
+     ✓ resets the denial counter after one allow 2ms
+     ✓ refuses an identical denied action without asking the Reviewer again 1ms
+     ✓ falls back to human approval when the Reviewer is unavailable 1ms
+     ✓ does not send an oversized command to the Reviewer 2ms
+     ✓ denies an unattended task when the Reviewer is unavailable 1ms
+     ✓ denies an unattended Reviewer ask instead of opening human approval 1ms
+     ✓ does not fall back to approval when the Reviewer is canceled by Task revoke 1ms
+     ✓ never sends an external write or a remote push to the Reviewer 2ms
+     ✓ records the policy version and timing in the audit summary 1ms
+     ✓ keeps denials and evidence inside one task only 1ms
+     ✓ clears task state when the task is revoked 2ms
+     ✓ returns a failed result when the execution plane throws 1ms
+     ✓ denies when the runtime action belongs to no live task 1ms
+(node:3088) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+stdout | apps/desktop/test/logger.test.ts > Logger > appends structured jsonl and exports
+start {"profile":"contract-review"}
+
+stderr | apps/desktop/test/logger.test.ts > Logger > drops entries below the configured level
+kept ""
+
+ ✓ |1| apps/desktop/test/logger.test.ts (38 tests) 1582ms
+(node:33208) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-settings-pane.test.tsx (3 tests) 832ms
+     ✓ 导航有「记忆」；显示隐私明示；手动新增走 IPC  446ms
+     ✓ 损坏项目的修复草稿、空重建和覆盖修复按各自工作区隔离且需确认  303ms
+(node:21108) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21108) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21108) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21108) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21108) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21108) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21108) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21108) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21108) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21108) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21108) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21108) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21108) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21108) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21108) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21108) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21108) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21108) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21108) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21108) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21108) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-audit-regression.test.ts (31 tests) 22037ms
+     ✓ P1-2 LIKE fallback supports CRUD, search and rebuild  521ms
+     ✓ P1-2 corrupt SQLite is quarantined and rebuilt from truth without blocking startup  421ms
+     ✓ P1-3 copied workspace with the same projectId fails closed and preserves the first truth source  342ms
+     ✓ P1-4 default search and includeHistory never expose pending memories  377ms
+     ✓ P2 external truth edits reconcile list, injection and search  405ms
+     ✓ P2 project archived state survives derived index rebuild  609ms
+     ✓ P1-1 privacy deletion while target resolution is pending prevents the model send  424ms
+     ✓ P1-1 corrupt project registry makes privacy deletion fail closed  479ms
+     ✓ P1-1 duplicate ids corrupt the whole truth file instead of exposing both rows  656ms
+     ✓ P1-1 privacy deletion discovers the indexed workspace even when the registry omits it  523ms
+     ✓ P1-3 privacy deletion fails closed when a copied project duplicates identity  340ms
+     ✓ P1-1 privacy deletion redacts retained diagnostic messages  399ms
+     ✓ P1-8 consolidation is single-flight across the first await  436ms
+     ✓ P1-8 a malformed consolidation element rejects the entire merge phase  821ms
+     ✓ cross-file duplicate ids are excluded from listing and injection until repaired  875ms
+     ✓ batch writes fail closed while a cross-file duplicate identity exists  764ms
+     ✓ removing a project truth file and registry reference clears its searchable index  1058ms
+     ✓ episode approval rejects malformed mergeIds before changing episode or proposal state  550ms
+     ✓ privacy deletion removes both current and legacy episode proposals  3301ms
+     ✓ ordinary source deletion removes legacy pending episode proposals and repairs active source metadata  1568ms
+     ✓ malformed mergeIds are rejected before any pending or target mutation  3954ms
+     ✓ P1-8 mergeIds approval is all-or-nothing  1754ms
+(node:1400) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/windows-platform.test.ts (9 tests) 231ms
+(node:3680) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/workspace-file-service.test.ts (17 tests) 82ms
+(node:3372) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/workspace-executor.test.ts (17 tests) 97ms
+(node:11784) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-fence-canonical.test.ts (11 tests) 60ms
+(node:27036) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/workspace-relocation.test.ts (11 tests) 11ms
+(node:19608) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/action-normalizer.test.ts (12 tests) 15ms
+(node:34864) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-fence.test.ts (4 tests) 35ms
+(node:39716) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/workspace.test.ts (5 tests) 14ms
+(node:28556) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/memory-scoring.test.ts (6 tests) 5ms
+(node:17908) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |1| apps/desktop/test/task-lifecycle.test.ts (15 tests) 15ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 32 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 privacy recovery regressions > R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 privacy recovery regressions > R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 privacy recovery regressions > R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 privacy recovery regressions > R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext
+AssertionError: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "7ae99811b2c7c696275f6aca5adcedd71a90d8ab3ced71cd81d7e2c8020628fd.json",
++ ]
+
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:377:31
+    375|     restart();
+    376|
+    377|     expect(pendingJournals()).toEqual([]);
+       |                               ^
+    378|     expect(readFileSync(projectMemoryFile(workspace), 'utf8')).not.toC…
+    379|     await expectPrivateGone(secret, excerpt);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/32]⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 privacy recovery regressions > R8-P0-1 resumes from journal context after the chat row and Pi file are already gone
+AssertionError: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "7ae99811b2c7c696275f6aca5adcedd71a90d8ab3ced71cd81d7e2c8020628fd.json",
++ ]
+
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:395:31
+    393|     restart();
+    394|
+    395|     expect(pendingJournals()).toEqual([]);
+       |                               ^
+    396|     expect(readFileSync(projectMemoryFile(workspace), 'utf8')).not.toC…
+    397|     await expectPrivateGone(secret, excerpt);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/32]⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 privacy recovery regressions > R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers
+AssertionError: expected [Function] to throw error matching /隐私删除尚未完成/ but got '隐私删除恢复日志无法持久化，记忆读取已阻断：无法保存隐私删除恢复日志'
+
+- Expected:
+/隐私删除尚未完成/
+
++ Received:
+"隐私删除恢复日志无法持久化，记忆读取已阻断：无法保存隐私删除恢复日志"
+
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:412:48
+    410|       sessions.privacyDelete(id, texts);
+    411|     } });
+    412|     expect(() => service.searchMemory(secret)).toThrow(/隐私删除尚未完成/);
+       |                                                ^
+    413|     service.close();
+    414|     failChat = false;
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/32]⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 privacy recovery regressions > R8-P0-1 restores privacy sink fences before truth recovery can restore plaintext
+AssertionError: expected '{\n  "version": 1,\n  "entries": [\n …' not to contain 'R8_PRIVATE_private-session_71C'
+
+- Expected
++ Received
+
+- R8_PRIVATE_private-session_71C
++ {
++   "version": 1,
++   "entries": [
++     {
++       "id": "mem_54212091-cad1-4b62-acd7-84d4854e70e4",
++       "text": "R8_PRIVATE_private-session_71C",
++       "status": "active",
++       "pinned": false,
++       "importance": 2,
++       "createdAt": 1795702713127,
++       "updatedAt": 1795702713127,
++       "source": {
++         "sessionId": "private-session",
++         "excerpt": "R8_EXCERPT_private-session_92D",
++         "kind": "explicit"
++       },
++       "supersededBy": null,
++       "pendingOp": null
++     },
++     {
++       "id": "mem_54c6f472-4bed-4c16-a311-ac4f0231ddfc",
++       "text": "cross-session R8_EXCERPT_private-session_92D",
++       "status": "active",
++       "pinned": false,
++       "importance": 2,
++       "createdAt": 1795702713369,
++       "updatedAt": 1795702713369,
++       "source": {
++         "sessionId": "carrier-session",
++         "excerpt": "cross-session R8_EXCERPT_private-session_92D",
++         "kind": "explicit"
++       },
++       "supersededBy": null,
++       "pendingOp": null
++     }
++   ]
++ }
++
+
+ ❯ expectPrivateGone apps/desktop/test/memory-r8-regression.test.ts:245:61
+    243| async function expectPrivateGone(secret: string, excerpt: string, sess…
+    244|   const initialLogs = logger.export();
+    245|   expect(readFileSync(userMemoryFile(dataDir), 'utf8')).not.toContain(…
+       |                                                             ^
+    246|   expect(service.list().scopes.flatMap((scope) => scope.entries).map((…
+    247|   expect(service.searchMemory(secret, { includeHistory: true })).toEqu…
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:479:11
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/32]⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 privacy recovery regressions > R8-REPAIR-MEMORY promotes a valid startup temp journal and automatically resumes its privacy deletion
+AssertionError: ["隐私删除恢复日志无法持久化，记忆读取已阻断：无法保存隐私删除恢复日志","隐私删除恢复未完成：隐私删除恢复日志无法持久化，记忆读取已阻断：无法保存隐私删除恢复日志"]: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "7ae99811b2c7c696275f6aca5adcedd71a90d8ab3ced71cd81d7e2c8020628fd.json",
++ ]
+
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:648:82
+    646|
+    647|     expect(existsSync(temp)).toBe(false);
+    648|     expect(pendingJournals(), JSON.stringify((service as any).recovery…
+       |                                                                                  ^
+    649|     await expectPrivateGone(secret, excerpt);
+    650|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/32]⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 truth write-block regressions > R8 privacy review resumes a secret-named Pi carrier after restart
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:831:32
+    829|     restart();
+    830|
+    831|     expect(existsSync(piFile)).toBe(false);
+       |                                ^
+    832|     expect(sessions.get('private-session')).toBeUndefined();
+    833|     expect(pendingJournals()).toEqual([]);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/32]⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 truth review B4 privacy journal rename fence > freshly probes and validates journal content after rename before privacy truth cleanup
+AssertionError: expected '{"version":1,"sessionId":"private-ses…' to be '{corrupt' // Object.is equality
+
+- Expected
++ Received
+
+- {corrupt
++ {"version":1,"sessionId":"private-session","texts":["R8_PRIVATE_private-session_71C","R8_EXCERPT_private-session_92D","project R8_PRIVATE_private-session_71C"],"memoryIds":[],"workspacePaths":["C:\\Users\\YDJ\\AppData\\Local\\Temp\\sparkii-r8-memory-2XmKPJ\\workspace","C:/Users/YDJ/AppData/Local/Temp/sparkii-r8-memory-2XmKPJ/workspace"]}
++
+
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:953:101
+    951|     expect(postRenameReads).toBeGreaterThan(0);
+    952|     expect(pendingJournals()).toHaveLength(1);
+    953|     expect(readFileSync(join(memoryDir(dataDir), 'privacy-pending', pe…
+       |                                                                                                     ^
+    954|     expect(readFileSync(userMemoryFile(dataDir))).toEqual(originalTrut…
+    955|     expect(await audit.exportJsonl()).not.toContain(secret);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/32]⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 final-round5 privacy B2/B3 production fences > re-fences a privacy journal before zeroing even when cleanup already verified its identity
+AssertionError: expected [Function] to throw error matching /清理失败|链接|重解析/ but got '隐私删除恢复日志无法持久化，记忆读取已阻断：无法保存隐私删除恢复日志'
+
+- Expected:
+/清理失败|链接|重解析/
+
++ Received:
+"隐私删除恢复日志无法持久化，记忆读取已阻断：无法保存隐私删除恢复日志"
+
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:1078:69
+    1076|     };
+    1077|
+    1078|     expect(() => service.privacyDeleteBySession('private-session')).to…
+       |                                                                     ^
+    1079|     expect(journalFences).toBeGreaterThanOrEqual(2);
+    1080|     expect(journalZeroedBeforeReplacement).toBe(false);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/32]⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 final-round5 privacy B2/B3 production fences > fences a real ancestor junction before Pi carrier deletion and retries normally after it is removed
+AssertionError: expected [Function] to not throw an error but 'Error: 隐私删除恢复日志无法持久化，记忆读取已阻断：无法保存隐私删除…' was thrown
+
+- Expected:
+undefined
+
++ Received:
+"Error: 隐私删除恢复日志无法持久化，记忆读取已阻断：无法保存隐私删除恢复日志"
+
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:1112:73
+    1110|     mkdirSync(localDir);
+    1111|     writeFileSync(piFile, `${secret}\n`);
+    1112|     expect(() => service.privacyDeleteBySession('private-session')).no…
+       |                                                                         ^
+    1113|     expect(existsSync(piFile)).toBe(false);
+    1114|     expect(readFileSync(victim, 'utf8')).toBe(victimBytes);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/32]⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 final-round5 privacy B2/B3 production fences > detects Pi carrier identity replacement before deletion and preserves external bytes across retry
+AssertionError: expected [Function] to not throw an error but 'Error: 隐私删除恢复日志无法持久化，记忆读取已阻断：无法保存隐私删除…' was thrown
+
+- Expected:
+undefined
+
++ Received:
+"Error: 隐私删除恢复日志无法持久化，记忆读取已阻断：无法保存隐私删除恢复日志"
+
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:1174:75
+    1172|       service = makeService();
+    1173|     } else {
+    1174|       expect(() => service.privacyDeleteBySession('private-session')).…
+       |                                                                           ^
+    1175|     }
+    1176|     expect(readFileSync(external, 'utf8')).toBe(externalBytes);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/32]⎯
+
+ FAIL  |1| apps/desktop/test/memory-r8-regression.test.ts > R8 final-round5 privacy B2/B3 production fences > detects Pi carrier identity replacement before deletion and preserves external bytes across restart
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ apps/desktop/test/memory-r8-regression.test.ts:1177:32
+    1175|     }
+    1176|     expect(readFileSync(external, 'utf8')).toBe(externalBytes);
+    1177|     expect(existsSync(piFile)).toBe(false);
+       |                                ^
+    1178|     expect(pendingJournals()).toEqual([]);
+    1179|     expect(sessions.get('private-session')).toBeUndefined();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/32]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7 privacy retry recovers an empty episode topic after restart and completes chat cleanup
+AssertionError: expected [Function] to not throw an error but 'Error: 隐私删除恢复日志无法持久化，记忆读取已阻断：无法保存隐私删除…' was thrown
+
+- Expected:
+undefined
+
++ Received:
+"Error: 隐私删除恢复日志无法持久化，记忆读取已阻断：无法保存隐私删除恢复日志"
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:267:76
+    265|     });
+    266|     expect(() => service.addMemory({ scope: 'user', text: 'blocked', s…
+    267|     expect(() => service.deleteMemory(target.id, { mode: 'privacy' }))…
+       |                                                                            ^
+    268|     expect(sessions.get('private-session')).toBeUndefined();
+    269|     expect(sessions.get('other-session')?.inputs).not.toContain(secret…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/32]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7 privacy retry after process restart retains the deleted text corpus until session cleanup succeeds
+Error: 隐私删除恢复日志无法持久化，记忆读取已阻断：无法保存隐私删除恢复日志
+ ❯ MemoryService.privacyDeleteBySession apps/desktop/electron/main/memory/service.ts:1218:43
+    1216|   /** 隐私删除：条目+FTS+episodes+黑名单+JSONL+chat_sessions 全清。 */
+    1217|   privacyDeleteBySession(sessionId: string, workspacePaths?: string[],…
+    1218|     if (this.privacyJournalFailure) throw new Error(this.privacyJourna…
+       |                                           ^
+    1219|     const pendingTexts = this.pendingPrivacyTexts.get(sessionId);
+    1220|     if (pendingTexts && this.truthRecoveryBlocked()) this.cleanupPriva…
+ ❯ MemoryService.deleteMemory apps/desktop/electron/main/memory/service.ts:903:19
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:403:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/32]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R7 memory regressions > R7 production privacy retry succeeds in the same process after truth rows are gone
+Error: 隐私删除恢复日志无法持久化，记忆读取已阻断：无法保存隐私删除恢复日志
+ ❯ MemoryService.privacyDeleteBySession apps/desktop/electron/main/memory/service.ts:1255:13
+    1253|       this.registerPendingPrivacySinks();
+    1254|       this.persistPrivacyWriteBlock();
+    1255|       throw new Error(this.privacyJournalFailure);
+       |             ^
+    1256|     }
+    1257|     let cleanupError: unknown;
+ ❯ MemoryService.deleteMemory apps/desktop/electron/main/memory/service.ts:903:19
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:522:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/32]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R8 privacy B1 invalidation retry integration > retains the production privacy journal until a failed Gate listener succeeds on retry
+Error: 隐私删除恢复日志无法持久化，记忆读取已阻断：无法保存隐私删除恢复日志
+ ❯ MemoryService.privacyDeleteBySession apps/desktop/electron/main/memory/service.ts:1255:13
+    1253|       this.registerPendingPrivacySinks();
+    1254|       this.persistPrivacyWriteBlock();
+    1255|       throw new Error(this.privacyJournalFailure);
+       |             ^
+    1256|     }
+    1257|     let cleanupError: unknown;
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:817:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/32]⎯
+
+ FAIL  |1| apps/desktop/test/memory-round7-regression.test.ts > R8 privacy B2 dynamic pending-operation keys > collects deleted, survivor and nested dynamic keys, preserves controls, and scrubs later writes after restart
+AssertionError: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "7ae99811b2c7c696275f6aca5adcedd71a90d8ab3ced71cd81d7e2c8020628fd.json",
++ ]
+
+ ❯ apps/desktop/test/memory-round7-regression.test.ts:852:71
+    850|     restartService();
+    851|
+    852|     expect(readdirSync(dir).filter((name) => name.endsWith('.json'))).…
+       |                                                                       ^
+    853|     expect(readFileSync(userMemoryFile(dataDir), 'utf8')).not.toContai…
+    854|     expect(JSON.stringify(service.list())).not.toContain(secret);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/32]⎯
+
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > truth batch journal > R8 review truth round7 B2 rejects a source replaced during the last destination probe before recovery copy
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ apps/desktop/test/memory-truth-batch.test.ts:232:22
+    230|     console.log('R8_DEBUG_B2', { destinationProbes, sourceProbedAfterD…
+    231|
+    232|     expect(replaced).toBe(true);
+       |                      ^
+    233|     expect(warnings.join('\n')).toContain('恢复失败');
+    234|     expect(warnings.join('\n')).toContain('包含硬链接');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/32]⎯
+
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > truth batch journal > R8 review truth round7 B2 leaves destination bytes unchanged when verified copy source is replaced at the copy boundary
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-truth-batch.test.ts:275:62
+    273|     };
+    274|
+    275|     expect(() => copyTruthFileVerified(source, destination)).toThrow('…
+       |                                                              ^
+    276|     expect(replaced).toBe(true);
+    277|     expect(readFileSync(destination, 'utf8')).toBe(destinationBytes);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/32]⎯
+
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > R8 truth round3 index snapshots > R8 truth round3 B3 rebuild fails closed when truth changes before index commit and then indexes one snapshot
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > R8 truth round3 index snapshots > R8 truth round3 B3 reconcile fails closed when truth changes before index commit and then indexes one snapshot
+ FAIL  |1| apps/desktop/test/memory-truth-batch.test.ts > R8 truth round3 index snapshots > R8 truth round3 B3 replaceScopeIndex fails closed when truth changes before index commit and then indexes one snapshot
+AssertionError: expected [Function] to throw an error
+
+- Expected:
+null
+
++ Received:
+undefined
+
+ ❯ apps/desktop/test/memory-truth-batch.test.ts:946:12
+    944|           else if (operation === 'reconcile') store.reconcileAll();
+    945|           else store.replaceScopeIndex({ scope: 'user', file: target }…
+    946|         }).toThrow(/索引提交前变化|身份已变化/);
+       |            ^
+    947|         expect(store.db.prepare('SELECT text FROM memories WHERE id = …
+    948|         expect(store.db.prepare('SELECT content_hash FROM scope_files …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/32]⎯
+
+ FAIL  |1| apps/desktop/test/runtime-action-router.test.ts > ask mode > rejects execution when a same-ID admission replaces the owner during approval
+AssertionError: expected { requestId: 'r1', …(3) } to match object { status: 'denied', …(1) }
+(6 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+    "error": {
+-     "code": "TASK_REVOKED",
++     "code": "APPROVAL_FAILED",
+    },
+    "status": "denied",
+  }
+
+ ❯ apps/desktop/test/runtime-action-router.test.ts:401:20
+    399|       h.admission,
+    400|     );
+    401|     expect(result).toMatchObject({ status: 'denied', error: { code: 'T…
+       |                    ^
+    402|     expect(h.execute).not.toHaveBeenCalled();
+    403|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/32]⎯
+
+ FAIL  |1| apps/desktop/test/runtime-action-router.test.ts > ask mode > rejects execution when a same-ID admission replaces the owner during revalidation
+Error: task grant already exists; task id cannot be reused: t1
+ ❯ TaskGrantRegistry.start packages/approval/src/security/task-grant-registry.ts:42:13
+     40|   start(grant: TaskGrant): void {
+     41|     if (this.usedTaskIds.has(grant.taskId)) {
+     42|       throw new Error(`task grant already exists; task id cannot be re…
+       |             ^
+     43|     }
+     44|     this.usedTaskIds.add(grant.taskId);
+ ❯ TaskLifecycle.start apps/desktop/electron/main/security/task-lifecycle.ts:84:21
+ ❯ Object.startTask apps/desktop/test/runtime-action-router.test.ts:148:5
+ ❯ Object.<anonymous> apps/desktop/test/runtime-action-router.test.ts:418:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/32]⎯
+
+ FAIL  |1| apps/desktop/test/runtime-action-router.test.ts > ask mode > rejects execution when a same-ID admission replaces the owner during the allow audit
+Error: task grant already exists; task id cannot be reused: t1
+ ❯ TaskGrantRegistry.start packages/approval/src/security/task-grant-registry.ts:42:13
+     40|   start(grant: TaskGrant): void {
+     41|     if (this.usedTaskIds.has(grant.taskId)) {
+     42|       throw new Error(`task grant already exists; task id cannot be re…
+       |             ^
+     43|     }
+     44|     this.usedTaskIds.add(grant.taskId);
+ ❯ TaskLifecycle.start apps/desktop/electron/main/security/task-lifecycle.ts:84:21
+ ❯ Object.startTask apps/desktop/test/runtime-action-router.test.ts:148:5
+ ❯ Object.onAudit apps/desktop/test/runtime-action-router.test.ts:436:11
+ ❯ Object.append apps/desktop/test/runtime-action-router.test.ts:141:9
+ ❯ auditDecision apps/desktop/electron/main/security/runtime-action-router.ts:132:5
+ ❯ Object.route apps/desktop/electron/main/security/runtime-action-router.ts:553:7
+ ❯ apps/desktop/test/runtime-action-router.test.ts:440:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/32]⎯
+
+ FAIL  |1| apps/desktop/test/workflow-broker.test.ts > R8 round5 r1 rejects workflow proposals when no admission can be proven
+AssertionError: expected [Function] to throw error matching /admission is not ready/i but got 'session wf-session workflow proposal …'
+
+- Expected:
+/admission is not ready/i
+
++ Received:
+"session wf-session workflow proposal origin is not executable"
+
+ ❯ apps/desktop/test/workflow-broker.test.ts:193:8
+    191|       requestId: 'unowned-proposal', toolName: 'memory_forget', target…
+    192|       summary: 'forget', payload: {}, risk: 'high-risk', executionMode…
+    193|     })).rejects.toThrow(/admission is not ready/i);
+       |        ^
+    194|     expect(submit).toHaveBeenCalledTimes(1);
+    195|   } finally {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/32]⎯
+
+ FAIL  |1| apps/desktop/test/workflow-broker.test.ts > runWorkflow session id and JSONL > R8-P1-1 does not start the next workflow step after an between-step rebind
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ apps/desktop/test/workflow-broker.test.ts:985:19
+    983|   await running;
+    984|
+    985|   expect(prompts).toHaveLength(1);
+       |                   ^
+    986|   expect(prompts[0]).toMatch(/^\/skill:第一步(?:\s|$)/);
+    987|   expect(appends.filter((entry) => entry.customType === 'workflow_step…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/32]⎯
+
+ FAIL  |1| apps/desktop/test/workflow-broker.test.ts > runWorkflow session id and JSONL > does not let a rebound session consume the previous workflow prompt
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ apps/desktop/test/workflow-broker.test.ts:1057:101
+    1055|     await running;
+    1056|
+    1057|     expect(appends.some((a) => a.customType === 'workflow_step_end' &&…
+       |                                                                                                     ^
+    1058|     expect(JSON.stringify(appends)).not.toContain('属于新会话的输出');
+    1059|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/32]⎯
+
+ FAIL  |1| apps/desktop/test/workflow-broker.test.ts > runWorkflow session id and JSONL > does not let a same-client same-id rebinding consume the previous workflow prompt
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ apps/desktop/test/workflow-broker.test.ts:1104:101
+    1102|     await running;
+    1103|
+    1104|     expect(appends.some((a) => a.customType === 'workflow_step_end' &&…
+       |                                                                                                     ^
+    1105|     expect(JSON.stringify(appends)).not.toContain('NEW-BINDING-OUTPUT'…
+    1106|     expect(beforeRelease).not.toHaveBeenCalled();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/32]⎯
+
+ FAIL  |1| apps/desktop/test/workflow-broker.test.ts > runWorkflow session id and JSONL > stores full assistant text from message_update/message_end in step output
+AssertionError: expected { stepId: 'review', …(3) } to match object { stepId: 'review', …(2) }
+(4 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "output": "第3条存在期限不对齐",
+-   "status": "completed",
++   "status": "failed",
+    "stepId": "review",
+  }
+
+ ❯ apps/desktop/test/workflow-broker.test.ts:1151:23
+    1149|     await running;
+    1150|     const end = appends.find((a) => a.customType === 'workflow_step_en…
+    1151|     expect(end?.data).toMatchObject({
+       |                       ^
+    1152|       stepId: 'review',
+    1153|       status: 'completed',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[27/32]⎯
+
+
+ Test Files  5 failed | 23 passed (28)
+      Tests  32 failed | 554 passed | 1 skipped (587)
+   Start at  22:18:03
+   Duration  195.92s (transform 4.37s, setup 391ms, import 41.92s, tests 121.91s, environment 24.52s)
+
+EXIT_CODE=1
