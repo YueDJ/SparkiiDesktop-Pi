@@ -1,0 +1,44 @@
+# R8 final-r16 blocker5 挂起的原始时序（同步写文件，不经 vitest 控制台，避免超时后输出被截断）
+
+复现命令：npx vitest run apps/desktop/test/ipc.test.ts -t "R8 round5 r2 cleans workflow bookkeeping|R8 round5 blocker5"（第 5 次命中）
+插桩位置：apps/desktop/electron/main/ipc.ts 的 prompt 队列登记 / 等待 / 发送 / 终态处理 / completePromptTurn；
+随后按 SHA-256 校验完整还原，当前树内无残留。
++   0ms  tag=b5 step=- queue-reserve text=PROMPT_A
++   1ms  tag=b5 step=- queue-wait-begin
++   1ms  tag=b5 step=- queue-wait-end
++   2ms  tag=b5 step=- send-begin
++   3ms  tag=b5 step=- postsend-begin
++   3ms  tag=b5 step=- postsend-end
++   3ms  tag=b5 step=- before-final-assert
++   4ms  tag=b5 step=- returning-ok promptId=ac267c79
++   5ms  tag=b5 step=- queue-reserve text=PROMPT_C
++   5ms  tag=b5 step=- queue-wait-begin
++   6ms  tag=b5 step=- queue-reserve text=PROMPT_B
++   6ms  tag=b5 step=- queue-wait-begin
++  21ms  tag=b5 step=- settle-enter turn=ac267c79 started=true
++  21ms  tag=b5 step=- settle-end-begin task=task-2d927117-d706-422d-afeb-2eac785527c1
++  28ms  tag=b5 step=await-B settle-end-done
++  28ms  tag=b5 step=await-B release turn=ac267c79
++  29ms  tag=b5 step=await-B queue-wait-end
++  30ms  tag=b5 step=await-B send-begin
++  30ms  tag=b5 step=await-B postsend-begin
++  30ms  tag=b5 step=await-B postsend-end
++  31ms  tag=b5 step=await-B before-final-assert
++  31ms  tag=b5 step=await-B returning-ok promptId=04a78c01
+
+## 读法
+
+- PROMPT_A 正常完成，其 turn（此处 ac267c79）仍占住会话串行栅栏。
+- 关键异常顺序：+5ms 先出现 `queue-reserve text=PROMPT_C`，+6ms 才出现 `queue-reserve text=PROMPT_B`。
+  测试里 B、C 是在同一个同步块内用 `Promise.resolve(prompt(...))` 同时发起的，两者抵达队列登记点的先后由
+  open 阶段的 promise 完成顺序决定，因此队首可能是 C 而不是 B。
+- +16ms settle 到来 → +28ms 只有一个 `queue-wait-end`：队首（本次是 C）被放行并 `returning-ok`。
+- 之后日志终止：测试正卡在 `await expect(replacing)`，而 B 还压在队尾等第二次 settle —— 但第二次 settle
+  在测试代码里位于该 await 之后，永远执行不到，于是 5000ms 测试超时。
+- 日志在 +31ms 之后完全静止，且此前抓取的句柄快照里只有定时器、无未完成 fs 请求，
+  证明这不是事件循环被阻塞，也不是任务准入悬挂，而是断言依赖了一个它自己没有建立的顺序前提。
+
+## 结论
+
+失败源于测试前提，不是生产缺陷：生产侧“先登记者先放行”本身是确定行为，不确定的是两个并发 prompt 谁先登记。
+修复方式是把排队改成逐个建立前提（blocker5），并用显式等待建立确定顺序后再验证两条并发排队（blocker5b）。

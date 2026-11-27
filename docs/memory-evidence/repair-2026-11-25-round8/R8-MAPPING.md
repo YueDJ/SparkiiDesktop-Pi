@@ -11,14 +11,12 @@
 
 当前实现已完成两轮串行完整指定套件（29 files，595 passed / 1 skipped）、focused 5 files 204 passed、Approval 95、agent-host 219、Runtime A/B/C、完整 typecheck 与 `git diff --check`，均为确定性通过。
 
-**仍有一个未解决门禁阻断**：`npx vitest run apps/desktop/test/ipc.test.ts` 全文件运行对
-`R8 round5 blocker5` 非确定性挂起（r15 五次重复 4 通过 / 1 失败，r14 五次重复 3 通过 / 2 失败；单独运行同一用例 5/5 通过）。
-已定位到被排队替换轮在 `startSessionTask → createTaskGrant → admitWorkspace` 的 await 上永不返回，
-句柄快照显示只悬挂定时器、无未完成 fs 请求。详见
-`reviews/R8-FINDING-IPC-BLOCKER5-NONDETERMINISM.md`。
+`ipc.test.ts` 全文件对 `R8 round5 blocker5` 的非确定性挂起已在 final-r16 关闭：`npx vitest run apps/desktop/test/ipc.test.ts` 连续 10 次全部 `171 passed`，曾经的触发对与整个 runtime 绑定组各连续 6 次全绿（`after/final-r16-ipc-full-repeat{1..10}.txt`）。
+根因是测试前提缺失而非生产缺陷——B、C 在同一同步块并发入队，谁先登记到会话队列尾部由各自 open 阶段的 promise 完成顺序决定，单次 settle 只放行队首，而测试断言被放行的必须是 B。
+本节此前记录的“停在 `startSessionTask → createTaskGrant → admitWorkspace` await”**是错误结论**：该判断基于 vitest 控制台输出，而用例超时后 vitest 会丢弃未刷新的输出，日志尾部的最后一条并非真正的停点。改用同步写文件的时序日志后真相才明确（`after/final-r16-blocker5-queue-race-trace.txt`），排查过程与纠错记录保留在 `reviews/R8-FINDING-IPC-BLOCKER5-NONDETERMINISM.md`。
+修复为测试侧：`blocker5` 改为逐个入队并新增“C 在 B 终态前不得发送”的断言，另加 `blocker5b` 覆盖并发入队的确定序放行；生产代码未改动。判别力校验（把栅栏改为不等待前一轮后两条用例同时失败）见 `after/final-r16-blocker5-fix-and-mutation-check.txt`。
 
-首轮三域审查中的 Runtime blocker、truth 域 r14 的 worker 模块类型阻断、privacy 复审的两项证据/映射 blocker 均已修复并复验。
-只要上述 IPC 非确定性仍在，R8 不宣称验收完成，也不执行 push。
+首轮三域审查中的 Runtime blocker、truth 域 r14 的 worker 模块类型阻断、privacy 复审的两项证据/映射 blocker、runtime 复审的 `agent_end` 终态阻断均已修复并复验；三域终审（r15）为 APPROVE / 0 blocking，final-r16 仅改动测试文件，未触及被评审的生产实现。
 
 ## R8-P0-1 隐私删除崩溃恢复与明文围栏
 
@@ -307,6 +305,17 @@ Round8 After（当前最终候选为 `final-r14-*`；r10–r13 文件保留为�
 - `after/final-r15-typecheck.txt`：workspace typecheck 通过。
 - `after/final-r15-git-diff-check.txt`：exit 0，仅仓库既有 CRLF 提示。
 
+### r16（blocker5 非确定性关闭后的最终候选）
+
+- `after/final-r16-ipc-full-repeat{1..10}.txt`：`ipc.test.ts` 全文件连续十次，每次 `171 passed`（修复前五连 4 通过 / 1 失败）。
+- `after/final-r16-blocker5-queue-race-trace.txt`：同步文件时序日志，证明是 C 先登记导致单次 settle 放行 C、测试等待的 B 压在队尾；并记录此前“停在准入 await”的错误结论是如何产生的。
+- `after/final-r16-blocker5-fix-and-mutation-check.txt`：测试侧修复说明 + 生产栅栏变异后两条用例同时失败（判别力），随后 SHA-256 校验还原。
+- `after/final-r16-full-suite-round{1,2}.txt`：29 files，595 passed / 1 skipped，两轮一致。
+- `after/final-r16-review-remediation-focused.txt`：5 files，204 passed。
+- `after/final-r16-approval-full.txt`：15 files，95 passed；`after/final-r16-agent-host-full.txt`：32 files，219 passed。
+- `after/final-r16-ipc-r8-abc.txt`：Runtime A/B/C 1 passed / 170 skipped。
+- `after/final-r16-typecheck.txt`、`after/final-r16-git-diff-check.txt`：typecheck Done、`git diff --check` exit 0。
+
 ## R7 保留
 
 R7 源码清单与证据清单哈希在最终仍为：
@@ -363,10 +372,10 @@ Runtime 域 final-r13 复审为 APPROVE / 0 blocking，但 r14 复审在 Pi 1.5 
 
 ## 最终验证
 
-- `source-sha256-final-r15.txt`：82 个源文件条目，聚合 `0c9b04398b37cf21e4ca4a3cf170c264fe1cabcc392ccf03b985ee298cdad2aa`，与 `source-manifest-sha256.txt` 的 r15 锚点行一致（该文件按内容自哈希，可重复校验）。
-- `evidence-sha256.txt`：以文件自身和 `after/evidence-sha256-verification-final-r15.txt` 的独立重算结果为准（不在被清单覆盖的文档内硬编码自身聚合哈希）。
-- `final-git-state-r15.txt`：记录冻结时的 HEAD、本地 ahead 数与工作树状态。
-- `after/source-sha256-verification-final-r15.txt`、`after/evidence-sha256-verification-final-r15.txt`：两类清单独立复核 exit 0。
+- `source-sha256-final-r15.txt` / `source-sha256-final-r16.txt`：同一 82 个源文件集合，逐条按当前盘态重算；r15 聚合 `0c9b04398b37cf21e4ca4a3cf170c264fe1cabcc392ccf03b985ee298cdad2aa`，r16 聚合见 `source-manifest-sha256.txt` 的 r16 锚点行（该文件按内容自哈希，可重复校验）。
+- `evidence-sha256.txt`：以文件自身和 `after/evidence-sha256-verification-final-r15.txt` 的独立重算结果为准（不在被清单覆盖的文档内硬编码自身聚合哈希）。本轮清单为全树重扫，覆盖 r14/r15/r16 全部证据与三份终审报告。
+- `final-git-state-r16.txt`：记录冻结时的 HEAD、本地 ahead 数与工作树状态。
+- `after/source-sha256-verification-final-r16.txt`、`after/evidence-sha256-verification-final-r16.txt`：两类清单独立复核 exit 0。
 
 三域终审报告已落盘：`reviews/R8-REVIEW-TRUTH-RECOVERY-final-round8-r15.md`、`reviews/R8-REVIEW-PRIVACY-FENCE-final-round8-r15.md`、`reviews/R8-REVIEW-RUNTIME-LOGGER-final-round8-r15.md`，均为 APPROVE / 0 blocking；首轮与中间轮次的阻断项及闭环对照见 `architecture-reviews.md`。
 

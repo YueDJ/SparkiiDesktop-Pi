@@ -1,0 +1,28 @@
+# R8 final-r16 git state
+captured: 2026-11-27T10:54:58+08:00
+
+## HEAD
+7184baa996a9f74d2b285f618bfffdb01c97f432
+7184baa fix(memory): close review-round truth, privacy and runtime blockers
+
+## branch / upstream
+## main...origin/main [ahead 5]
+
+## tracked changes vs HEAD
+ M apps/desktop/test/ipc.test.ts
+ M docs/memory-evidence/repair-2026-11-25-round8/R8-MAPPING.md
+ M docs/memory-evidence/repair-2026-11-25-round8/architecture-reviews.md
+ M docs/memory-evidence/repair-2026-11-25-round8/reviews/R8-FINDING-IPC-BLOCKER5-NONDETERMINISM.md
+ M docs/memory-evidence/repair-2026-11-25-round8/reviews/R8-REVIEW-RUNTIME-LOGGER-final-round8-r15.md
+ M docs/memory-evidence/repair-2026-11-25-round8/source-manifest-sha256.txt
+
+## untracked non-evidence
+
+## untracked evidence count
+23
+
+## git diff --check
+diff-check exit=0
+
+## 与 final-r15 的差异
+final-r15 的 HEAD 为 b411f47（工作树含未提交的 r14/r15 修复）；本轮提交后 HEAD 见上，工作树仅剩本轮 r16 证据与测试文件改动。

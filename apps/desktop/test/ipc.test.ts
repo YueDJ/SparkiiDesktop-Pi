@@ -6642,8 +6642,9 @@ describe('R8 runtime binding regressions', () => {
     await prompt(null, 's1', 'PROMPT_A');
     const originalTaskId = h.taskLifecycle.active('s1')?.taskId;
     client.emit({ type: 'agent_start' });
+    // 替换轮必须逐个排队：两条 prompt 同时发起时，谁先登记到会话队列尾部本身就是一次竞态，
+    // 而一次 settle 只放行队首，测试等待的那一条可能仍压在队尾，断言就会依赖竞态结果。
     const replacing = Promise.resolve(prompt(null, 's1', 'PROMPT_B'));
-    const queuedReplacement = Promise.resolve(prompt(null, 's1', 'PROMPT_C'));
     await waitUntil(() => client.send.mock.calls.filter(([command]) => command.type === 'get_state').length >= 3);
     const promptsBeforeSettled = client.send.mock.calls
       .map(([command]) => command)
@@ -6655,6 +6656,14 @@ describe('R8 runtime binding regressions', () => {
     await waitUntil(() => client.send.mock.calls.some(
       ([command]) => command.type === 'prompt' && command.message === 'PROMPT_B',
     ));
+    expect(client.send.mock.calls
+      .map(([command]) => command)
+      .filter((command) => command.type === 'prompt')
+      .map((command) => command.message)).toEqual(['PROMPT_A', 'PROMPT_B']);
+
+    // B 的 prompt 已经返回，但它的 turn 还没有终态，此时入队的 C 必须继续等待 B 的终态。
+    const queuedReplacement = Promise.resolve(prompt(null, 's1', 'PROMPT_C'));
+    await waitUntil(() => client.send.mock.calls.filter(([command]) => command.type === 'get_state').length >= 4);
     expect(client.send.mock.calls
       .map(([command]) => command)
       .filter((command) => command.type === 'prompt')
@@ -6674,6 +6683,42 @@ describe('R8 runtime binding regressions', () => {
     expect(h.taskLifecycle.active('s1')?.taskId).not.toBe(originalTaskId);
   });
 
+  it('R8 round5 blocker5b arms two waiting replacements one settle at a time in queue order', async () => {
+    const client = new FakeHandle(async (command: any) => {
+      if (command.type === 'get_state') {
+        return { success: true, data: { sessionId: 's1', sessionFile: null, isStreaming: false } };
+      }
+      return { success: true };
+    });
+    const h = await exportRuntime(client);
+    const prompt = h.handlers.get('sparkii:promptSession')!
+    const countState = () => client.send.mock.calls.filter(([command]) => command.type === 'get_state').length;
+    const promptMessages = () => client.send.mock.calls
+      .map(([command]) => command)
+      .filter((command) => command.type === 'prompt')
+      .map((command) => command.message);
+
+    await prompt(null, 's1', 'PROMPT_A');
+    client.emit({ type: 'agent_start' });
+    const first = Promise.resolve(prompt(null, 's1', 'PROMPT_B'));
+    // 先让 B 走完 open 阶段并登记到队列尾部，再让 C 入队，两条替换轮的先后才是确定的。
+    await waitUntil(() => countState() >= 3);
+    for (let tick = 0; tick < 3; tick += 1) await new Promise((resolve) => setTimeout(resolve, 0));
+    const second = Promise.resolve(prompt(null, 's1', 'PROMPT_C'));
+    await waitUntil(() => countState() >= 4);
+    expect(promptMessages()).toEqual(['PROMPT_A']);
+
+    client.emit({ type: 'agent_settled', aborted: false });
+    await expect(first).resolves.toMatchObject({ ok: true });
+    await waitUntil(() => promptMessages().includes('PROMPT_B'));
+    expect(promptMessages()).toEqual(['PROMPT_A', 'PROMPT_B']);
+
+    client.emit({ type: 'agent_start' });
+    client.emit({ type: 'agent_settled', aborted: false });
+    await expect(second).resolves.toMatchObject({ ok: true });
+    await waitUntil(() => promptMessages().includes('PROMPT_C'));
+    expect(promptMessages()).toEqual(['PROMPT_A', 'PROMPT_B', 'PROMPT_C']);
+  });
   it('R8 round6 keeps a delivered prompt barrier after post-send get_state rejects and ignores an unstarted late settled', async () => {
     let rejectPostSend!: (error: Error) => void;
     const postSendStarted = deferred();

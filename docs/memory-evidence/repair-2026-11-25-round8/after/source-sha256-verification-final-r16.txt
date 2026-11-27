@@ -1,0 +1,11 @@
+# R8 final-r16 源码清单校验
+captured: 2026-11-27T10:54:52+08:00
+
+sha256sum -c source-sha256-final-r16.txt:
+82
+exit=0
+
+sha256sum -c source-manifest-sha256.txt:
+5
+exit=0
+aggregate(source-sha256-final-r16.txt)=7ea2b21dbce6d7f448e167cc41b2f29960331db401143f21dc2007b30d59ac1a

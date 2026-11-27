@@ -43,20 +43,22 @@ APPROVE
 Blocking finding count: 0
 ```
 
-## 三域已批准，但 R8 整体不予验收
+## final-r16：最后一项门禁阻断已关闭
 
-`npx vitest run apps/desktop/test/ipc.test.ts` 全文件运行对 `R8 round5 blocker5` 存在非确定性挂起：
-final-r15 五次重复 4 通过 / 1 失败（final-r14 为 3 通过 / 2 失败），同一用例单独运行 5/5 通过。
-已定位到被排队的替换轮越过 prompt 串行栅栏后停在
-`startSessionTask → taskLifecycle.start → createTaskGrant → admitWorkspace` 的 await 上，
-挂起时只有定时器句柄、无未完成 fs 请求。完整分析、排除项与后续步骤见
-`reviews/R8-FINDING-IPC-BLOCKER5-NONDETERMINISM.md`。
+npx vitest run `apps/desktop/test/ipc.test.ts` 整文件运行对 `R8 round5 blocker5` 的非确定性挂起，
+根因在测试自身：B、C 两条替换轮在同一同步块并发入队，谁先登记到会话队列尾部由各自 open 阶段的
+promise 完成顺序决定，而用例只发一次 `agent_settled` 却断言被放行的必须是 B。修复只动测试
+（`blocker5` 改为逐个入队，并新增“C 在 B 终态之前不得发送”的断言；新增 `blocker5b` 覆盖并发入队的确定序放行），
+生产实现未改动；把栅栏临时改为“不等待前一轮”后两条用例同时失败，判别力成立，随后按 SHA-256 校验还原。
 
-按本任务约定“任一门禁失败即不得宣称验收”，R8 在此标记为**未完成验收、不执行 push**；
-其余门禁（串行完整套件两轮 595 passed / 1 skipped、focused 204、Approval 95、agent-host 219、
-Runtime A/B/C 1、`pnpm -w typecheck` Done、`git diff --check` exit 0）均为确定性通过，
-证据见 `after/final-r15-*.txt`。
+复验：`ipc.test.ts` 全文件连续 10 次 `171 passed`；曾经的触发对与整个 runtime 绑定组各连续 6 次全绿。
+证据见 `after/final-r16-ipc-full-repeat{1..10}.txt`、`after/final-r16-blocker5-queue-race-trace.txt`、
+`after/final-r16-blocker5-fix-and-mutation-check.txt`；纠错过程（含此前“停在准入 await”的错误结论如何产生）
+保留在 `reviews/R8-FINDING-IPC-BLOCKER5-NONDETERMINISM.md`。
 
+final-r16 门禁全绿：串行完整套件两轮 595 passed / 1 skipped、focused 204、Approval 95、agent-host 219、
+Runtime A/B/C、`pnpm -w typecheck` Done、`git diff --check` exit 0。三域终审（r15）之后只改动了
+`apps/desktop/test/ipc.test.ts` 一个测试文件，被评审的生产实现未变，故三域 APPROVE / 0 blocking 仍然成立。
 ## 遗留的非阻断项（三域共同确认，不在本轮解决）
 
 - `ipc.ts:2320` 的 prompt lane 返回值不带 settled/cancelled 标记，`waitForSettled` 仅由该实现兑现。

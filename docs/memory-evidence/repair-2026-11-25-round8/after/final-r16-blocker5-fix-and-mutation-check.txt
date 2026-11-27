@@ -1,0 +1,45 @@
+# R8 final-r16 blocker5 修复：测试前提与生产栅栏的判别力校验
+
+## 根因（原始时序见 `final-r16-blocker5-queue-race-trace.txt`）
+
+`R8 round5 blocker5` 在同一个同步块里用 `Promise.resolve(prompt(B))`、`Promise.resolve(prompt(C))`
+同时发起两条替换轮，随后只发一次 `agent_settled`，并断言 **B** 会被这一次 settle 放行。
+生产侧的串行栅栏是“先登记到会话队列尾部者先放行”，而 B、C 谁先登记取决于各自 open 阶段 promise
+的完成顺序——失败那次的日志里 `queue-reserve text=PROMPT_C`（+5ms）先于 `queue-reserve text=PROMPT_B`（+6ms），
+于是单次 settle 放行的是 C，B 仍压在队尾，测试卡在 `await expect(replacing)` 直到 5000ms 超时。
+
+因此这不是事件循环被阻塞、也不是任务准入悬挂：+31ms 之后日志完全静止，句柄快照里只有定时器、
+`_getActiveRequests()=0`。是测试断言了一个它自己没有建立的顺序前提。
+
+## 修复
+
+1. `apps/desktop/test/ipc.test.ts` `blocker5`：替换轮改为逐个入队——B 被第一次 settle 放行并返回后，
+   再入队 C，并新增断言“C 在 B 的终态到来之前不会被发送”，随后用第二次 start+settle 放行 C。
+   不变量覆盖范围比原来更宽（既验证 A→B，也验证 B→C），不再依赖并发到达顺序。
+2. 新增 `apps/desktop/test/ipc.test.ts` `blocker5b`：显式建立登记顺序（等 B 完成 open 阶段的状态读取
+   并让出若干宏任务后再发起 C），再验证两条并发排队的替换轮按队列顺序各需一次终态才放行。
+   这条用例保留“并发入队”这一原有覆盖面，但顺序是确定的。
+
+生产代码未做任何改动。
+
+## 判别力校验（不是“重跑变绿”）
+
+把生产栅栏临时改成不等待前一轮（`apps/desktop/electron/main/ipc.ts` 中
+`await previousQueued;` → `await Promise.resolve();`），随后运行 `-t "blocker5"`：
+
+```
+ FAIL  apps/desktop/test/ipc.test.ts > R8 runtime binding regressions > R8 round5 blocker5 waits for prior prompt turns to settle before arming queued replacements
+ FAIL  apps/desktop/test/ipc.test.ts > R8 runtime binding regressions > R8 round5 blocker5b arms two waiting replacements one settle at a time in queue order
+ Test Files  1 failed (1)
+      Tests  2 failed | 169 skipped (171)
+```
+
+两条用例都失败，说明它们仍在真正守住“前一轮未终态不得放行替换轮”这一不变量；
+随后按 SHA-256 校验还原生产文件（`restored equal=true`，`git status` 对该文件为空）。
+
+## 稳定性复验
+
+- `npx vitest run apps/desktop/test/ipc.test.ts` 连续 10 次：10 通过 / 0 失败
+  （`final-r16-ipc-full-repeat1..10.txt`；修复前为 r15 的 5 次中 1 失败、r14 的 5 次中 2 失败）。
+- 曾经的触发对 `-t "R8 round5 r2 cleans workflow bookkeeping|R8 round5 blocker5"` 连续 6 次：6 通过。
+- 整个 `R8 runtime binding regressions` 组连续 6 次：6 通过。

@@ -60,3 +60,16 @@
 admitWorkspace` 的 await 上；句柄快照显示只有定时器悬挂、无未完成 fs 请求。
 详见 `reviews/R8-FINDING-IPC-BLOCKER5-NONDETERMINISM.md`。runtime 审查者判定该披露“充分且诚实”，
 但它仍使 R8 整体不予验收、不执行 push。
+
+
+## final-r16 追加
+
+本节所述的 IPC 全文件非确定性挂起已在 final-r16 关闭，且关闭方式是修正测试前提，未改动任何生产实现：
+B、C 两条替换轮在同一同步块并发入队，登记到队列尾部的先后由各自 open 阶段的 promise 完成顺序决定，
+用例只发一次 settled 却断言被放行的是 B。修复后 `ipc.test.ts` 全文件连续 10 次 171 passed。
+
+**对本报告结论的影响**：本域评审的生产实现（workflow/ipc/audit/router）自 r15 起未变动，
+因此 APPROVE / 0 blocking 仍然成立。但本报告正文里“定位到停在 admitWorkspace 的 await”这一句是**错误结论**，
+来源是用例超时后 vitest 丢弃了未刷新的控制台输出、把日志尾部误当成停点；
+真实停点在测试自身的 await 上。完整纠错记录见 `R8-FINDING-IPC-BLOCKER5-NONDETERMINISM.md` 与
+`after/final-r16-blocker5-queue-race-trace.txt`。

@@ -1,0 +1,72 @@
+(node:33432) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+npm notice run npx
+npm notice run vitest run --no-file-parallelism apps/desktop/test/memory-r8-regression.test.ts apps/desktop/test/memory-truth-batch.test.ts apps/desktop/test/memory-truth-probe-daemon.test.ts apps/desktop/test/workflow-broker.test.ts apps/desktop/test/runtime-action-router.test.ts
+(node:2236) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33mBoth esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored.[39m The following esbuild options were set: `{ jsx: 'automatic' }`
+
+[1m[30m[46m RUN [49m[39m[22m [36mv4.1.11 [39m[90mC:/Users/YDJ/Desktop/SparkiiDesktop-Pi[39m
+
+(node:24716) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24716) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-r8-regression.test.ts [2m([22m[2m60 tests[22m[2m)[22m[33m 21861[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes privacy deletion after logger cleanup fails and never exposes restored plaintext [33m 713[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes privacy deletion after audit cleanup fails and never exposes restored plaintext [33m 703[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes privacy deletion after gate cleanup fails and never exposes restored plaintext [33m 720[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes privacy deletion after errors cleanup fails and never exposes restored plaintext [33m 657[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 resumes from journal context after the chat row and Pi file are already gone [33m 534[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 keeps a failed privacy cleanup fenced after restart and retries when chat cleanup recovers [33m 580[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 releases the in-memory privacy fence when the completed recovery journal is already absent [33m 716[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 review B3 registers chat secrets before sink cleanup and protects later chat writes after failure [33m 576[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P0-1 restores privacy sink fences before truth recovery can restore plaintext [33m 734[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 review B3 cleans Pi and chat carriers before a safe-root truth write-block aborts startup [33m 371[2mms[22m[39m
+     [33m[2m✓[22m[39m refuses to clear a privacy journal whose identity changed during cleanup [33m 594[2mms[22m[39m
+     [33m[2m✓[22m[39m fences the journal read source identity before accepting parsed privacy content [33m 415[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY refuses to delete a journal when the zero-write readback contains a nonzero byte [33m 431[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY digest-mismatch startup temp evidence persists a privacy write-block without deleting context [33m 344[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY session-mismatch startup temp evidence persists a privacy write-block without deleting context [33m 378[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY malformed startup temp evidence persists a privacy write-block without deleting context [33m 345[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY promotes a valid startup temp journal and automatically resumes its privacy deletion [33m 433[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-REPAIR-MEMORY fences Windows non-symlink reparse attributes on the privacy file before temp reads and cleanup [33m 399[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-6 future and concurrent audit writes cannot reintroduce a privacy-deleted secret [33m 578[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 privacy review reads the raw Pi path before chat redaction can alter it [33m 524[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 privacy review resumes a secret-named Pi carrier after restart [33m 655[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 privacy review retries independent carriers after a same-process truth rollback block [33m 309[2mms[22m[39m
+     [33m[2m✓[22m[39m R8 privacy review removes a plaintext journal temp file left before rename [33m 411[2mms[22m[39m
+     [33m[2m✓[22m[39m freshly probes and validates journal content after rename before privacy truth cleanup [33m 309[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-5 identity preflight failure changes no truth, journal, audit, logger or chat state [33m 336[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-5 project preflight failure changes no truth, journal, audit, logger or chat state [33m 418[2mms[22m[39m
+     [33m[2m✓[22m[39m R8-P1-5 corrupt preflight failure changes no truth, journal, audit, logger or chat state [33m 636[2mms[22m[39m
+     [33m[2m✓[22m[39m re-fences a privacy journal before zeroing even when cleanup already verified its identity [33m 440[2mms[22m[39m
+     [33m[2m✓[22m[39m zeroizes an existing privacy journal immediately before replacing it on retry [33m 603[2mms[22m[39m
+     [33m[2m✓[22m[39m fences a real ancestor junction before Pi carrier deletion and retries normally after it is removed [33m 648[2mms[22m[39m
+     [33m[2m✓[22m[39m fences a non-symlink reparse Pi carrier directory before rmSync [33m 570[2mms[22m[39m
+     [33m[2m✓[22m[39m fences a non-symlink reparse Pi carrier file before rmSync [33m 537[2mms[22m[39m
+     [33m[2m✓[22m[39m detects Pi carrier identity replacement before deletion and preserves external bytes across retry [33m 501[2mms[22m[39m
+     [33m[2m✓[22m[39m detects Pi carrier identity replacement before deletion and preserves external bytes across restart [33m 535[2mms[22m[39m
+(node:11788) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:11788) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-probe-daemon.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 4619[2mms[22m[39m
+     [33m[2m✓[22m[39m serves production probes from one resident child instead of stalling on a dead bridge [33m 515[2mms[22m[39m
+(node:33284) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:33284) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/memory-truth-batch.test.ts [2m([22m[2m53 tests[22m[2m)[22m[33m 2413[2mms[22m[39m
+(node:16668) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/workflow-broker.test.ts [2m([22m[2m43 tests[22m[2m)[22m[33m 814[2mms[22m[39m
+(node:12376) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [32m✓[39m [30m[46m 1 [49m[39m apps/desktop/test/runtime-action-router.test.ts [2m([22m[2m44 tests[22m[2m)[22m[32m 39[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m5 passed[39m[22m[90m (5)[39m
+[2m      Tests [22m [1m[32m204 passed[39m[22m[90m (204)[39m
+[2m   Start at [22m 10:51:08
+[2m   Duration [22m 39.56s[2m (transform 901ms, setup 92ms, import 5.02s, tests 29.74s, environment 3.87s)[22m
+

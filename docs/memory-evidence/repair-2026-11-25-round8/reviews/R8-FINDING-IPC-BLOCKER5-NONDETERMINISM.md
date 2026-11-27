@@ -71,3 +71,23 @@ ZZHANDLEKINDS Pipe,Socket,Socket,Socket
 - 其余门禁均为确定性通过：串行完整套件两轮 594 passed / 1 skipped、focused 5 files 203 passed、
   Approval 94、agent-host 219、Runtime A/B/C 1、`pnpm -w typecheck` Done、`git diff --check` exit 0。
 - 因此本轮不宣称 R8 验收完成，不执行 push；`R8-MAPPING.md` 的门禁状态与本条保持一致。
+
+---
+
+## 已解决（final-r16）
+
+根因不是生产缺陷，也不是事件循环阻塞：测试在同一同步块里并发发起 B、C 两条替换轮，只发一次
+`agent_settled`，却断言被放行的一定是 B。生产栅栏是“先登记到会话队列尾部者先放行”，而 B、C 谁先登记
+取决于各自 open 阶段 promise 的完成顺序——失败那次的同步文件时序日志显示 C 先登记（+5ms）而 B 后登记（+6ms），
+于是这一次 settle 放行的是 C，B 仍压在队尾，测试卡在自己的 await 上直到 5000ms 超时。
+原始日志见 `after/final-r16-blocker5-queue-race-trace.txt`；+31ms 之后无任何后续日志，句柄快照只有定时器、
+`_getActiveRequests()=0`，排除循环阻塞与 fs 悬挂。
+
+修复与校验（见 `after/final-r16-blocker5-fix-and-mutation-check.txt`）：
+
+- `blocker5` 改为逐个入队，并新增“C 在 B 终态之前不得发送”的断言，覆盖不变量比原来更宽。
+- 新增 `blocker5b`：先显式建立登记顺序，再验证两条并发排队各需一次终态才按序放行，保留原有并发覆盖面但顺序确定。
+- 生产代码未改动。把栅栏改为不等待前一轮后，两条用例同时失败（判别力成立），随后按 SHA-256 校验还原。
+- 稳定性：IPC 全文件连续 10 次全绿；曾经的触发对连续 6 次全绿；整个 runtime 绑定组连续 6 次全绿。
+
+本节此前的“未解决”判定保留作为过程记录；R8 的这项门禁阻断自 final-r16 起关闭。
