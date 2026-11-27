@@ -24,6 +24,7 @@ import { registerConnectorHandlers } from "./connector-registry.js";
 import { ChatSessionStore } from "./chat-session-store.js";
 import { ErrorStore } from "./error-store.js";
 import { MemoryService } from "./memory/service.js";
+import { readWindowsReparseAttributes } from "./memory/truth-path.js";
 import { Keyring } from "./keyring.js";
 import { resolveRuntimePaths, resolveRuntimeToolsDir } from "./runtime-layout.js";
 import { loadAgentRuntimes, type AgentRuntime } from "./agent-registry.js";
@@ -294,7 +295,13 @@ export async function assemble(opts: {
       dataDir: opts.dataDir,
       volumes,
     };
-    const pathProbe = createWindowsPathProbe(options);
+    // 重解析点属性走常驻原生探针（SandboxProbe.exe reparse-daemon）。默认实现每次
+    // inspect 启动一个 PowerShell（本机 ~0.7s），而一次工作区准入会 inspect ~87 次，
+    // 之前把一次会话列表/工作区读放大到 25s 以上。
+    const pathProbe = createWindowsPathProbe({
+      ...options,
+      readReparsePointAttribute: async (path) => readWindowsReparseAttributes([path])[0] ?? 0,
+    });
     const protectedRoots = windowsProtectedRoots(options);
     const taskGrants = new TaskGrantRegistry();
     const capabilityGateway = new CapabilityGateway();

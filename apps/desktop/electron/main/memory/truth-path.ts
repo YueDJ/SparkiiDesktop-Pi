@@ -317,6 +317,14 @@ function reparseAttributes(pathsToInspect: string[]): number[] {
   return values.map((value) => value * FILE_ATTRIBUTE_REPARSE_POINT);
 }
 
+/**
+ * 安全层（WorkspacePathProbe）复用的重解析点属性读取：走常驻原生探针，
+ * 不能退回每次 inspect 启动一个 PowerShell（一次工作区准入会调用 ~87 次）。
+ */
+export function readWindowsReparseAttributes(paths: string[]): number[] {
+  return reparseAttributes(paths);
+}
+
 export function queuePathInspection(path: string, context: PathProbeContext): void {
   if (!isAbsolute(path)) throw new Error('记忆真相路径必须是绝对路径');
   const root = parse(path).root;
